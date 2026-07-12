@@ -3,6 +3,7 @@ import { Effect, Layer, Schema } from "effect";
 import { describe, expect, it } from "vitest";
 import * as Entity from "../src/Entity";
 import type * as Scene from "../src/Scene";
+import * as Shapes from "../src/shapes";
 import * as Svg from "../src/svg";
 
 describe("vnodeToString", () => {
@@ -61,13 +62,25 @@ const labelLayer = Svg.entityRendererLayer(Label, ({ data }) =>
 	}),
 );
 
-const layers = Svg.layer.pipe(Layer.provideMerge([circleLayer, labelLayer]));
+const layers = Svg.layer.pipe(
+	Layer.provideMerge([circleLayer, labelLayer, Svg.shapesLayer]),
+);
 
-type Entities = typeof Circle | typeof Label;
+type Entities = typeof Circle | typeof Label | typeof Shapes.Group;
 
+// manual frames get a root group whose children are the given instances
 const frameOf = (
 	instances: Scene.Frame<Entities>["instances"],
-): Scene.Frame<Entities> => ({ instances });
+): Scene.Frame<Entities> => ({
+	instances: {
+		...instances,
+		root: {
+			data: Shapes.Group.data.make({ children: Object.keys(instances) }),
+			entity: Shapes.Group,
+		},
+	},
+	root: "root",
+});
 
 const circleFrame = frameOf({
 	c1: { data: { x: 5, y: 6 }, entity: Circle },

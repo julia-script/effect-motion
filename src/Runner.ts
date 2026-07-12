@@ -5,11 +5,26 @@ import type * as Schema from "effect/Schema";
 import type * as Entity from "./Entity";
 import * as Instance from "./Instance";
 import * as Phaser from "./Phaser";
+import { Group } from "./shapes/Group";
 
 export const TypeId = "~motion/SceneRunner" as const;
+
+/** conventional id of the implicit root group every instance attaches to */
+export const ROOT_ID = "root";
+
 export type Settings = {
 	frameRate: number;
 };
+
+export type GroupInstance = Instance.Instance<
+	typeof Group.name,
+	typeof Group.data
+>;
+
+export interface InstantiateOptions {
+	/** the group to attach the new instance to; defaults to the root */
+	readonly parent?: GroupInstance;
+}
 
 export class Runner extends Context.Service<Runner>()("Runner", {
 	make: Effect.fnUntraced(function* (settings: Partial<Settings> = {}) {
@@ -38,13 +53,28 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 		): Data["Type"] | null => {
 			return (instances[instance.id]?.data as Data["Type"]) ?? null;
 		};
+
+		// the root group: never rendered itself, holds the top level
+		const root: GroupInstance = Instance.make(Group, ROOT_ID);
+		setDataUnsafe(root, {});
+
+		const attach = (parent: GroupInstance, id: string): void => {
+			const data = getDataUnsafe(parent);
+			if (data === null) {
+				throw new Error(`Runner: parent group "${parent.id}" was destroyed`);
+			}
+			setDataUnsafe(parent, { ...data, children: [...data.children, id] });
+		};
+
 		return {
+			root,
 			instantiate: Effect.fnUntraced(function* <
 				Name extends string,
 				Data extends Schema.Top,
 			>(
 				entity: Entity.Entity<Name, Data>,
 				props: Data["~type.make.in"],
+				options?: InstantiateOptions,
 			): Effect.fn.Return<
 				Instance.Instance<Name, Data>,
 				void,
@@ -53,6 +83,7 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 				const id = generateId(entity.name);
 				const instance = Instance.make(entity, id);
 				setDataUnsafe(instance, props);
+				attach(options?.parent ?? root, id);
 
 				return instance;
 			}),
@@ -64,12 +95,29 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 
 			setDataUnsafe,
 
-			state: Effect.sync(() => ({ instances: { ...instances } })),
+			state: Effect.sync(() => ({
+				instances: { ...instances },
+				root: ROOT_ID,
+			})),
 
 			destroy: <Name extends string, Data extends Schema.Top>(
 				instance: Instance.Instance<Name, Data>,
 			): void => {
 				delete instances[instance.id];
+				// detach from whichever group references it — a full scan stays
+				// correct even after manual reparenting via data updates
+				for (const [id, entry] of Object.entries(instances)) {
+					const children = (entry.data as { children?: unknown }).children;
+					if (Array.isArray(children) && children.includes(instance.id)) {
+						instances[id] = {
+							entity: entry.entity,
+							data: entry.entity.data.make({
+								...(entry.data as object),
+								children: children.filter((child) => child !== instance.id),
+							}),
+						};
+					}
+				}
 			},
 			phaser,
 		};

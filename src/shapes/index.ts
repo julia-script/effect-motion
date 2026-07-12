@@ -1,5 +1,6 @@
 export { Circle } from "./Circle";
 export { Ellipse } from "./Ellipse";
+export { Group } from "./Group";
 export { Line } from "./Line";
 export { Path } from "./Path";
 export { Rect } from "./Rect";

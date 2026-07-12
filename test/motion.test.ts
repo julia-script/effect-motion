@@ -18,7 +18,10 @@ const runScene = async <A>(
 		) as unknown as Effect.Effect<Iterable<Scene.Frame<any>>, never, never>,
 	);
 	return [...frames].map((frame) => {
-		const entry = Object.values(frame.instances)[0]!;
+		// skip the root group — the first non-root instance is the subject
+		const entry = Object.entries(frame.instances).find(
+			([id]) => id !== frame.root,
+		)![1];
 		return extract(entry.data as Record<string, any>);
 	});
 };

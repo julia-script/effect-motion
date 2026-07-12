@@ -117,6 +117,22 @@ export const path: Renderer.RenderFunction<SvgNode, typeof Shapes.Path> = ({
 		},
 	});
 
+// a group paints nothing itself: one <g> positioning its rendered children
+export const group: Renderer.RenderFunction<SvgNode, typeof Shapes.Group> = ({
+	data,
+	children,
+}) =>
+	Effect.succeed({
+		tag: "g",
+		props: {
+			...(data.x !== 0 || data.y !== 0
+				? { transform: `translate(${data.x} ${data.y})` }
+				: {}),
+			...styleAttrs(data),
+		},
+		children,
+	});
+
 /** Every built-in shape registered with both sinks. */
 export const shapesLayer = Layer.mergeAll(
 	entityRendererLayer(Shapes.Circle, circle),
@@ -125,4 +141,5 @@ export const shapesLayer = Layer.mergeAll(
 	entityRendererLayer(Shapes.Ellipse, ellipse),
 	entityRendererLayer(Shapes.Line, line),
 	entityRendererLayer(Shapes.Path, path),
+	entityRendererLayer(Shapes.Group, group),
 );

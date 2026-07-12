@@ -62,13 +62,14 @@ export const instantiate = Effect.fnUntraced(function* <
 >(
 	entity: Entity.Entity<Name, Data>,
 	props: Data["~type.make.in"],
+	options?: Runner.InstantiateOptions,
 ): Effect.fn.Return<
 	Instance.Instance<Name, Data>,
 	void,
 	Entity.Entity<Name, Data> | Runner.Runner
 > {
 	const runner = yield* Runner.Runner;
-	return yield* runner.instantiate(entity, props);
+	return yield* runner.instantiate(entity, props, options);
 });
 
 export const tick = Effect.gen(function* () {
@@ -101,6 +102,8 @@ export type EntriesFromEntities<Entities> = Entities extends Entity.AnyEntity
 	: never;
 export interface Frame<Entities extends Entity.AnyEntity> {
 	instances: Record<string, EntriesFromEntities<Entities>>;
+	/** id of the root group (conventionally "root"); never rendered itself */
+	root: string;
 }
 export const step = <E, R, Entities extends Entity.AnyEntity>(
 	runningScene: RunningScene<E, R, Entities>,

@@ -61,6 +61,21 @@ const scene = Scene.make(function* () {
 	// swing across, then a bouncy return that never quite wants to stop
 	yield* plopper.pipe(Physics.springTo({ x: 440 }, "swing"));
 	yield* plopper.pipe(Physics.springTo({ x: 60 }, "bounce"));
+
+	// groups: one moveTo on the group carries both children (local coords)
+	const duo = yield* Scene.instantiate(Shapes.Group, { x: 60, y: 230 });
+	yield* Scene.instantiate(
+		Shapes.Circle,
+		{ x: 0, y: 0, radius: 10, fill: "#e53170" },
+		{ parent: duo },
+	);
+	yield* Scene.instantiate(
+		Shapes.Square,
+		{ x: 14, y: -10, size: 20, fill: "#a786df" },
+		{ parent: duo },
+	);
+	yield* duo.pipe(Motion.moveTo({ x: 380 }, "1.5 seconds", "easeInOutCubic"));
+	yield* duo.pipe(Physics.springTo({ y: 60 }, "jump"));
 });
 
 // rAF when visible; setTimeout fallback because rAF never fires in

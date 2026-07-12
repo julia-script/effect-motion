@@ -14,6 +14,12 @@ export type RenderFunction<
 	entity: Ent;
 	id: string;
 	data: Ent["data"]["Type"];
+	/**
+	 * rendered output of this instance's children, post-order (empty for
+	 * leaves). In frame data, a `children: string[]` field means child
+	 * instance ids — containers embed these results in their own output.
+	 */
+	children: ReadonlyArray<Success>;
 }) => Effect.Effect<Success, E, R>;
 
 export interface EntityRenderer<
@@ -124,20 +130,73 @@ export const make =
 			) => Effect.Effect<RenderSuccess, never, Renderers<Entities>>;
 		}>(tag);
 
+		// in frame data, a `children: string[]` field means child instance ids
+		const childIdsOf = (data: unknown): ReadonlyArray<string> => {
+			const children = (data as { children?: unknown } | null)?.children;
+			return Array.isArray(children) ? children : [];
+		};
+
 		const service = context.of({
-			render: Effect.fnUntraced(function* (frame, customConfig) {
-				const entries = Object.entries(frame.instances).map(([id, entry]) =>
+			render: Effect.fnUntraced(function* <
+				const Entities extends Entity.AnyEntity,
+			>(frame: Frame<Entities>, customConfig: Config) {
+				interface TreeEntry {
+					readonly id: string;
+					readonly render: Effect.Effect<RenderEntitySuccess>;
+					readonly entry: EntriesFromEntities<Entities>;
+				}
+				const visited = new Set<string>();
+
+				// post-order: children build (and later render) before their
+				// container, which receives the rendered results
+				const buildEntry = (id: string): Effect.Effect<TreeEntry> =>
 					Effect.gen(function* () {
+						if (visited.has(id)) {
+							return yield* Effect.die(
+								new Error(
+									`Renderer: instance "${id}" is referenced more than once (duplicate parent or cycle)`,
+								),
+							);
+						}
+						visited.add(id);
+						const entry = frame.instances[id];
+						if (entry === undefined) {
+							return yield* Effect.die(
+								new Error(`Renderer: unknown instance id "${id}"`),
+							);
+						}
+						const childEntries = yield* Effect.all(
+							childIdsOf(entry.data).map(buildEntry),
+						);
 						const entityRenderer = yield* getEntityRenderer(entry.entity);
 						return {
 							id,
-							render: entityRenderer.render({ id, ...entry }),
+							render: Effect.gen(function* () {
+								const children = yield* Effect.all(
+									childEntries.map((child) => child.render),
+								);
+								return yield* entityRenderer.render({
+									id,
+									children,
+									...entry,
+								});
+							}),
 							entry,
 						};
-					}),
+					}) as Effect.Effect<TreeEntry>;
+
+				const rootEntry = frame.instances[frame.root];
+				if (rootEntry === undefined) {
+					return yield* Effect.die(
+						new Error(`Renderer: missing root instance "${frame.root}"`),
+					);
+				}
+				visited.add(frame.root);
+				// the root group never renders; its children are the top level
+				const entries = yield* Effect.all(
+					childIdsOf(rootEntry.data).map(buildEntry),
 				);
-				const rendered = yield* Effect.all(entries);
-				return yield* config.render(rendered, customConfig);
+				return yield* config.render(entries, customConfig);
 			}),
 		});
 

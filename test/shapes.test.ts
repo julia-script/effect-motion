@@ -52,26 +52,36 @@ type Builtin =
 	| typeof Shapes.Square
 	| typeof Shapes.Ellipse
 	| typeof Shapes.Line
-	| typeof Shapes.Path;
+	| typeof Shapes.Path
+	| typeof Shapes.Group;
+
+const bodies: Scene.Frame<Builtin>["instances"] = {
+	c: {
+		data: Shapes.Circle.data.make({ x: 10, y: 20 }),
+		entity: Shapes.Circle,
+	},
+	r: { data: Shapes.Rect.data.make({}), entity: Shapes.Rect },
+	s: { data: Shapes.Square.data.make({ size: 40 }), entity: Shapes.Square },
+	e: { data: Shapes.Ellipse.data.make({}), entity: Shapes.Ellipse },
+	l: {
+		data: Shapes.Line.data.make({ x2: 50, y2: 20 }),
+		entity: Shapes.Line,
+	},
+	p: {
+		data: Shapes.Path.data.make({ d: "M 0 0 L 10 10 Z", x: 5, y: 7 }),
+		entity: Shapes.Path,
+	},
+};
 
 const allShapesFrame: Scene.Frame<Builtin> = {
 	instances: {
-		c: {
-			data: Shapes.Circle.data.make({ x: 10, y: 20 }),
-			entity: Shapes.Circle,
-		},
-		r: { data: Shapes.Rect.data.make({}), entity: Shapes.Rect },
-		s: { data: Shapes.Square.data.make({ size: 40 }), entity: Shapes.Square },
-		e: { data: Shapes.Ellipse.data.make({}), entity: Shapes.Ellipse },
-		l: {
-			data: Shapes.Line.data.make({ x2: 50, y2: 20 }),
-			entity: Shapes.Line,
-		},
-		p: {
-			data: Shapes.Path.data.make({ d: "M 0 0 L 10 10 Z", x: 5, y: 7 }),
-			entity: Shapes.Path,
+		...bodies,
+		root: {
+			data: Shapes.Group.data.make({ children: Object.keys(bodies) }),
+			entity: Shapes.Group,
 		},
 	},
+	root: "root",
 };
 
 const layers = Svg.layer.pipe(Layer.provideMerge(Svg.shapesLayer));
