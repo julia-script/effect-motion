@@ -1,4 +1,4 @@
-import { Effect, Layer, pipe } from "effect";
+import { Effect, Layer } from "effect";
 import * as Motion from "../src/Motion";
 import * as Scene from "../src/Scene";
 import * as Shapes from "../src/shapes";
@@ -7,7 +7,6 @@ import * as Svg from "../src/svg";
 const WIDTH = 500;
 const HEIGHT = 300;
 
-// one tick = one display frame: ~6 seconds at 60fps
 const scene = Scene.make(function* () {
 	const circle = yield* Scene.instantiate(Shapes.Circle, {
 		x: 370,
@@ -16,41 +15,23 @@ const scene = Scene.make(function* () {
 		fill: "#7f5af0",
 	});
 	const square = yield* Scene.instantiate(Shapes.Square, {
+		x: 30,
 		y: 130,
 		size: 40,
 		fill: "#2cb67d",
 	});
 
-	yield* circle.pipe(Motion.moveTo({ x: 30, y: 150 }, "5 seconds"));
-	// const a = yield*  Motion.moveTo(circle,{ x: 30, y: 150 },  "3 seconds")
-	// console.log(a);
+	// moveTo: from current data — data-last, pipeable form
+	yield* circle.pipe(Motion.moveTo({ x: 130, y: 150 }, "2 seconds"));
 
-	return;
-	for (let i = 0; i < 360; i++) {
-		const t = (i / 180) * Math.PI;
-		yield* Scene.update(circle, (data) => ({
-			...data,
-			x: 250 + Math.cos(t) * 120,
-			y: 150 + Math.sin(t) * 80,
-		}));
-		yield* Scene.update(square, (data) => ({
-			...data,
-			x: 30 + Math.abs(((i * 2) % 800) - 400),
-		}));
-		yield* Scene.tick;
-	}
+	// moveTo: data-first form with an updater target
+	yield* Motion.moveTo(square, (data) => ({ x: data.x + 380 }), "2 seconds");
 
-	const currentCirclePosition = yield* Scene.data(circle);
-	yield* Motion.lerp(
-		{ x: currentCirclePosition.x, y: currentCirclePosition.y },
-		{ x: currentCirclePosition.x + 100, y: currentCirclePosition.y + 100 },
-		"1 seconds",
-		(value) =>
-			Scene.update(circle, (data) => ({
-				...data,
-				...value,
-			})),
-	);
+	// move: explicit start — snaps to `from`, then interpolates to `to`
+	yield* Motion.move(circle, { x: 370, y: 50 }, { x: 130, y: 50 }, "2 seconds");
+
+	// move works on any numeric prop: a fade with an explicit start
+	yield* circle.pipe(Motion.move({ opacity: 1 }, { opacity: 0.2 }, "1 second"));
 });
 
 // rAF when visible; setTimeout fallback because rAF never fires in

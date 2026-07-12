@@ -159,7 +159,13 @@ export const data = <Name extends string, Data extends Schema.Top>(
 ) =>
 	Effect.gen(function* () {
 		const runner = yield* Runner.Runner;
-		return runner.getDataUnsafe(instance) as Data["Type"];
+		const current = runner.getDataUnsafe(instance);
+		if (current === null) {
+			return yield* Effect.die(
+				new Error(`Instance ${instance.id} was destroyed`),
+			);
+		}
+		return current;
 	});
 export const update = <Name extends string, Data extends Schema.Top>(
 	instance: Instance.Instance<Name, Data>,
