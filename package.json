@@ -8,6 +8,7 @@
 	},
 	"scripts": {
 		"test": "vitest run",
+		"playground": "vite playground",
 		"check": "tsc --noEmit",
 		"lint": "biome check",
 		"lint:fix": "biome check --write"
@@ -21,7 +22,9 @@
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.3",
 		"@types/node": "^26.1.1",
+		"happy-dom": "^20.10.6",
 		"typescript": "^7.0.2",
+		"vite": "^8.1.4",
 		"vitest": "^4.1.10"
 	},
 	"devEngines": {

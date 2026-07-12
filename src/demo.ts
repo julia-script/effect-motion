@@ -1,8 +1,8 @@
 import { Effect, Layer, Schema } from "effect";
 import * as Stream from "effect/Stream";
 import * as Entity from "./Entity";
-import * as Renderer from "./Renderer";
 import * as Scene from "./Scene";
+import * as Svg from "./Svg";
 
 const Circle = Entity.make("2d/Circle", {
 	x: Schema.Number.pipe(Schema.withConstructorDefault(Effect.succeed(0))),
@@ -39,40 +39,30 @@ const scene = Scene.make(function* () {
 	}));
 });
 
-const SvgRenderer = Renderer.make<string, { xmlns: string }>()("SvgRenderer", {
-	render: (entities) =>
-		Effect.gen(function* () {
-			let svg = "<svg>";
-			for (const { render } of entities) {
-				svg += yield* render;
-			}
-			return `${svg}</svg>`;
-		}),
-});
-
-const circleRenderer = SvgRenderer.makeEntityRendererLayer(
-	Circle,
-	({ id, data }) =>
-		Effect.succeed(
-			`<circle id="${id}" cx="${data.x}" cy="${data.y}" r="10" />`,
-		),
+// One SvgNode renderer per entity, registered with both sinks.
+const circleRenderer = Svg.entityRendererLayer(Circle, ({ id, data }) =>
+	Effect.succeed({
+		tag: "circle",
+		props: { id, cx: data.x, cy: data.y, r: 10 },
+	}),
 );
 
-const squareRenderer = SvgRenderer.makeEntityRendererLayer(Square, ({ data }) =>
-	Effect.succeed(
-		`<rect x="${data.x}" y="${data.y}" width="${data.width}" height="${data.height}" />`,
-	),
+const squareRenderer = Svg.entityRendererLayer(Square, ({ data }) =>
+	Effect.succeed({
+		tag: "rect",
+		props: { x: data.x, y: data.y, width: data.width, height: data.height },
+	}),
 );
 
 const movie = Effect.gen(function* () {
-	const svgRenderer = yield* SvgRenderer.Context;
-	const frames = yield* Scene.stream(scene ).pipe(Stream.runCollect);
+	const svgRenderer = yield* Svg.SvgRenderer.Context;
+	const frames = yield* Scene.stream(scene).pipe(Stream.runCollect);
 	for (const frame of frames) {
-		console.log(yield* svgRenderer.render(frame , { xmlns: "http://www.w3.org/2000/svg" }));
+		console.log(yield* svgRenderer.render(frame, { width: 500, height: 300 }));
 	}
 });
 
-const layers = SvgRenderer.layer.pipe(
+const layers = Svg.layer.pipe(
 	Layer.provideMerge([circleRenderer, squareRenderer]),
 );
 

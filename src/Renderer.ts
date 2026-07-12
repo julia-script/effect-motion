@@ -52,8 +52,7 @@ export const make =
 					render: Effect.Effect<RenderEntitySuccess>;
 					entry: EntriesFromEntities<Entities>;
 				}>,
-				config: Config
-				
+				config: Config,
 			) => Effect.Effect<RenderSuccess>;
 		},
 	) => {
@@ -118,19 +117,15 @@ export const make =
 				return yield* makeEntityRendererContext(entity);
 			}) as Effect.Effect<Renderers<Entities>>;
 
-	
 		const context = Context.Service<{
 			render: <const Entities extends Entity.AnyEntity>(
 				frame: Frame<Entities>,
-				config: Config
+				config: Config,
 			) => Effect.Effect<RenderSuccess, never, Renderers<Entities>>;
 		}>(tag);
 
 		const service = context.of({
-			render: Effect.fnUntraced(function* (
-				frame,
-				customConfig
-			) {
+			render: Effect.fnUntraced(function* (frame, customConfig) {
 				const entries = Object.entries(frame.instances).map(([id, entry]) =>
 					Effect.gen(function* () {
 						const entityRenderer = yield* getEntityRenderer(entry.entity);

@@ -4,3 +4,4 @@ export * as Phaser from "./Phaser";
 export * as Renderer from "./Renderer";
 export * as Runner from "./Runner";
 export * as Scene from "./Scene";
+export * as Svg from "./Svg";
