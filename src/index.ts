@@ -6,3 +6,4 @@ export * as Renderer from "./Renderer";
 export * as Scene from "./Scene";
 export * as Shapes from "./shapes";
 export * as Svg from "./svg";
+export * as Timing from "./Timing";

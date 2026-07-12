@@ -13,6 +13,9 @@ export interface Instance<
 	readonly entity: Entity.Entity<Name, Data>;
 }
 
+export const isInstance = (u: unknown): u is Instance =>
+	typeof u === "object" && u !== null && TypeId in u;
+
 const Proto = {
 	[TypeId]: TypeId,
 	pipe(this: unknown) {

@@ -1,37 +1,52 @@
 import { Effect, Layer } from "effect";
 import * as Motion from "../src/Motion";
+import * as Phaser from "../src/Phaser";
 import * as Scene from "../src/Scene";
 import * as Shapes from "../src/shapes";
 import * as Svg from "../src/svg";
+import * as Timing from "../src/Timing";
 
 const WIDTH = 500;
 const HEIGHT = 300;
 
 const scene = Scene.make(function* () {
-	const circle = yield* Scene.instantiate(Shapes.Circle, {
-		x: 370,
-		y: 150,
-		radius: 14,
+	// the race: same distance, same duration, different pacing
+	const linear = yield* Scene.instantiate(Shapes.Circle, {
+		x: 40,
+		y: 60,
+		radius: 12,
 		fill: "#7f5af0",
 	});
-	const square = yield* Scene.instantiate(Shapes.Square, {
-		x: 30,
-		y: 130,
-		size: 40,
+	const cubic = yield* Scene.instantiate(Shapes.Circle, {
+		x: 40,
+		y: 120,
+		radius: 12,
 		fill: "#2cb67d",
 	});
+	const expo = yield* Scene.instantiate(Shapes.Circle, {
+		x: 40,
+		y: 180,
+		radius: 12,
+		fill: "tomato",
+	});
+	const ball = yield* Scene.instantiate(Shapes.Circle, {
+		x: 250,
+		y: 40,
+		radius: 14,
+		fill: "gold",
+	});
 
-	// moveTo: from current data — data-last, pipeable form
-	yield* circle.pipe(Motion.moveTo({ x: 130, y: 150 }, "2 seconds"));
+	yield* Phaser.all([
+		Motion.moveTo(linear, { x: 460 }, "2 seconds"),
+		Motion.moveTo(cubic, { x: 460 }, "2 seconds", "easeInOutCubic"),
+		Motion.moveTo(expo, { x: 460 }, "2 seconds", "easeOutExpo"),
+	]);
 
-	// moveTo: data-first form with an updater target
-	yield* Motion.moveTo(square, (data) => ({ x: data.x + 380 }), "2 seconds");
-
-	// move: explicit start — snaps to `from`, then interpolates to `to`
-	yield* Motion.move(circle, { x: 370, y: 50 }, { x: 130, y: 50 }, "2 seconds");
-
-	// move works on any numeric prop: a fade with an explicit start
-	yield* circle.pipe(Motion.move({ opacity: 1 }, { opacity: 0.2 }, "1 second"));
+	// bounce drop, then a springy return via a custom-shaped back curve
+	yield* ball.pipe(Motion.moveTo({ y: 260 }, "1.5 seconds", "easeOutBounce"));
+	yield* ball.pipe(
+		Motion.moveTo({ y: 40 }, "1 second", Timing.createEaseInOutBack(3)),
+	);
 });
 
 // rAF when visible; setTimeout fallback because rAF never fires in
