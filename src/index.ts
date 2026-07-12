@@ -2,6 +2,7 @@ export * as Entity from "./Entity";
 export * as Instance from "./Instance";
 export * as Motion from "./Motion";
 export * as Phaser from "./Phaser";
+export * as Physics from "./Physics";
 export * as Renderer from "./Renderer";
 export * as Scene from "./Scene";
 export * as Shapes from "./shapes";

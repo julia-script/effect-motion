@@ -104,9 +104,12 @@ interface RunningScene<E, R, Entities> {
 	readonly fiber: Fiber.Fiber<void, E>;
 	readonly done: boolean;
 }
-export const run = <E, R, Entities>(scene: Scene<E, R, Entities>) =>
+export const run = <E, R, Entities>(
+	scene: Scene<E, R, Entities>,
+	settings: Partial<Runner.Settings> = {},
+) =>
 	Effect.gen(function* () {
-		const runner = yield* Runner.Runner.make();
+		const runner = yield* Runner.Runner.make(settings);
 		// Phaser.run registers the root party BEFORE forking (no startup
 		// race), deregisters via finalizer, and provides the Phaser service
 		// so Phaser.one / Phaser.all work inside scenes.
@@ -136,8 +139,9 @@ export const run = <E, R, Entities>(scene: Scene<E, R, Entities>) =>
 
 export const stream = <E, R, Entities extends Entity.AnyEntity>(
 	scene: Scene<E, R, Entities>,
+	settings: Partial<Runner.Settings> = {},
 ) =>
-	run(scene).pipe(
+	run(scene, settings).pipe(
 		Effect.map((runningScene) =>
 			Stream.fromEffectRepeat(step(runningScene)).pipe(
 				// refinement: the stream ends at the first null, so the

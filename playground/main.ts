@@ -1,6 +1,7 @@
 import { Effect, Layer } from "effect";
 import * as Motion from "../src/Motion";
 import * as Phaser from "../src/Phaser";
+import * as Physics from "../src/Physics";
 import * as Scene from "../src/Scene";
 import * as Shapes from "../src/shapes";
 import * as Svg from "../src/svg";
@@ -47,6 +48,19 @@ const scene = Scene.make(function* () {
 	yield* ball.pipe(
 		Motion.moveTo({ y: 40 }, "1 second", Timing.createEaseInOutBack(3)),
 	);
+
+	// physics: no durations from here on — springs run until they settle
+	const plopper = yield* Scene.instantiate(Shapes.Circle, {
+		x: 250,
+		y: 150,
+		radius: 1,
+		fill: "#ff8906",
+	});
+	// plop-in entrance: radius springs up with overshoot
+	yield* plopper.pipe(Physics.springTo({ radius: 24 }, "plop"));
+	// swing across, then a bouncy return that never quite wants to stop
+	yield* plopper.pipe(Physics.springTo({ x: 440 }, "swing"));
+	yield* plopper.pipe(Physics.springTo({ x: 60 }, "bounce"));
 });
 
 // rAF when visible; setTimeout fallback because rAF never fires in

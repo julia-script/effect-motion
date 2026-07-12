@@ -64,7 +64,7 @@ export type Target<Data extends Schema.Top> =
 // InterpolableOnly of an opaque Data["Type"] can't be proven
 // index-compatible with Record<string, number>; the runtime shape is
 // guaranteed by the Target type, so cast once here.
-const resolveTarget = <Data extends Schema.Top>(
+export const resolveTarget = <Data extends Schema.Top>(
 	target: Target<Data>,
 	current: Data["Type"],
 ): Record<string, number> =>
@@ -74,7 +74,7 @@ const resolveTarget = <Data extends Schema.Top>(
 
 // start values for the keys of `target`: from `explicitFrom` where given,
 // otherwise from the instance's current data
-const startValues = (
+export const startValues = (
 	current: unknown,
 	target: Record<string, number>,
 	explicitFrom: Record<string, number>,
