@@ -7,9 +7,12 @@ import * as Instance from "./Instance";
 import * as Phaser from "./Phaser";
 
 export const TypeId = "~motion/SceneRunner" as const;
+export type Settings = {
+	frameRate: number;
+};
 
 export class Runner extends Context.Service<Runner>()("Runner", {
-	make: Effect.fnUntraced(function* () {
+	make: Effect.fnUntraced(function* (settings: Partial<Settings> = {}) {
 		const instances: Record<
 			string,
 			{ data: unknown; entity: Entity.AnyEntity }
@@ -53,6 +56,10 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 
 				return instance;
 			}),
+			settings: {
+				...settings,
+				frameRate: settings.frameRate ?? 60,
+			} satisfies Settings,
 			getDataUnsafe,
 
 			setDataUnsafe,

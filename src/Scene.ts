@@ -154,6 +154,13 @@ const isUpdaterFn = <Data>(
 	props: Updater<Data>,
 ): props is (data: Data) => Data => typeof props === "function";
 
+export const data = <Name extends string, Data extends Schema.Top>(
+	instance: Instance.Instance<Name, Data>,
+) =>
+	Effect.gen(function* () {
+		const runner = yield* Runner.Runner;
+		return runner.getDataUnsafe(instance) as Data["Type"];
+	});
 export const update = <Name extends string, Data extends Schema.Top>(
 	instance: Instance.Instance<Name, Data>,
 	props: Updater<Data["Type"]>,
@@ -170,3 +177,8 @@ export const update = <Name extends string, Data extends Schema.Top>(
 		}
 		return runner.setDataUnsafe(instance, props);
 	});
+
+export const settings = Effect.fnUntraced(function* () {
+	const runner = yield* Runner.Runner;
+	return runner.settings;
+});

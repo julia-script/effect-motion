@@ -1,4 +1,5 @@
-import { Effect, Layer } from "effect";
+import { Effect, Layer, pipe } from "effect";
+import * as Motion from "../src/Motion";
 import * as Scene from "../src/Scene";
 import * as Shapes from "../src/shapes";
 import * as Svg from "../src/svg";
@@ -20,6 +21,11 @@ const scene = Scene.make(function* () {
 		fill: "#2cb67d",
 	});
 
+	yield* circle.pipe(Motion.moveTo({ x: 30, y: 150 }, "5 seconds"));
+	// const a = yield*  Motion.moveTo(circle,{ x: 30, y: 150 },  "3 seconds")
+	// console.log(a);
+
+	return;
 	for (let i = 0; i < 360; i++) {
 		const t = (i / 180) * Math.PI;
 		yield* Scene.update(circle, (data) => ({
@@ -33,6 +39,18 @@ const scene = Scene.make(function* () {
 		}));
 		yield* Scene.tick;
 	}
+
+	const currentCirclePosition = yield* Scene.data(circle);
+	yield* Motion.lerp(
+		{ x: currentCirclePosition.x, y: currentCirclePosition.y },
+		{ x: currentCirclePosition.x + 100, y: currentCirclePosition.y + 100 },
+		"1 seconds",
+		(value) =>
+			Scene.update(circle, (data) => ({
+				...data,
+				...value,
+			})),
+	);
 });
 
 // rAF when visible; setTimeout fallback because rAF never fires in
