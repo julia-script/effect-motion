@@ -39,7 +39,7 @@ const scene = Scene.make(function* () {
 	}));
 });
 
-const SvgRenderer = Renderer.make<string>()("SvgRenderer", {
+const SvgRenderer = Renderer.make<string, { xmlns: string }>()("SvgRenderer", {
 	render: (entities) =>
 		Effect.gen(function* () {
 			let svg = "<svg>";
@@ -66,9 +66,9 @@ const squareRenderer = SvgRenderer.makeEntityRendererLayer(Square, ({ data }) =>
 
 const movie = Effect.gen(function* () {
 	const svgRenderer = yield* SvgRenderer.Context;
-	const frames = yield* Scene.stream(scene).pipe(Stream.runCollect);
+	const frames = yield* Scene.stream(scene ).pipe(Stream.runCollect);
 	for (const frame of frames) {
-		console.log(yield* svgRenderer.render(frame));
+		console.log(yield* svgRenderer.render(frame , { xmlns: "http://www.w3.org/2000/svg" }));
 	}
 });
 

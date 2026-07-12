@@ -42,7 +42,7 @@ type RendererName<
  * `makeEntityRendererLayer` and the frame renderer with `layer`.
  */
 export const make =
-	<RenderEntitySuccess>() =>
+	<RenderEntitySuccess, Config = void>() =>
 	<const Tag extends string, RenderSuccess>(
 		tag: Tag,
 		config: {
@@ -52,6 +52,8 @@ export const make =
 					render: Effect.Effect<RenderEntitySuccess>;
 					entry: EntriesFromEntities<Entities>;
 				}>,
+				config: Config
+				
 			) => Effect.Effect<RenderSuccess>;
 		},
 	) => {
@@ -116,15 +118,18 @@ export const make =
 				return yield* makeEntityRendererContext(entity);
 			}) as Effect.Effect<Renderers<Entities>>;
 
+	
 		const context = Context.Service<{
 			render: <const Entities extends Entity.AnyEntity>(
 				frame: Frame<Entities>,
+				config: Config
 			) => Effect.Effect<RenderSuccess, never, Renderers<Entities>>;
 		}>(tag);
 
 		const service = context.of({
-			render: Effect.fnUntraced(function* <Entities extends Entity.AnyEntity>(
-				frame: Frame<Entities>,
+			render: Effect.fnUntraced(function* (
+				frame,
+				customConfig
 			) {
 				const entries = Object.entries(frame.instances).map(([id, entry]) =>
 					Effect.gen(function* () {
@@ -137,7 +142,7 @@ export const make =
 					}),
 				);
 				const rendered = yield* Effect.all(entries);
-				return yield* config.render(rendered);
+				return yield* config.render(rendered, customConfig);
 			}),
 		});
 
