@@ -3,7 +3,7 @@ import { Effect, Layer, Schema } from "effect";
 import { describe, expect, it } from "vitest";
 import * as Entity from "../src/Entity";
 import type * as Scene from "../src/Scene";
-import * as Svg from "../src/Svg";
+import * as Svg from "../src/svg";
 
 describe("vnodeToString", () => {
 	it("renders a self-closing element with props", () => {

@@ -1,46 +1,24 @@
-import { Effect, Layer, Schema } from "effect";
-import * as Entity from "../src/Entity";
+import { Effect, Layer } from "effect";
 import * as Scene from "../src/Scene";
-import * as Svg from "../src/Svg";
+import * as Shapes from "../src/shapes";
+import * as Svg from "../src/svg";
 
 const WIDTH = 500;
 const HEIGHT = 300;
 
-const Circle = Entity.make("2d/Circle", {
-	x: Schema.Number.pipe(Schema.withConstructorDefault(Effect.succeed(0))),
-	y: Schema.Number.pipe(Schema.withConstructorDefault(Effect.succeed(0))),
-});
-
-const Square = Entity.make("2d/Square", {
-	x: Schema.Number.pipe(Schema.withConstructorDefault(Effect.succeed(0))),
-	y: Schema.Number.pipe(Schema.withConstructorDefault(Effect.succeed(0))),
-	size: Schema.Number.pipe(Schema.withConstructorDefault(Effect.succeed(40))),
-});
-
-const circleRenderer = Svg.entityRendererLayer(Circle, ({ data }) =>
-	Effect.succeed({
-		tag: "circle",
-		props: { cx: data.x, cy: data.y, r: 14, fill: "#7f5af0" },
-	}),
-);
-
-const squareRenderer = Svg.entityRendererLayer(Square, ({ data }) =>
-	Effect.succeed({
-		tag: "rect",
-		props: {
-			x: data.x,
-			y: data.y,
-			width: data.size,
-			height: data.size,
-			fill: "#2cb67d",
-		},
-	}),
-);
-
 // one tick = one display frame: ~6 seconds at 60fps
 const scene = Scene.make(function* () {
-	const circle = yield* Scene.instantiate(Circle, { x: 370, y: 150 });
-	const square = yield* Scene.instantiate(Square, { y: 130 });
+	const circle = yield* Scene.instantiate(Shapes.Circle, {
+		x: 370,
+		y: 150,
+		radius: 14,
+		fill: "#7f5af0",
+	});
+	const square = yield* Scene.instantiate(Shapes.Square, {
+		y: 130,
+		size: 40,
+		fill: "#2cb67d",
+	});
 
 	for (let i = 0; i < 360; i++) {
 		const t = (i / 180) * Math.PI;
@@ -99,8 +77,6 @@ const main = Effect.gen(function* () {
 	}
 });
 
-const layers = Svg.layer.pipe(
-	Layer.provideMerge([circleRenderer, squareRenderer]),
-);
+const layers = Svg.layer.pipe(Layer.provideMerge(Svg.shapesLayer));
 
 Effect.runPromise(main.pipe(Effect.provide(layers)));
