@@ -9,8 +9,7 @@ export interface Instance<
 > {
 	readonly [TypeId]: typeof TypeId;
 	readonly id: string;
-	readonly name: Name;
-	readonly "~data.schema": Data;
+	readonly entity: Entity.Entity<Name, Data>;
 }
 
 export const make = <Name extends string, Data extends Schema.Top>(
@@ -20,7 +19,6 @@ export const make = <Name extends string, Data extends Schema.Top>(
 	return {
 		[TypeId]: TypeId,
 		id: id,
-		name: entity.name,
-		"~data.schema": entity.data,
+		entity: entity,
 	};
 };

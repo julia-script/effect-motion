@@ -29,10 +29,25 @@ type MakeEffect<Eff extends Effect.Effect<any, any, any>, AEff> = Effect.Effect<
 			? R
 			: never
 >;
-export const make = <Eff extends Effect.Effect<any, any, any>, AEff>(
+export const make = <const Eff extends Effect.Effect<any, any, any>, AEff>(
 	f: () => Generator<Eff, void, never>,
 ): MakeEffect<Eff, AEff> extends Effect.Effect<AEff, infer E, infer R>
-	? Scene<E, Exclude<R, Entity.Entity>, Extract<R, Entity.Entity> | Scope.Scope>
+	? Scene<
+			E,
+			| Exclude<
+					R,
+					{
+						readonly [Entity.TypeId]: typeof Entity.TypeId;
+					}
+			  >
+			| Scope.Scope,
+			Extract<
+				R,
+				{
+					readonly [Entity.TypeId]: typeof Entity.TypeId;
+				}
+			>
+		>
 	: never => {
 	return {
 		runner: Effect.scoped(Effect.gen(f)),
@@ -59,21 +74,37 @@ export const tick = Effect.gen(function* () {
 	return yield* runner.phaser.arriveAndAwaitAdvance;
 });
 
-export const step = <R>(runningScene: RunningScene<R>) =>
+export interface FrameEntry<Entity extends Entity.AnyEntity> {
+	data: Entity["data"]["Type"];
+	entity: Entity;
+}
+export type EntriesFromEntities<Entities> = Entities extends Entity.AnyEntity
+	? {
+			[K in Entities as K["name"]]: FrameEntry<K>;
+		}[Entities["name"]]
+	: never;
+export interface Frame<Entities extends Entity.AnyEntity> {
+	instances: Record<string, EntriesFromEntities<Entities>>;
+}
+export const step = <E, R, Entities extends Entity.AnyEntity>(
+	runningScene: RunningScene<E, R, Entities>,
+) =>
 	Effect.gen(function* () {
 		if (runningScene.done) {
 			return null;
 		}
 		yield* runningScene.runner.phaser.awaitAdvance;
-		return yield* runningScene.runner.state;
+		return (yield* runningScene.runner.state) as Frame<Entities>;
 	});
-interface RunningScene<E> {
+interface RunningScene<E, R, Entities> {
 	readonly runner: Runner.Runner["Service"];
+
+	readonly scene: Scene<E, R, Entities>;
 
 	readonly fiber: Fiber.Fiber<void, E>;
 	readonly done: boolean;
 }
-export const run = <E, R1, R2>(scene: Scene<E, R1, R2>) =>
+export const run = <E, R, Entities>(scene: Scene<E, R, Entities>) =>
 	Effect.gen(function* () {
 		const runner = yield* Runner.Runner.make();
 		// Phaser.run registers the root party BEFORE forking (no startup
@@ -92,9 +123,10 @@ export const run = <E, R1, R2>(scene: Scene<E, R1, R2>) =>
 			),
 		);
 
-		const runningScene: RunningScene<E> = {
+		const runningScene: RunningScene<E, R, Entities> = {
 			runner,
 			fiber,
+			scene,
 			get done() {
 				return done;
 			},
@@ -102,9 +134,19 @@ export const run = <E, R1, R2>(scene: Scene<E, R1, R2>) =>
 		return runningScene;
 	});
 
-export const stream = <R>(runningScene: RunningScene<R>) =>
-	Stream.fromEffectRepeat(step(runningScene)).pipe(
-		Stream.takeWhile((state) => state !== null),
+export const stream = <E, R, Entities extends Entity.AnyEntity>(
+	scene: Scene<E, R, Entities>,
+) =>
+	run(scene).pipe(
+		Effect.map((runningScene) =>
+			Stream.fromEffectRepeat(step(runningScene)).pipe(
+				// refinement: the stream ends at the first null, so the
+				// element type is Frame<Entities>, not Frame | null
+				Stream.takeWhile((state): state is Frame<Entities> => state !== null),
+			),
+		),
+		Stream.fromEffect,
+		Stream.flatten,
 	);
 
 type Updater<Data> = Data | ((data: Data) => Data);

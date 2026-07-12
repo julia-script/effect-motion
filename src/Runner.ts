@@ -10,11 +10,30 @@ export const TypeId = "~motion/SceneRunner" as const;
 
 export class Runner extends Context.Service<Runner>()("Runner", {
 	make: Effect.fnUntraced(function* () {
-		const instances: Record<string, unknown> = {};
+		const instances: Record<
+			string,
+			{ data: unknown; entity: Entity.AnyEntity }
+		> = {};
 		const phaser = yield* Phaser.Phaser.make;
 		let idCounter = 0;
-		const generateId = () => {
-			return `id-${idCounter++}`;
+		const generateId = (name: string) => {
+			return `${name}_${idCounter++}`;
+		};
+
+		const setDataUnsafe = <Name extends string, Data extends Schema.Top>(
+			instance: Instance.Instance<Name, Data>,
+			data: Data["~type.make.in"],
+		): void => {
+			instances[instance.id] = {
+				data: instance.entity.data.make(data),
+				entity: instance.entity,
+			};
+		};
+
+		const getDataUnsafe = <Name extends string, Data extends Schema.Top>(
+			instance: Instance.Instance<Name, Data>,
+		): Data["Type"] | null => {
+			return (instances[instance.id]?.data as Data["Type"]) ?? null;
 		};
 		return {
 			instantiate: Effect.fnUntraced(function* <
@@ -28,28 +47,18 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 				void,
 				Entity.Entity<Name, Data>
 			> {
-				const id = generateId();
+				const id = generateId(entity.name);
 				const instance = Instance.make(entity, id);
-				instances[instance.id] = props;
+				setDataUnsafe(instance, props);
+
 				return instance;
 			}),
-			getDataUnsafe: <Name extends string, Data extends Schema.Top>(
-				instance: Instance.Instance<Name, Data>,
-			): Data["Type"] | null => {
-				return instances[instance.id] as Data["Type"] | null;
-			},
+			getDataUnsafe,
 
-			setDataUnsafe: <Name extends string, Data extends Schema.Top>(
-				instance: Instance.Instance<Name, Data>,
-				data: Data["~type.make.in"],
-			): boolean => {
-				if (instances[instance.id]) {
-					instances[instance.id] = instance["~data.schema"].make(data);
-					return true;
-				}
-				return false;
-			},
-			state: Effect.sync(() => ({ ...instances })),
+			setDataUnsafe,
+
+			state: Effect.sync(() => ({ instances: { ...instances } })),
+
 			destroy: <Name extends string, Data extends Schema.Top>(
 				instance: Instance.Instance<Name, Data>,
 			): void => {

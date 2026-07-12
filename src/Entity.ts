@@ -1,7 +1,7 @@
 import * as Schema from "effect/Schema";
 import type { AnyStructSchema } from "effect/unstable/workflow/Workflow";
 
-const TypeId = "~motion/Entity" as const;
+export const TypeId = "~motion/Entity" as const;
 
 export interface Entity<
 	Name extends string = string,
@@ -9,9 +9,10 @@ export interface Entity<
 > {
 	readonly [TypeId]: typeof TypeId;
 	readonly name: Name;
-
 	readonly data: Data;
 }
+
+export type AnyEntity = Entity<any, any>;
 
 type NormalizeStructLike<T extends Schema.Struct.Fields | AnyStructSchema> =
 	T extends AnyStructSchema
@@ -19,6 +20,7 @@ type NormalizeStructLike<T extends Schema.Struct.Fields | AnyStructSchema> =
 		: T extends Schema.Struct.Fields
 			? Schema.Struct<T>
 			: never;
+
 const normalizeStructLike = <T extends Schema.Struct.Fields | AnyStructSchema>(
 	data: T,
 ): NormalizeStructLike<T> => {
@@ -26,6 +28,7 @@ const normalizeStructLike = <T extends Schema.Struct.Fields | AnyStructSchema>(
 		Schema.isSchema(data) ? data : Schema.Struct(data)
 	) as NormalizeStructLike<T>;
 };
+
 export const make = <
 	Name extends string,
 	Data extends Schema.Struct.Fields | AnyStructSchema,
