@@ -137,3 +137,33 @@ describe("tween / tweenTo", () => {
 		expect(received[59]).toBe(200);
 	});
 });
+
+describe("Scene.sleep", () => {
+	it("holds the scene for the duration's frame count", async () => {
+		const track = await runScene(
+			function* () {
+				const circle = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
+				yield* Scene.sleep("500 millis"); // 30 frames at 60fps
+				yield* Motion.moveTo(circle, { x: 100 }, "1 second");
+			},
+			(data) => data.x as number,
+		);
+		// 30 sleep frames + 60 move frames + 1 scene-completion settle frame
+		expect(track).toHaveLength(91);
+		expect(track[29]).toBe(0); // still asleep, unmoved
+		expect(track[30]).toBeGreaterThan(0); // first move frame
+		expect(track.at(-1)).toBe(100);
+	});
+
+	it("zero duration is a no-op", async () => {
+		const track = await runScene(
+			function* () {
+				const circle = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
+				yield* Scene.sleep("0 seconds");
+				yield* Motion.moveTo(circle, { x: 100 }, "1 second");
+			},
+			(data) => data.x as number,
+		);
+		expect(track).toHaveLength(61); // 60 move + settle frame, none from sleep
+	});
+});

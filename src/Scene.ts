@@ -1,4 +1,5 @@
 import { Layer } from "effect";
+import type * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import type * as Fiber from "effect/Fiber";
 import type * as Schema from "effect/Schema";
@@ -8,6 +9,7 @@ import type * as Entity from "./Entity";
 import type * as Instance from "./Instance";
 import * as Phaser from "./Phaser";
 import * as Runner from "./Runner";
+import * as Time from "./Time";
 
 export const TypeId = "~motion/Scene" as const;
 export interface Scene<E, R, Entities> {
@@ -73,6 +75,20 @@ export const tick = Effect.gen(function* () {
 	const runner = yield* Runner.Runner;
 	return yield* runner.phaser.arriveAndAwaitAdvance;
 });
+
+/**
+ * Hold the scene for `duration` of scene time (frames at the runner's
+ * frame rate) — `Effect.sleep`'s sibling, but in frames, not wall time.
+ * A zero-length duration is a no-op.
+ */
+export const sleep = (duration: Duration.Input) =>
+	Effect.gen(function* () {
+		const runner = yield* Runner.Runner;
+		const frames = Time.toFrames(duration, runner.settings.frameRate);
+		for (let i = 0; i < frames; i++) {
+			yield* tick;
+		}
+	});
 
 export interface FrameEntry<Entity extends Entity.AnyEntity> {
 	data: Entity["data"]["Type"];
