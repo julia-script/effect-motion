@@ -1,4 +1,11 @@
 {
 	"title": "Examples",
-	"pages": ["easing-race", "springs", "groups", "seeded-randomness", "particles"]
+	"pages": [
+		"easing-race",
+		"springs",
+		"groups",
+		"seeded-randomness",
+		"particles",
+		"text"
+	]
 }

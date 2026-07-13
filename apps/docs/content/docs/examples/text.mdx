@@ -1,0 +1,15 @@
+---
+title: Text
+description: A pop-in title with the Text entity
+---
+
+`Shapes.Text` is a single-line, single-style run mirroring SVG `<text>` —
+`text` is required, everything else has visible defaults (16px, the generic
+`sans-serif` family, black fill). `fontSize` is a plain number, so it
+tweens like any other prop: the pop below is just `easeOutBack` on it.
+
+The engine doesn't measure text (no wrapping, no fit-to-box), so alignment
+is delegated to SVG: `textAnchor: "middle"` + `baseline: "middle"` centers
+the run on its `x`/`y`.
+
+<Example name="text" />

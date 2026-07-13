@@ -117,6 +117,29 @@ export const path: Renderer.RenderFunction<SvgNode, typeof Shapes.Path> = ({
 		},
 	});
 
+export const text: Renderer.RenderFunction<SvgNode, typeof Shapes.Text> = ({
+	data,
+}) =>
+	Effect.succeed({
+		tag: "text",
+		props: {
+			x: data.x,
+			y: data.y,
+			"font-size": data.fontSize,
+			"font-family": data.fontFamily,
+			...(data.textAnchor !== undefined
+				? { "text-anchor": data.textAnchor }
+				: {}),
+			...(data.baseline !== undefined
+				? { "dominant-baseline": data.baseline }
+				: {}),
+			...styleAttrs(data),
+		},
+		// sinks own content materialization: escaped markup in the string
+		// sink, textContent in the DOM sink
+		children: data.text,
+	});
+
 // a group paints nothing itself: one <g> positioning its rendered children
 export const group: Renderer.RenderFunction<SvgNode, typeof Shapes.Group> = ({
 	data,
@@ -142,4 +165,5 @@ export const shapesLayer = Layer.mergeAll(
 	entityRendererLayer(Shapes.Line, line),
 	entityRendererLayer(Shapes.Path, path),
 	entityRendererLayer(Shapes.Group, group),
+	entityRendererLayer(Shapes.Text, text),
 );
