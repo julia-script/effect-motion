@@ -4,6 +4,7 @@ import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
 import * as Fiber from "effect/Fiber";
 import * as Random from "effect/Random";
+import type * as Schedule from "effect/Schedule";
 import type * as Schema from "effect/Schema";
 import type * as Scope from "effect/Scope";
 import * as Stream from "effect/Stream";
@@ -180,8 +181,7 @@ export const stream = <E, R, Entities extends Entity.AnyEntity>(
 				Stream.takeWhile((state): state is Frame<Entities> => state !== null),
 			),
 		),
-		Stream.unwrap
-
+		Stream.unwrap,
 	);
 
 type Updater<Data> = Data | ((data: Data) => Data);
@@ -223,3 +223,40 @@ export const settings = Effect.fnUntraced(function* () {
 	const runner = yield* Runner.Runner;
 	return runner.settings;
 });
+
+/**
+ * Run `effect`, then repeat it as long as `schedule` recurs, with the
+ * schedule evaluated in scene time (frames at the runner's frame rate) —
+ * `Effect.repeat`'s sibling, but paced by frames instead of the wall
+ * clock. The first run is immediate; the schedule paces the gaps after
+ * runs; each run's result is fed to the schedule as input. Resolves with
+ * the schedule's final output once it is done; a failed run fails
+ * immediately without consulting the schedule again.
+ */
+export const repeat = <A, E, R, Output, ScheduleE, ScheduleR>(
+	effect: Effect.Effect<A, E, R>,
+	schedule: Schedule.Schedule<Output, A, ScheduleE, ScheduleR>,
+): Effect.Effect<
+	Output,
+	E | ScheduleE,
+	R | ScheduleR | Runner.Runner
+> =>
+	Effect.gen(function* () {
+		const runner = yield* Runner.Runner;
+		const driver = yield* Time.scheduleDriver(
+			schedule,
+			runner.settings.frameRate,
+		);
+		// the phaser's phase counter IS the current frame index
+		const currentFrame = () => runner.phaser.snapshotUnsafe().phase;
+		while (true) {
+			const result = yield* effect;
+			const decision = yield* driver.next(currentFrame(), result);
+			if (decision.done) {
+				return decision.output;
+			}
+			while (currentFrame() < decision.frame) {
+				yield* tick;
+			}
+		}
+	});
