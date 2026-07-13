@@ -4,6 +4,7 @@ import { scene as crossfade } from "./crossfade.scene";
 import { scene as easingRace } from "./easing-race.scene";
 import { scene as forkBackground } from "./fork-background.scene";
 import { scene as groups } from "./groups.scene";
+import { scene as moonMoth } from "./moon-moth.scene";
 import { scene as particles } from "./particles.scene";
 import { scene as repeat } from "./repeat.scene";
 import { scene as seededRandomness } from "./seeded-randomness.scene";
@@ -20,6 +21,7 @@ export const examples: Record<string, AnyScene> = {
 	"easing-race": easingRace,
 	springs,
 	groups,
+	"moon-moth": moonMoth,
 	"seeded-randomness": seededRandomness,
 	repeat,
 	chain,
