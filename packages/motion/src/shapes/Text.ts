@@ -4,9 +4,17 @@ import * as Entity from "../Entity";
 import * as Shape2D from "./Shape2D";
 
 export type TextInline =
-	| { readonly type: "text"; readonly value: string }
-	| { readonly type: "strong"; readonly children: ReadonlyArray<TextInline> }
-	| { readonly type: "emphasis"; readonly children: ReadonlyArray<TextInline> };
+	| { readonly type: "text"; readonly value: string; readonly color?: string }
+	| {
+			readonly type: "strong";
+			readonly children: ReadonlyArray<TextInline>;
+			readonly color?: string;
+	  }
+	| {
+			readonly type: "emphasis";
+			readonly children: ReadonlyArray<TextInline>;
+			readonly color?: string;
+	  };
 
 export type TextParagraph = {
 	readonly type: "paragraph";
@@ -23,14 +31,20 @@ export type TextContent =
 export const TextInline: Schema.Codec<TextInline> = Schema.suspend(
 	(): Schema.Codec<TextInline> =>
 		Schema.Union([
-			Schema.Struct({ type: Schema.Literal("text"), value: Schema.String }),
+			Schema.Struct({
+				type: Schema.Literal("text"),
+				value: Schema.String,
+				color: Schema.optionalKey(Schema.String),
+			}),
 			Schema.Struct({
 				type: Schema.Literal("strong"),
 				children: Schema.Array(TextInline),
+				color: Schema.optionalKey(Schema.String),
 			}),
 			Schema.Struct({
 				type: Schema.Literal("emphasis"),
 				children: Schema.Array(TextInline),
+				color: Schema.optionalKey(Schema.String),
 			}),
 		]),
 );
@@ -49,7 +63,7 @@ export const TextContent: Schema.Codec<TextContent> = Schema.Union([
 ]);
 
 /**
- * SVG `<text>` content with optional inline bold and italic spans.
+ * SVG `<text>` content with optional inline bold, italic, and colored spans.
  *
  * `text` is required. The engine cannot measure text, so alignment is
  * delegated to SVG via `textAnchor` / `baseline`.

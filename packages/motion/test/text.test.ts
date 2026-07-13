@@ -75,6 +75,26 @@ describe("Shapes.Text schema", () => {
 		);
 	});
 
+	it("accepts and retains inline colors", () => {
+		const colored = {
+			type: "root",
+			children: [
+				{
+					type: "paragraph",
+					children: [
+						{ type: "text", value: "warm ", color: "#ff8906" },
+						{
+							type: "strong",
+							color: "tomato",
+							children: [{ type: "text", value: "bold" }],
+						},
+					],
+				},
+			],
+		} satisfies Shapes.TextContent;
+		expect(Shapes.Text.data.make({ text: colored }).text).toEqual(colored);
+	});
+
 	it.each([
 		[
 			"heading",
@@ -137,6 +157,36 @@ describe("Text SVG rendering", () => {
 		);
 		expect(svg).toContain(
 			'<tspan font-style="italic"><tspan>italic </tspan><tspan font-weight="bold"><tspan>both</tspan></tspan></tspan>',
+		);
+	});
+
+	it("colored runs carry fill on their tspan, uncolored runs inherit", async () => {
+		const node = await renderText(
+			Shapes.Text.data.make({
+				text: {
+					type: "root",
+					children: [
+						{
+							type: "paragraph",
+							children: [
+								{ type: "text", value: "plain " },
+								{ type: "text", value: "orange", color: "#ff8906" },
+								{
+									type: "emphasis",
+									color: "tomato",
+									children: [{ type: "text", value: " hot" }],
+								},
+							],
+						},
+					],
+				},
+			}),
+		);
+		const svg = Svg.vnodeToString(node);
+		expect(svg).toContain("<tspan>plain </tspan>");
+		expect(svg).toContain('<tspan fill="#ff8906">orange</tspan>');
+		expect(svg).toContain(
+			'<tspan font-style="italic" fill="tomato"><tspan> hot</tspan></tspan>',
 		);
 	});
 

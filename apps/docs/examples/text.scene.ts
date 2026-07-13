@@ -9,11 +9,13 @@ const richText = {
 				{ type: "text", value: "effect-" },
 				{
 					type: "strong",
+					color: "#2cb67d",
 					children: [{ type: "text", value: "motion" }],
 				},
 				{ type: "text", value: " with " },
 				{
 					type: "emphasis",
+					color: "#ff8906",
 					children: [{ type: "text", value: "Effect" }],
 				},
 			],
@@ -21,7 +23,8 @@ const richText = {
 	],
 } satisfies Shapes.TextContent;
 
-// Centering stays entity-level; rich runs inherit the Text's shape styles.
+// Centering stays entity-level; rich runs inherit the Text's shape styles
+// unless a run overrides them with its own color.
 export const scene = Scene.make(function* () {
 	const title = yield* Scene.instantiate(Shapes.Text, {
 		text: richText,

@@ -118,19 +118,21 @@ export const path: Renderer.RenderFunction<SvgNode, typeof Shapes.Path> = ({
 	});
 
 const textInlineToSvg = (node: Shapes.TextInline): SvgNode => {
+	// color is a per-run fill; absent means inherit from the parent run/text
+	const colorAttr = node.color !== undefined ? { fill: node.color } : {};
 	switch (node.type) {
 		case "text":
-			return { tag: "tspan", props: {}, children: node.value };
+			return { tag: "tspan", props: colorAttr, children: node.value };
 		case "strong":
 			return {
 				tag: "tspan",
-				props: { "font-weight": "bold" },
+				props: { "font-weight": "bold", ...colorAttr },
 				children: node.children.map(textInlineToSvg),
 			};
 		case "emphasis":
 			return {
 				tag: "tspan",
-				props: { "font-style": "italic" },
+				props: { "font-style": "italic", ...colorAttr },
 				children: node.children.map(textInlineToSvg),
 			};
 	}

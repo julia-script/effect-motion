@@ -32,6 +32,32 @@ the whole Text on its `x`/`y`. Entity-level properties such as `fill`,
 
 <Example name="text" />
 
+## Colored segments
+
+Any inline node — `text`, `strong`, or `emphasis` — accepts an optional
+`color`, rendered as `fill` on that run's `<tspan>`. Runs without a `color`
+inherit the entity-level `fill`, and a colored run's descendants inherit its
+color unless they set their own:
+
+```ts
+const content = {
+	type: "root",
+	children: [
+		{
+			type: "paragraph",
+			children: [
+				{ type: "text", value: "status: " },
+				{
+					type: "strong",
+					color: "#2cb67d",
+					children: [{ type: "text", value: "passing" }],
+				},
+			],
+		},
+	],
+} satisfies Shapes.TextContent;
+```
+
 ## Multiple paragraphs
 
 A root can contain multiple paragraphs. Paragraph boundaries are preserved as
