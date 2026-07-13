@@ -38,15 +38,15 @@ const scene = Scene.make(function* () {
 	});
 
 	yield* Phaser.all([
-		Motion.moveTo(linear, { x: 460 }, "2 seconds"),
-		Motion.moveTo(cubic, { x: 460 }, "2 seconds", "easeInOutCubic"),
-		Motion.moveTo(expo, { x: 460 }, "2 seconds", "easeOutExpo"),
+		Motion.tweenTo(linear, { x: 460 }, "2 seconds"),
+		Motion.tweenTo(cubic, { x: 460 }, "2 seconds", "easeInOutCubic"),
+		Motion.tweenTo(expo, { x: 460 }, "2 seconds", "easeOutExpo"),
 	]);
 
 	// bounce drop, then a springy return via a custom-shaped back curve
-	yield* ball.pipe(Motion.moveTo({ y: 260 }, "1.5 seconds", "easeOutBounce"));
+	yield* ball.pipe(Motion.tweenTo({ y: 260 }, "1.5 seconds", "easeOutBounce"));
 	yield* ball.pipe(
-		Motion.moveTo({ y: 40 }, "1 second", Timing.createEaseInOutBack(3)),
+		Motion.tweenTo({ y: 40 }, "1 second", Timing.createEaseInOutBack(3)),
 	);
 
 	// physics: no durations from here on — springs run until they settle
@@ -56,8 +56,10 @@ const scene = Scene.make(function* () {
 		radius: 1,
 		fill: "#ff8906",
 	});
-	// plop-in entrance: radius springs up with overshoot
-	yield* plopper.pipe(Physics.springTo({ radius: 24 }, "plop"));
+	// plop-in entrance: raw props use eased tweens (elastic ≈ the old plop)
+	yield* plopper.pipe(
+		Motion.tweenTo({ radius: 24 }, "700 millis", "easeOutElastic"),
+	);
 	// swing across, then a bouncy return that never quite wants to stop
 	yield* plopper.pipe(Physics.springTo({ x: 440 }, "swing"));
 	yield* plopper.pipe(Physics.springTo({ x: 60 }, "bounce"));
@@ -74,8 +76,22 @@ const scene = Scene.make(function* () {
 		{ x: 14, y: -10, size: 20, fill: "#a786df" },
 		{ parent: duo },
 	);
-	yield* duo.pipe(Motion.moveTo({ x: 380 }, "1.5 seconds", "easeInOutCubic"));
+	yield* duo.pipe(Motion.tweenTo({ x: 380 }, "1.5 seconds", "easeInOutCubic"));
 	yield* duo.pipe(Physics.springTo({ y: 60 }, "jump"));
+
+	// the Line fix: moveTo translates the WHOLE line — no stretching
+	const line = yield* Scene.instantiate(Shapes.Line, {
+		x: 40,
+		y: 40,
+		x2: 90,
+		y2: 60,
+		strokeWidth: 3,
+	});
+	yield* line.pipe(
+		Motion.moveTo({ x: 380, y: 220 }, "1.5 seconds", "easeInOutCubic"),
+	);
+	// trait fade on a whole group
+	yield* duo.pipe(Motion.fadeTo(0.15, "1 second"));
 });
 
 // rAF when visible; setTimeout fallback because rAF never fires in

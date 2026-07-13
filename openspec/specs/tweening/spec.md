@@ -28,7 +28,7 @@ Every timing parameter SHALL accept either the name of a built-in timing functio
 - **THEN** interpolation is paced by it exactly as a built-in would be
 
 ### Requirement: Eased per-frame tweening
-`Motion.tween(from, to, duration, fn, timing?)` SHALL interpolate each key from the explicit `from` to `to` over the duration's frame count, calling `fn` once per frame with values computed at the eased progress `f(i / frames)`, ticking the scene each step. `Motion.tweenTo(instance, to, duration, fn, timing?)` SHALL behave identically but read the origin from the instance's current data at the keys of `to`, support both data-first and data-last (pipeable) forms, and resolve with the instance. The default timing SHALL be linear. The final frame SHALL receive exactly `to` for any timing with f(1) = 1; eased values outside [0, 1] mid-animation SHALL extrapolate rather than clamp.
+`Motion.tween(instance, from, to, duration, timing?)` SHALL interpolate the keys of `to` from the explicit `from` (keys missing in `from` start at the instance's current data) over the duration's frame count, applying values to the instance via scene updates once per frame at the eased progress `f(i / frames)`, ticking the scene each step. `Motion.tweenTo(instance, to, duration, timing?)` SHALL behave identically but read the origin entirely from the instance's current data. Both SHALL support data-first and data-last (pipeable) forms and resolve with the instance. The default timing SHALL be linear. The final frame SHALL land exactly on `to` for any timing with f(1) = 1; eased values outside [0, 1] mid-animation SHALL extrapolate rather than clamp.
 
 #### Scenario: Easing changes pacing, not endpoints
 - **WHEN** the same tween runs with "linear" and with "easeInQuad"
@@ -39,23 +39,27 @@ Every timing parameter SHALL accept either the name of a built-in timing functio
 - **THEN** intermediate values pass beyond the target and settle exactly on it at the final frame
 
 #### Scenario: tweenTo reads the origin from the instance
-- **WHEN** `instance.pipe(tweenTo({ x: 200 }, duration, fn))` runs on an instance currently at x = 100
-- **THEN** `fn` receives values interpolated from 100 to 200 without the caller specifying the origin
+- **WHEN** `instance.pipe(tweenTo({ x: 200 }, duration))` runs on an instance currently at x = 100
+- **THEN** x animates from 100 to exactly 200 without the caller specifying the origin
+
+#### Scenario: tween takes an explicit origin
+- **WHEN** `tween(instance, { x: 0 }, { x: 100 }, duration)` runs on an instance currently elsewhere
+- **THEN** the animation starts from 0, not from the current position
 
 ### Requirement: Timing on motion combinators
-`moveTo` and `move` SHALL accept an optional trailing timing argument (name or function, default linear) in both their data-first and data-last (pipeable) forms, dispatching between the forms by inspecting whether the first argument is an Instance.
+`tween` and `tweenTo` SHALL accept an optional trailing timing argument (name or function, default linear) in both their data-first and data-last (pipeable) forms, dispatching between the forms by inspecting whether the first argument is an Instance.
 
 #### Scenario: Data-first with timing
-- **WHEN** `move(instance, from, to, duration, "easeOutBounce")` is called
+- **WHEN** `tween(instance, from, to, duration, "easeOutBounce")` is called
 - **THEN** it animates from the explicit start with bounce pacing
 
 #### Scenario: Data-last with timing
-- **WHEN** `instance.pipe(moveTo(to, duration, "easeInExpo"))` is called
+- **WHEN** `instance.pipe(tweenTo(to, duration, "easeInExpo"))` is called
 - **THEN** the piped form applies the easing identically to the data-first form
 
 #### Scenario: Omitted timing stays linear
-- **WHEN** `moveTo(instance, to, duration)` is called without a timing argument
-- **THEN** behavior is identical to the pre-tweening linear interpolation
+- **WHEN** `tweenTo(instance, to, duration)` is called without a timing argument
+- **THEN** interpolation is linear
 
 ### Requirement: Spring configuration and presets
 The library SHALL provide a `Spring` configuration (`mass`, `stiffness`, `damping`, optional `initialVelocity`) with named presets (`beat`, `plop`, `bounce`, `swing`, `jump`, `strike`, `smooth`), accepted anywhere a spring is expected either by preset name (typed key union) or as a `Spring` object. Invalid configurations (mass ≤ 0, stiffness < 0, damping < 0) and unknown preset names SHALL be defects.
@@ -88,12 +92,12 @@ Spring animations SHALL simulate a damped harmonic oscillator per animated key (
 - **THEN** the two animations take different numbers of frames, neither specified by the caller
 
 ### Requirement: Spring combinators
-`Physics.spring(from, to, springInput, fn, settleTolerance?)` SHALL interpolate explicit-origin records through the spring simulation, calling `fn` once per frame. `Physics.springTo(instance, to, springInput?, settleTolerance?)` SHALL read the origin from the instance's current data, apply values via scene updates, support data-first and data-last (pipeable) forms, resolve with the instance, and default to the general-purpose spring when none is given.
+`Physics.spring(instance, from, to, springInput?, settleTolerance?)` and `Physics.springTo(instance, to, springInput?, settleTolerance?)` SHALL spring-animate the instance's position through its `~position` trait lens — origin from the explicit `from` (partial origins filled from the lens's current value) or entirely from the lens for `springTo` — applying values via the lens's set each frame, supporting data-first and data-last (pipeable) forms, resolving with the instance, and defaulting to the general-purpose spring when none is given. Raw-prop spring animation is not part of the public API.
 
-#### Scenario: springTo from current data
-- **WHEN** `instance.pipe(springTo({ x: 300 }, "swing"))` runs on an instance at x = 100
-- **THEN** x is spring-animated from 100 to exactly 300 with swing physics, no origin specified by the caller
+#### Scenario: springTo from the current position
+- **WHEN** `instance.pipe(springTo({ x: 300 }, "swing"))` runs on an instance whose position is x = 100
+- **THEN** the position springs from 100 to exactly 300 with swing physics, no origin specified by the caller
 
-#### Scenario: spring drives a callback
-- **WHEN** `spring({ v: 0 }, { v: 1 }, "smooth", fn)` runs
-- **THEN** `fn` receives physically simulated values each frame, ending with exactly `{ v: 1 }`
+#### Scenario: spring takes an explicit origin
+- **WHEN** `spring(instance, { x: 0 }, { x: 300 }, "plop")` runs on an instance positioned elsewhere
+- **THEN** the simulation starts at position 0 and settles exactly on 300, applied through the position lens each frame

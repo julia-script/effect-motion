@@ -113,21 +113,17 @@ describe("spring physics", () => {
 		expect(last).toEqual({ x: 100, y: 40 });
 	});
 
-	it("spring drives a callback from an explicit origin", async () => {
-		const received: number[] = [];
-		await runScene(
+	it("spring takes an explicit origin through the position lens", async () => {
+		const track = await runScene(
 			function* () {
-				yield* Scene.instantiate(Shapes.Circle, {});
-				yield* Physics.spring({ v: 0 }, { v: 1 }, "smooth", (value) =>
-					Effect.sync(() => {
-						received.push(value.v);
-					}),
-				);
+				const circle = yield* Scene.instantiate(Shapes.Circle, { x: 500 });
+				yield* Physics.spring(circle, { x: 0 }, { x: 100 }, "smooth");
 			},
 			(data) => data.x as number,
 		);
-		expect(received.length).toBeGreaterThan(2);
-		expect(received.at(-1)).toBe(1);
+		// starts from the explicit origin, not the current position
+		expect(track[0]!).toBeLessThan(120);
+		expect(track.at(-1)).toBe(100);
 	});
 
 	it("springTo works data-first with the default spring", async () => {

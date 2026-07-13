@@ -1,7 +1,8 @@
 import { Layer } from "effect";
 import type * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
-import type * as Fiber from "effect/Fiber";
+import * as Exit from "effect/Exit";
+import * as Fiber from "effect/Fiber";
 import * as Random from "effect/Random";
 import type * as Schema from "effect/Schema";
 import type * as Scope from "effect/Scope";
@@ -60,14 +61,15 @@ export const make = <const Eff extends Effect.Effect<any, any, any>, AEff>(
 export const instantiate = Effect.fnUntraced(function* <
 	Name extends string,
 	Data extends Schema.Top,
+	Traits extends Partial<Entity.EntityTraits<Data["Type"]>>,
 >(
-	entity: Entity.Entity<Name, Data>,
+	entity: Entity.Entity<Name, Data, Traits>,
 	props: Data["~type.make.in"],
 	options?: Runner.InstantiateOptions,
 ): Effect.fn.Return<
-	Instance.Instance<Name, Data>,
+	Instance.Instance<Name, Data, Traits>,
 	void,
-	Entity.Entity<Name, Data> | Runner.Runner
+	Entity.Entity<Name, Data, Traits> | Runner.Runner
 > {
 	const runner = yield* Runner.Runner;
 	return yield* runner.instantiate(entity, props, options);
@@ -111,6 +113,11 @@ export const step = <E, R, Entities extends Entity.AnyEntity>(
 ) =>
 	Effect.gen(function* () {
 		if (runningScene.done) {
+			// propagate a failed scene's cause instead of ending silently
+			const exit = yield* Fiber.await(runningScene.fiber);
+			if (Exit.isFailure(exit)) {
+				return yield* Effect.failCause(exit.cause);
+			}
 			return null;
 		}
 		yield* runningScene.runner.phaser.awaitAdvance;
@@ -137,11 +144,13 @@ export const run = <E, R, Entities>(
 		const fiber = yield* Phaser.run(
 			runner.phaser,
 			scene.runner.pipe(
-				Effect.andThen(() => {
-					done = true;
-					return Effect.void;
-				}),
 				Effect.scoped,
+				// success, failure, or interrupt: the scene is over either way
+				Effect.ensuring(
+					Effect.sync(() => {
+						done = true;
+					}),
+				),
 				Effect.provide(Layer.succeed(Runner.Runner, runner)),
 				// seeded pseudo-randomness, scoped to the scene fiber
 				Random.withSeed(runner.settings.seed),

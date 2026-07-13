@@ -2,6 +2,7 @@ import type * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import { dual } from "effect/Function";
 import type * as Schema from "effect/Schema";
+import * as Entity from "./Entity";
 import * as Instance from "./Instance";
 import * as Runner from "./Runner";
 import * as Scene from "./Scene";
@@ -21,12 +22,13 @@ const lerpNumber = (from: number, to: number, t: number) =>
 	from + (to - from) * t;
 
 /**
- * Interpolate from the explicit `from` to `to` over `duration`, calling
+ * The interpolation engine: from `from` to `to` over `duration`, calling
  * `fn` with the eased value once per frame (each step ends in a
  * Scene.tick). The last call receives exactly `to` for any timing with
- * f(1) = 1; a zero-length duration still takes one frame.
+ * f(1) = 1; a zero-length duration still takes one frame. Internal —
+ * public animators apply to instances.
  */
-export const tween = Effect.fnUntraced(function* <
+const interpolate = Effect.fnUntraced(function* <
 	T extends Record<string, InterpolableValue>,
 	A,
 	E,
@@ -104,7 +106,7 @@ const animate = Effect.fnUntraced(function* <
 		target,
 		from === undefined ? {} : resolveTarget(from, current),
 	);
-	yield* tween(
+	yield* interpolate(
 		start,
 		target,
 		duration,
@@ -125,13 +127,13 @@ const firstArgIsInstance = (args: IArguments) => Instance.isInstance(args[0]);
 
 /**
  * Animate interpolable (numeric) props of an instance toward `to` over
- * `duration`, starting from the instance's current data, optionally
- * paced by a timing function (name or function, default linear). Dual:
- * `moveTo(instance, to, duration, timing?)` or
- * `instance.pipe(moveTo(to, duration, timing?))`. Resolves with the
- * instance, so moves chain.
+ * `duration` by raw field name, starting from the instance's current
+ * data, optionally paced by a timing function (name or function, default
+ * linear). Dual: `tweenTo(instance, to, duration, timing?)` or
+ * `instance.pipe(tweenTo(to, duration, timing?))`. Resolves with the
+ * instance, so animations chain.
  */
-export const moveTo = dual<
+export const tweenTo = dual<
 	<Name extends string, Data extends Schema.Top>(
 		to: Target<Data>,
 		duration: Duration.Input,
@@ -150,12 +152,12 @@ export const moveTo = dual<
 );
 
 /**
- * Like `moveTo`, but with an explicit start: interpolates the keys of
+ * Like `tweenTo`, but with an explicit start: interpolates the keys of
  * `to` from `from` (keys missing in `from` start at the current data).
- * Dual: `move(instance, from, to, duration, timing?)` or
- * `instance.pipe(move(from, to, duration, timing?))`.
+ * Dual: `tween(instance, from, to, duration, timing?)` or
+ * `instance.pipe(tween(from, to, duration, timing?))`.
  */
-export const move = dual<
+export const tween = dual<
 	<Name extends string, Data extends Schema.Top>(
 		from: Target<Data>,
 		to: Target<Data>,
@@ -175,61 +177,230 @@ export const move = dual<
 	animate(instance, from, to, duration, timing),
 );
 
-const internalTweenTo = Effect.fnUntraced(function* <
+// ── semantic layer: trait-based helpers ────────────────────────────────
+// one recipe: read origin via the lens's get (base forms take an explicit
+// one), animate the extracted value, apply via set each frame
+
+type HasPosition<Data extends Schema.Top> = {
+	readonly "~position": Entity.TraitLens<Data["Type"], Entity.Position>;
+};
+type HasOpacity<Data extends Schema.Top> = {
+	readonly "~opacity": Entity.TraitLens<Data["Type"], number>;
+};
+
+const animatePosition = Effect.fnUntraced(function* <
 	Name extends string,
 	Data extends Schema.Top,
-	A,
-	E,
-	R,
+	Traits extends Partial<Entity.EntityTraits<Data["Type"]>>,
 >(
-	instance: Instance.Instance<Name, Data>,
-	to: Target<Data>,
+	instance: Instance.Instance<Name, Data, Traits>,
+	from: Partial<Entity.Position> | undefined,
+	to: Partial<Entity.Position>,
 	duration: Duration.Input,
-	fn: (
-		value: Partial<InterpolableOnly<Data["Type"]>>,
-	) => Effect.Effect<A, E, R>,
 	timing?: Timing.TimingInput,
 ) {
-	const current = yield* Scene.data(instance);
-	const target = resolveTarget(to, current);
-	const start = startValues(current, target, {});
-	yield* tween(
+	const lens = Entity.traitOrDie<Data["Type"], Entity.Position>(
+		instance.entity,
+		"~position",
+	);
+	const current = lens.get(yield* Scene.data(instance));
+	// partial targets/origins hold the missing axis at its current value
+	const target = { ...current, ...to };
+	const start = { ...current, ...(from ?? {}) };
+	yield* interpolate(
 		start,
 		target,
 		duration,
-		(value) => fn(value as Partial<InterpolableOnly<Data["Type"]>>),
+		(value) => Scene.update(instance, (data) => lens.set(data, value)),
+		timing,
+	);
+	return instance;
+});
+
+const animateOpacity = Effect.fnUntraced(function* <
+	Name extends string,
+	Data extends Schema.Top,
+	Traits extends Partial<Entity.EntityTraits<Data["Type"]>>,
+>(
+	instance: Instance.Instance<Name, Data, Traits>,
+	from: number | undefined,
+	to: number,
+	duration: Duration.Input,
+	timing?: Timing.TimingInput,
+) {
+	const lens = Entity.traitOrDie<Data["Type"], number>(
+		instance.entity,
+		"~opacity",
+	);
+	const current = lens.get(yield* Scene.data(instance));
+	yield* interpolate(
+		{ opacity: from ?? current },
+		{ opacity: to },
+		duration,
+		(value) => Scene.update(instance, (data) => lens.set(data, value.opacity)),
 		timing,
 	);
 	return instance;
 });
 
 /**
- * Like `tween`, but the origin is read from the instance's current data
- * at the keys of `to` — the caller only provides the destination and an
- * applier `fn`. Dual: `tweenTo(instance, to, duration, fn, timing?)` or
- * `instance.pipe(tweenTo(to, duration, fn, timing?))`. Resolves with the
- * instance.
+ * Move an instance to a position via its `~position` trait — per-entity
+ * semantics (a Line translates whole, a Group carries its subtree).
+ * Partial targets hold the missing axis. Dual:
+ * `moveTo(instance, to, duration, timing?)` or
+ * `instance.pipe(moveTo(to, duration, timing?))`.
  */
-export const tweenTo = dual<
-	<Name extends string, Data extends Schema.Top, A, E, R>(
-		to: Target<Data>,
+export const moveTo = dual<
+	<
+		Name extends string,
+		Data extends Schema.Top,
+		Traits extends Partial<Entity.EntityTraits<Data["Type"]>> &
+			HasPosition<Data>,
+	>(
+		to: Partial<Entity.Position>,
 		duration: Duration.Input,
-		fn: (
-			value: Partial<InterpolableOnly<Data["Type"]>>,
-		) => Effect.Effect<A, E, R>,
 		timing?: Timing.TimingInput,
 	) => (
-		instance: Instance.Instance<Name, Data>,
-	) => Effect.Effect<Instance.Instance<Name, Data>, E, Runner.Runner | R>,
-	<Name extends string, Data extends Schema.Top, A, E, R>(
-		instance: Instance.Instance<Name, Data>,
-		to: Target<Data>,
+		instance: Instance.Instance<Name, Data, Traits>,
+	) => Effect.Effect<
+		Instance.Instance<Name, Data, Traits>,
+		never,
+		Runner.Runner
+	>,
+	<
+		Name extends string,
+		Data extends Schema.Top,
+		Traits extends Partial<Entity.EntityTraits<Data["Type"]>> &
+			HasPosition<Data>,
+	>(
+		instance: Instance.Instance<Name, Data, Traits>,
+		to: Partial<Entity.Position>,
 		duration: Duration.Input,
-		fn: (
-			value: Partial<InterpolableOnly<Data["Type"]>>,
-		) => Effect.Effect<A, E, R>,
 		timing?: Timing.TimingInput,
-	) => Effect.Effect<Instance.Instance<Name, Data>, E, Runner.Runner | R>
->(firstArgIsInstance, (instance, to, duration, fn, timing) =>
-	internalTweenTo(instance, to, duration, fn, timing),
+	) => Effect.Effect<
+		Instance.Instance<Name, Data, Traits>,
+		never,
+		Runner.Runner
+	>
+>(firstArgIsInstance, (instance, to, duration, timing) =>
+	animatePosition(instance, undefined, to, duration, timing),
+);
+
+/** Like `moveTo`, but from an explicit position (partials filled from current). */
+export const move = dual<
+	<
+		Name extends string,
+		Data extends Schema.Top,
+		Traits extends Partial<Entity.EntityTraits<Data["Type"]>> &
+			HasPosition<Data>,
+	>(
+		from: Partial<Entity.Position>,
+		to: Partial<Entity.Position>,
+		duration: Duration.Input,
+		timing?: Timing.TimingInput,
+	) => (
+		instance: Instance.Instance<Name, Data, Traits>,
+	) => Effect.Effect<
+		Instance.Instance<Name, Data, Traits>,
+		never,
+		Runner.Runner
+	>,
+	<
+		Name extends string,
+		Data extends Schema.Top,
+		Traits extends Partial<Entity.EntityTraits<Data["Type"]>> &
+			HasPosition<Data>,
+	>(
+		instance: Instance.Instance<Name, Data, Traits>,
+		from: Partial<Entity.Position>,
+		to: Partial<Entity.Position>,
+		duration: Duration.Input,
+		timing?: Timing.TimingInput,
+	) => Effect.Effect<
+		Instance.Instance<Name, Data, Traits>,
+		never,
+		Runner.Runner
+	>
+>(firstArgIsInstance, (instance, from, to, duration, timing) =>
+	animatePosition(instance, from, to, duration, timing),
+);
+
+/**
+ * Fade an instance's opacity via its `~opacity` trait. Dual:
+ * `fadeTo(instance, opacity, duration, timing?)` or
+ * `instance.pipe(fadeTo(opacity, duration, timing?))`.
+ */
+export const fadeTo = dual<
+	<
+		Name extends string,
+		Data extends Schema.Top,
+		Traits extends Partial<Entity.EntityTraits<Data["Type"]>> &
+			HasOpacity<Data>,
+	>(
+		to: number,
+		duration: Duration.Input,
+		timing?: Timing.TimingInput,
+	) => (
+		instance: Instance.Instance<Name, Data, Traits>,
+	) => Effect.Effect<
+		Instance.Instance<Name, Data, Traits>,
+		never,
+		Runner.Runner
+	>,
+	<
+		Name extends string,
+		Data extends Schema.Top,
+		Traits extends Partial<Entity.EntityTraits<Data["Type"]>> &
+			HasOpacity<Data>,
+	>(
+		instance: Instance.Instance<Name, Data, Traits>,
+		to: number,
+		duration: Duration.Input,
+		timing?: Timing.TimingInput,
+	) => Effect.Effect<
+		Instance.Instance<Name, Data, Traits>,
+		never,
+		Runner.Runner
+	>
+>(firstArgIsInstance, (instance, to, duration, timing) =>
+	animateOpacity(instance, undefined, to, duration, timing),
+);
+
+/** Like `fadeTo`, but from an explicit opacity. */
+export const fade = dual<
+	<
+		Name extends string,
+		Data extends Schema.Top,
+		Traits extends Partial<Entity.EntityTraits<Data["Type"]>> &
+			HasOpacity<Data>,
+	>(
+		from: number,
+		to: number,
+		duration: Duration.Input,
+		timing?: Timing.TimingInput,
+	) => (
+		instance: Instance.Instance<Name, Data, Traits>,
+	) => Effect.Effect<
+		Instance.Instance<Name, Data, Traits>,
+		never,
+		Runner.Runner
+	>,
+	<
+		Name extends string,
+		Data extends Schema.Top,
+		Traits extends Partial<Entity.EntityTraits<Data["Type"]>> &
+			HasOpacity<Data>,
+	>(
+		instance: Instance.Instance<Name, Data, Traits>,
+		from: number,
+		to: number,
+		duration: Duration.Input,
+		timing?: Timing.TimingInput,
+	) => Effect.Effect<
+		Instance.Instance<Name, Data, Traits>,
+		never,
+		Runner.Runner
+	>
+>(firstArgIsInstance, (instance, from, to, duration, timing) =>
+	animateOpacity(instance, from, to, duration, timing),
 );

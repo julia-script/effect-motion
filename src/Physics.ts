@@ -1,13 +1,8 @@
 import * as Effect from "effect/Effect";
 import { dual } from "effect/Function";
 import type * as Schema from "effect/Schema";
+import * as Entity from "./Entity";
 import * as Instance from "./Instance";
-import {
-	type InterpolableOnly,
-	resolveTarget,
-	startValues,
-	type Target,
-} from "./Motion";
 import * as Runner from "./Runner";
 import * as Scene from "./Scene";
 
@@ -72,13 +67,14 @@ export const resolve = (input: SpringInput): Spring => {
 const SIMULATION_STEP = 1 / 120;
 
 /**
- * Spring-animate each key of `from` toward `to`, calling `fn` once per
- * scene frame until every key's displacement AND velocity are within
- * `settleTolerance`, then snap exactly onto `to`. Length emerges from
- * the physics — a zero-damping spring never settles and animates
- * indefinitely (the scene keeps ticking; stepping never blocks).
+ * The simulation engine: spring each key of `from` toward `to`, calling
+ * `fn` once per scene frame until every key's displacement AND velocity
+ * are within `settleTolerance`, then snap exactly onto `to`. Length
+ * emerges from the physics — a zero-damping spring never settles and
+ * animates indefinitely (the scene keeps ticking; stepping never
+ * blocks). Internal — public animators apply to instances.
  */
-export const spring = Effect.fnUntraced(function* <
+const simulate = Effect.fnUntraced(function* <
 	T extends Record<string, number>,
 	A,
 	E,
@@ -144,27 +140,30 @@ export const spring = Effect.fnUntraced(function* <
 	yield* Scene.tick;
 });
 
-const internalSpringTo = Effect.fnUntraced(function* <
+const springPosition = Effect.fnUntraced(function* <
 	Name extends string,
 	Data extends Schema.Top,
+	Traits extends Partial<Entity.EntityTraits<Data["Type"]>>,
 >(
-	instance: Instance.Instance<Name, Data>,
-	to: Target<Data>,
+	instance: Instance.Instance<Name, Data, Traits>,
+	from: Partial<Entity.Position> | undefined,
+	to: Partial<Entity.Position>,
 	springInput?: SpringInput,
 	settleTolerance?: number,
 ) {
-	const current = yield* Scene.data(instance);
-	const target = resolveTarget(to, current);
-	const start = startValues(current, target, {});
-	yield* spring(
+	const lens = Entity.traitOrDie<Data["Type"], Entity.Position>(
+		instance.entity,
+		"~position",
+	);
+	const current = lens.get(yield* Scene.data(instance));
+	// partial targets/origins hold the missing axis at its current value
+	const target = { ...current, ...to };
+	const start = { ...current, ...(from ?? {}) };
+	yield* simulate(
 		start,
 		target,
 		springInput ?? defaultSpring,
-		(value) =>
-			Scene.update(
-				instance,
-				(data) => Object.assign({}, data, value) as Data["Type"],
-			),
+		(value) => Scene.update(instance, (data) => lens.set(data, value)),
 		settleTolerance,
 	);
 	return instance;
@@ -172,30 +171,88 @@ const internalSpringTo = Effect.fnUntraced(function* <
 
 const firstArgIsInstance = (args: IArguments) => Instance.isInstance(args[0]);
 
+type HasPosition<Data extends Schema.Top> = {
+	readonly "~position": Entity.TraitLens<Data["Type"], Entity.Position>;
+};
+
 /**
- * Spring-animate interpolable props of an instance toward `to`, reading
- * the origin from its current data and applying values via scene
- * updates. Dual: `springTo(instance, to, springInput?, settleTolerance?)`
- * or `instance.pipe(springTo(to, springInput?, settleTolerance?))`.
- * Resolves with the instance.
+ * Spring an instance to a position via its `~position` trait — the
+ * durationless counterpart of `Motion.moveTo` (settles exactly, length
+ * emerges from the physics). Dual:
+ * `springTo(instance, to, springInput?, settleTolerance?)` or
+ * `instance.pipe(springTo(to, springInput?, settleTolerance?))`.
  */
 export const springTo = dual<
-	<Name extends string, Data extends Schema.Top>(
-		to: Target<Data>,
+	<
+		Name extends string,
+		Data extends Schema.Top,
+		Traits extends Partial<Entity.EntityTraits<Data["Type"]>> &
+			HasPosition<Data>,
+	>(
+		to: Partial<Entity.Position>,
 		springInput?: SpringInput,
 		settleTolerance?: number,
 	) => (
-		instance: Instance.Instance<Name, Data>,
-	) => Effect.Effect<Instance.Instance<Name, Data>, never, Runner.Runner>,
-	<Name extends string, Data extends Schema.Top>(
-		instance: Instance.Instance<Name, Data>,
-		to: Target<Data>,
+		instance: Instance.Instance<Name, Data, Traits>,
+	) => Effect.Effect<
+		Instance.Instance<Name, Data, Traits>,
+		never,
+		Runner.Runner
+	>,
+	<
+		Name extends string,
+		Data extends Schema.Top,
+		Traits extends Partial<Entity.EntityTraits<Data["Type"]>> &
+			HasPosition<Data>,
+	>(
+		instance: Instance.Instance<Name, Data, Traits>,
+		to: Partial<Entity.Position>,
 		springInput?: SpringInput,
 		settleTolerance?: number,
-	) => Effect.Effect<Instance.Instance<Name, Data>, never, Runner.Runner>
+	) => Effect.Effect<
+		Instance.Instance<Name, Data, Traits>,
+		never,
+		Runner.Runner
+	>
 >(firstArgIsInstance, (instance, to, springInput, settleTolerance) =>
-	internalSpringTo(instance, to, springInput, settleTolerance),
+	springPosition(instance, undefined, to, springInput, settleTolerance),
 );
 
-// referenced so the type-only import group stays coherent for consumers
-export type { InterpolableOnly, Target };
+/** Like `springTo`, but from an explicit position (partials filled from current). */
+export const spring = dual<
+	<
+		Name extends string,
+		Data extends Schema.Top,
+		Traits extends Partial<Entity.EntityTraits<Data["Type"]>> &
+			HasPosition<Data>,
+	>(
+		from: Partial<Entity.Position>,
+		to: Partial<Entity.Position>,
+		springInput?: SpringInput,
+		settleTolerance?: number,
+	) => (
+		instance: Instance.Instance<Name, Data, Traits>,
+	) => Effect.Effect<
+		Instance.Instance<Name, Data, Traits>,
+		never,
+		Runner.Runner
+	>,
+	<
+		Name extends string,
+		Data extends Schema.Top,
+		Traits extends Partial<Entity.EntityTraits<Data["Type"]>> &
+			HasPosition<Data>,
+	>(
+		instance: Instance.Instance<Name, Data, Traits>,
+		from: Partial<Entity.Position>,
+		to: Partial<Entity.Position>,
+		springInput?: SpringInput,
+		settleTolerance?: number,
+	) => Effect.Effect<
+		Instance.Instance<Name, Data, Traits>,
+		never,
+		Runner.Runner
+	>
+>(firstArgIsInstance, (instance, from, to, springInput, settleTolerance) =>
+	springPosition(instance, from, to, springInput, settleTolerance),
+);

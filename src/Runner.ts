@@ -28,10 +28,7 @@ export type Settings = {
 	seed: Seed;
 };
 
-export type GroupInstance = Instance.Instance<
-	typeof Group.name,
-	typeof Group.data
->;
+export type GroupInstance = Instance.Of<typeof Group>;
 
 export interface InstantiateOptions {
 	/** the group to attach the new instance to; defaults to the root */
@@ -83,14 +80,15 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 			instantiate: Effect.fnUntraced(function* <
 				Name extends string,
 				Data extends Schema.Top,
+				Traits extends Partial<Entity.EntityTraits<Data["Type"]>>,
 			>(
-				entity: Entity.Entity<Name, Data>,
+				entity: Entity.Entity<Name, Data, Traits>,
 				props: Data["~type.make.in"],
 				options?: InstantiateOptions,
 			): Effect.fn.Return<
-				Instance.Instance<Name, Data>,
+				Instance.Instance<Name, Data, Traits>,
 				void,
-				Entity.Entity<Name, Data>
+				Entity.Entity<Name, Data, Traits>
 			> {
 				const id = generateId(entity.name);
 				const instance = Instance.make(entity, id);

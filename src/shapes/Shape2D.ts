@@ -1,5 +1,6 @@
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
+import type * as Entity from "../Entity";
 
 /**
  * The portable styling prop set shared by built-in shapes — deliberately
@@ -34,3 +35,18 @@ export const filled = {
 	strokeWidth: Schema.optionalKey(Schema.Number),
 	...opacity,
 };
+
+/** standard x/y position lens for shapes whose position IS x/y */
+export const positionLens = <Data extends { x: number; y: number }>(): //
+Entity.TraitLens<Data, Entity.Position> => ({
+	get: (data) => ({ x: data.x, y: data.y }),
+	// spread of a generic yields Data & {...}; assignable back to Data
+	set: (data, value) => ({ ...data, x: value.x, y: value.y }) as Data,
+});
+
+/** standard opacity lens */
+export const opacityLens = <Data extends { opacity: number }>(): //
+Entity.TraitLens<Data, number> => ({
+	get: (data) => data.opacity,
+	set: (data, opacity) => ({ ...data, opacity }) as Data,
+});

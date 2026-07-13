@@ -30,7 +30,7 @@ const randomWalk = function* () {
 	const circle = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
 	for (let i = 0; i < 3; i++) {
 		const target = yield* Random.nextBetween(0, 100);
-		yield* Motion.moveTo(circle, { x: target }, "100 millis");
+		yield* Motion.tweenTo(circle, { x: target }, "100 millis");
 	}
 };
 
@@ -70,11 +70,11 @@ describe("parallel lanes stay reproducible", () => {
 		yield* Phaser.all([
 			Effect.gen(function* () {
 				const target = yield* Random.nextBetween(0, 100);
-				yield* Motion.moveTo(a, { x: target }, "100 millis");
+				yield* Motion.tweenTo(a, { x: target }, "100 millis");
 			}),
 			Effect.gen(function* () {
 				const target = yield* Random.nextBetween(100, 200);
-				yield* Motion.moveTo(b, { x: target }, "100 millis");
+				yield* Motion.tweenTo(b, { x: target }, "100 millis");
 			}),
 		]);
 	};
