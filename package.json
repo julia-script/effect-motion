@@ -5,6 +5,7 @@
 	"packageManager": "pnpm@11.11.0",
 	"scripts": {
 		"build": "turbo run build",
+		"dev": "turbo run dev --filter=docs...",
 		"test": "turbo run test",
 		"check": "turbo run check",
 		"docs": "turbo run dev --filter=docs",
