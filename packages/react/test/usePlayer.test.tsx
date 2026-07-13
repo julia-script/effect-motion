@@ -12,6 +12,13 @@ const tweenScene = Scene.make(function* () {
 	yield* Motion.tweenTo(circle, { x: 100 }, "500 millis");
 }) as AnyScene;
 
+const infiniteScene = Scene.make(function* () {
+	yield* Scene.instantiate(Shapes.Circle, { x: 0 });
+	while (true) {
+		yield* Scene.tick;
+	}
+}) as AnyScene;
+
 const failingScene = Scene.make(function* () {
 	yield* Effect.fail("boom");
 }) as AnyScene;
@@ -20,15 +27,43 @@ const ready = async (result: { current: { status: string } }) => {
 	await waitFor(() => expect(result.current.status).toBe("ready"));
 };
 
+const complete = async (result: {
+	current: { totalFrames: number | null };
+}) => {
+	await waitFor(() => expect(result.current.totalFrames).not.toBeNull());
+};
+
 describe("usePlayer", () => {
-	it("collects frames on mount and becomes ready", async () => {
+	it("becomes ready and resolves totalFrames when the stream completes", async () => {
 		const { result } = renderHook(() => usePlayer(tweenScene));
 		expect(result.current.status).toBe("loading");
+		expect(result.current.totalFrames).toBeNull();
 		await ready(result);
+		expect(result.current.bufferedFrames).toBeGreaterThan(0);
+		expect(result.current.currentFrame).not.toBeNull();
+		await complete(result);
 		expect(result.current.totalFrames).toBeGreaterThan(1);
 		expect(result.current.frame).toBe(0);
 		expect(result.current.playing).toBe(false);
-		expect(result.current.currentFrame).not.toBeNull();
+	});
+
+	it("plays an infinite scene without termination", async () => {
+		const { result, unmount } = renderHook(() => usePlayer(infiniteScene));
+		await ready(result);
+		act(() => result.current.play());
+		await waitFor(() => expect(result.current.frame).toBeGreaterThan(0));
+		expect(result.current.totalFrames).toBeNull();
+		expect(result.current.playing).toBe(true);
+		unmount();
+	});
+
+	it("forwards width/height to the runner so frames carry them", async () => {
+		const { result } = renderHook(() =>
+			usePlayer(tweenScene, { width: 800, height: 600 }),
+		);
+		await ready(result);
+		expect(result.current.currentFrame?.width).toBe(800);
+		expect(result.current.currentFrame?.height).toBe(600);
 	});
 
 	it("surfaces a failing scene as error state", async () => {
@@ -37,10 +72,10 @@ describe("usePlayer", () => {
 		expect(String(result.current.error)).toContain("boom");
 	});
 
-	it("interrupts collection on unmount without state updates", async () => {
-		const { result, unmount } = renderHook(() => usePlayer(tweenScene));
+	it("interrupts frame acquisition on unmount without state updates", async () => {
+		const { result, unmount } = renderHook(() => usePlayer(infiniteScene));
 		unmount();
-		// give the aborted collection time to settle; a post-unmount setState
+		// give the aborted pull time to settle; a post-unmount setState
 		// would make React log an error and fail the run
 		await new Promise((resolve) => setTimeout(resolve, 50));
 		expect(result.current.status).toBe("loading");
@@ -67,10 +102,10 @@ describe("usePlayer", () => {
 		expect(result.current.playing).toBe(false);
 	});
 
-	it("seek clamps to both ends", async () => {
+	it("seek clamps to the buffered range", async () => {
 		const { result } = renderHook(() => usePlayer(tweenScene));
-		await ready(result);
-		const last = result.current.totalFrames - 1;
+		await complete(result);
+		const last = result.current.bufferedFrames - 1;
 		act(() => result.current.seek(9999));
 		expect(result.current.frame).toBe(last);
 		act(() => result.current.seek(-5));
@@ -81,24 +116,36 @@ describe("usePlayer", () => {
 
 	it("auto-pauses at the last frame with progress 1", async () => {
 		const { result } = renderHook(() => usePlayer(tweenScene));
-		await ready(result);
-		act(() => result.current.seek(result.current.totalFrames - 2));
+		await complete(result);
+		const total = result.current.totalFrames as number;
+		act(() => result.current.seek(total - 2));
 		act(() => result.current.play());
 		await waitFor(() => expect(result.current.playing).toBe(false));
-		expect(result.current.frame).toBe(result.current.totalFrames - 1);
+		expect(result.current.frame).toBe(total - 1);
 		expect(result.current.progress).toBe(1);
+	});
+
+	it("loop wraps playback to frame 0 instead of pausing", async () => {
+		const { result } = renderHook(() => usePlayer(tweenScene));
+		await complete(result);
+		const total = result.current.totalFrames as number;
+		act(() => result.current.setLoop(true));
+		act(() => result.current.seek(total - 2));
+		act(() => result.current.play());
+		await waitFor(() => expect(result.current.frame).toBeLessThan(total - 2));
+		expect(result.current.playing).toBe(true);
 	});
 
 	it("play after completion restarts from frame 0", async () => {
 		const { result } = renderHook(() => usePlayer(tweenScene));
-		await ready(result);
-		act(() => result.current.seek(result.current.totalFrames - 1));
+		await complete(result);
+		act(() => result.current.seek((result.current.totalFrames as number) - 1));
 		act(() => result.current.play());
 		expect(result.current.playing).toBe(true);
 		expect(result.current.frame).toBe(0);
 	});
 
-	it("autoPlay starts playback once ready", async () => {
+	it("autoPlay starts playback once the first frame is buffered", async () => {
 		const { result } = renderHook(() =>
 			usePlayer(tweenScene, { autoPlay: true }),
 		);

@@ -9,7 +9,7 @@ export function ExampleScene({ name }: { name: string }) {
 		throw new Error(`Unknown example "${name}"`);
 	}
 	return (
-		<div className="rounded-xl border bg-white p-3 [&_svg]:max-w-full">
+		<div className="my-6">
 			<Player scene={scene} width={500} height={300} />
 		</div>
 	);

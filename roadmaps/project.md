@@ -26,23 +26,6 @@ end-to-end through the export pipeline.
 
 ## Now
 
-### Player v2 — playback that works for real scenes
-- **Problem:** the current player was built for debugging: ASCII transport
-  glyphs, no loop option, aspect ratio ignored — and it collects *all*
-  frames before playing, so long scenes start slowly and infinite scenes
-  never start at all.
-- **Outcome & done-when:** frames play as they're produced (buffered
-  streaming, not collect-then-play); an infinite scene plays indefinitely;
-  transport uses icons, has a loop toggle, and the viewport respects the
-  scene's aspect ratio.
-- **Status:** shaped — pain points nailed down. No engine change needed: the
-  driver already computes frames lazily; collect-everything-first was a
-  player choice. The work is player-side consumption (pull as you play, plus
-  a buffering policy) and UI polish.
-- **Appetite:** worth ~2 weeks part-time. The streaming model is the
-  substance; UI polish rides along.
-- **Links:** spec `react-player` · change: none yet — top `/opsx:propose` candidate
-
 ### Rich text
 - **Problem:** the single-run `Shapes.Text` (shipped 2026-07-13) can't
   express mixed styles — a title with one bold word, multi-color captions.
@@ -151,3 +134,8 @@ Post-release, one line each:
 - 2026-07-13: Added to Later: JSX for complex entities, markdown → rich text
   helper. Resolved: streaming playback needs no engine change (frames are
   already lazy; collection was a player choice) — Player v2 is player-side only.
+- 2026-07-13: Shipped Player v2 (change `2026-07-13-player-v2`, archived):
+  buffered streaming playback (infinite scenes play), metadata-driven
+  viewport sizing, icon transport with loop toggle, time readout, keyboard
+  shortcuts. Done-when met in full; hook API break (`totalFrames` nullable)
+  had no external consumers.

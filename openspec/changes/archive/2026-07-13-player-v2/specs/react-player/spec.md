@@ -1,8 +1,5 @@
-# react-player Specification
+## MODIFIED Requirements
 
-## Purpose
-React bindings for playing scenes: the `usePlayer` hook (frame collection, playback clock, transport controls) and the `<Player>` component (SVG viewport + play/pause + progress bar), shipped as `@effect-motion/react`.
-## Requirements
 ### Requirement: usePlayer hook prepares a scene for playback
 The `@effect-motion/react` package SHALL provide a `usePlayer` hook that accepts a scene (and optional settings: `seed`, `frameRate`, `width`, `height`) and acquires frames by pulling them incrementally from the scene's stream with a read-ahead buffer, rather than running the scene to completion first. The hook SHALL expose a `status` of `'loading'` until the first frame is available, `'ready'` once at least one frame is buffered, and `'error'` (with the error value) if the scene fails. Optional `width`/`height` settings SHALL be forwarded to the runner so frames are produced at that resolution.
 
@@ -80,6 +77,8 @@ The package SHALL provide a `<Player>` component that takes a scene (plus option
 - **WHEN** playback sits at frame 90 of a completed 300-frame scene at 30 fps
 - **THEN** the readout shows `0:03 / 0:10`
 
+## ADDED Requirements
+
 ### Requirement: Viewport sizing follows frame metadata
 The `<Player>` SHALL fill the width of its container (like a video element) while the viewport preserves the scene's aspect ratio from the current frame's `width`/`height` metadata via CSS `aspect-ratio`. Explicit `width`/`height` props SHALL act as overrides forwarded to the runner (and therefore reflected in the metadata); the component SHALL NOT pass a size into the render config, leaving the SVG sink's metadata fallback in effect. Before the first frame arrives, the viewport SHALL reserve space from explicit props when given.
 
@@ -105,4 +104,3 @@ The `<Player>` root SHALL be focusable and, while focused, SHALL handle: Space t
 #### Scenario: Arrow keys step frames
 - **WHEN** the player root has focus during playback and the user presses ArrowRight
 - **THEN** playback pauses and `frame` advances by exactly one
-
