@@ -1,7 +1,7 @@
+import * as Effect from "effect/Effect";
 import * as Pipeable from "effect/Pipeable";
 import type * as Schema from "effect/Schema";
 import type * as Entity from "./Entity";
-
 export const TypeId = "~motion/Instance" as const;
 
 export interface Instance<
@@ -26,7 +26,7 @@ export const isInstance = (u: unknown): u is Instance =>
 const Proto = {
 	[TypeId]: TypeId,
 	pipe(this: unknown) {
-		// biome-ignore lint/style/noArguments: Pipeable's variadic protocol
+		// biome-ignore lint: lint/style/noArguments: Pipeable's variadic protocol
 		return Pipeable.pipeArguments(this, arguments);
 	},
 };
@@ -40,3 +40,28 @@ export const make = <
 	id: string,
 ): Instance<Name, Data, Traits> =>
 	Object.assign(Object.create(Proto), { id, entity });
+
+export type InstanceOrEffect<
+	Name extends string = string,
+	Data extends Schema.Top = Schema.Top,
+	Traits extends Partial<Entity.EntityTraits<Data["Type"]>> = {},
+	E = never,
+	R = never,
+> =
+	| Instance<Name, Data, Traits>
+	| Effect.Effect<Instance<Name, Data, Traits>, E, R>;
+
+export const flatten = <
+	Name extends string,
+	Data extends Schema.Top,
+	Traits extends Partial<Entity.EntityTraits<Data["Type"]>>,
+	E = never,
+	R = never,
+>(
+	instance: InstanceOrEffect<Name, Data, Traits, E, R>,
+): Effect.Effect<Instance<Name, Data, Traits>, E, R> => {
+	if (isInstance(instance)) {
+		return Effect.succeed(instance);
+	}
+	return instance;
+};

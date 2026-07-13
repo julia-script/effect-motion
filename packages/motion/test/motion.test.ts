@@ -123,3 +123,42 @@ describe("Scene.sleep", () => {
 		expect(track).toHaveLength(61); // 60 move + settle frame, none from sleep
 	});
 });
+
+describe("Motion.wait", () => {
+	it("yields standalone as a frame-based sleep", async () => {
+		const track = await runScene(
+			function* () {
+				const circle = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
+				yield* Scene.tick;
+				yield* Motion.wait("100 millis");
+				yield* Motion.tweenTo(circle, { x: 10 }, "50 millis");
+			},
+			(data) => data.x as number,
+		);
+		// 1 tick + 6 held frames (100ms at 60fps) + 3 tween + 1 final frame
+		expect(track).toHaveLength(11);
+		expect(track.slice(0, 7)).toEqual([0, 0, 0, 0, 0, 0, 0]);
+		expect(track.at(-1)).toBe(10);
+	});
+
+	it("chains in pipe: holds after the previous step, instance flows on", async () => {
+		const track = await runScene(
+			function* () {
+				const circle = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
+				yield* circle.pipe(
+					Motion.tweenTo({ x: 10 }, "50 millis"),
+					Motion.wait("100 millis"),
+					Motion.fadeTo(0.5, "50 millis"),
+				);
+			},
+			(data) => ({ x: data.x as number, opacity: data.opacity as number }),
+		);
+		// 3 tween + 6 held + 3 fade + 1 final frame
+		expect(track).toHaveLength(13);
+		// the hold sits AFTER the tween (x already 10, opacity untouched)…
+		expect(track[2]).toEqual({ x: 10, opacity: 1 });
+		expect(track[8]).toEqual({ x: 10, opacity: 1 });
+		// …and BEFORE the fade, whose result still lands exactly
+		expect(track.at(-1)).toEqual({ x: 10, opacity: 0.5 });
+	});
+});

@@ -1,4 +1,4 @@
-import { Effect } from "effect";
+import { Effect, Exit } from "effect";
 import * as Stream from "effect/Stream";
 import { describe, expect, it } from "vitest";
 import * as Physics from "../src/Physics";
@@ -6,32 +6,43 @@ import type * as Runner from "../src/Runner";
 import * as Scene from "../src/Scene";
 import * as Shapes from "../src/shapes";
 
+// runs resolve and returns the defect message it died with
+const resolveDies = async (input: Physics.SpringInput): Promise<string> => {
+	const exit = await Effect.runPromiseExit(Physics.resolve(input));
+	expect(Exit.isFailure(exit)).toBe(true);
+	return JSON.stringify(exit, (_key, value) =>
+		value instanceof Error ? value.message : value,
+	);
+};
+
 describe("resolve and validation", () => {
-	it("resolves presets by name", () => {
-		expect(Physics.resolve("plop")).toBe(Physics.springs.plop);
-	});
-
-	it("passes custom spring objects through", () => {
-		const custom: Physics.Spring = { mass: 1, stiffness: 5, damping: 1 };
-		expect(Physics.resolve(custom)).toBe(custom);
-	});
-
-	it("throws on unknown preset names", () => {
-		expect(() => Physics.resolve("sproing" as Physics.SpringName)).toThrow(
-			/unknown spring/,
+	it("resolves presets by name", async () => {
+		expect(await Effect.runPromise(Physics.resolve("plop"))).toBe(
+			Physics.springs.plop,
 		);
 	});
 
-	it("rejects invalid configurations", () => {
-		expect(() =>
-			Physics.resolve({ mass: 0, stiffness: 10, damping: 0.5 }),
-		).toThrow(/mass/);
-		expect(() =>
-			Physics.resolve({ mass: 1, stiffness: -1, damping: 0.5 }),
-		).toThrow(/stiffness/);
-		expect(() =>
-			Physics.resolve({ mass: 1, stiffness: 10, damping: -0.5 }),
-		).toThrow(/damping/);
+	it("passes custom spring objects through", async () => {
+		const custom: Physics.Spring = { mass: 1, stiffness: 5, damping: 1 };
+		expect(await Effect.runPromise(Physics.resolve(custom))).toBe(custom);
+	});
+
+	it("dies on unknown preset names", async () => {
+		expect(await resolveDies("sproing" as Physics.SpringName)).toContain(
+			"unknown spring",
+		);
+	});
+
+	it("dies on invalid configurations", async () => {
+		expect(
+			await resolveDies({ mass: 0, stiffness: 10, damping: 0.5 }),
+		).toContain("mass");
+		expect(
+			await resolveDies({ mass: 1, stiffness: -1, damping: 0.5 }),
+		).toContain("stiffness");
+		expect(
+			await resolveDies({ mass: 1, stiffness: 10, damping: -0.5 }),
+		).toContain("damping");
 	});
 });
 

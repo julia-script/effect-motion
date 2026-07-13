@@ -3,6 +3,7 @@ import * as Stream from "effect/Stream";
 import { describe, expect, it } from "vitest";
 import * as Entity from "../src/Entity";
 import * as Motion from "../src/Motion";
+import * as Physics from "../src/Physics";
 import * as Scene from "../src/Scene";
 import * as Shapes from "../src/shapes";
 
@@ -150,5 +151,50 @@ describe("trait-based helpers", () => {
 		);
 		expect(message).toContain("test/Bare");
 		expect(message).toContain("~position");
+	});
+});
+
+describe("animation chaining", () => {
+	// this chain only compiles if every animator accepts an Effect of an
+	// instance AND returns the instance WITH its traits — either half
+	// regressing breaks the build here
+	it("raw and trait animators chain directly in pipe", async () => {
+		const track = await runScene(
+			function* () {
+				const circle = yield* Scene.instantiate(Shapes.Circle, {
+					x: 0,
+					y: 0,
+					radius: 5,
+				});
+				yield* circle.pipe(
+					Motion.tweenTo({ radius: 20 }, "100 millis"),
+					Motion.moveTo({ x: 50 }, "100 millis"),
+					Physics.springTo({ y: 30 }, "smooth"),
+					Motion.fadeTo(0.5, "100 millis"),
+				);
+			},
+			(frame) => firstNonRoot(frame),
+		);
+		const last = track.at(-1)!;
+		expect(last.radius).toBe(20);
+		expect(last.x).toBe(50);
+		expect(last.y).toBe(30);
+		expect(last.opacity).toBe(0.5);
+	});
+
+	it("flatMap chaining still works", async () => {
+		const track = await runScene(
+			function* () {
+				const circle = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
+				yield* circle.pipe(
+					Motion.moveTo({ x: 50 }, "100 millis"),
+					Effect.flatMap(Motion.fadeTo(0.5, "100 millis")),
+				);
+			},
+			(frame) => firstNonRoot(frame),
+		);
+		const last = track.at(-1)!;
+		expect(last.x).toBe(50);
+		expect(last.opacity).toBe(0.5);
 	});
 });

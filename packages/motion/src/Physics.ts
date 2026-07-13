@@ -43,23 +43,27 @@ export type SpringName = keyof typeof springs;
 /** a preset name (autocompleted) or a custom spring configuration */
 export type SpringInput = SpringName | Spring;
 
-export const resolve = (input: SpringInput): Spring => {
-	const spring = typeof input === "string" ? springs[input] : input;
-	if (spring === undefined) {
-		// unreachable for typed consumers; catches plain-JS typos
-		throw new Error(`Physics: unknown spring "${String(input)}"`);
-	}
-	if (spring.mass <= 0) {
-		throw new Error("Physics: spring mass must be greater than 0");
-	}
-	if (spring.stiffness < 0) {
-		throw new Error("Physics: spring stiffness must be >= 0");
-	}
-	if (spring.damping < 0) {
-		throw new Error("Physics: spring damping must be >= 0");
-	}
-	return spring;
-};
+// invalid configs are defects for now; may graduate to typed errors in E
+export const resolve = (input: SpringInput): Effect.Effect<Spring> =>
+	Effect.suspend(() => {
+		const spring = typeof input === "string" ? springs[input] : input;
+		if (spring === undefined) {
+			// unreachable for typed consumers; catches plain-JS typos
+			return Effect.die(
+				new Error(`Physics: unknown spring "${String(input)}"`),
+			);
+		}
+		if (spring.mass <= 0) {
+			return Effect.die(new Error("Physics: spring mass must be greater than 0"));
+		}
+		if (spring.stiffness < 0) {
+			return Effect.die(new Error("Physics: spring stiffness must be >= 0"));
+		}
+		if (spring.damping < 0) {
+			return Effect.die(new Error("Physics: spring damping must be >= 0"));
+		}
+		return Effect.succeed(spring);
+	});
 
 // fixed-rate integration keeps trajectories frame-rate independent:
 // explicit Euler diverges with large dt, so each scene frame consumes
@@ -87,7 +91,7 @@ const simulate = Effect.fnUntraced(function* <
 	settleTolerance = 0.001,
 ) {
 	const runner = yield* Runner.Runner;
-	const config = resolve(springInput);
+	const config = yield* resolve(springInput);
 	const frameDt = 1 / runner.settings.frameRate;
 	const keys = Object.keys(from);
 
@@ -144,13 +148,16 @@ const springPosition = Effect.fnUntraced(function* <
 	Name extends string,
 	Data extends Schema.Top,
 	Traits extends Partial<Entity.EntityTraits<Data["Type"]>>,
+	E = never,
+	R = never,
 >(
-	instance: Instance.Instance<Name, Data, Traits>,
+	instanceOrEffect: Instance.InstanceOrEffect<Name, Data, Traits, E, R>,
 	from: Partial<Entity.Position> | undefined,
 	to: Partial<Entity.Position>,
 	springInput?: SpringInput,
 	settleTolerance?: number,
 ) {
+	const instance = yield* Instance.flatten(instanceOrEffect);
 	const lens = Entity.traitOrDie<Data["Type"], Entity.Position>(
 		instance.entity,
 		"~position",
@@ -192,27 +199,29 @@ export const springTo = dual<
 		to: Partial<Entity.Position>,
 		springInput?: SpringInput,
 		settleTolerance?: number,
-	) => (
-		instance: Instance.Instance<Name, Data, Traits>,
+	) => <E = never, R = never>(
+		instance: Instance.InstanceOrEffect<Name, Data, Traits, E, R>,
 	) => Effect.Effect<
 		Instance.Instance<Name, Data, Traits>,
-		never,
-		Runner.Runner
+		E,
+		R | Runner.Runner
 	>,
 	<
 		Name extends string,
 		Data extends Schema.Top,
 		Traits extends Partial<Entity.EntityTraits<Data["Type"]>> &
 			HasPosition<Data>,
+		E = never,
+		R = never,
 	>(
-		instance: Instance.Instance<Name, Data, Traits>,
+		instance: Instance.InstanceOrEffect<Name, Data, Traits, E, R>,
 		to: Partial<Entity.Position>,
 		springInput?: SpringInput,
 		settleTolerance?: number,
 	) => Effect.Effect<
 		Instance.Instance<Name, Data, Traits>,
-		never,
-		Runner.Runner
+		E,
+		R | Runner.Runner
 	>
 >(firstArgIsInstance, (instance, to, springInput, settleTolerance) =>
 	springPosition(instance, undefined, to, springInput, settleTolerance),
@@ -230,28 +239,30 @@ export const spring = dual<
 		to: Partial<Entity.Position>,
 		springInput?: SpringInput,
 		settleTolerance?: number,
-	) => (
-		instance: Instance.Instance<Name, Data, Traits>,
+	) => <E = never, R = never>(
+		instance: Instance.InstanceOrEffect<Name, Data, Traits, E, R>,
 	) => Effect.Effect<
 		Instance.Instance<Name, Data, Traits>,
-		never,
-		Runner.Runner
+		E,
+		R | Runner.Runner
 	>,
 	<
 		Name extends string,
 		Data extends Schema.Top,
 		Traits extends Partial<Entity.EntityTraits<Data["Type"]>> &
 			HasPosition<Data>,
+		E = never,
+		R = never,
 	>(
-		instance: Instance.Instance<Name, Data, Traits>,
+		instance: Instance.InstanceOrEffect<Name, Data, Traits, E, R>,
 		from: Partial<Entity.Position>,
 		to: Partial<Entity.Position>,
 		springInput?: SpringInput,
 		settleTolerance?: number,
 	) => Effect.Effect<
 		Instance.Instance<Name, Data, Traits>,
-		never,
-		Runner.Runner
+		E,
+		R | Runner.Runner
 	>
 >(firstArgIsInstance, (instance, from, to, springInput, settleTolerance) =>
 	springPosition(instance, from, to, springInput, settleTolerance),

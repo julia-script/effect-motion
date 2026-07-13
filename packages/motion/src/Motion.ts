@@ -1,5 +1,6 @@
 import type * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
+import * as Effectable from "effect/Effectable";
 import { dual } from "effect/Function";
 import type * as Schema from "effect/Schema";
 import * as Entity from "./Entity";
@@ -92,13 +93,17 @@ export const startValues = (
 const animate = Effect.fnUntraced(function* <
 	Name extends string,
 	Data extends Schema.Top,
+	Traits extends Partial<Entity.EntityTraits<Data["Type"]>>,
+	E = never,
+	R = never,
 >(
-	instance: Instance.Instance<Name, Data>,
+	instanceOrEffect: Instance.InstanceOrEffect<Name, Data, Traits, E, R>,
 	from: Target<Data> | undefined,
 	to: Target<Data>,
 	duration: Duration.Input,
 	timing?: Timing.TimingInput,
 ) {
+	const instance = yield* Instance.flatten(instanceOrEffect);
 	const current = yield* Scene.data(instance);
 	const target = resolveTarget(to, current);
 	const start = startValues(
@@ -134,19 +139,37 @@ const firstArgIsInstance = (args: IArguments) => Instance.isInstance(args[0]);
  * instance, so animations chain.
  */
 export const tweenTo = dual<
-	<Name extends string, Data extends Schema.Top>(
+	<
+		Name extends string,
+		Data extends Schema.Top,
+		Traits extends Partial<Entity.EntityTraits<Data["Type"]>>,
+	>(
 		to: Target<Data>,
 		duration: Duration.Input,
 		timing?: Timing.TimingInput,
-	) => (
-		instance: Instance.Instance<Name, Data>,
-	) => Effect.Effect<Instance.Instance<Name, Data>, never, Runner.Runner>,
-	<Name extends string, Data extends Schema.Top>(
-		instance: Instance.Instance<Name, Data>,
+	) => <E = never, R = never>(
+		instance: Instance.InstanceOrEffect<Name, Data, Traits, E, R>,
+	) => Effect.Effect<
+		Instance.Instance<Name, Data, Traits>,
+		E,
+		R | Runner.Runner
+	>,
+	<
+		Name extends string,
+		Data extends Schema.Top,
+		Traits extends Partial<Entity.EntityTraits<Data["Type"]>>,
+		E = never,
+		R = never,
+	>(
+		instance: Instance.InstanceOrEffect<Name, Data, Traits, E, R>,
 		to: Target<Data>,
 		duration: Duration.Input,
 		timing?: Timing.TimingInput,
-	) => Effect.Effect<Instance.Instance<Name, Data>, never, Runner.Runner>
+	) => Effect.Effect<
+		Instance.Instance<Name, Data, Traits>,
+		E,
+		R | Runner.Runner
+	>
 >(firstArgIsInstance, (instance, to, duration, timing) =>
 	animate(instance, undefined, to, duration, timing),
 );
@@ -158,21 +181,39 @@ export const tweenTo = dual<
  * `instance.pipe(tween(from, to, duration, timing?))`.
  */
 export const tween = dual<
-	<Name extends string, Data extends Schema.Top>(
+	<
+		Name extends string,
+		Data extends Schema.Top,
+		Traits extends Partial<Entity.EntityTraits<Data["Type"]>>,
+	>(
 		from: Target<Data>,
 		to: Target<Data>,
 		duration: Duration.Input,
 		timing?: Timing.TimingInput,
-	) => (
-		instance: Instance.Instance<Name, Data>,
-	) => Effect.Effect<Instance.Instance<Name, Data>, never, Runner.Runner>,
-	<Name extends string, Data extends Schema.Top>(
-		instance: Instance.Instance<Name, Data>,
+	) => <E = never, R = never>(
+		instance: Instance.InstanceOrEffect<Name, Data, Traits, E, R>,
+	) => Effect.Effect<
+		Instance.Instance<Name, Data, Traits>,
+		E,
+		R | Runner.Runner
+	>,
+	<
+		Name extends string,
+		Data extends Schema.Top,
+		Traits extends Partial<Entity.EntityTraits<Data["Type"]>>,
+		E = never,
+		R = never,
+	>(
+		instance: Instance.InstanceOrEffect<Name, Data, Traits, E, R>,
 		from: Target<Data>,
 		to: Target<Data>,
 		duration: Duration.Input,
 		timing?: Timing.TimingInput,
-	) => Effect.Effect<Instance.Instance<Name, Data>, never, Runner.Runner>
+	) => Effect.Effect<
+		Instance.Instance<Name, Data, Traits>,
+		E,
+		R | Runner.Runner
+	>
 >(firstArgIsInstance, (instance, from, to, duration, timing) =>
 	animate(instance, from, to, duration, timing),
 );
@@ -192,13 +233,17 @@ const animatePosition = Effect.fnUntraced(function* <
 	Name extends string,
 	Data extends Schema.Top,
 	Traits extends Partial<Entity.EntityTraits<Data["Type"]>>,
+	E = never,
+	R = never,
 >(
-	instance: Instance.Instance<Name, Data, Traits>,
+	instanceOrEffect: Instance.InstanceOrEffect<Name, Data, Traits, E, R>,
 	from: Partial<Entity.Position> | undefined,
 	to: Partial<Entity.Position>,
 	duration: Duration.Input,
 	timing?: Timing.TimingInput,
 ) {
+	const instance = yield* Instance.flatten(instanceOrEffect);
+
 	const lens = Entity.traitOrDie<Data["Type"], Entity.Position>(
 		instance.entity,
 		"~position",
@@ -221,13 +266,16 @@ const animateOpacity = Effect.fnUntraced(function* <
 	Name extends string,
 	Data extends Schema.Top,
 	Traits extends Partial<Entity.EntityTraits<Data["Type"]>>,
+	E = never,
+	R = never,
 >(
-	instance: Instance.Instance<Name, Data, Traits>,
+	instanceOrEffect: Instance.InstanceOrEffect<Name, Data, Traits, E, R>,
 	from: number | undefined,
 	to: number,
 	duration: Duration.Input,
 	timing?: Timing.TimingInput,
 ) {
+	const instance = yield* Instance.flatten(instanceOrEffect);
 	const lens = Entity.traitOrDie<Data["Type"], number>(
 		instance.entity,
 		"~opacity",
@@ -260,27 +308,29 @@ export const moveTo = dual<
 		to: Partial<Entity.Position>,
 		duration: Duration.Input,
 		timing?: Timing.TimingInput,
-	) => (
-		instance: Instance.Instance<Name, Data, Traits>,
+	) => <E = never, R = never>(
+		instance: Instance.InstanceOrEffect<Name, Data, Traits, E, R>,
 	) => Effect.Effect<
 		Instance.Instance<Name, Data, Traits>,
-		never,
-		Runner.Runner
+		E,
+		R | Runner.Runner
 	>,
 	<
 		Name extends string,
 		Data extends Schema.Top,
 		Traits extends Partial<Entity.EntityTraits<Data["Type"]>> &
 			HasPosition<Data>,
+		E = never,
+		R = never,
 	>(
-		instance: Instance.Instance<Name, Data, Traits>,
+		instance: Instance.InstanceOrEffect<Name, Data, Traits, E, R>,
 		to: Partial<Entity.Position>,
 		duration: Duration.Input,
 		timing?: Timing.TimingInput,
 	) => Effect.Effect<
 		Instance.Instance<Name, Data, Traits>,
-		never,
-		Runner.Runner
+		E,
+		R | Runner.Runner
 	>
 >(firstArgIsInstance, (instance, to, duration, timing) =>
 	animatePosition(instance, undefined, to, duration, timing),
@@ -298,28 +348,30 @@ export const move = dual<
 		to: Partial<Entity.Position>,
 		duration: Duration.Input,
 		timing?: Timing.TimingInput,
-	) => (
-		instance: Instance.Instance<Name, Data, Traits>,
+	) => <E = never, R = never>(
+		instance: Instance.InstanceOrEffect<Name, Data, Traits, E, R>,
 	) => Effect.Effect<
 		Instance.Instance<Name, Data, Traits>,
-		never,
-		Runner.Runner
+		E,
+		R | Runner.Runner
 	>,
 	<
 		Name extends string,
 		Data extends Schema.Top,
 		Traits extends Partial<Entity.EntityTraits<Data["Type"]>> &
 			HasPosition<Data>,
+		E = never,
+		R = never,
 	>(
-		instance: Instance.Instance<Name, Data, Traits>,
+		instance: Instance.InstanceOrEffect<Name, Data, Traits, E, R>,
 		from: Partial<Entity.Position>,
 		to: Partial<Entity.Position>,
 		duration: Duration.Input,
 		timing?: Timing.TimingInput,
 	) => Effect.Effect<
 		Instance.Instance<Name, Data, Traits>,
-		never,
-		Runner.Runner
+		E,
+		R | Runner.Runner
 	>
 >(firstArgIsInstance, (instance, from, to, duration, timing) =>
 	animatePosition(instance, from, to, duration, timing),
@@ -340,27 +392,29 @@ export const fadeTo = dual<
 		to: number,
 		duration: Duration.Input,
 		timing?: Timing.TimingInput,
-	) => (
-		instance: Instance.Instance<Name, Data, Traits>,
+	) => <E = never, R = never>(
+		instance: Instance.InstanceOrEffect<Name, Data, Traits, E, R>,
 	) => Effect.Effect<
 		Instance.Instance<Name, Data, Traits>,
-		never,
-		Runner.Runner
+		E,
+		R | Runner.Runner
 	>,
 	<
 		Name extends string,
 		Data extends Schema.Top,
 		Traits extends Partial<Entity.EntityTraits<Data["Type"]>> &
 			HasOpacity<Data>,
+		E = never,
+		R = never,
 	>(
-		instance: Instance.Instance<Name, Data, Traits>,
+		instance: Instance.InstanceOrEffect<Name, Data, Traits, E, R>,
 		to: number,
 		duration: Duration.Input,
 		timing?: Timing.TimingInput,
 	) => Effect.Effect<
 		Instance.Instance<Name, Data, Traits>,
-		never,
-		Runner.Runner
+		E,
+		R | Runner.Runner
 	>
 >(firstArgIsInstance, (instance, to, duration, timing) =>
 	animateOpacity(instance, undefined, to, duration, timing),
@@ -378,29 +432,62 @@ export const fade = dual<
 		to: number,
 		duration: Duration.Input,
 		timing?: Timing.TimingInput,
-	) => (
-		instance: Instance.Instance<Name, Data, Traits>,
+	) => <E = never, R = never>(
+		instance: Instance.InstanceOrEffect<Name, Data, Traits, E, R>,
 	) => Effect.Effect<
 		Instance.Instance<Name, Data, Traits>,
-		never,
-		Runner.Runner
+		E,
+		R | Runner.Runner
 	>,
 	<
 		Name extends string,
 		Data extends Schema.Top,
 		Traits extends Partial<Entity.EntityTraits<Data["Type"]>> &
 			HasOpacity<Data>,
+		E = never,
+		R = never,
 	>(
-		instance: Instance.Instance<Name, Data, Traits>,
+		instance: Instance.InstanceOrEffect<Name, Data, Traits, E, R>,
 		from: number,
 		to: number,
 		duration: Duration.Input,
 		timing?: Timing.TimingInput,
 	) => Effect.Effect<
 		Instance.Instance<Name, Data, Traits>,
-		never,
-		Runner.Runner
+		E,
+		R | Runner.Runner
 	>
 >(firstArgIsInstance, (instance, from, to, duration, timing) =>
 	animateOpacity(instance, from, to, duration, timing),
 );
+
+/**
+ * `Motion.wait(duration)` is both an Effect and a pipe step: yield it
+ * directly, or place it between chained animations, where it holds the
+ * scene AFTER the previous step and passes that step's result through.
+ */
+export interface Wait extends Effect.Effect<void, never, Runner.Runner> {
+	<A, E, R>(
+		effect: Effect.Effect<A, E, R>,
+	): Effect.Effect<A, E, R | Runner.Runner>;
+}
+
+/**
+ * Hold the scene for `duration` of scene time (frames at the runner's
+ * frame rate) — `Scene.sleep`'s chainable sibling.
+ *
+ * - `yield* Motion.wait("1 second")` — plain frame-based sleep
+ * - `instance.pipe(moveTo(...), Motion.wait("1 second"), fadeTo(...))`
+ *   — the hold runs between the two animations and the instance flows on
+ */
+export const wait = (duration: Duration.Input): Wait =>
+	Object.assign(
+		<A, E, R>(
+			effect: Effect.Effect<A, E, R>,
+		): Effect.Effect<A, E, R | Runner.Runner> =>
+			Effect.tap(effect, () => Scene.sleep(duration)),
+		Effectable.Prototype<Effect.Effect<void, never, Runner.Runner>>({
+			label: "Motion.wait",
+			evaluate: () => Scene.sleep(duration),
+		}),
+	) as Wait;
