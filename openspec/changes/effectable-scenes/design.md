@@ -1,62 +1,64 @@
-# Design: effectable scenes
+# Design: branch finish and nested scene playback
 
 ## Context
 
-`Scene` is currently `{ [TypeId], runner: Effect.scoped(Effect.gen(f)), "~entities" }` — a record only `Scene.run` consumes. `Scene.run` wraps the runner with per-movie dressing: `Random.withSeed`, the `done` flag `ensuring`, `Runner` provisioning, and `Phaser.run` root-party registration. `Motion.wait` already demonstrates the Effectable pattern in this codebase (an object that is both a function and an Effect via `Effectable.Prototype`); Effect's `Activity` demonstrates the fuller shape (Effectable + metadata + annotations Context).
-
-The `add-schedule-composition` change gives us `Scene.fork` (awaited concurrent work) and correct scene-end party accounting; this change builds on both.
+`add-schedule-composition` left exactly the machinery this change extends: the runner tracks `forks` (awaited at scene end), `backgrounds` (interrupted at scene end), and a synchronous `awaitedCount` that the frame consumer (`Scene.step`) reads to decide "scene over" without depending on the scene fiber's scheduling. `Scene.run` applies movie dressing (runner, root party, seed, done flag); scenes are plain `{ runner }` values consumed by it.
 
 ## Goals / Non-Goals
 
 **Goals:**
-- `yield* scene` inside another scene, and `Scene.fork(scene)` for concurrent scenes.
-- A per-scene semantic-end signal (`Scene.finish` / `handle.finished`) consumed by parent scenes for transitions.
-- Child scenes mount into a parent-designated group; scene reuse (same scene, two mounts).
-- Metadata channel for future visual tooling.
+- A branch-level semantic end: `Scene.finish` releases awaiters and stops blocking the parent, while the tail keeps playing until the parent ends.
+- Explicit nested scene playback (`Scene.play`) with frame-for-frame seed stability versus standalone runs.
+- Mounting a child scene's instances under a parent group; scene value reuse across mounts.
+- Metadata channel for tooling.
 
 **Non-Goals:**
-- A dedicated transition/sequencer API — parent scenes ARE the sequencer; crossfades and tail limits are ordinary scene code.
-- Player awareness of `finished` (a player could stop at outermost-finish + tail; follow-up if needed).
-- Serializable scene descriptions for editors — annotations are a runtime Context only.
+- Effectable scenes (`yield* scene` directly). Rejected this round: it served composability framing, not a need — an explicit helper is simpler, avoids type-level risk around the entity phantom, and makes nesting visible at call sites.
+- Finish-aware `Scene.chain`. Advancing on `finished` requires chain items to run in their own fibers (an inline item cannot continue past finish), dragging slot-lending into chain. Crossfades are fully expressible with handles (`play` + `yield* h.finished`); promote chain later if that proves clunky.
+- A dedicated transition/sequencer API, or player awareness of `finished`.
 
 ## Decisions
 
-### D1: Scene extends Effect via Effectable.Prototype
+### D1: finish = demotion from fork to background
 
-`Scene<E, R, Entities>` extends `Effect.Effect<void, E, R'>`, with `evaluate` returning the body wrapped in **per-scene** dressing. `Scene.make` keeps its current signature and type-level entity extraction; it just returns an Effectable object instead of a bare record. `Scene.run` continues to exist as the movie entry point and keeps the **per-movie** dressing.
+Every branch (fork, played scene, root body) has a semantic end and a physical end. Awaiting constructs wait on the semantic end. `Scene.finish`:
 
-Per-scene (inside `evaluate`, so nested scenes get it): `Effect.scoped`, fresh `SceneHandle` provisioning, parent-group capture.
-Per-movie (in `Scene.run` only): `Runner.make`, `Phaser.run` root registration, `Random.withSeed`, `done` flag.
+1. opens the innermost branch handle's `finished` latch (idempotent; completion opens it implicitly — success, failure, or interruption);
+2. demotes the branch once: `countAwaited(-1)` and moves the fiber from `forks` to `backgrounds`;
+3. changes nothing else — the branch **keeps its phaser party** and keeps ticking. It is not the party release (`releaseRoot`-style): that is for branches that will never tick again; a finished branch still animates.
 
-Alternative rejected: a separate `Scene.runNested(scene)` combinator without making Scene an Effect — more API surface, and every consumer (fork, repeat, all) would need scene overloads. Effectable makes scenes work with *all* effect combinators for free.
+The tail bound falls out of existing background semantics: demoted branches are interrupted when backgrounds are — after the drain of still-awaited work, at the parent's end. No `interruptAfter` API; a parent that wants a shorter tail interrupts the handle's fiber itself.
 
-### D2: SceneHandle is a per-evaluation service
+Root-branch consequence: a top-level body that finishes and continues gets its tail cut when no awaited work remains (the consumer stops at the movie's semantic end). `Scene.step`'s scene-over path must therefore interrupt-then-await the scene fiber rather than only await it (interrupting an already-completed fiber is a no-op, so the ordinary path is unchanged).
 
-Each evaluation of a scene provides a fresh `SceneHandle` (Context service) around its body: `{ finished: Latch (or Deferred), fiber }`. `Scene.finish` opens the **innermost** handle's latch (ambient service lookup); body completion opens it implicitly via `ensuring`. Nesting scopes this correctly with no registry: each scene's `Effect.provide` shadows the parent's handle for its subtree.
+### D2: branch handles from fork and play
 
-Getting the handle out: `yield* scene` runs inline (handle not needed — completion IS the signal). For concurrent scenes, a `Scene.forkScene(scene)`-shaped helper (or `Scene.fork` overload detecting a Scene) returns `{ finished, fiber }` so the parent can `yield* handle.finished`, then later `Fiber.interrupt(handle.fiber)` for tail limiting. Exact shape settled in implementation; requirement is only that fork-of-scene exposes `finished` and interruption.
+`Scene.fork` and `Scene.play` return the same handle shape — at least `{ finished, fiber }` — so forks and nested scenes are awaited, finish-observed, and interrupted identically. The handle context is provided per branch; `Scene.finish` resolves the innermost one (nesting scopes it: each branch's provision shadows its parent's for its subtree). The root branch's handle is provided by `Scene.run`.
 
-### D3: finish is a pure signal
+### D3: scenes stay plain values; `Scene.play` carries the per-evaluation dressing
 
-`Scene.finish` changes nothing about execution — no interruption, no scope close, no effect on forks. The tail is whatever the body and its forks still do; the parent bounds it (`yield* a.finished; yield* Scene.sleep(...); yield* Fiber.interrupt(a.fiber)`). This keeps finish orthogonal to fork/background semantics. Calling `finish` twice, or finishing after implicit completion, is a no-op (latch semantics).
+`Scene.play(scene, { parent?, seed? })` = fork of the scene body wrapped in: fresh scope, fresh branch handle, fresh seeded Random, current-parent provision. Sequential nesting is `play` + `yield* handle.finished`; concurrent nesting is play without awaiting. `Scene.run` uses the same per-evaluation dressing for the root (it is the outermost evaluation) plus the movie-global parts (runner creation, root party, done flag).
 
-### D4: Parent-group via ambient service, defaulting to root
+### D4: seed stability by equivalence
 
-A `CurrentParent` service (defaulting to the runner's root group) supplies `instantiate`'s default parent; explicit `options.parent` still wins. Mounting a child scene into a group = providing `CurrentParent` for that child's evaluation — exposed as an option where scenes are run/forked (e.g. `{ parent: group }`). This is also what makes one scene value mountable twice into different groups: instances are created per evaluation, not stored on the scene.
+Rule: `play(scene)` inside a movie seeded `S` produces the same frames as `run(scene, { seed: S })` standalone. Therefore every evaluation reseeds a **fresh** Random stream (never inherits the parent's stream position); the default evaluation seed is the movie's seed value, `play({ seed })` overrides per mount. Two same-seed mounts of one scene are identical twins — determinism as a feature, per-mount seed as the variation knob. Movie-global settings shrink to what is genuinely global: `frameRate`, `maxFrames`.
 
-### D5: Annotations ride the scene value, Activity-style
+### D5: parent-group via ambient service, defaulting to root
 
-`annotations: Context.Context<never>` on the scene object plus `annotate(key, value)` / `annotateMerge(context)` returning a new scene sharing the same body. The runtime never reads them. This is deliberately the same shape as Effect's `Activity` so editor tooling has one idiom to learn.
+A current-parent service (default: the runner's root group) supplies `instantiate`'s default parent; explicit `options.parent` wins. `play({ parent: group })` provides it for the child's evaluation. Instances are created per evaluation, so one scene value mounts many times independently.
+
+### D6: annotations ride the scene value
+
+`annotations: Context` plus `annotate(key, value)`/`annotateMerge(context)` returning a new scene value sharing the same body; runtime never reads them.
 
 ## Risks / Trade-offs
 
-- [Effectable typing: `Scene`'s entity-extraction generics must survive extending `Effect`] → the R channel already carries entities via `Extract`; keep `~entities` as a phantom field; follow `Motion.wait`'s casting discipline; verify with type-level tests.
-- [Double dressing: a scene run via `Scene.run` must not get per-scene wrapping twice] → `evaluate` is the single place per-scene dressing lives; `Scene.run` consumes `scene` as an Effect like any parent would, plus movie dressing around it.
-- [`finish` without a listener is inert] → fine by design; docstring notes it only matters to whoever holds the handle.
-- [Seed/determinism across nesting: nested scenes share the movie's seeded Random] → document that determinism is per-movie; per-scene reseeding can be added later as an annotation/option if needed.
-- [BREAKING shape change of `Scene`] → only `Scene.run`/`stream` and the react package touch the shape today; both are in-repo.
+- [Demotion races the frame consumer: `awaitedCount` may hit 0 mid-frame] → demotion is synchronous (same discipline as the count's finalizers); the consumer's next pull observes a consistent state. Test: finish with other forks still awaited (scene must NOT end), finish as the last awaited branch (scene ends, tail interrupted).
+- [Double demotion (finish then completion)] → one guard flag per handle; completion of an already-finished branch must not decrement again.
+- [Interrupting the root tail loses a failure cause] → interrupt-then-await preserves an already-failed exit; test a body that fails after finish… note: post-finish failures in a tail are reported like background failures (i.e. not at all) — document this on `finish`.
+- [Seed equivalence broken by mount context (parent group affects instance ids)] → instance ids come from the movie-global counter; equivalence is defined on data/shape, not ids. Spec the equivalence over rendered values, not id strings.
 
 ## Open Questions
 
-- `Scene.fork(scene)` overload vs. distinct `Scene.forkScene`: does dispatching on `isScene` inside fork keep types clean, or is a separate name clearer?
-- Should `Scene.stream`/`step` expose the outermost `finished` so players can render "done + tail" states? Deferred until a player needs it.
+- Handle surface beyond `{ finished, fiber }` — e.g. `result`? Start minimal.
+- Whether `Scene.run` should expose the movie's root handle (player "done + tail" states). Deferred until a player needs it.
