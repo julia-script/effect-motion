@@ -15,20 +15,7 @@ regardless of how fast frames are actually rendered.
 immediate, the schedule paces the gaps, and each run's result feeds the
 schedule as input.
 
-```ts
-import { Schedule } from "effect";
-import { Motion, Scene, Shapes } from "effect-motion";
-
-const scene = Scene.make(function* () {
-	const circle = yield* Scene.instantiate(Shapes.Circle, { x: 0, y: 150 });
-
-	// pulse three times, one second apart (measured from each pulse's end)
-	yield* Scene.repeat(
-		Motion.tween(circle, { x: 0 }, { x: 400 }, "0.5 seconds"),
-		Schedule.both(Schedule.spaced("1 second"), Schedule.recurs(2)),
-	);
-});
-```
+<Example name="repeat" />
 
 The `fixed` / `spaced` distinction is inherited from Effect: `spaced` waits
 the full gap **after** each run completes; `fixed` keeps a cadence and, once
@@ -39,18 +26,12 @@ an over-long run falls behind it, re-runs immediately without overlapping.
 `Scene.all` is the scene-level parallel combinator. Plain, it runs
 everything in lockstep. With a schedule, it staggers the *starts*:
 
-```ts
-yield* Scene.all([riseA, riseB, riseC], {
-	schedule: Schedule.spaced("250 millis"),
-});
-```
+<Example name="stagger" />
 
-The first effect releases immediately; each next one on the schedule's next
-emission. The schedule also decides **how many** run: with
-`Schedule.recurs(2)`, only the first three of five effects release and the
-rest are skipped — the result's `released` count makes that observable.
-Release pacing never delays completion: `Scene.all` resolves when the last
-released effect finishes.
+The schedule also decides **how many** run: with `Schedule.recurs(2)`, only
+the first three of five effects release and the rest are skipped — the
+result's `released` count makes that observable. Release pacing never delays
+completion: `Scene.all` resolves when the last released effect finishes.
 
 ## Fork and background
 
@@ -66,21 +47,11 @@ Two ways to run work concurrently with the rest of the scene:
 Rule of thumb: work that defines the scene's content is a `fork`; ambience
 that should last "as long as the scene does" is a `background`.
 
-```ts
-// a pulse that loops for the duration of the scene…
-yield* Scene.background(
-	Scene.repeat(pulse, Schedule.forever),
-);
+<Example name="fork-background" />
 
-// …while overlapping spawns drive the scene's actual length
-yield* Scene.repeat(
-	Scene.fork(particle),
-	Schedule.both(Schedule.fixed("50 millis"), Schedule.recurs(20)),
-);
-```
-
-Because `fork` returns immediately, repeating a fork spawns overlapping
-runs — the scene then ends when the last spawned run finishes.
+Watch the end of the timeline: the green pulse (a `Schedule.forever`
+background) is cut off exactly when the last red dot — an awaited fork —
+fades out.
 
 ## Infinite scenes and maxFrames
 

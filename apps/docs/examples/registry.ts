@@ -1,8 +1,11 @@
 import type { AnyScene } from "@effect-motion/react";
 import { scene as easingRace } from "./easing-race.scene";
+import { scene as forkBackground } from "./fork-background.scene";
 import { scene as groups } from "./groups.scene";
+import { scene as repeat } from "./repeat.scene";
 import { scene as seededRandomness } from "./seeded-randomness.scene";
 import { scene as springs } from "./springs.scene";
+import { scene as stagger } from "./stagger.scene";
 
 /**
  * Every example the docs can embed. The key doubles as the source file
@@ -13,4 +16,7 @@ export const examples: Record<string, AnyScene> = {
 	springs,
 	groups,
 	"seeded-randomness": seededRandomness,
+	repeat,
+	stagger,
+	"fork-background": forkBackground,
 };
