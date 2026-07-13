@@ -4,9 +4,10 @@
 	"type": "module",
 	"packageManager": "pnpm@11.11.0",
 	"scripts": {
+		"build": "turbo run build",
 		"test": "turbo run test",
 		"check": "turbo run check",
-		"playground": "turbo run dev --filter=playground",
+		"docs": "turbo run dev --filter=docs",
 		"lint": "biome check",
 		"lint:fix": "biome check --write"
 	},

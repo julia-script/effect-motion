@@ -4,9 +4,16 @@
 	"description": "",
 	"type": "module",
 	"exports": {
-		".": "./src/index.ts"
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		}
 	},
+	"files": [
+		"dist"
+	],
 	"scripts": {
+		"build": "tsc -p tsconfig.build.json",
 		"test": "vitest run",
 		"check": "tsc --noEmit"
 	},

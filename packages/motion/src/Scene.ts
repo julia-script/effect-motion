@@ -180,8 +180,8 @@ export const stream = <E, R, Entities extends Entity.AnyEntity>(
 				Stream.takeWhile((state): state is Frame<Entities> => state !== null),
 			),
 		),
-		Stream.fromEffect,
-		Stream.flatten,
+		Stream.unwrap
+
 	);
 
 type Updater<Data> = Data | ((data: Data) => Data);

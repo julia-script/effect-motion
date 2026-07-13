@@ -7,7 +7,16 @@
 	},
 	"files": {
 		"ignoreUnknown": false,
-		"includes": ["**", "!.history", "!**/.turbo"]
+		"includes": [
+			"**",
+			"!.history",
+			"!**/.turbo",
+			"!**/.next",
+			"!**/.source",
+			"!**/dist",
+			"!**/next-env.d.ts",
+			"!apps/docs/app/global.css"
+		]
 	},
 	"formatter": {
 		"enabled": true,

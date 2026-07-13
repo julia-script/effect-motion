@@ -1,0 +1,54 @@
+---
+title: Getting started
+description: Install effect-motion and play your first scene in React
+---
+
+## Install
+
+```bash
+pnpm add effect-motion @effect-motion/react effect
+```
+
+## Write a scene
+
+A scene is a generator program: instantiate shapes, then move them.
+Every `yield*` composes another effect into the scene.
+
+```ts title="my-scene.ts"
+import { Motion, Scene, Shapes } from "effect-motion";
+
+export const scene = Scene.make(function* () {
+	const circle = yield* Scene.instantiate(Shapes.Circle, {
+		x: 60,
+		y: 150,
+		radius: 16,
+		fill: "#7f5af0",
+	});
+
+	yield* circle.pipe(
+		Motion.tweenTo({ x: 440 }, "1 second", "easeInOutCubic"),
+	);
+});
+```
+
+## Play it
+
+The `<Player>` component runs the scene and gives you transport controls —
+play/pause and a scrubbable progress bar:
+
+```tsx title="app.tsx"
+import { Player } from "@effect-motion/react";
+import { scene } from "./my-scene";
+
+export function App() {
+	return <Player scene={scene} width={500} height={300} autoPlay />;
+}
+```
+
+Because scenes are deterministic and finite, the Player collects every frame
+up front by running the scene once, then plays the frames back — seeking in
+both directions is free.
+
+Prefer your own UI? `usePlayer(scene, options)` exposes the same state and
+controls (`status`, `frame`, `progress`, `play`, `pause`, `seek`, …) without
+any chrome.
