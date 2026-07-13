@@ -1,0 +1,63 @@
+---
+title: Composing scenes
+description: Nest scenes with Scene.play, signal semantic ends with Scene.finish
+---
+
+A scene is a plain value, and a movie is just a scene that plays other
+scenes. `Scene.play(scene, options?)` runs a scene as a **branch** of the
+current one — sharing the movie's runner, frame rate, and frame cap — and
+returns a handle: await `handle.finished` for sequential playback, or don't
+await it and the scenes run concurrently.
+
+## Two ends: finished vs done
+
+Every branch (a fork, a played scene, or the scene body itself) has two
+ends. Its **semantic** end is when `Scene.finish` is called — or, if it
+never is, when the branch completes. Its **physical** end is when it
+actually stops running. Everything that *waits* waits on the semantic end;
+whatever runs after `finish` is a **tail** that blocks nobody and is cut
+when its parent ends.
+
+That's the whole transition story:
+
+<Example name="crossfade" />
+
+Scene A signals `finish` after its crossing; the movie immediately starts
+scene B while A's fade-out tail plays over B's entrance. No transition API —
+the movie is ordinary scene code, and it owns the timing. Want a shorter
+tail? Interrupt it yourself: `yield* a.finished`, wait a few frames, then
+`Fiber.interrupt(a.fiber)`.
+
+Two things worth knowing about tails: a tail failure is not reported
+(nothing is listening anymore), and an *infinite* tail (say, a
+`Schedule.forever` repeat after `finish`) is fine — it's interrupted at the
+parent's end, exactly like `Scene.background`.
+
+## Seeds are stable across nesting
+
+Every `play` reseeds a fresh `Random` stream, so a nested scene animates
+**exactly** as it does standalone: `Scene.play(scene)` inside a movie
+seeded `S` equals `Scene.run(scene, { seed: S })`, frame for frame. Mount
+the same scene twice and you get identical twins — pass a per-mount seed to
+vary them:
+
+```ts
+yield* Scene.play(sparkles, { seed: "left" });
+yield* Scene.play(sparkles, { seed: "right" });
+```
+
+## Mounting
+
+By default a scene's instances attach to the root. Give `play` a group and
+the whole child scene lives under it — move or fade the group and the
+nested scene follows:
+
+```ts
+const stage = yield* Scene.instantiate(Shapes.Group, { x: 60, y: 40 });
+const h = yield* Scene.play(intro, { parent: stage });
+yield* h.finished;
+yield* Motion.fadeTo(stage, 0, "500 millis"); // fades the whole sub-scene
+```
+
+An explicit `{ parent }` on `instantiate` inside the child still wins over
+the mount — mounting only changes the *default*.

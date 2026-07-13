@@ -91,11 +91,11 @@ describe("Scene.fork", () => {
 	it("a manually interrupted fork releases its slot; the scene ends without it", async () => {
 		const frames = await collectFrames(function* () {
 			const circle = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
-			const fiber = yield* Scene.fork(
+			const handle = yield* Scene.fork(
 				Motion.tween(circle, { x: 0 }, { x: 100 }, "10 seconds"),
 			);
 			yield* Scene.sleep("83 millis"); // 5 frames
-			yield* Fiber.interrupt(fiber);
+			yield* Fiber.interrupt(handle.fiber);
 		});
 		// 5 body frames + settle — the 600-frame fork is gone, no hang
 		expect(frames).toHaveLength(6);

@@ -1,4 +1,4 @@
-import { Layer } from "effect";
+import { Context, Latch, Layer } from "effect";
 import * as Cause from "effect/Cause";
 import type * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
@@ -20,6 +20,10 @@ export interface Scene<E, R, Entities> {
 	readonly [TypeId]: typeof TypeId;
 	readonly runner: Effect.Effect<void, E, R | Scope.Scope>;
 	readonly "~entities": Entities;
+	/** tooling-facing metadata; never read by the runtime */
+	readonly annotations: Context.Context<never>;
+	annotate<I, S>(key: Context.Key<I, S>, value: S): Scene<E, R, Entities>;
+	annotateMerge(context: Context.Context<never>): Scene<E, R, Entities>;
 }
 
 type MakeEffect<Eff extends Effect.Effect<any, any, any>, AEff> = Effect.Effect<
@@ -55,10 +59,25 @@ export const make = <const Eff extends Effect.Effect<any, any, any>, AEff>(
 			>
 		>
 	: never => {
-	return {
-		runner: Effect.scoped(Effect.gen(f)),
-	} as never;
+	return makeScene(Effect.scoped(Effect.gen(f)), Context.empty()) as never;
 };
+
+// annotate/annotateMerge return new scene values sharing the same body
+const makeScene = (
+	runnerEffect: Effect.Effect<void, unknown, unknown>,
+	annotations: Context.Context<never>,
+): object => ({
+	[TypeId]: TypeId,
+	runner: runnerEffect,
+	annotations,
+	annotate: (key: Context.Key<never, unknown>, value: unknown) =>
+		makeScene(
+			runnerEffect,
+			Context.add(annotations, key, value) as Context.Context<never>,
+		),
+	annotateMerge: (context: Context.Context<never>) =>
+		makeScene(runnerEffect, Context.merge(annotations, context)),
+});
 
 export const instantiate = Effect.fnUntraced(function* <
 	Name extends string,
@@ -121,13 +140,24 @@ export const step = <E, R, Entities extends Entity.AnyEntity>(
 		// can starve the scene fiber for many frames, so waiting for its own
 		// drain to stop backgrounds would leak extra frames.
 		if (runningScene.done || runningScene.runner.awaitedCount() === 0) {
-			// scene end includes stopping backgrounds (idempotent with the
-			// scene fiber's own drain)
-			yield* Fiber.interruptAll(runningScene.runner.backgrounds);
-			// propagate a failed scene's cause instead of ending silently
+			// scene end: stop the backgrounds (including demoted tails), and
+			// cut the root's own tail if the body finished-and-continued —
+			// interrupting a completed fiber is a no-op, so the ordinary path
+			// is unchanged (idempotent with the scene fiber's own drain)
+			yield* Fiber.interruptAll(
+				[...runningScene.runner.backgrounds].map((b) => b.fiber),
+			);
+			yield* Fiber.interrupt(runningScene.fiber);
 			const exit = yield* Fiber.await(runningScene.fiber);
-			if (Exit.isFailure(exit)) {
+			// propagate a failed scene's cause instead of ending silently
+			if (Exit.isFailure(exit) && !Cause.hasInterruptsOnly(exit.cause)) {
 				return yield* Effect.failCause(exit.cause);
+			}
+			// branch failures are recorded out-of-band: our interrupt may
+			// have cut the scene fiber's drain before it could re-raise them
+			const recorded = runningScene.runner.failureCause();
+			if (recorded !== undefined) {
+				return yield* Effect.failCause(recorded as Cause.Cause<E>);
 			}
 			return null;
 		}
@@ -161,52 +191,41 @@ export const run = <E, R, Entities>(
 		const runner = yield* Runner.Runner.make(settings);
 		let done = false;
 
+		// the body is itself a branch: Scene.finish inside it demotes the
+		// root (count--) while the body keeps ticking as a tail
+		const rootBranch = makeBranch(runner, "root");
+
 		// Once the body can no longer tick, its party slot must go — a
 		// registered-but-never-arriving root would deadlock quiescence while
-		// forks drain. Released at most once: the drain paths release it
-		// eagerly, the ensuring covers external interruption.
-		let rootReleased = false;
+		// forks drain. finishUnsafe handles count/latch (at most once, and
+		// possibly already done by Scene.finish); the party goes here.
+		let partyReleased = false;
 		const releaseRoot = Effect.sync(() => {
-			if (!rootReleased) {
-				rootReleased = true;
-				// count BEFORE deregister: deregistering can synchronously
-				// resume the frame consumer, which must observe the scene as
-				// no-longer-awaited or it will spin out empty frames
-				runner.countAwaited(-1);
+			// count/latch BEFORE deregister: deregistering can synchronously
+			// resume the frame consumer, which must observe consistent
+			// bookkeeping or it will spin out empty frames
+			rootBranch.finishUnsafe();
+			if (!partyReleased) {
+				partyReleased = true;
 				runner.phaser.deregister(1);
 			}
 		});
 
-		// Join every awaited fork (forks may spawn more forks while we
-		// drain), then stop the backgrounds — backgrounds live through the
-		// drain, "scene end" includes it. A fork's own failure fails the
-		// scene; a fork that was merely interrupted does not.
+		// Wait for every fork's SEMANTIC end (finish or completion both
+		// remove it from the set; forks spawned while draining are picked up
+		// by the size re-check), then stop the backgrounds — including
+		// demoted tails; "scene end" includes the drain. Un-finished branch
+		// failures were recorded by their own finalizers.
 		const drain = Effect.gen(function* () {
-			const joined = new Set<Fiber.Fiber<unknown, unknown>>();
-			// fork error types are erased at the fork boundary (the caller
-			// gets the fiber, not the error channel), so the cause comes
-			// back as E only by assertion
-			let failure: Cause.Cause<E> | undefined;
-			while (true) {
-				const pending = [...runner.forks].filter((f) => !joined.has(f));
-				if (pending.length === 0) {
-					break;
-				}
-				for (const forkFiber of pending) {
-					joined.add(forkFiber);
-					const exit = yield* Fiber.await(forkFiber);
-					if (
-						failure === undefined &&
-						Exit.isFailure(exit) &&
-						!Cause.hasInterruptsOnly(exit.cause)
-					) {
-						failure = exit.cause as Cause.Cause<E>;
-					}
-				}
+			while (runner.forks.size > 0) {
+				const [next] = runner.forks;
+				// biome-ignore lint/style/noNonNullAssertion: size > 0
+				yield* next!.finished;
 			}
-			yield* Fiber.interruptAll(runner.backgrounds);
-			if (failure !== undefined) {
-				return yield* Effect.failCause(failure);
+			yield* Fiber.interruptAll([...runner.backgrounds].map((b) => b.fiber));
+			const recorded = runner.failureCause();
+			if (recorded !== undefined) {
+				return yield* Effect.failCause(recorded as Cause.Cause<E>);
 			}
 		});
 
@@ -222,14 +241,19 @@ export const run = <E, R, Entities>(
 						Effect.scoped,
 						Effect.matchCauseEffect({
 							onSuccess: () => releaseRoot.pipe(Effect.andThen(drain)),
-							// a failed body takes everything down with it
+							// a failed body takes everything down with it. The cause
+							// is ALSO recorded out-of-band: the consumer's scene-end
+							// interrupt can cut this fiber before failCause runs,
+							// and the root branch records like any other branch
 							onFailure: (cause) =>
-								releaseRoot.pipe(
+								Effect.sync(() => runner.recordFailure(cause)).pipe(
+									Effect.andThen(releaseRoot),
 									Effect.andThen(
-										Fiber.interruptAll([
-											...runner.forks,
-											...runner.backgrounds,
-										]),
+										Fiber.interruptAll(
+											[...runner.forks, ...runner.backgrounds].map(
+												(b) => b.fiber,
+											),
+										),
 									),
 									Effect.andThen(Effect.failCause(cause)),
 								),
@@ -237,6 +261,7 @@ export const run = <E, R, Entities>(
 					),
 				).pipe(
 					Effect.ensuring(releaseRoot),
+					Effect.provideService(CurrentBranch, rootBranch),
 					// success, failure, or interrupt: the scene is over either way
 					Effect.ensuring(
 						Effect.sync(() => {
@@ -319,6 +344,143 @@ export const settings = Effect.fnUntraced(function* () {
 	return runner.settings;
 });
 
+// ── branches: semantic vs physical ends ────────────────────────────────
+
+/**
+ * Handle to a branch of animation (a fork, background, or played scene).
+ * `finished` resolves at the branch's SEMANTIC end — `Scene.finish` or
+ * completion, whichever comes first. Awaiting it from scene code HOLDS
+ * the scene (the waiter keeps ticking frames, like `Scene.sleep`), so
+ * the rest of the scene stays live while you wait. `fiber` is the
+ * branch's physical execution — interrupt it to bound a tail.
+ */
+export interface BranchHandle<A = unknown, E = unknown> {
+	readonly finished: Effect.Effect<void, never, Runner.Runner>;
+	readonly fiber: Fiber.Fiber<A, E>;
+}
+
+interface BranchInternal {
+	readonly entry: {
+		fiber: Fiber.Fiber<unknown, unknown>;
+		readonly finished: Effect.Effect<void>;
+	};
+	readonly finishUnsafe: () => void;
+	readonly isFinished: () => boolean;
+}
+
+/** the innermost enclosing branch; null = outside any running scene */
+const CurrentBranch = Context.Reference<BranchInternal | null>(
+	"motion/Scene/CurrentBranch",
+	{ defaultValue: () => null },
+);
+
+const makeBranch = (
+	runner: Runner.Runner["Service"],
+	kind: "fork" | "background" | "root",
+): BranchInternal => {
+	const latch = Latch.makeUnsafe();
+	let finished = false;
+	const entry = {
+		// assigned immediately after forking, before anyone can observe it
+		fiber: null as unknown as Fiber.Fiber<unknown, unknown>,
+		finished: latch.await,
+	};
+	const finishUnsafe = () => {
+		if (finished) {
+			return;
+		}
+		finished = true;
+		// demotion happens BEFORE the latch opens: awaiters resumed by the
+		// latch must observe consistent bookkeeping
+		if (kind !== "background") {
+			runner.countAwaited(-1);
+		}
+		if (kind === "fork") {
+			// fork -> background: keeps its phaser party (it may still be
+			// animating), stops holding the scene open; the tail is
+			// interrupted with the backgrounds at scene end
+			runner.forks.delete(entry);
+			runner.backgrounds.add(entry);
+		}
+		latch.openUnsafe();
+	};
+	return { entry, finishUnsafe, isFinished: () => finished };
+};
+
+/**
+ * Finish the innermost enclosing branch (the current fork, played scene,
+ * or the scene body itself): whoever awaits the branch's `finished`
+ * proceeds, the branch stops blocking its parent's end, and the code
+ * after `finish` keeps running as a TAIL — bounded by the parent, which
+ * interrupts it at scene end like a background. Idempotent; completion
+ * implies finish. NOTE: a failure in the tail (after finish) is NOT
+ * reported — by then nothing is listening.
+ */
+export const finish = Effect.gen(function* () {
+	const branch = yield* CurrentBranch;
+	if (branch === null) {
+		return yield* Effect.die(
+			new Error("Scene.finish called outside a running scene"),
+		);
+	}
+	branch.finishUnsafe();
+});
+
+// shared by fork/background/play: register the party synchronously,
+// fork, record un-finished failures, finish implicitly on completion
+const forkBranch = <A, E, R>(
+	runner: Runner.Runner["Service"],
+	effect: Effect.Effect<A, E, R>,
+	kind: "fork" | "background",
+) =>
+	Effect.gen(function* () {
+		const branch = makeBranch(runner, kind);
+		if (kind === "fork") {
+			// counted before the fork (no gap); undone exactly once by the
+			// branch's finish/completion — synchronous with its party release
+			runner.countAwaited(1);
+		}
+		const fiber = yield* Phaser.run(
+			runner.phaser,
+			effect.pipe(
+				Effect.onExit((exit) =>
+					Effect.sync(() => {
+						// tail failures (post-finish) are deliberately dropped
+						if (
+							!branch.isFinished() &&
+							Exit.isFailure(exit) &&
+							!Cause.hasInterruptsOnly(exit.cause)
+						) {
+							runner.recordFailure(exit.cause);
+						}
+						branch.finishUnsafe();
+					}),
+				),
+				Effect.provideService(CurrentBranch, branch),
+			),
+		);
+		branch.entry.fiber = fiber;
+		if (kind === "fork" && !branch.isFinished()) {
+			runner.forks.add(branch.entry);
+		} else {
+			// backgrounds — and forks that completed synchronously before we
+			// could track them (their demotion already targeted these sets)
+			runner.backgrounds.add(branch.entry);
+		}
+		return {
+			// the PUBLIC wait ticks while waiting: an awaiting scene fiber is
+			// a phaser party and must keep arriving, or quiescence deadlocks.
+			// (The internal drain awaits the latch instead — it holds no
+			// party by the time it runs.)
+			finished: Effect.gen(function* () {
+				while (!branch.isFinished()) {
+					yield* tick;
+				}
+			}),
+			fiber,
+		} as BranchHandle<A, E>;
+	});
+
 // the phaser's phase counter IS the current frame index
 const frameOf = (runner: Runner.Runner["Service"]) =>
 	runner.phaser.snapshotUnsafe().phase;
@@ -374,19 +536,7 @@ export const repeat = <A, E, R, Output, ScheduleE, ScheduleR>(
 export const fork = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
 	Effect.gen(function* () {
 		const runner = yield* Runner.Runner;
-		// counted before the fork (no gap), uncounted in the fork's own
-		// finalizer — synchronous with its phaser-party release
-		runner.countAwaited(1);
-		// Phaser.run registers the party synchronously before forking, so a
-		// fork can never miss the frame it was spawned in
-		const fiber = yield* Phaser.run(
-			runner.phaser,
-			effect.pipe(
-				Effect.ensuring(Effect.sync(() => runner.countAwaited(-1))),
-			),
-		);
-		runner.forks.add(fiber);
-		return fiber;
+		return yield* forkBranch(runner, effect, "fork");
 	});
 
 /**
@@ -399,10 +549,54 @@ export const fork = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
 export const background = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
 	Effect.gen(function* () {
 		const runner = yield* Runner.Runner;
-		const fiber = yield* Phaser.run(runner.phaser, effect);
-		runner.backgrounds.add(fiber);
-		return fiber;
+		return yield* forkBranch(runner, effect, "background");
 	});
+
+export interface PlayOptions {
+	/** group to mount the scene's instances under (default: the root) */
+	readonly parent?: Runner.GroupInstance;
+	/** seed for this evaluation (default: the movie's seed) */
+	readonly seed?: Runner.Seed;
+}
+
+/**
+ * Play a scene as a branch of the current scene — the explicit door to
+ * nesting. The child shares the movie's runner, phaser, frame rate, and
+ * frame cap, and gets its own scope, branch handle, mount parent, and a
+ * FRESH seeded Random stream: `play(scene)` inside a movie seeded `S`
+ * animates exactly like `run(scene, { seed: S })` standalone. Awaited
+ * like a fork — `yield* handle.finished` for sequential nesting, or
+ * don't await for concurrent scenes.
+ */
+export const play = <E, R, Entities>(
+	scene: Scene<E, R, Entities>,
+	options?: PlayOptions,
+): Effect.Effect<
+	BranchHandle<void, E>,
+	never,
+	Runner.Runner | Exclude<R, Scope.Scope>
+> =>
+	Effect.gen(function* () {
+		const runner = yield* Runner.Runner;
+		const mounted =
+			options?.parent === undefined
+				? scene.runner.pipe(Effect.scoped)
+				: scene.runner.pipe(
+						Effect.scoped,
+						Effect.provideService(Runner.CurrentParent, options.parent),
+					);
+		const body = mounted.pipe(
+			// fresh stream per evaluation: nested playback must equal a
+			// standalone run with the same seed, never inherit the parent's
+			// stream position
+			Random.withSeed(options?.seed ?? runner.settings.seed),
+		);
+		return (yield* forkBranch(
+			runner,
+			body as Effect.Effect<void, E, never>,
+			"fork",
+		)) as BranchHandle<void, E>;
+	}) as never;
 
 /**
  * Run effects in lockstep parallel, sharing frame phases — the public

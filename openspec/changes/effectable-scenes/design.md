@@ -14,7 +14,7 @@
 
 **Non-Goals:**
 - Effectable scenes (`yield* scene` directly). Rejected this round: it served composability framing, not a need — an explicit helper is simpler, avoids type-level risk around the entity phantom, and makes nesting visible at call sites.
-- Finish-aware `Scene.chain`. Advancing on `finished` requires chain items to run in their own fibers (an inline item cannot continue past finish), dragging slot-lending into chain. Crossfades are fully expressible with handles (`play` + `yield* h.finished`); promote chain later if that proves clunky.
+- Finish-aware `Scene.chain`. Advancing on `finished` requires chain items to run in their own fibers (an inline item cannot continue past finish), dragging slot-lending into chain. Crossfades are fully expressible with handles (`play` + `yield* h.finished`); left as a follow-up. Direction when picked up: chain SHOULD advance on `finished` and let the tail play (bounded by the chain's parent) — an item that finishes into an indefinite repeat (e.g. an ambience that runs "as long as the parent needs") must not wedge the chain forever. If tail-hosting proves too heavy, the fallback is treating finish as the item's completion and interrupting the tail at advance.
 - A dedicated transition/sequencer API, or player awareness of `finished`.
 
 ## Decisions

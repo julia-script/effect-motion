@@ -51,12 +51,16 @@ plain `Scene.all(effects)`.
 
 Two ways to run work concurrently with the rest of the scene:
 
-- `Scene.fork(effect)` — starts immediately, returns the fiber, and the
-  scene's end **waits** for it. A scene whose body returns while forks are
-  still animating keeps producing frames until the last one finishes.
+- `Scene.fork(effect)` — starts immediately, returns a branch handle
+  (`finished` + `fiber`), and the scene's end **waits** for it. A scene
+  whose body returns while forks are still animating keeps producing frames
+  until the last one finishes.
 - `Scene.background(effect)` — same, but the fiber is **interrupted** at
   scene end. Backgrounds live through the fork drain and never keep a scene
   alive.
+
+A fork can also drop its "the scene waits for me" status mid-flight with
+`Scene.finish` — see [Composing scenes](/docs/composition).
 
 Rule of thumb: work that defines the scene's content is a `fork`; ambience
 that should last "as long as the scene does" is a `background`.

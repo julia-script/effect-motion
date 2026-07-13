@@ -7,7 +7,11 @@
 
 #### Scenario: Tail keeps playing after finish
 - **WHEN** a forked branch calls `Scene.finish` and then keeps animating
-- **THEN** awaiters of the branch's `finished` latch are released immediately and the tail's frames keep rendering
+- **THEN** awaiters of the branch's `finished` signal proceed at the next frame boundary and the tail's frames keep rendering
+
+#### Scenario: Awaiting finished holds the scene
+- **WHEN** scene code awaits a branch's `finished` signal
+- **THEN** the awaiting branch keeps ticking frames while it waits (like `Scene.sleep`), so the rest of the scene stays live and the phaser never deadlocks
 
 #### Scenario: A finished fork no longer blocks scene end
 - **WHEN** the scene body ends while a fork that called `Scene.finish` is still animating

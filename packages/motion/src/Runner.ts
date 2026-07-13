@@ -1,4 +1,5 @@
 import { Layer } from "effect";
+import type * as Cause from "effect/Cause";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import type * as Fiber from "effect/Fiber";
@@ -39,8 +40,30 @@ export type Settings = {
 export type GroupInstance = Instance.Of<typeof Group>;
 
 export interface InstantiateOptions {
-	/** the group to attach the new instance to; defaults to the root */
+	/**
+	 * the group to attach the new instance to; defaults to the ambient
+	 * mount parent (see `CurrentParent`), which defaults to the root
+	 */
 	readonly parent?: GroupInstance;
+}
+
+/**
+ * The ambient mount parent for `instantiate` — provided per scene
+ * evaluation (`Scene.play({ parent })`); `null` means the runner root.
+ */
+export const CurrentParent = Context.Reference<GroupInstance | null>(
+	"motion/Runner/CurrentParent",
+	{ defaultValue: () => null },
+);
+
+/**
+ * A branch of animation as the runner tracks it: its fiber and its
+ * SEMANTIC end (`finished` resolves at `Scene.finish` or completion,
+ * whichever comes first).
+ */
+export interface BranchEntry {
+	readonly fiber: Fiber.Fiber<unknown, unknown>;
+	readonly finished: Effect.Effect<void>;
 }
 
 export class Runner extends Context.Service<Runner>()("Runner", {
@@ -50,15 +73,20 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 			{ data: unknown; entity: Entity.AnyEntity }
 		> = {};
 		const phaser = yield* Phaser.Phaser.make;
-		// concurrent work spawned by Scene.fork / Scene.background; joined
-		// (forks) or interrupted (backgrounds) by Scene.run when the body ends
-		const forks = new Set<Fiber.Fiber<unknown, unknown>>();
-		const backgrounds = new Set<Fiber.Fiber<unknown, unknown>>();
-		// root party + live forks — the work the scene's end must wait for.
-		// Kept as a synchronous counter (updated in the same finalizers that
-		// release phaser parties) so the frame consumer can decide "scene
-		// over" without depending on the scene fiber getting scheduled.
+		// concurrent branches spawned by Scene.fork / Scene.play /
+		// Scene.background. `forks` hold the scene's end hostage until their
+		// SEMANTIC end; a branch that finishes (or completes) is demoted to
+		// `backgrounds`, which are interrupted at scene end.
+		const forks = new Set<BranchEntry>();
+		const backgrounds = new Set<BranchEntry>();
+		// root party + un-finished forks — the work the scene's end must wait
+		// for. Kept as a synchronous counter (updated in the same finalizers
+		// that release phaser parties) so the frame consumer can decide
+		// "scene over" without depending on the scene fiber being scheduled.
 		let awaited = 0;
+		// first NON-finished branch failure; failures in a tail (after
+		// Scene.finish) are deliberately not reported
+		let failure: Cause.Cause<unknown> | undefined;
 		let idCounter = 0;
 		const generateId = (name: string) => {
 			return `${name}_${idCounter++}`;
@@ -110,7 +138,9 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 				const id = generateId(entity.name);
 				const instance = Instance.make(entity, id);
 				setDataUnsafe(instance, props);
-				attach(options?.parent ?? root, id);
+				// explicit parent > ambient mount parent (Scene.play) > root
+				const ambient = yield* CurrentParent;
+				attach(options?.parent ?? ambient ?? root, id);
 
 				return instance;
 			}),
@@ -155,6 +185,10 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 				awaited += n;
 			},
 			awaitedCount: (): number => awaited,
+			recordFailure: (cause: Cause.Cause<unknown>): void => {
+				failure = failure ?? cause;
+			},
+			failureCause: (): Cause.Cause<unknown> | undefined => failure,
 		};
 	}),
 }) {}
