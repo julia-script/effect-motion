@@ -6,6 +6,7 @@
 		"groups",
 		"seeded-randomness",
 		"particles",
-		"text"
+		"text",
+		"the-box"
 	]
 }
