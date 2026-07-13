@@ -1,0 +1,31 @@
+{
+	"name": "@effect-motion/react",
+	"version": "0.0.1",
+	"description": "React bindings for effect-motion: usePlayer hook and Player component",
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"scripts": {
+		"test": "vitest run",
+		"check": "tsc --noEmit"
+	},
+	"license": "MIT",
+	"dependencies": {
+		"effect": "4.0.0-beta.94",
+		"effect-motion": "workspace:*"
+	},
+	"peerDependencies": {
+		"react": ">=18"
+	},
+	"devDependencies": {
+		"@testing-library/react": "^16.3.0",
+		"@types/react": "^19.2.0",
+		"@types/react-dom": "^19.2.0",
+		"happy-dom": "^20.10.6",
+		"react": "^19.2.0",
+		"react-dom": "^19.2.0",
+		"typescript": "^7.0.2",
+		"vitest": "^4.1.10"
+	}
+}
