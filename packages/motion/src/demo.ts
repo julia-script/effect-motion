@@ -75,9 +75,10 @@ export const staggered = Scene.make(function* () {
 			);
 			yield* Motion.tweenTo(circle, { x: x + 300 }, "1 second", "easeInOutCubic");
 		});
-	yield* Scene.all([dot(0), dot(25), dot(50)], {
-		schedule: Schedule.spaced("250 millis"),
-	});
+	yield* Scene.stagger(
+		[dot(0), dot(25), dot(50)],
+		Schedule.spaced("250 millis"),
+	);
 });
 
 const movie = Effect.gen(function* () {

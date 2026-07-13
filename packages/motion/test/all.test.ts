@@ -24,16 +24,14 @@ const collectFrames = async (
 };
 
 describe("Scene.all", () => {
-	it("plain form runs effects in lockstep parallel", async () => {
-		let released = 0;
+	it("runs effects in lockstep parallel", async () => {
 		const frames = await collectFrames(function* () {
 			const a = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
 			const b = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
-			const result = yield* Scene.all([
+			yield* Scene.all([
 				Motion.tween(a, { x: 0 }, { x: 100 }, "0.5 seconds"),
 				Motion.tween(b, { x: 0 }, { x: 100 }, "0.5 seconds"),
 			]);
-			released = result.released;
 		});
 		expect(frames).toHaveLength(31);
 		expect(frames.at(-1)![0]!.x).toBe(100);
@@ -41,21 +39,99 @@ describe("Scene.all", () => {
 		// truly concurrent: both mid-flight on the same frame
 		expect(frames[15]![0]!.x).toBeGreaterThan(0);
 		expect(frames[15]![1]!.x).toBeGreaterThan(0);
-		expect(released).toBe(2);
+	});
+});
+
+describe("Scene.chain", () => {
+	it("items run one at a time with schedule-paced rests — never overlapping", async () => {
+		const frames = await collectFrames(function* () {
+			const a = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
+			const b = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
+			yield* Scene.chain(
+				[
+					Motion.tween(a, { x: 0 }, { x: 100 }, "0.5 seconds"),
+					Motion.tween(b, { x: 0 }, { x: 100 }, "0.5 seconds"),
+				],
+				Schedule.spaced("0.5 seconds"),
+			);
+		});
+		// item 1: 0..29 — rest: 30..59 — item 2: 60..89 — settle: 90
+		expect(frames).toHaveLength(91);
+		expect(frames[29]![0]!.x).toBe(100);
+		expect(frames[59]![1]!.x).toBe(0); // b untouched through the rest
+		expect(frames[60]![1]!.x).toBeGreaterThan(0); // b starts at frame 60
+		expect(frames.at(-1)![1]!.x).toBe(100);
 	});
 
-	it("schedule staggers starts on exact frames; pacing never delays completion", async () => {
+	it("without a schedule, plain sequential composition", async () => {
+		const frames = await collectFrames(function* () {
+			const a = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
+			const b = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
+			yield* Scene.chain([
+				Motion.tween(a, { x: 0 }, { x: 100 }, "0.5 seconds"),
+				Motion.tween(b, { x: 0 }, { x: 100 }, "0.5 seconds"),
+			]);
+		});
+		expect(frames).toHaveLength(61);
+		expect(frames[29]![1]!.x).toBe(0);
+		expect(frames[30]![1]!.x).toBeGreaterThan(0); // b right after a, no gap
+	});
+
+	it("schedule exhaustion skips remaining items, observably", async () => {
+		let completed = 0;
+		const spawn = () =>
+			Effect.gen(function* () {
+				const c = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
+				yield* Motion.tween(c, { x: 0 }, { x: 100 }, "166 millis");
+			}) as never;
+		const frames = await collectFrames(function* () {
+			const result = yield* Scene.chain(
+				[spawn(), spawn(), spawn(), spawn(), spawn()],
+				Schedule.both(Schedule.spaced("50 millis"), Schedule.recurs(2)),
+			);
+			completed = result.completed;
+		});
+		expect(completed).toBe(3);
+		expect(frames.at(-1)!).toHaveLength(3); // items 4 and 5 never ran
+	});
+
+	it("item results feed the schedule as input", async () => {
+		let n = 0;
+		const item = () =>
+			Effect.gen(function* () {
+				yield* Scene.tick;
+				return ++n;
+			}) as never;
+		let completed = 0;
+		await collectFrames(function* () {
+			yield* Scene.instantiate(Shapes.Circle, { x: 0 });
+			const result = yield* Scene.chain(
+				[item(), item(), item(), item(), item()],
+				Schedule.collectWhile(Schedule.forever, (meta) =>
+					Effect.succeed((meta.input as number) < 3),
+				),
+			);
+			completed = result.completed;
+		});
+		// stops advancing after the first item whose result is >= 3
+		expect(n).toBe(3);
+		expect(completed).toBe(3);
+	});
+});
+
+describe("Scene.stagger", () => {
+	it("staggers starts on exact frames; pacing never delays completion", async () => {
 		const frames = await collectFrames(function* () {
 			const a = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
 			const b = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
 			const c = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
-			yield* Scene.all(
+			yield* Scene.stagger(
 				[
 					Motion.tween(a, { x: 0 }, { x: 100 }, "0.5 seconds"),
 					Motion.tween(b, { x: 0 }, { x: 100 }, "0.5 seconds"),
 					Motion.tween(c, { x: 0 }, { x: 100 }, "0.5 seconds"),
 				],
-				{ schedule: Schedule.spaced("0.25 seconds") },
+				Schedule.spaced("0.25 seconds"),
 			);
 		});
 		// releases at frames 0, 15, 30 — last branch ends at 60, settle at 61.
@@ -81,14 +157,9 @@ describe("Scene.all", () => {
 				yield* Motion.tween(c, { x: 0 }, { x: 100 }, "166 millis");
 			}) as never;
 		const frames = await collectFrames(function* () {
-			const result = yield* Scene.all(
+			const result = yield* Scene.stagger(
 				[spawn(), spawn(), spawn(), spawn(), spawn()],
-				{
-					schedule: Schedule.both(
-						Schedule.spaced("50 millis"),
-						Schedule.recurs(2),
-					),
-				},
+				Schedule.both(Schedule.spaced("50 millis"), Schedule.recurs(2)),
 			);
 			released = result.released;
 		});

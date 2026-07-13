@@ -21,17 +21,31 @@ The `fixed` / `spaced` distinction is inherited from Effect: `spaced` waits
 the full gap **after** each run completes; `fixed` keeps a cadence and, once
 an over-long run falls behind it, re-runs immediately without overlapping.
 
+## Chain
+
+`Scene.chain(effects, schedule?)` runs a list one item at a time. Like
+everything schedule-driven in Effect, items **never overlap**: the schedule
+is consulted only when an item ends, and it paces the next start.
+
+<Example name="chain" />
+
+The schedule also decides **how many** run: with `Schedule.recurs(2)`, only
+the first three of five items run and the rest are skipped — the result's
+`completed` count makes that observable. Without a schedule, `chain` is
+plain sequential composition.
+
 ## Stagger
 
-`Scene.all` is the scene-level parallel combinator. Plain, it runs
-everything in lockstep. With a schedule, it staggers the *starts*:
+Overlap is always explicit. `Scene.stagger(effects, schedule)` releases the
+first effect immediately and each next one on the schedule's next emission —
+released effects run **concurrently**:
 
 <Example name="stagger" />
 
-The schedule also decides **how many** run: with `Schedule.recurs(2)`, only
-the first three of five effects release and the rest are skipped — the
-result's `released` count makes that observable. Release pacing never delays
-completion: `Scene.all` resolves when the last released effect finishes.
+Truncation works like chain's (the result reports `released`), and release
+pacing never delays completion: `stagger` resolves when the last released
+effect finishes. For lockstep parallelism with no pacing at all, there's
+plain `Scene.all(effects)`.
 
 ## Fork and background
 

@@ -30,11 +30,19 @@ The driver lives beside `Time.toFrames` and is internal (not exported from the p
 
 First run is immediate; the schedule paces the gaps *after* runs; the effect's output is fed to the schedule as input (enabling `Schedule.recurWhile` etc.); the combinator completes when the schedule is done. `Schedule.fixed` therefore gives cadence catch-up without overlap (a 2s animation on a 1s fixed schedule re-fires immediately), `spaced` waits the full gap after completion — both inherited, not reimplemented.
 
-### D3: `Scene.all` stagger — schedule bounds releases; leftover effects are skipped
+### D3 (revised): list composition — `chain` is the schedule default (no overlap), `stagger` is the explicit opt-in
 
-With `{ schedule }`, effect 0 is released immediately and each subsequent release waits for the next schedule emission. When the schedule ends before all effects are released, the remaining effects are **not run** — the schedule is the release policy including how many. (`Schedule.recurs(3)` over 5 effects releases 3.) Users who want everything released express it in the schedule. `Scene.all` resolves once all *released* effects finish, and reports how many were released so truncation is observable. Party accounting is incremental `register(1)` per release (controller holds one party and ticks between releases), a variation of `Phaser.all`'s slot lending.
+Effect's documented guarantee is that scheduled effects do not overlap: the schedule is consulted only when a run completes. The scene combinators follow it:
 
-Alternative rejected: "release the rest immediately on exhaustion" — makes the schedule mean two different things before and after exhaustion.
+- `Scene.all(effects)`: plain lockstep parallel (`Phaser.all`), **no schedule option** — a parallel combinator, not a release policy.
+- `Scene.chain(effects, schedule?)`: sequential. After each item completes, the schedule is stepped once with (completion time, item result) to pace the next start — `fixed` gives a start cadence with catch-up, `spaced` gives rests between items, and items never overlap. Without a schedule it is plain sequential composition. Schedule exhaustion skips the remaining items (observable via a completed count).
+- `Scene.stagger(effects, schedule)`: overlapping staggered starts — semantically `chain(effects.map(Scene.fork))`, kept as its own combinator so it resolves when all released *animations* (not just releases) finish. Release frames are decided up front (stagger decisions don't depend on item results); one driver step per release with live scene-time `now`s; party accounting delegated to `Phaser.all` via tick-until-release branch prefixes.
+
+Truncation semantics shared by chain and stagger: when the schedule ends early, remaining items are **not run** — the schedule is the release policy including how many (`Schedule.recurs(2)` over 5 items runs 3). No schedule step is consumed after the last item.
+
+Alternatives rejected: a `schedule` option on `Scene.all` with staggered-start semantics (makes overlap the implicit default of schedule-paced lists, contradicting Effect semantics and the user's fork-as-explicit-opt-out intent — this was v1 of this design and was reverted); naming the overlap combinator `sequence` (in Effect/FP vocabulary "sequence" means one-after-another — the exact inverse).
+
+Forward note: in `effectable-scenes`, chain's advance trigger generalizes from "item completed" to "item finished (semantic end)", making `chain` the scene-transition sequencer with no new API.
 
 ### D4: `fork` waits, `background` is interrupted
 

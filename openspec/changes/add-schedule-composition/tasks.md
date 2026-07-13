@@ -27,7 +27,15 @@
 - [x] 5.1 Add `maxFrames` to `Runner.Settings` (default 36_000) and enforce in `Scene.step`: fail with an error naming `maxFrames` and its value when exceeded; `Infinity` disables
 - [x] 5.2 Tests: infinite scene fails at the cap with the named setting; finite scene under cap unchanged; `Infinity` never caps; custom cap respected
 
-## 6. Surface and docs
+## 6. Split list composition (post-review: no-overlap default)
 
-- [x] 6.1 Export new combinators from the package index (already covered: `export * as Scene` re-exports `repeat`/`all`/`fork`/`background`); docstrings on `fork`/`background` calling out the inversion of Effect's fork semantics (fork waits, background is interrupted)
-- [x] 6.2 Update the docs site: pacing/repeat/stagger page with the fork-vs-background rule of thumb and the `maxFrames` opt-in; extend `demo.ts` with a staggered + background example
+- [x] 6.1 Revert `Scene.all` to a plain `Phaser.all` alias (no schedule option): schedule-paced lists must default to Effect's no-overlap guarantee, not staggered starts
+- [x] 6.2 Add `Scene.chain(effects, schedule?)`: sequential, schedule stepped once after each item completes (item result as input), no step after the last item, exhaustion skips the rest (reports `completed`), no schedule = plain sequential
+- [x] 6.3 Add `Scene.stagger(effects, schedule)`: the explicit overlap opt-in (previous stagger implementation, schedule now positional and required, reports `released`)
+- [x] 6.4 Tests: chain no-overlap timing with spaced, plain sequential form, truncation + completed count, result-fed schedule; stagger tests moved to the new API
+- [x] 6.5 Docs: pacing page split into Chain (default, playable example) and Stagger (explicit overlap) sections; stagger example + demo.ts moved to `Scene.stagger`
+
+## 7. Surface and docs
+
+- [x] 7.1 Export new combinators from the package index (already covered: `export * as Scene` re-exports `repeat`/`all`/`fork`/`background`); docstrings on `fork`/`background` calling out the inversion of Effect's fork semantics (fork waits, background is interrupted)
+- [x] 7.2 Update the docs site: pacing/repeat/stagger page with the fork-vs-background rule of thumb and the `maxFrames` opt-in; extend `demo.ts` with a staggered + background example

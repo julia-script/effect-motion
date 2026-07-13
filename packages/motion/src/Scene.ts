@@ -404,31 +404,89 @@ export const background = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
 		return fiber;
 	});
 
-export interface AllOptions<ScheduleE = never, ScheduleR = never> {
-	/**
-	 * Staggers the START of each effect: the first releases immediately,
-	 * each next one on the schedule's next emission (in scene time). The
-	 * schedule also bounds HOW MANY effects are released — effects beyond
-	 * its recursion limit are skipped entirely.
-	 */
-	readonly schedule?: Schedule.Schedule<unknown, void, ScheduleE, ScheduleR>;
-}
+/**
+ * Run effects in lockstep parallel, sharing frame phases — the public
+ * counterpart to the low-level `Phaser.all`. Takes no schedule: pacing a
+ * list sequentially belongs to {@link chain}, overlapping staggered
+ * starts to {@link stagger}.
+ */
+export const all: typeof Phaser.all = (effects) => Phaser.all(effects);
 
 /**
- * Run effects in parallel, sharing frame phases — the public counterpart
- * to the low-level `Phaser.all`. With `{ schedule }`, starts are
- * staggered and possibly truncated (see {@link AllOptions}); released
- * effects run concurrently and `all` resolves when the last one
- * finishes (release pacing never delays completion). Resolves with the
- * number of effects actually released.
+ * Run items one at a time, in order — items NEVER overlap, mirroring
+ * Effect's guarantee for scheduled effects. The first item runs
+ * immediately; after each item completes, `schedule` is stepped once
+ * (with the item's result as input) to pace the next start. `fixed`
+ * gives a start cadence with catch-up, `spaced` gives rests between
+ * items. When the schedule ends early, the remaining items are skipped —
+ * it is the release policy, including how many. Without a schedule,
+ * plain sequential composition. Resolves with how many items completed.
+ * For overlapping runs, reach for {@link stagger} or {@link fork}
+ * explicitly.
  */
-export const all = <
+export const chain = <
 	Eff extends Effect.Effect<any, any, any>,
 	ScheduleE = never,
 	ScheduleR = never,
 >(
 	effects: Iterable<Eff>,
-	options?: AllOptions<ScheduleE, ScheduleR>,
+	schedule?: Schedule.Schedule<
+		unknown,
+		Eff extends Effect.Effect<infer A, any, any> ? A : never,
+		ScheduleE,
+		ScheduleR
+	>,
+): Effect.Effect<
+	{ completed: number },
+	(Eff extends Effect.Effect<any, infer E, any> ? E : never) | ScheduleE,
+	| (Eff extends Effect.Effect<any, any, infer R> ? R : never)
+	| Runner.Runner
+	| ScheduleR
+> =>
+	Effect.gen(function* () {
+		const list = Array.from(effects);
+		const runner = yield* Runner.Runner;
+		const driver =
+			schedule === undefined
+				? undefined
+				: yield* Time.scheduleDriver(schedule, runner.settings.frameRate);
+		let completed = 0;
+		for (const effect of list) {
+			const result = yield* effect;
+			completed++;
+			// no step after the last item: no tail, no recurrence consumed
+			if (completed === list.length || driver === undefined) {
+				continue;
+			}
+			const decision = yield* driver.next(frameOf(runner), result);
+			if (decision.done) {
+				// schedule over: the remaining items are skipped
+				break;
+			}
+			while (frameOf(runner) < decision.frame) {
+				yield* tick;
+			}
+		}
+		return { completed };
+	});
+
+/**
+ * Release effects on `schedule` with OVERLAP: the first starts
+ * immediately, each next one on the schedule's next emission, and
+ * released effects run concurrently — semantically
+ * `chain(effects.map(Scene.fork))`, but resolving when all released
+ * effects finish rather than at the last release. When the schedule ends
+ * early, the remaining effects are skipped. Overlap is this
+ * combinator's purpose; the schedule-paced default ({@link chain})
+ * never overlaps.
+ */
+export const stagger = <
+	Eff extends Effect.Effect<any, any, any>,
+	ScheduleE = never,
+	ScheduleR = never,
+>(
+	effects: Iterable<Eff>,
+	schedule: Schedule.Schedule<unknown, void, ScheduleE, ScheduleR>,
 ): Effect.Effect<
 	{ released: number },
 	(Eff extends Effect.Effect<any, infer E, any> ? E : never) | ScheduleE,
@@ -439,13 +497,9 @@ export const all = <
 > =>
 	Effect.gen(function* () {
 		const list = Array.from(effects);
-		if (options?.schedule === undefined) {
-			yield* Phaser.all(list);
-			return { released: list.length };
-		}
 		const runner = yield* Runner.Runner;
 		const driver = yield* Time.scheduleDriver(
-			options.schedule,
+			schedule,
 			runner.settings.frameRate,
 		);
 		// Stagger decisions don't depend on the effects' results, so every
