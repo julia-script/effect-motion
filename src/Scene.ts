@@ -2,6 +2,7 @@ import { Layer } from "effect";
 import type * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import type * as Fiber from "effect/Fiber";
+import * as Random from "effect/Random";
 import type * as Schema from "effect/Schema";
 import type * as Scope from "effect/Scope";
 import * as Stream from "effect/Stream";
@@ -142,6 +143,8 @@ export const run = <E, R, Entities>(
 				}),
 				Effect.scoped,
 				Effect.provide(Layer.succeed(Runner.Runner, runner)),
+				// seeded pseudo-randomness, scoped to the scene fiber
+				Random.withSeed(runner.settings.seed),
 			),
 		);
 

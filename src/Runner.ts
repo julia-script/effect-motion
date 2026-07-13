@@ -12,8 +12,20 @@ export const TypeId = "~motion/SceneRunner" as const;
 /** conventional id of the implicit root group every instance attaches to */
 export const ROOT_ID = "root";
 
+export type Seed = number | string;
+
+/** the fixed default: scenes are deterministic even with no seed set */
+export const defaultSeed: Seed = "effect-motion";
+
 export type Settings = {
 	frameRate: number;
+	/**
+	 * seeds the scene's pseudo-random service (effect's Random via
+	 * withSeed); the fixed default keeps default-constructed scenes
+	 * byte-identical across runs. Note: the generator algorithm belongs
+	 * to effect, so upgrading effect may change seeded sequences.
+	 */
+	seed: Seed;
 };
 
 export type GroupInstance = Instance.Instance<
@@ -90,6 +102,7 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 			settings: {
 				...settings,
 				frameRate: settings.frameRate ?? 60,
+				seed: settings.seed ?? defaultSeed,
 			} satisfies Settings,
 			getDataUnsafe,
 
