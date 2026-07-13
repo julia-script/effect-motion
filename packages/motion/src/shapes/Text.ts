@@ -3,21 +3,62 @@ import * as Schema from "effect/Schema";
 import * as Entity from "../Entity";
 import * as Shape2D from "./Shape2D";
 
+export type TextInline =
+	| { readonly type: "text"; readonly value: string }
+	| { readonly type: "strong"; readonly children: ReadonlyArray<TextInline> }
+	| { readonly type: "emphasis"; readonly children: ReadonlyArray<TextInline> };
+
+export type TextParagraph = {
+	readonly type: "paragraph";
+	readonly children: ReadonlyArray<TextInline>;
+};
+
+export type TextContent =
+	| string
+	| {
+			readonly type: "root";
+			readonly children: ReadonlyArray<TextParagraph>;
+	  };
+
+export const TextInline: Schema.Codec<TextInline> = Schema.suspend(
+	(): Schema.Codec<TextInline> =>
+		Schema.Union([
+			Schema.Struct({ type: Schema.Literal("text"), value: Schema.String }),
+			Schema.Struct({
+				type: Schema.Literal("strong"),
+				children: Schema.Array(TextInline),
+			}),
+			Schema.Struct({
+				type: Schema.Literal("emphasis"),
+				children: Schema.Array(TextInline),
+			}),
+		]),
+);
+
+export const TextParagraph: Schema.Codec<TextParagraph> = Schema.Struct({
+	type: Schema.Literal("paragraph"),
+	children: Schema.Array(TextInline),
+});
+
+export const TextContent: Schema.Codec<TextContent> = Schema.Union([
+	Schema.String,
+	Schema.Struct({
+		type: Schema.Literal("root"),
+		children: Schema.Array(TextParagraph),
+	}),
+]);
+
 /**
- * A single-line, single-style text run mirroring SVG `<text>`.
+ * SVG `<text>` content with optional inline bold and italic spans.
  *
- * `text` is required — empty text can never be visible, so there is no
- * sensible default (same rationale as Path's `d`). The engine cannot
- * measure text, so alignment is delegated to SVG via `textAnchor` /
- * `baseline` — `{ textAnchor: "middle", baseline: "middle" }` centers on
- * x/y. Rich text (styled runs, wrapping) will be a separate entity; this
- * one stays a single run.
+ * `text` is required. The engine cannot measure text, so alignment is
+ * delegated to SVG via `textAnchor` / `baseline`.
  */
 export const Text = Entity.make(
 	"shapes/Text",
 	{
 		...Shape2D.filled,
-		text: Schema.String,
+		text: TextContent,
 		// numeric, therefore tweenable: tweenTo({ fontSize }) just works
 		fontSize: Shape2D.defaultedNumber(16),
 		// the generic family resolves to a sane system sans on every
@@ -25,9 +66,7 @@ export const Text = Entity.make(
 		fontFamily: Schema.String.pipe(
 			Schema.withConstructorDefault(Effect.succeed("sans-serif")),
 		),
-		textAnchor: Schema.optionalKey(
-			Schema.Literals(["start", "middle", "end"]),
-		),
+		textAnchor: Schema.optionalKey(Schema.Literals(["start", "middle", "end"])),
 		baseline: Schema.optionalKey(
 			Schema.Literals(["auto", "middle", "hanging"]),
 		),

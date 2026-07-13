@@ -1,10 +1,30 @@
 import { Motion, Scene, Shapes } from "effect-motion";
 
-// centered on x/y via textAnchor + baseline — the engine can't measure
-// text, so alignment is SVG's job. fontSize is a number: tweenable.
+const richText = {
+	type: "root",
+	children: [
+		{
+			type: "paragraph",
+			children: [
+				{ type: "text", value: "effect-" },
+				{
+					type: "strong",
+					children: [{ type: "text", value: "motion" }],
+				},
+				{ type: "text", value: " with " },
+				{
+					type: "emphasis",
+					children: [{ type: "text", value: "Effect" }],
+				},
+			],
+		},
+	],
+} satisfies Shapes.TextContent;
+
+// Centering stays entity-level; rich runs inherit the Text's shape styles.
 export const scene = Scene.make(function* () {
 	const title = yield* Scene.instantiate(Shapes.Text, {
-		text: "effect-motion",
+		text: richText,
 		x: 250,
 		y: 150,
 		fontSize: 8,
@@ -14,7 +34,7 @@ export const scene = Scene.make(function* () {
 		baseline: "middle",
 	});
 
-	// fade in while the size pops past its target and springs back
+	// fontSize is still a number, so the whole rich Text tweens together.
 	yield* Scene.all([
 		title.pipe(Motion.fadeTo(1, "400 millis")),
 		title.pipe(Motion.tweenTo({ fontSize: 42 }, "700 millis", "easeOutBack")),

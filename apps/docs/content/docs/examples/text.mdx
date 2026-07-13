@@ -1,15 +1,64 @@
 ---
 title: Text
-description: A pop-in title with the Text entity
+description: Plain and rich inline content with the Text entity
 ---
 
-`Shapes.Text` is a single-line, single-style run mirroring SVG `<text>` —
-`text` is required, everything else has visible defaults (16px, the generic
-`sans-serif` family, black fill). `fontSize` is a plain number, so it
-tweens like any other prop: the pop below is just `easeOutBack` on it.
+`Shapes.Text` mirrors SVG `<text>`. Its required `text` field accepts either
+a string or a small mdast-shaped tree. Everything else has visible defaults:
+16px, the generic `sans-serif` family, and black fill.
+
+## Plain text
+
+Strings remain the shortest form:
+
+```ts
+const label = yield* Scene.instantiate(Shapes.Text, {
+	text: "Hello, world",
+	x: 40,
+	y: 80,
+});
+```
+
+## Rich inline text
+
+Structured content starts at `root`, contains `paragraph` nodes, and supports
+recursive `text`, `strong`, and `emphasis` inline nodes. Strong runs render
+bold, emphasis runs render italic, and nested marks compose.
 
 The engine doesn't measure text (no wrapping, no fit-to-box), so alignment
 is delegated to SVG: `textAnchor: "middle"` + `baseline: "middle"` centers
-the run on its `x`/`y`.
+the whole Text on its `x`/`y`. Entity-level properties such as `fill`,
+`opacity`, and `fontSize` apply to every run; `fontSize` remains tweenable.
 
 <Example name="text" />
+
+## Multiple paragraphs
+
+A root can contain multiple paragraphs. Paragraph boundaries are preserved as
+separate `<tspan>` elements in source order, but they do not automatically
+create visual line breaks:
+
+```ts
+const content = {
+	type: "root",
+	children: [
+		{
+			type: "paragraph",
+			children: [
+				{ type: "strong", children: [{ type: "text", value: "First" }] },
+				{ type: "text", value: "\n" },
+			],
+		},
+		{
+			type: "paragraph",
+			children: [
+				{ type: "emphasis", children: [{ type: "text", value: "Second" }] },
+			],
+		},
+	],
+} satisfies Shapes.TextContent;
+```
+
+Literal newlines are preserved in the SVG content, though default SVG
+whitespace handling may collapse them. Positioned line layout is not part of
+the Text entity yet.

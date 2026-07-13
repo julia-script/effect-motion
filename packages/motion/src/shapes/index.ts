@@ -6,4 +6,4 @@ export { Path } from "./Path";
 export { Rect } from "./Rect";
 export * as Shape2D from "./Shape2D";
 export { Square } from "./Square";
-export { Text } from "./Text";
+export { Text, TextContent, TextInline, TextParagraph } from "./Text";

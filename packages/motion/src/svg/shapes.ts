@@ -117,6 +117,31 @@ export const path: Renderer.RenderFunction<SvgNode, typeof Shapes.Path> = ({
 		},
 	});
 
+const textInlineToSvg = (node: Shapes.TextInline): SvgNode => {
+	switch (node.type) {
+		case "text":
+			return { tag: "tspan", props: {}, children: node.value };
+		case "strong":
+			return {
+				tag: "tspan",
+				props: { "font-weight": "bold" },
+				children: node.children.map(textInlineToSvg),
+			};
+		case "emphasis":
+			return {
+				tag: "tspan",
+				props: { "font-style": "italic" },
+				children: node.children.map(textInlineToSvg),
+			};
+	}
+};
+
+const textParagraphToSvg = (paragraph: Shapes.TextParagraph): SvgNode => ({
+	tag: "tspan",
+	props: {},
+	children: paragraph.children.map(textInlineToSvg),
+});
+
 export const text: Renderer.RenderFunction<SvgNode, typeof Shapes.Text> = ({
 	data,
 }) =>
@@ -135,9 +160,11 @@ export const text: Renderer.RenderFunction<SvgNode, typeof Shapes.Text> = ({
 				: {}),
 			...styleAttrs(data),
 		},
-		// sinks own content materialization: escaped markup in the string
-		// sink, textContent in the DOM sink
-		children: data.text,
+		// Keep strings sink-owned; only structured content becomes SVG nodes.
+		children:
+			typeof data.text === "string"
+				? data.text
+				: data.text.children.map(textParagraphToSvg),
 	});
 
 // a group paints nothing itself: one <g> positioning its rendered children
