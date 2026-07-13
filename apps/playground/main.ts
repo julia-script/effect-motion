@@ -1,11 +1,13 @@
 import { Effect, Layer } from "effect";
-import * as Motion from "../src/Motion";
-import * as Phaser from "../src/Phaser";
-import * as Physics from "../src/Physics";
-import * as Scene from "../src/Scene";
-import * as Shapes from "../src/shapes";
-import * as Svg from "../src/svg";
-import * as Timing from "../src/Timing";
+import {
+	Motion,
+	Phaser,
+	Physics,
+	Scene,
+	Shapes,
+	Svg,
+	Timing,
+} from "effect-motion";
 
 const WIDTH = 500;
 const HEIGHT = 300;

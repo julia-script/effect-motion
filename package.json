@@ -1,37 +1,18 @@
 {
-	"name": "effect-motion",
-	"version": "0.0.1",
-	"description": "",
+	"name": "effect-motion-monorepo",
+	"private": true,
 	"type": "module",
-	"exports": {
-		".": "./src/index.ts"
-	},
+	"packageManager": "pnpm@11.11.0",
 	"scripts": {
-		"test": "vitest run",
-		"playground": "vite playground",
-		"check": "tsc --noEmit",
+		"test": "turbo run test",
+		"check": "turbo run check",
+		"playground": "turbo run dev --filter=playground",
 		"lint": "biome check",
 		"lint:fix": "biome check --write"
 	},
 	"license": "MIT",
-	"dependencies": {
-		"effect": "4.0.0-beta.94",
-		"tsx": "^4.23.0",
-		"xstate": "^5.32.4"
-	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.3",
-		"@types/node": "^26.1.1",
-		"happy-dom": "^20.10.6",
-		"typescript": "^7.0.2",
-		"vite": "^8.1.4",
-		"vitest": "^4.1.10"
-	},
-	"devEngines": {
-		"packageManager": {
-			"name": "pnpm",
-			"version": "^11.10.0",
-			"onFail": "download"
-		}
+		"turbo": "^2.5.0"
 	}
 }

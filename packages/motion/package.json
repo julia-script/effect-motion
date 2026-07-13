@@ -1,0 +1,25 @@
+{
+	"name": "effect-motion",
+	"version": "0.0.1",
+	"description": "",
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"scripts": {
+		"test": "vitest run",
+		"check": "tsc --noEmit"
+	},
+	"license": "MIT",
+	"dependencies": {
+		"effect": "4.0.0-beta.94",
+		"xstate": "^5.32.4"
+	},
+	"devDependencies": {
+		"@types/node": "^26.1.1",
+		"happy-dom": "^20.10.6",
+		"tsx": "^4.23.0",
+		"typescript": "^7.0.2",
+		"vitest": "^4.1.10"
+	}
+}

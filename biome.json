@@ -7,7 +7,7 @@
 	},
 	"files": {
 		"ignoreUnknown": false,
-		"includes": ["**", "!.history"]
+		"includes": ["**", "!.history", "!**/.turbo"]
 	},
 	"formatter": {
 		"enabled": true,
