@@ -36,10 +36,15 @@ export interface ScheduleDriver<Output, Input, Error, Env> {
  * relative to the `now` they are called with, so polling pushes the
  * target forward forever.
  *
- * Each absolute target (now + delay) is rounded to a frame once; rounded
- * deltas are never accumulated, so non-frame-aligned schedules keep their
- * own continuous bookkeeping and do not drift. A target at or before
- * `nowFrame` means "due now" — callers run without ticking.
+ * Each absolute target (now + delay) resolves once to the FIRST frame at
+ * or after it (ceil, never round): frames are discrete, and a frame
+ * before the target would make the next decision happen before the
+ * schedule's boundary — a stateful schedule like `fixed` would then
+ * re-emit the same boundary forever (observed as a whole `recurs` budget
+ * burning in one frame). Rounded deltas are never accumulated, so
+ * non-frame-aligned schedules keep their own continuous bookkeeping and
+ * do not drift. A zero delay resolves to the current frame — callers run
+ * without ticking.
  */
 export const scheduleDriver = <Output, Input, Error, Env>(
 	schedule: Schedule.Schedule<Output, Input, Error, Env>,
@@ -53,8 +58,10 @@ export const scheduleDriver = <Output, Input, Error, Env>(
 					([output, delay]): StepDecision<Output> => ({
 						done: false,
 						output,
-						frame: Math.round(
-							((nowMs + Duration.toMillis(delay)) * fps) / 1000,
+						// epsilon absorbs float noise so an exact-on-frame target
+						// (e.g. 1000ms at 60fps) doesn't ceil up a frame
+						frame: Math.ceil(
+							((nowMs + Duration.toMillis(delay)) * fps) / 1000 - 1e-9,
 						),
 					}),
 				),

@@ -22,7 +22,7 @@ describe("schedule driver", () => {
 			}),
 		));
 
-	it("rounds each absolute target once — no accumulated drift", () =>
+	it("resolves each absolute target once to the frame at/after it — no drift", () =>
 		run(
 			Effect.gen(function* () {
 				const driver = yield* Time.scheduleDriver(Schedule.fixed(333), 60);
@@ -36,21 +36,51 @@ describe("schedule driver", () => {
 					frames.push(decision.frame);
 					frame = decision.frame;
 				}
-				// true boundaries 333, 666, ... each rounded once, absolutely
+				// true boundaries 333, 666, ... each resolved once, absolutely
 				expect(frames).toEqual(
 					[333, 666, 999, 1332, 1665, 1998].map((ms) =>
-						Math.round((ms * 60) / 1000),
+						Math.ceil((ms * 60) / 1000),
 					),
 				);
 			}),
 		));
 
-	it("sub-frame targets are due immediately (no tick required)", () =>
+	it("a positive sub-frame delay lands on the NEXT frame, never before its target", () =>
 		run(
 			Effect.gen(function* () {
+				// 1ms after frame 0 is between frames — the first frame at or
+				// after the target is frame 1. Resolving to frame 0 would let
+				// the next decision happen before the schedule's boundary and
+				// wedge stateful schedules like fixed into a same-frame loop.
 				const driver = yield* Time.scheduleDriver(Schedule.spaced(1), 60);
 				const decision = yield* driver.next(0, null);
-				expect(decision).toEqual({ done: false, output: 0, frame: 0 });
+				expect(decision).toEqual({ done: false, output: 0, frame: 1 });
+			}),
+		));
+
+	it("a zero delay (fixed catch-up) is due in the current frame", () =>
+		run(
+			Effect.gen(function* () {
+				const driver = yield* Time.scheduleDriver(Schedule.fixed(100), 60);
+				// anchor at frame 0, then arrive far behind the cadence
+				yield* driver.next(0, null);
+				const behind = yield* driver.next(30, null); // 500ms, boundaries long passed
+				expect(behind).toEqual({ done: false, output: 1, frame: 30 });
+			}),
+		));
+
+	it("a same-frame decision makes progress: repeated steps do not wedge", () =>
+		run(
+			Effect.gen(function* () {
+				// fixed(40) is 2.4 frames; deciding again at the resolved frame
+				// must move to the NEXT boundary, not re-emit the same one
+				const driver = yield* Time.scheduleDriver(Schedule.fixed(40), 60);
+				const first = yield* driver.next(0, null);
+				expect(first.done).toBe(false);
+				const firstFrame = (first as { frame: number }).frame; // ceil(2.4) = 3
+				expect(firstFrame).toBe(3);
+				const second = yield* driver.next(firstFrame, null);
+				expect((second as { frame: number }).frame).toBeGreaterThan(firstFrame);
 			}),
 		));
 

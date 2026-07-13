@@ -3,6 +3,7 @@ import { scene as chain } from "./chain.scene";
 import { scene as easingRace } from "./easing-race.scene";
 import { scene as forkBackground } from "./fork-background.scene";
 import { scene as groups } from "./groups.scene";
+import { scene as particles } from "./particles.scene";
 import { scene as repeat } from "./repeat.scene";
 import { scene as seededRandomness } from "./seeded-randomness.scene";
 import { scene as springs } from "./springs.scene";
@@ -21,4 +22,5 @@ export const examples: Record<string, AnyScene> = {
 	chain,
 	stagger,
 	"fork-background": forkBackground,
+	particles,
 };

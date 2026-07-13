@@ -1,0 +1,16 @@
+---
+title: Particles
+description: A seeded-random particle fountain from repeat + fork
+---
+
+Three features compose into a particle system with no dedicated particle
+API: `Scene.repeat` spawns on a strict 40ms cadence, `Scene.fork` makes
+each spawn return immediately so particle lives overlap, and the scene's
+seeded `Random` draws every trajectory, size, color, and duration.
+
+Because the randomness is seeded, the chaos is fully deterministic —
+scrub the timeline back and forth and every particle retraces its exact
+path. The scene also knows when to end on its own: forks are awaited, so
+it finishes precisely when the last particle fades.
+
+<Example name="particles" />

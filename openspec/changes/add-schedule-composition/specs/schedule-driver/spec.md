@@ -16,16 +16,24 @@ The driver SHALL call the schedule's step function exactly once per decision, at
 - **WHEN** driving `Schedule.spaced("1 second")` at 60fps
 - **THEN** the step function is invoked once per gap (not 60 times), and the gap spans 60 frames
 
-### Requirement: Targets round to frames without accumulated drift
-The driver SHALL convert each absolute target time to a frame index by rounding that target once. Rounded frame deltas MUST NOT be accumulated across decisions.
+### Requirement: Targets resolve to the first frame at or after them, without accumulated drift
+The driver SHALL convert each absolute target time to the FIRST frame at or after it (ceiling), once per decision. A frame earlier than the target is forbidden: a decision made there happens before the schedule's boundary, and stateful schedules (e.g. `fixed`) re-emit the same boundary forever — a same-frame decision loop. Rounded frame deltas MUST NOT be accumulated across decisions.
 
 #### Scenario: Non-frame-aligned schedule keeps cadence
 - **WHEN** driving `Schedule.fixed("333 millis")` at 60fps for 10 decisions
-- **THEN** each release frame equals `round(target * 60 / 1000)` of the schedule's own continuous target, with no cumulative drift
+- **THEN** each release frame equals `ceil(target * 60 / 1000)` of the schedule's own continuous target, with no cumulative drift
 
-#### Scenario: Sub-frame gaps release within the same frame
-- **WHEN** a schedule emits a target earlier than or equal to the current scene time
-- **THEN** the decision resolves without ticking a frame
+#### Scenario: Positive sub-frame delays land on the next frame
+- **WHEN** a schedule emits a positive delay smaller than one frame
+- **THEN** the target resolves to the next frame (never a frame before the schedule's target time)
+
+#### Scenario: Zero delays are due in the current frame
+- **WHEN** a schedule emits a zero delay (e.g. `fixed` catch-up when behind the cadence)
+- **THEN** the decision resolves in the current frame without ticking
+
+#### Scenario: Same-frame decisions make progress
+- **WHEN** consecutive decisions are made at the resolved target frame of a non-frame-aligned `fixed` schedule
+- **THEN** each decision's target is strictly later than the previous one (no wedged loop)
 
 ### Requirement: Schedule completion terminates the driver
 The driver SHALL surface the schedule's "done" decision to callers so combinators can stop recurring.
