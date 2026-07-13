@@ -132,6 +132,7 @@ export interface Frame<Entities extends Entity.AnyEntity> {
 	frameRate: number;
 	width: number;
 	height: number;
+	backgroundColor: string;
 }
 export const step = <E, R, Entities extends Entity.AnyEntity>(
 	runningScene: RunningScene<E, R, Entities>,

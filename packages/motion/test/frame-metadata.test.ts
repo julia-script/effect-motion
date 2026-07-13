@@ -22,10 +22,16 @@ const firstFrame = (settings: Partial<Runner.Settings> = {}) =>
 
 describe("frame render metadata", () => {
 	it("frames carry explicit frameRate/width/height from settings", async () => {
-		const frame = await firstFrame({ frameRate: 30, width: 800, height: 600 });
+		const frame = await firstFrame({
+			frameRate: 30,
+			width: 800,
+			height: 600,
+			backgroundColor: "#222244",
+		});
 		expect(frame.frameRate).toBe(30);
 		expect(frame.width).toBe(800);
 		expect(frame.height).toBe(600);
+		expect(frame.backgroundColor).toBe("#222244");
 	});
 
 	it("defaults apply when settings are unset", async () => {
@@ -33,6 +39,7 @@ describe("frame render metadata", () => {
 		expect(frame.frameRate).toBe(60);
 		expect(frame.width).toBe(500);
 		expect(frame.height).toBe(300);
+		expect(frame.backgroundColor).toBe("#16161d");
 	});
 });
 
@@ -54,6 +61,7 @@ describe("SVG string sink sizing from frame metadata", () => {
 		const svg = await renderString(frame, {});
 		expect(svg).toContain('width="800"');
 		expect(svg).toContain('height="600"');
+		expect(svg).toContain('<rect width="100%" height="100%" fill="#16161d"/>');
 	});
 
 	it("explicit config overrides frame metadata", async () => {

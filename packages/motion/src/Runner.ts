@@ -24,6 +24,8 @@ export type Settings = {
 	/** output resolution — carried on every frame so renderers can size themselves */
 	width: number;
 	height: number;
+	/** canvas background — carried on every frame so renderers can paint it (default a near-black, not pure #000) */
+	backgroundColor: string;
 	/**
 	 * seeds the scene's pseudo-random service (effect's Random via
 	 * withSeed); the fixed default keeps default-constructed scenes
@@ -116,6 +118,7 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 			frameRate: settings.frameRate ?? 60,
 			width: settings.width ?? 500,
 			height: settings.height ?? 300,
+			backgroundColor: settings.backgroundColor ?? "#16161d",
 			seed: settings.seed ?? defaultSeed,
 			maxFrames: settings.maxFrames ?? 36_000,
 		} satisfies Settings;
@@ -167,6 +170,7 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 				frameRate: resolvedSettings.frameRate,
 				width: resolvedSettings.width,
 				height: resolvedSettings.height,
+				backgroundColor: resolvedSettings.backgroundColor,
 			})),
 
 			destroy: <Name extends string, Data extends Schema.Top>(

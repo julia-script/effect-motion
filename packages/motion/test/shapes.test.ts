@@ -85,6 +85,7 @@ const allShapesFrame: Scene.Frame<Builtin> = {
 	frameRate: 60,
 	width: 500,
 	height: 300,
+	backgroundColor: "#16161d",
 };
 
 const layers = Svg.layer.pipe(Layer.provideMerge(Svg.shapesLayer));
@@ -138,7 +139,7 @@ describe("svg manifest covers every built-in through both sinks", () => {
 		);
 
 		expect(target.querySelectorAll("circle")).toHaveLength(1);
-		expect(target.querySelectorAll("rect")).toHaveLength(2); // Rect + Square
+		expect(target.querySelectorAll("rect")).toHaveLength(3); // background + Rect + Square
 		expect(target.querySelectorAll("ellipse")).toHaveLength(1);
 		expect(target.querySelectorAll("line")).toHaveLength(1);
 		expect(target.querySelectorAll("path")).toHaveLength(1);

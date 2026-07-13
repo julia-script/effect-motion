@@ -40,6 +40,12 @@ export const SvgDomRenderer = Renderer.make<SvgNode, SvgDomConfig>()(
 				const root = doc.createElementNS(SVG_NS, "svg");
 				root.setAttribute("width", String(config.width ?? meta.width));
 				root.setAttribute("height", String(config.height ?? meta.height));
+				root.append(
+					createSvgElement(doc, {
+						tag: "rect",
+						props: { width: "100%", height: "100%", fill: meta.backgroundColor },
+					}),
+				);
 				for (const { render } of entities) {
 					root.append(createSvgElement(doc, yield* render));
 				}
