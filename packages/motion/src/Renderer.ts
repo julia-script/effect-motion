@@ -22,6 +22,13 @@ export type RenderFunction<
 	children: ReadonlyArray<Success>;
 }) => Effect.Effect<Success, E, R>;
 
+/** the frame's render metadata, handed to sink render functions */
+export interface FrameMeta {
+	readonly frameRate: number;
+	readonly width: number;
+	readonly height: number;
+}
+
 export interface EntityRenderer<
 	Name extends string,
 	Success,
@@ -59,6 +66,7 @@ export const make =
 					entry: EntriesFromEntities<Entities>;
 				}>,
 				config: Config,
+				meta: FrameMeta,
 			) => Effect.Effect<RenderSuccess>;
 		},
 	) => {
@@ -196,7 +204,11 @@ export const make =
 				const entries = yield* Effect.all(
 					childIdsOf(rootEntry.data).map(buildEntry),
 				);
-				return yield* config.render(entries, customConfig);
+				return yield* config.render(entries, customConfig, {
+					frameRate: frame.frameRate,
+					width: frame.width,
+					height: frame.height,
+				});
 			}),
 		});
 

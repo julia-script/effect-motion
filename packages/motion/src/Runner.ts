@@ -21,6 +21,9 @@ export const defaultSeed: Seed = "effect-motion";
 
 export type Settings = {
 	frameRate: number;
+	/** output resolution — carried on every frame so renderers can size themselves */
+	width: number;
+	height: number;
 	/**
 	 * seeds the scene's pseudo-random service (effect's Random via
 	 * withSeed); the fixed default keeps default-constructed scenes
@@ -108,6 +111,15 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 			return (instances[instance.id]?.data as Data["Type"]) ?? null;
 		};
 
+		const resolvedSettings = {
+			...settings,
+			frameRate: settings.frameRate ?? 60,
+			width: settings.width ?? 500,
+			height: settings.height ?? 300,
+			seed: settings.seed ?? defaultSeed,
+			maxFrames: settings.maxFrames ?? 36_000,
+		} satisfies Settings;
+
 		// the root group: never rendered itself, holds the top level
 		const root: GroupInstance = Instance.make(Group, ROOT_ID);
 		setDataUnsafe(root, {});
@@ -144,12 +156,7 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 
 				return instance;
 			}),
-			settings: {
-				...settings,
-				frameRate: settings.frameRate ?? 60,
-				seed: settings.seed ?? defaultSeed,
-				maxFrames: settings.maxFrames ?? 36_000,
-			} satisfies Settings,
+			settings: resolvedSettings,
 			getDataUnsafe,
 
 			setDataUnsafe,
@@ -157,6 +164,9 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 			state: Effect.sync(() => ({
 				instances: { ...instances },
 				root: ROOT_ID,
+				frameRate: resolvedSettings.frameRate,
+				width: resolvedSettings.width,
+				height: resolvedSettings.height,
 			})),
 
 			destroy: <Name extends string, Data extends Schema.Top>(

@@ -4,8 +4,9 @@ import { SVG_NS, type SvgNode } from "./SvgNode";
 
 export interface SvgDomConfig {
 	readonly target: HTMLElement;
-	readonly width: number;
-	readonly height: number;
+	/** viewport size — defaults to the frame's own width/height metadata */
+	readonly width?: number;
+	readonly height?: number;
 }
 
 const createSvgElement = (doc: Document, node: SvgNode): Element => {
@@ -33,12 +34,12 @@ const createSvgElement = (doc: Document, node: SvgNode): Element => {
 export const SvgDomRenderer = Renderer.make<SvgNode, SvgDomConfig>()(
 	"SvgDomRenderer",
 	{
-		render: (entities, config) =>
+		render: (entities, config, meta) =>
 			Effect.gen(function* () {
 				const doc = config.target.ownerDocument;
 				const root = doc.createElementNS(SVG_NS, "svg");
-				root.setAttribute("width", String(config.width));
-				root.setAttribute("height", String(config.height));
+				root.setAttribute("width", String(config.width ?? meta.width));
+				root.setAttribute("height", String(config.height ?? meta.height));
 				for (const { render } of entities) {
 					root.append(createSvgElement(doc, yield* render));
 				}

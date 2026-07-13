@@ -128,6 +128,10 @@ export interface Frame<Entities extends Entity.AnyEntity> {
 	instances: Record<string, EntriesFromEntities<Entities>>;
 	/** id of the root group (conventionally "root"); never rendered itself */
 	root: string;
+	/** render metadata from the runner settings — a frame is self-describing */
+	frameRate: number;
+	width: number;
+	height: number;
 }
 export const step = <E, R, Entities extends Entity.AnyEntity>(
 	runningScene: RunningScene<E, R, Entities>,
@@ -497,11 +501,7 @@ const frameOf = (runner: Runner.Runner["Service"]) =>
 export const repeat = <A, E, R, Output, ScheduleE, ScheduleR>(
 	effect: Effect.Effect<A, E, R>,
 	schedule: Schedule.Schedule<Output, A, ScheduleE, ScheduleR>,
-): Effect.Effect<
-	Output,
-	E | ScheduleE,
-	R | ScheduleR | Runner.Runner
-> =>
+): Effect.Effect<Output, E | ScheduleE, R | ScheduleR | Runner.Runner> =>
 	Effect.gen(function* () {
 		const runner = yield* Runner.Runner;
 		const driver = yield* Time.scheduleDriver(

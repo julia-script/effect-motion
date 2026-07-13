@@ -82,6 +82,9 @@ const allShapesFrame: Scene.Frame<Builtin> = {
 		},
 	},
 	root: "root",
+	frameRate: 60,
+	width: 500,
+	height: 300,
 };
 
 const layers = Svg.layer.pipe(Layer.provideMerge(Svg.shapesLayer));

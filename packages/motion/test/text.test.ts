@@ -174,6 +174,9 @@ describe("Text SVG DOM rendering", () => {
 				},
 			},
 			root: "root",
+			frameRate: 60,
+			width: 500,
+			height: 300,
 		};
 
 		await Effect.runPromise(
