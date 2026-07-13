@@ -1,0 +1,98 @@
+---
+title: Pacing with Schedules
+description: Repeat, stagger, and background animations in scene time with Effect Schedules
+---
+
+Scenes run on frames, not the wall clock — but pacing is naturally expressed
+with Effect's `Schedule`. effect-motion bridges the two: any schedule can
+drive scene work, evaluated in **scene time** (frames at the runner's frame
+rate). A `Schedule.spaced("1 second")` means 60 frames at 60fps, always,
+regardless of how fast frames are actually rendered.
+
+## Repeat
+
+`Scene.repeat(effect, schedule)` mirrors `Effect.repeat`: the first run is
+immediate, the schedule paces the gaps, and each run's result feeds the
+schedule as input.
+
+```ts
+import { Schedule } from "effect";
+import { Motion, Scene, Shapes } from "effect-motion";
+
+const scene = Scene.make(function* () {
+	const circle = yield* Scene.instantiate(Shapes.Circle, { x: 0, y: 150 });
+
+	// pulse three times, one second apart (measured from each pulse's end)
+	yield* Scene.repeat(
+		Motion.tween(circle, { x: 0 }, { x: 400 }, "0.5 seconds"),
+		Schedule.both(Schedule.spaced("1 second"), Schedule.recurs(2)),
+	);
+});
+```
+
+The `fixed` / `spaced` distinction is inherited from Effect: `spaced` waits
+the full gap **after** each run completes; `fixed` keeps a cadence and, once
+an over-long run falls behind it, re-runs immediately without overlapping.
+
+## Stagger
+
+`Scene.all` is the scene-level parallel combinator. Plain, it runs
+everything in lockstep. With a schedule, it staggers the *starts*:
+
+```ts
+yield* Scene.all([riseA, riseB, riseC], {
+	schedule: Schedule.spaced("250 millis"),
+});
+```
+
+The first effect releases immediately; each next one on the schedule's next
+emission. The schedule also decides **how many** run: with
+`Schedule.recurs(2)`, only the first three of five effects release and the
+rest are skipped — the result's `released` count makes that observable.
+Release pacing never delays completion: `Scene.all` resolves when the last
+released effect finishes.
+
+## Fork and background
+
+Two ways to run work concurrently with the rest of the scene:
+
+- `Scene.fork(effect)` — starts immediately, returns the fiber, and the
+  scene's end **waits** for it. A scene whose body returns while forks are
+  still animating keeps producing frames until the last one finishes.
+- `Scene.background(effect)` — same, but the fiber is **interrupted** at
+  scene end. Backgrounds live through the fork drain and never keep a scene
+  alive.
+
+Rule of thumb: work that defines the scene's content is a `fork`; ambience
+that should last "as long as the scene does" is a `background`.
+
+```ts
+// a pulse that loops for the duration of the scene…
+yield* Scene.background(
+	Scene.repeat(pulse, Schedule.forever),
+);
+
+// …while overlapping spawns drive the scene's actual length
+yield* Scene.repeat(
+	Scene.fork(particle),
+	Schedule.both(Schedule.fixed("50 millis"), Schedule.recurs(20)),
+);
+```
+
+Because `fork` returns immediately, repeating a fork spawns overlapping
+runs — the scene then ends when the last spawned run finishes.
+
+## Infinite scenes and maxFrames
+
+`Schedule.forever` makes truly infinite scenes possible. By default the
+runner caps production at `maxFrames: 36_000` (10 minutes at 60fps) and a
+scene that exceeds it fails with an error naming the setting — a runaway
+scene surfaces as a clear failure instead of a hang. Raise the cap, or
+declare your intent:
+
+```ts
+Scene.stream(scene, { maxFrames: Infinity });
+```
+
+Note that the collect-then-play React player assumes finite scenes; an
+infinite scene needs a streaming consumer.

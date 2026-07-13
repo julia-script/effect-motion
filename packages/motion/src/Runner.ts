@@ -1,6 +1,7 @@
 import { Layer } from "effect";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
+import type * as Fiber from "effect/Fiber";
 import type * as Schema from "effect/Schema";
 import type * as Entity from "./Entity";
 import * as Instance from "./Instance";
@@ -26,6 +27,13 @@ export type Settings = {
 	 * to effect, so upgrading effect may change seeded sequences.
 	 */
 	seed: Seed;
+	/**
+	 * hard cap on frames a scene may produce (default 36_000 — 10 minutes
+	 * at 60fps): a scene that exceeds it dies instead of hanging the
+	 * consumer. Set to `Infinity` to declare an intentionally infinite
+	 * scene.
+	 */
+	maxFrames: number;
 };
 
 export type GroupInstance = Instance.Of<typeof Group>;
@@ -42,6 +50,15 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 			{ data: unknown; entity: Entity.AnyEntity }
 		> = {};
 		const phaser = yield* Phaser.Phaser.make;
+		// concurrent work spawned by Scene.fork / Scene.background; joined
+		// (forks) or interrupted (backgrounds) by Scene.run when the body ends
+		const forks = new Set<Fiber.Fiber<unknown, unknown>>();
+		const backgrounds = new Set<Fiber.Fiber<unknown, unknown>>();
+		// root party + live forks — the work the scene's end must wait for.
+		// Kept as a synchronous counter (updated in the same finalizers that
+		// release phaser parties) so the frame consumer can decide "scene
+		// over" without depending on the scene fiber getting scheduled.
+		let awaited = 0;
 		let idCounter = 0;
 		const generateId = (name: string) => {
 			return `${name}_${idCounter++}`;
@@ -101,6 +118,7 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 				...settings,
 				frameRate: settings.frameRate ?? 60,
 				seed: settings.seed ?? defaultSeed,
+				maxFrames: settings.maxFrames ?? 36_000,
 			} satisfies Settings,
 			getDataUnsafe,
 
@@ -131,6 +149,12 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 				}
 			},
 			phaser,
+			forks,
+			backgrounds,
+			countAwaited: (n: number): void => {
+				awaited += n;
+			},
+			awaitedCount: (): number => awaited,
 		};
 	}),
 }) {}

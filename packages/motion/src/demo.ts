@@ -1,4 +1,4 @@
-import { Effect, Layer, Stream } from "effect";
+import { Effect, Layer, Schedule, Stream } from "effect";
 import * as Scene from "./Scene";
 import * as Shapes from "./shapes";
 import * as Motion from "./Motion";
@@ -53,14 +53,43 @@ export const scene = Scene.make(function* () {
 
 // Effect.runPromise(program);
 
+// schedule-driven composition: a background pulse loops for the scene's
+// duration while three staggered dots define its actual length
+export const staggered = Scene.make(function* () {
+	const stage = yield* Scene.instantiate(Shapes.Group, { x: 70, y: 150 });
+	yield* Scene.background(
+		Scene.repeat(
+			stage.pipe(
+				Motion.moveTo({ y: 130 }, "500 millis", "easeInOutCubic"),
+				Motion.moveTo({ y: 150 }, "500 millis", "easeInOutCubic"),
+			),
+			Schedule.forever,
+		),
+	);
+	const dot = (x: number) =>
+		Effect.gen(function* () {
+			const circle = yield* Scene.instantiate(
+				Shapes.Circle,
+				{ x, y: 0, radius: 10, fill: "#e53170" },
+				{ parent: stage },
+			);
+			yield* Motion.tweenTo(circle, { x: x + 300 }, "1 second", "easeInOutCubic");
+		});
+	yield* Scene.all([dot(0), dot(25), dot(50)], {
+		schedule: Schedule.spaced("250 millis"),
+	});
+});
+
 const movie = Effect.gen(function* () {
-	const svgRenderer = yield* Svg.SvgRenderer.Context;
-	const frames = yield* Scene.stream(scene).pipe(Stream.runCollect);
-	let n = 0;
-	for (const frame of frames) {
-		console.log(`\x1b[36mframe ${n++}\x1b[0m`);
-		console.log(yield* svgRenderer.render(frame, { width: 500, height: 300 }));
-	}
+	// const svgRenderer = yield* Svg.SvgRenderer.Context;
+	// const frames = yield* Scene.stream(scene).pipe(Stream.runCollect);
+	// let n = 0;
+	// for (const frame of frames) {
+	// 	console.log(`\x1b[36mframe ${n++}\x1b[0m`);
+	// 	console.log(yield* svgRenderer.render(frame, { width: 500, height: 300 }));
+	// }
+	const frames = yield* Scene.stream(staggered).pipe(Stream.runCollect);
+	console.log(`staggered scene: ${[...frames].length} frames`);
 });
 
 const layers = Svg.layer.pipe(Layer.provideMerge(Svg.shapesLayer));
