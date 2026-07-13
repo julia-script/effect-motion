@@ -27,6 +27,7 @@ export interface FrameMeta {
 	readonly frameRate: number;
 	readonly width: number;
 	readonly height: number;
+	readonly backgroundColor: string;
 }
 
 export interface EntityRenderer<
@@ -208,6 +209,7 @@ export const make =
 					frameRate: frame.frameRate,
 					width: frame.width,
 					height: frame.height,
+					backgroundColor: frame.backgroundColor,
 				});
 			}),
 		});

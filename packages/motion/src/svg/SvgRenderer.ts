@@ -13,6 +13,8 @@ export const SvgRenderer = Renderer.make<SvgNode, SvgConfig>()("SvgRenderer", {
 	render: (entities, config, meta) =>
 		Effect.gen(function* () {
 			let svg = `<svg xmlns="${SVG_NS}" width="${config.width ?? meta.width}" height="${config.height ?? meta.height}">`;
+			// a rect, not a style attr — survives rasterizers that ignore CSS
+			svg += `<rect width="100%" height="100%" fill="${meta.backgroundColor}"/>`;
 			for (const { render } of entities) {
 				svg += vnodeToString(yield* render);
 			}

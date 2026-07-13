@@ -26,6 +26,7 @@ const frameOf = (
 	frameRate: 60,
 	width: 500,
 	height: 300,
+	backgroundColor: "#16161d",
 });
 
 const renderString = (frame: Scene.Frame<Entities>) =>
