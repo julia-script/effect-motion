@@ -2,7 +2,7 @@
 
 > Direction, not commitment — Now is committed; Next is planned; Later is exploration.
 > Only Now items may be promised to anyone. This document changes as we learn.
-> Last reviewed: 2026-07-14 · Review cadence: monthly
+> Last reviewed: 2026-07-14 (sync 2) · Review cadence: monthly
 
 ## Vision
 
@@ -26,9 +26,10 @@ end-to-end through the export pipeline.
 
 ## Now
 
-_The export pipeline is complete — nothing is committed for Now. The next
-bets are the export polish (`add-text-font-fallback`) and the docs push toward
-a quiet publish; pull one into Now when starting it._
+_The export pipeline is complete — nothing is committed for Now. The
+remaining bet toward a quiet publish is the docs push; pull it into Now when
+starting it. (Export-frame font fidelity — `add-text-font-fallback` — was
+dropped unbuilt; revisit only if exported frames show a real fallback gap.)_
 
 ## Next
 
@@ -138,3 +139,13 @@ Post-release, one line each:
   not bundled (with a `binary` override). Now is empty; the remaining pre-
   publish work is `add-text-font-fallback` (exported-frame variant fidelity,
   0/5 tasks) and the docs push.
+- 2026-07-14 (sync 2): Housekeeping, no direction change. **Rich text v1**
+  archived (`add-rich-text-spans`, 17/17) and its delta synced into the
+  `text-entity` spec (single-line requirement removed; rich-content + tspan
+  bold/italic/paragraph requirements added; specs validate 25/25).
+  **Dropped `add-text-font-fallback` unbuilt** (0/5) — decided not needed for
+  publish; deleted rather than archived (never shipped), git history holds the
+  proposal; revisit only if exported frames show a real fallback gap. Now
+  remains empty; the docs push is the only remaining pre-publish bet.
+  (Also explored FFV1-in-wasm for browser export — rejected as wrong artifact,
+  not roadmap-tracked.)
