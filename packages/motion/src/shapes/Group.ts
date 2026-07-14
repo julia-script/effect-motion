@@ -12,10 +12,6 @@ export const Group = Entity.make(
 	{
 		...Shape2D.position,
 		...Shape2D.opacity,
-		// parallax depth: fraction of the camera this layer feels (pan AND
-		// zoom). 1 = full camera (default); 0 = pinned to screen (a HUD);
-		// between = parallax. Only honored on top-level layers (see the sink).
-		depth: Shape2D.defaultedNumber(1),
 		children: Schema.Array(Schema.String).pipe(
 			Schema.withConstructorDefault(Effect.sync(() => [])),
 		),

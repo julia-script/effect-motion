@@ -24,11 +24,16 @@ The single-transform trick (`<g transform="translate(-camX) scale(zoom)">`
 around the whole tree) works for a plain camera but **breaks under parallax**:
 different depths must move by different amounts, so there cannot be one
 transform for the whole tree. Parallax forces **one transform per depth layer**
-— which is why the transform is applied per top-level Group, not once globally.
+— which is why the transform is applied per top-level layer, not once globally.
 
-effect-motion already has layers: they are `Group`s. AGENTS.md forbids a second
-structure ("One structure: the instance tree"), so a parallax layer is just a
-Group carrying a `depth` — no new tree concept.
+A parallax layer is a dedicated `Layer` entity: a container carrying `children`
+plus a `depth`, and nothing else. It is NOT a `Group` with a depth field —
+`depth` lives on its own entity so it can never collide with the transform
+semantics (position, and later rotation/scale) a `Group` is expected to grow,
+and so a future guard can restrict Layers (e.g. no nesting) without touching
+Group. It is still one tree — a `Layer` is an ordinary instance holding child
+ids — so AGENTS.md's "one structure" rule holds; there is no second
+representation of structure.
 
 ```
 <svg>
@@ -95,11 +100,26 @@ Consequences, all intended:
 frame, not the world origin. This is the conventional "zoom into the middle of
 the shot" behavior; a future camera could expose a focal point.
 
-Nesting note: `depth` is honored on **top-level** Groups (direct children of
-root) — those are the parallax layers. A `depth` on a nested Group is applied by
-its own `<g>` composing with its parent's transform (SVG composes transforms
-naturally); v1 documents that authoring parallax means depth on top-level
-layers, and does not attempt a scene-graph-wide depth resolution.
+## The Layer entity
+
+A `Layer` is deliberately minimal: `children` + `depth`, no position and no
+opacity of its own. The stated motivation is separation — the fewer
+transform-ish fields a Layer carries, the less can ever collide with the
+parallax depth or with a Group's future transforms. A HUD that needs to fade
+fades its children; a layer that needs to move is the camera's job.
+
+The camera still applies to **every top-level child of root**, not only to
+Layers: a bare top-level shape feels the full camera (depth 1), a Layer feels
+its own depth. So `depth` is read generically per top-level entry (a Layer
+contributes its `depth`; anything else defaults to 1) — parallax is opt-in via
+Layer without making non-Layer content screen-fixed.
+
+Nesting: a Layer inside a Layer is **undefined behavior for now** — the whole
+reason Layer is its own entity is to leave room for a future guard, but the
+semantics ("what does a depth inside a depth mean?") are not yet decided, so no
+guard ships in this change. Marked with a `ponytail:` note at the entity.
+`depth` is honored on top-level Layers; the renderer does not attempt a
+scene-graph-wide depth resolution.
 
 ## Determinism
 
@@ -113,8 +133,12 @@ state are identical to before when the camera is identity.
 
 - **Per-instance continuous z** (every shape has a z, sink computes per-shape
   offset): more "3D," but pushes toward rejected Option (a), forces z onto every
-  shape, and is a bigger surface. Per-Group layers are the 80% feature at ~20%
+  shape, and is a bigger surface. Per-Layer parallax is the 80% feature at ~20%
   cost, and a per-instance z remains addable later.
+- **`depth` on `Group`** (the first cut of this change): reused the existing
+  container, but couples parallax to a Group that will grow transform semantics
+  and offers no place to restrict layers later. Replaced by a dedicated `Layer`
+  entity.
 - **Camera as plain runner state** with bespoke camera animators: loses the
   entire reuse win; rejected.
 - **`ignoreZoom` flag on HUD layers** instead of the depth formula: an extra

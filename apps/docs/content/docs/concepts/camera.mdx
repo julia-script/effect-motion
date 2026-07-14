@@ -30,9 +30,9 @@ time, so determinism and `moveTo` semantics are untouched.
 
 ## Parallax with `depth`
 
-A `Group` carries a `depth` — the fraction of the camera that layer feels, pan
-and zoom together. Far layers (small depth) drift slowly; the default layer
-moves fully; a `depth: 0` layer is pinned to the screen.
+A `Layer` is a container that carries a `depth` — the fraction of the camera
+that layer feels, pan and zoom together. Far layers (small depth) drift slowly;
+the default layer moves fully; a `depth: 0` layer is pinned to the screen.
 
 | `depth` | effect |
 |---|---|
@@ -40,15 +40,18 @@ moves fully; a `depth: 0` layer is pinned to the screen.
 | `0.3` | parallax — pans 30% and zooms 30% of the way (a distant layer) |
 | `0` | screen-fixed — no pan, no zoom (a HUD) |
 
-Because a layer is just a `Group`, parallax needs no new structure — stack a few
-Groups at different depths and pan the camera:
+`Layer` is deliberately minimal — just `children` and `depth`, no position or
+opacity of its own. `depth` lives on its own entity (not on `Group`) so it never
+collides with the transforms a `Group` carries, and so layers can grow their own
+rules later. Parallax is opt-in: content outside a `Layer` simply feels the full
+camera. Stack a few Layers at different depths and pan the camera:
 
 <Example name="camera-parallax" />
 
 The far starfield barely moves, the mid squares drift at half speed, the near
 circles track the camera fully, and the HUD pill stays pinned to the screen — all
 from one camera pan. The starfield is a `Particles.field` living inside the far
-`depth: 0.2` group, so the whole field parallaxes as one layer.
+`depth: 0.2` layer, so the whole field parallaxes as one layer.
 
 ## Movements
 

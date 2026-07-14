@@ -9,7 +9,10 @@ import * as Scene from "../src/Scene";
 import * as Shapes from "../src/shapes";
 import * as Svg from "../src/svg";
 
-type Entities = typeof Shapes.Circle | typeof Shapes.Group;
+type Entities =
+	| typeof Shapes.Circle
+	| typeof Shapes.Group
+	| typeof Shapes.Layer;
 type Frame = Scene.Frame<Entities>;
 
 // mirrors traits.test.ts: Scene.make/stream inference lands on unknown/messy R
@@ -152,7 +155,7 @@ describe("SVG sink applies the camera per layer", () => {
 	) => {
 		const frame = await lastFrame(
 			function* () {
-				yield* Scene.instantiate(Shapes.Group, {
+				yield* Scene.instantiate(Shapes.Layer, {
 					...props,
 					children: [Scene.instantiate(Shapes.Circle, { x: 10, y: 10 })],
 				});
@@ -184,6 +187,33 @@ describe("SVG sink applies the camera per layer", () => {
 		const svg = await renderLayer({ depth: 0 }, { x: 100, y: 50, zoom: 2 });
 		// HUD: the camera has no effect on this layer at all
 		expect(svg).not.toContain("transform");
+	});
+
+	it("a bare top-level shape feels the full camera (depth 1)", async () => {
+		// parallax is opt-in via Layer; non-Layer content is NOT screen-fixed
+		const frame = await lastFrame(function* () {
+			yield* Scene.instantiate(Shapes.Circle, { x: 10, y: 10 });
+			yield* Scene.tick;
+		});
+		const svg = await renderString({
+			...frame,
+			camera: { x: 100, y: 0, zoom: 1 },
+		});
+		expect(svg).toContain("translate(-100 0)");
+	});
+
+	it("a top-level Group feels the full camera (Group has no depth)", async () => {
+		const frame = await lastFrame(function* () {
+			yield* Scene.instantiate(Shapes.Group, {
+				children: [Scene.instantiate(Shapes.Circle, { x: 10, y: 10 })],
+			});
+			yield* Scene.tick;
+		});
+		const svg = await renderString({
+			...frame,
+			camera: { x: 100, y: 0, zoom: 1 },
+		});
+		expect(svg).toContain("translate(-100 0)");
 	});
 
 	it("zoom scales about the viewport center (250,150)", async () => {

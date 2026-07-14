@@ -10,9 +10,13 @@
 - [x] 2.1 Add `camera: { x, y, zoom }` to `Frame` and to `FrameMeta` (Renderer.ts).
 - [x] 2.2 Populate `camera` in `runner.state`; default `{0,0,1}` when the camera is identity. World instance data is untouched by the camera.
 
-## 3. Group depth
-- [x] 3.1 Add optional `depth` field to `Group` (default `1`).
-- [x] 3.2 `depth` does not leak into the lenses (not in translate/style attrs) or break existing Group scenarios — all group tests pass.
+## 3. Layer entity carries depth (was: Group depth)
+- [x] 3.1 ~~Add optional `depth` field to `Group`~~ — superseded: `depth` on Group couples parallax to a container that will grow transforms and offers nowhere to restrict layers. Replaced by a dedicated entity.
+- [x] 3.3 Added `Layer` entity (`shapes/Layer`): `children` + `depth` (default 1), no position/opacity. Renders as a plain `<g>` container (registered in `svg/shapes.ts` for both sinks), draws nothing itself.
+- [x] 3.4 Removed `depth` from `Group`; restored Group to its pre-change fields.
+- [x] 3.5 `ponytail:` note on `Layer` marks nested Layers as undefined behavior (no guard yet); notes where the guard would go.
+- [x] 3.6 Exported `Layer` from the shapes barrel (re-exported via `Shapes`).
+- [x] 3.7 Tests: parallax now uses `Shapes.Layer`; added "bare shape feels full camera" and "top-level Group has no depth / feels full camera". Example + docs migrated to `Layer`.
 
 ## 4. SVG sink transform (shared helper)
 - [x] 4.1 `layerTransform(camera, depth, width, height)` helper in `svg/camera.ts`: `layerZoom = 1 + (zoom-1)*depth`, `pan = camera.{x,y}*depth`, transform `translate(cx,cy) scale(layerZoom) translate(-cx,-cy) translate(-panX,-panY)` with `cx,cy = width/2, height/2`. Returns "" when identity. Plus `depthOf` (Groups carry depth; others = 1) and `wrapLayer`.

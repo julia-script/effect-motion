@@ -44,7 +44,7 @@ export const layerTransform = (
 	return parts.join(" ");
 };
 
-/** `depth` for a top-level layer's data (Groups carry it; others = 1). */
+/** `depth` for a top-level layer's data (a Layer carries it; others = 1). */
 export const depthOf = (data: unknown): number => {
 	const depth = (data as { depth?: unknown } | null)?.depth;
 	return typeof depth === "number" ? depth : 1;

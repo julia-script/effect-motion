@@ -1,12 +1,12 @@
 import { Motion, Particles, Scene, Shapes } from "effect-motion";
 
 // The camera is an ordinary instance: pan it with the same animators as
-// anything else. Each top-level Group carries a `depth` — the fraction of
-// the camera it feels. A far starfield barely moves, a mid layer drifts at
-// half speed, the near shapes track the camera fully, and a depth:0 HUD is
-// pinned to the screen.
+// anything else. A `Layer` is a container that carries a `depth` — the
+// fraction of the camera it feels. A far starfield barely moves, a mid layer
+// drifts at half speed, the near shapes track the camera fully, and a depth:0
+// layer is pinned to the screen as a HUD.
 export const scene = Scene.make(function* () {
-	// far layer: a drifting starfield. It sits in a depth:0.2 group, so the
+	// far layer: a drifting starfield. It sits in a depth:0.2 layer, so the
 	// whole field parallaxes slowly while its own particles twinkle-drift.
 	const stars = yield* Particles.field({
 		region: { w: 500, h: 300 },
@@ -16,7 +16,7 @@ export const scene = Scene.make(function* () {
 		palette: ["#fffffe", "#b8c1ec", "#8087b3"],
 		capacity: 90,
 	});
-	yield* Scene.instantiate(Shapes.Group, {
+	yield* Scene.instantiate(Shapes.Layer, {
 		depth: 0.2,
 		children: [stars],
 	});
@@ -26,7 +26,7 @@ export const scene = Scene.make(function* () {
 	);
 
 	// mid layer: moves at half the camera (depth 0.5)
-	yield* Scene.instantiate(Shapes.Group, {
+	yield* Scene.instantiate(Shapes.Layer, {
 		depth: 0.5,
 		children: [
 			Scene.instantiate(Shapes.Square, {
@@ -45,7 +45,7 @@ export const scene = Scene.make(function* () {
 	});
 
 	// near foreground: full camera (depth 1, the default)
-	yield* Scene.instantiate(Shapes.Group, {
+	yield* Scene.instantiate(Shapes.Layer, {
 		children: [
 			Scene.instantiate(Shapes.Circle, {
 				x: 100,
@@ -64,7 +64,7 @@ export const scene = Scene.make(function* () {
 
 	// HUD: depth:0 pins it to the screen. A viewfinder-style label + status
 	// dot reads as an intentional overlay that ignores the camera.
-	yield* Scene.instantiate(Shapes.Group, {
+	yield* Scene.instantiate(Shapes.Layer, {
 		depth: 0,
 		children: [
 			Scene.instantiate(Shapes.Circle, {
