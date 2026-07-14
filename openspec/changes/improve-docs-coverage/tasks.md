@@ -1,0 +1,45 @@
+## 1. Structure & navigation
+
+- [ ] 1.1 Design the new nav: rewrite `apps/docs/content/docs/meta.json` for the concept spine (Introduction, Getting started, Core Concepts group, Going Further group, Examples gallery, Patterns). Add section `meta.json` files for the Core Concepts and Going Further folders.
+- [ ] 1.2 Decide the fate of the current `content/docs/examples/*.mdx` gallery pages (dissolve into concept pages vs. keep thin) and the `made-by-*` showcase pages (keep as the Examples gallery).
+
+## 2. New example scenes (new APIs)
+
+- [ ] 2.1 Add a `children`-composition scene (`apps/docs/examples/children.scene.ts`) — a Group built from a polymorphic `children` list (string → Text, nested instantiate, an instance) — and register it.
+- [ ] 2.2 Add an `appendChild` reparent scene (lazily-created node moved into a group) and register it.
+- [ ] 2.3 Add a custom-entity scene (`Entity.make` + a render function registered with a sink) and register it.
+
+## 3. Core Concepts pages
+
+- [ ] 3.1 **Scenes & the frame model** — `Scene.make`; `run` (frame list) / `stream` (lazy) / `step`; `Settings` (frameRate/width/height/backgroundColor/seed/maxFrames). Explain the pure-function-of-(scene,settings) model.
+- [ ] 3.2 **Entities & instances** — the 8 built-in shapes; `instantiate`; polymorphic `children`; `$visible`; `appendChild`/`removeChild`; `update`/`data`. Embed the children + appendChild examples. `Text` documented as a plain-string leaf composed via children.
+- [ ] 3.3 **Animators** — base/To pair pattern, dual call forms; `tween`/`tweenTo` (raw) vs `move`/`fade` (semantic); `wait`. Embed a relevant example (e.g. crossfade / easing).
+- [ ] 3.4 **Physics** — `spring`/`springTo`, presets (`Physics.springs`), why there's no duration. Embed the springs example.
+- [ ] 3.5 **Timing & easing** — the curve library (named curves, factory curves, custom `(t)=>t` functions), `timingFunctions`. Embed the easing-race example.
+- [ ] 3.6 **Composition** — `chain`/`all`/`stagger`/`fork`/`background`/`repeat`, plus `play` (nested scenes) and `finish`. Embed chain/stagger/fork-background/repeat examples.
+- [ ] 3.7 **Determinism** — `seed`, the seeded `Random`, frame-exact invariants (duration lands on target, springs snap on settle). Embed the seeded-randomness example.
+
+## 4. Going Further pages
+
+- [ ] 4.1 **Custom entities** — `Entity.make` with fields + trait lenses + a render function registered on a sink. Embed the custom-entity example.
+- [ ] 4.2 **Rendering & sinks** — `SvgRenderer` (self-contained string, the export path) vs `SvgDomRenderer` (live DOM, clear-and-rebuild). When to use which.
+- [ ] 4.3 **React Player** — `usePlayer` / `Player`; how a scene becomes something on screen in a user's app (live consumption). Pair conceptually with Export.
+- [ ] 4.4 **Export to video** — update the existing `export.mdx`: resvg → ffmpeg pipeline, `Video.render`, and the bundled-ffmpeg default with the `binary` override. Ensure it matches the export README.
+- [ ] 4.5 **Fonts** — the `Fonts` annotation, player (FontFace) and export (resvg) paths. Embed the custom-fonts example. (Largely a relocation/accuracy pass of existing content.)
+
+## 5. Accuracy pass on existing pages
+
+- [ ] 5.1 `text` — plain-string `Text` + composition via children; remove all rich-text tree / `strong` / `emphasis` / `Motion.reveal` references (fold into Entities page or keep as a short Text section).
+- [ ] 5.2 `getting-started`, `index`, `pacing`, `composition` — audit against the current API; fix any pre-refactor structure (`parent` arg) or removed-feature references.
+- [ ] 5.3 Showcase scenes (`moon-moth`, `the-box`) pages — confirm prose matches the current scene source (they were migrated during the refactor).
+
+## 6. Patterns (fast-follow, lower priority)
+
+- [ ] 6.1 A **Patterns** page of recipes: loop forever (`repeat` + `Schedule.forever` in `background`), crossfade, stagger into a group, compose styled/multi-line text via children. Include only if it doesn't delay the publish-gating pages.
+
+## 7. Verify
+
+- [ ] 7.1 `pnpm docs` (dev) — every page renders, every embedded `<Example>` plays, navigation reflects the concept spine.
+- [ ] 7.2 `pnpm --filter docs build` (or `pnpm build`) green — no broken MDX, no missing example names.
+- [ ] 7.3 Coverage check: every symbol in the spec's Full public-API coverage requirement has a documented home; no page references removed APIs.
+- [ ] 7.4 `openspec validate improve-docs-coverage` passes.
