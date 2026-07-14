@@ -13,6 +13,7 @@ import { scene as springs } from "./springs.scene";
 import { scene as stagger } from "./stagger.scene";
 import { scene as text } from "./text.scene";
 import { scene as theBox } from "./the-box.scene";
+import { scene as typewriter } from "./typewriter.scene";
 
 /**
  * Every example the docs can embed. The key doubles as the source file
@@ -33,4 +34,5 @@ export const examples: Record<string, AnyScene> = {
 	"custom-fonts": customFonts,
 	text,
 	"the-box": theBox,
+	typewriter,
 };
