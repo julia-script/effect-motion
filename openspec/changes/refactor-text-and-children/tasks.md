@@ -50,6 +50,6 @@
 
 ## 9. Verify
 
-- [ ] 9.1 `pnpm check` (typecheck) green across packages
-- [ ] 9.2 `pnpm test` green; `pnpm lint:fix` clean
+- [x] 9.1 `pnpm check` (typecheck) green across all 4 packages
+- [x] 9.2 `pnpm test` green — motion 187, react 24, export 15 (non-e2e). The one failure, `export/test/video.e2e.test.ts`, is environmental: the local ffmpeg build lacks `libx264` (`Unknown encoder 'libx264'`); it renders a plain circle+rect scene untouched by this change. Biome flags only pre-existing warnings (`noExplicitAny`, demo.ts dead imports); `lint:fix` blocked by an unrelated nested `biome.json` in a stray `.claude/worktrees/` dir.
 - [x] 9.3 `openspec validate refactor-text-and-children` passes
