@@ -1,5 +1,7 @@
 import type { AnyScene } from "@effect-motion/react";
+import { scene as appendChild } from "./append-child.scene";
 import { scene as chain } from "./chain.scene";
+import { scene as children } from "./children.scene";
 import { scene as crossfade } from "./crossfade.scene";
 import { scene as customFonts } from "./custom-fonts.scene";
 import { scene as easingRace } from "./easing-race.scene";
@@ -22,6 +24,8 @@ export const examples: Record<string, AnyScene> = {
 	"easing-race": easingRace,
 	springs,
 	groups,
+	children,
+	"append-child": appendChild,
 	"moon-moth": moonMoth,
 	"seeded-randomness": seededRandomness,
 	repeat,

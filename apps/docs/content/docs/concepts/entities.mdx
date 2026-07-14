@@ -1,0 +1,102 @@
+---
+title: Entities & instances
+description: Shapes, instantiation, the children tree, visibility, and updates
+---
+
+An **entity** is a named, schema-backed struct with optional trait lenses (like
+`~position` and `~opacity`). The library ships eight built-in entities:
+
+- `Circle`, `Ellipse`, `Rect`, `Square` — filled/stroked primitives
+- `Line`, `Path` — stroked geometry
+- `Text` — a plain-string text leaf
+- `Group` — a container that positions and structures its children
+
+You never mutate an entity. Instead you **instantiate** it inside a scene, which
+creates a live **instance** the runner owns. Instances are what animators move.
+
+```ts
+const dot = yield* Scene.instantiate(Shapes.Circle, {
+	x: 60,
+	y: 150,
+	radius: 14,
+	fill: "#7f5af0",
+});
+```
+
+`instantiate` returns the instance, and animators take it as their first
+argument — so instances flow straight into `move`, `fade`, `tween`, and friends.
+
+## Structure comes from children
+
+A scene is a single tree of instances. `Group` structures that tree through its
+`children` — an ordered list. You define structure by listing a group's
+children, not by naming a parent on each child.
+
+`children` is **polymorphic**: each entry is a string (which becomes a `Text`),
+an already-created instance, or a not-yet-yielded `instantiate` (resolved
+internally, so nested calls need no `yield*`). Children are born under the group
+and move with it.
+
+<Example name="children" />
+
+## Reparenting: appendChild / removeChild
+
+Instances are born under the ambient parent (the root, or a mounted scene's
+group). To move one into a group after it already exists, use
+`Scene.appendChild(parent, child)` — it detaches the child from its current
+parent first, so it is never referenced twice. `Scene.removeChild(parent, child)`
+detaches it again, leaving it unmounted (still alive).
+
+This is the escape hatch for lazily-created nodes — e.g. a shape you spawn and
+animate on its own, then adopt into a moving group.
+
+<Example name="append-child" />
+
+## Text is a plain-string leaf
+
+`Shapes.Text` holds a string, not a formatting tree. Styled runs and multi-line
+captions are composed from multiple `Text` instances under a `Group` (via the
+`children` list above) — the engine renders the tree; it doesn't parse content.
+
+```ts
+yield* Scene.instantiate(Shapes.Text, {
+	text: "Hello, world",
+	x: 40,
+	y: 80,
+	fontSize: 24,
+	fill: "#7f5af0",
+	textAnchor: "middle",
+});
+```
+
+The engine doesn't measure text, so alignment is delegated to SVG:
+`textAnchor` (`start`/`middle`/`end`) and `baseline` (`auto`/`middle`/`hanging`).
+
+## Reading and updating instance data
+
+`Scene.update(instance, next)` sets an instance's data — either a whole new
+value or an updater function of the current data. `Scene.data(instance)` reads
+the current value. Animators are built on `update`; reach for it directly when
+you need a discrete change rather than an interpolation.
+
+```ts
+// discrete: snap the fill on the next frame
+yield* Scene.update(dot, (d) => ({ ...d, fill: "#2cb67d" }));
+
+// read the current data
+const current = yield* Scene.data(dot);
+```
+
+## Hiding a node
+
+Every instance carries a builtin `$visible` property (default `true`), set at
+instantiation. Renderers skip a hidden instance and its subtree — useful for
+staging elements you reveal later.
+
+```ts
+yield* Scene.instantiate(Shapes.Text, { text: "later", $visible: false });
+```
+
+`$visible` lives beside the entity's data, not inside its schema, so every
+entity has it uniformly. The `$` prefix is reserved for these builtin
+properties — an entity may not declare a `$`-prefixed field.

@@ -71,9 +71,13 @@ The frame model (`run`/`stream`/`step`) is foundational, so it lives in the Scen
 
 ### D4 — A few new scenes only for genuinely new APIs
 
-New small scenes: a `children`-composition demo, an `appendChild` reparent demo, and a custom-entity demo. Everything else the existing 14 already cover.
+New small scenes: a `children`-composition demo and an `appendChild` reparent demo. Everything else the existing 14 already cover.
 
 - **Why**: the new refactor APIs have no illustrating scene yet; the rest do. Keep new scene count minimal.
+
+### D4a — Custom entities are documented as a code sample, not a live example (found during apply)
+
+The docs `<Example>`/Player renders through a fixed layer — `Player.tsx` hardcodes `Svg.layer + Svg.shapesLayer` (built-in shapes only), and `PlayerProps`/`usePlayer` expose no way to add a per-scene entity-renderer layer. A custom entity therefore cannot render in an embedded example (its renderer context service is unregistered → the render fold fails). Rather than expand this docs change into a React-package feature (a Player layer override), the **Custom entities** page (4.1) shows `Entity.make` + a render function + sink registration as a **code sample**, verified out-of-band (a test/scratch render). Adding a Player layer override — to enable live custom-entity examples — is deferred to a possible later change.
 
 ### D5 — Accuracy pass is a first-class task, not incidental
 

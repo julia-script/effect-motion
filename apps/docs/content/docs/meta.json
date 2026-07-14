@@ -2,6 +2,7 @@
 	"pages": [
 		"index",
 		"getting-started",
+		"concepts",
 		"pacing",
 		"composition",
 		"export",

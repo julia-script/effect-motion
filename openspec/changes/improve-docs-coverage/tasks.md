@@ -5,14 +5,14 @@
 
 ## 2. New example scenes (new APIs)
 
-- [ ] 2.1 Add a `children`-composition scene (`apps/docs/examples/children.scene.ts`) — a Group built from a polymorphic `children` list (string → Text, nested instantiate, an instance) — and register it.
-- [ ] 2.2 Add an `appendChild` reparent scene (lazily-created node moved into a group) and register it.
-- [ ] 2.3 Add a custom-entity scene (`Entity.make` + a render function registered with a sink) and register it.
+- [x] 2.1 Add a `children`-composition scene (`apps/docs/examples/children.scene.ts`) — a Group built from a polymorphic `children` list (string → Text, nested instantiate, an instance) — and register it.
+- [x] 2.2 Add an `appendChild` reparent scene (lazily-created node moved into a group) and register it.
+- [ ] 2.3 ~~Add a custom-entity scene~~ → **no live scene**: the docs Player hardcodes only the built-in shapes layer (`Player.tsx:19`) and `PlayerProps` has no layer override, so a custom entity cannot render in `<Example>`. The custom-entity page (4.1) uses a **code sample only**, verified out-of-band. (No library change — matches the docs-only scope.)
 
 ## 3. Core Concepts pages
 
 - [ ] 3.1 **Scenes & the frame model** — `Scene.make`; `run` (frame list) / `stream` (lazy) / `step`; `Settings` (frameRate/width/height/backgroundColor/seed/maxFrames). Explain the pure-function-of-(scene,settings) model.
-- [ ] 3.2 **Entities & instances** — the 8 built-in shapes; `instantiate`; polymorphic `children`; `$visible`; `appendChild`/`removeChild`; `update`/`data`. Embed the children + appendChild examples. `Text` documented as a plain-string leaf composed via children.
+- [x] 3.2 **Entities & instances** — the 8 built-in shapes; `instantiate`; polymorphic `children`; `$visible`; `appendChild`/`removeChild`; `update`/`data`. Embed the children + appendChild examples. `Text` documented as a plain-string leaf composed via children.
 - [ ] 3.3 **Animators** — base/To pair pattern, dual call forms; `tween`/`tweenTo` (raw) vs `move`/`fade` (semantic); `wait`. Embed a relevant example (e.g. crossfade / easing).
 - [ ] 3.4 **Physics** — `spring`/`springTo`, presets (`Physics.springs`), why there's no duration. Embed the springs example.
 - [ ] 3.5 **Timing & easing** — the curve library (named curves, factory curves, custom `(t)=>t` functions), `timingFunctions`. Embed the easing-race example.
