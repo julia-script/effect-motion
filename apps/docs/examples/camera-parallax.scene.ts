@@ -62,25 +62,24 @@ export const scene = Scene.make(function* () {
 		],
 	});
 
-	// HUD: depth:0 pins it to the screen. A thin outlined pill reads as an
-	// intentional overlay, not a hole punched in the scene.
+	// HUD: depth:0 pins it to the screen. A viewfinder-style label + status
+	// dot reads as an intentional overlay that ignores the camera.
 	yield* Scene.instantiate(Shapes.Group, {
 		depth: 0,
 		children: [
-			Scene.instantiate(Shapes.Rect, {
-				x: 20,
-				y: 20,
-				width: 88,
-				height: 8,
-				fill: "#2cb67d",
+			Scene.instantiate(Shapes.Circle, {
+				x: 26,
+				y: 27,
+				radius: 4,
+				fill: "#e53170",
 			}),
-			Scene.instantiate(Shapes.Rect, {
-				x: 20,
-				y: 20,
-				width: 120,
-				height: 8,
-				stroke: "#fffffe",
-				strokeWidth: 1,
+			Scene.instantiate(Shapes.Text, {
+				text: "REC  CAM 01",
+				x: 38,
+				y: 27,
+				fontSize: 13,
+				fill: "#fffffe",
+				baseline: "middle",
 			}),
 		],
 	});
