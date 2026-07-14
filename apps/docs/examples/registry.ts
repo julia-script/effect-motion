@@ -1,6 +1,5 @@
 import type { AnyScene } from "@effect-motion/react";
 import { scene as appendChild } from "./append-child.scene";
-import { scene as cameraFollow } from "./camera-follow.scene";
 import { scene as cameraParallax } from "./camera-parallax.scene";
 import { scene as cameraShake } from "./camera-shake.scene";
 import { scene as cameraSwap } from "./camera-swap.scene";
@@ -36,7 +35,6 @@ export const examples: Record<string, AnyScene> = {
 	"camera-parallax": cameraParallax,
 	"camera-zoom": cameraZoom,
 	"camera-shake": cameraShake,
-	"camera-follow": cameraFollow,
 	"camera-swap": cameraSwap,
 	children,
 	"append-child": appendChild,
