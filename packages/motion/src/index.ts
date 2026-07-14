@@ -4,6 +4,7 @@ export * as Instance from "./Instance";
 export * as Motion from "./Motion";
 export * as Phaser from "./Phaser";
 export * as Physics from "./Physics";
+export * as Particles from "./particles";
 export * as Renderer from "./Renderer";
 export * as Scene from "./Scene";
 export * as Shapes from "./shapes";

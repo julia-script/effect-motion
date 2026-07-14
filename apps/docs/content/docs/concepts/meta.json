@@ -5,6 +5,7 @@
 		"entities",
 		"animators",
 		"physics",
+		"particles",
 		"timing",
 		"composition",
 		"pacing",

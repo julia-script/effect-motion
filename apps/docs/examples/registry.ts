@@ -5,12 +5,16 @@ import { scene as children } from "./children.scene";
 import { scene as crossfade } from "./crossfade.scene";
 import { scene as customFonts } from "./custom-fonts.scene";
 import { scene as easingRace } from "./easing-race.scene";
+import { scene as floatingField } from "./floating-field.scene";
+import { scene as floatingMotes } from "./floating-motes.scene";
 import { scene as forkBackground } from "./fork-background.scene";
 import { scene as groups } from "./groups.scene";
 import { scene as moonMoth } from "./moon-moth.scene";
+import { scene as particleField } from "./particle-field.scene";
 import { scene as particles } from "./particles.scene";
 import { scene as repeat } from "./repeat.scene";
 import { scene as seededRandomness } from "./seeded-randomness.scene";
+import { scene as snow } from "./snow.scene";
 import { scene as springs } from "./springs.scene";
 import { scene as stagger } from "./stagger.scene";
 import { scene as text } from "./text.scene";
@@ -33,6 +37,10 @@ export const examples: Record<string, AnyScene> = {
 	stagger,
 	"fork-background": forkBackground,
 	particles,
+	"particle-field": particleField,
+	"floating-field": floatingField,
+	"floating-motes": floatingMotes,
+	snow,
 	crossfade,
 	"custom-fonts": customFonts,
 	text,

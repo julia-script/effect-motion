@@ -1,5 +1,7 @@
 import { Layer } from "effect";
 import * as Effect from "effect/Effect";
+import { ParticleField } from "../particles/ParticleField";
+import { particleField } from "../particles/render";
 import type * as Renderer from "../Renderer";
 import * as Shapes from "../shapes";
 import { entityRendererLayer } from "./layers";
@@ -165,4 +167,5 @@ export const shapesLayer = Layer.mergeAll(
 	entityRendererLayer(Shapes.Path, path),
 	entityRendererLayer(Shapes.Group, group),
 	entityRendererLayer(Shapes.Text, text),
+	entityRendererLayer(ParticleField, particleField),
 );

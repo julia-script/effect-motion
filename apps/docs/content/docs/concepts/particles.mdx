@@ -1,0 +1,141 @@
+---
+title: Particles
+description: A field of many small elements — you author the distribution, the seed draws each one
+---
+
+A `ParticleField` produces many small, similar, short-lived elements —
+confetti, sparks, embers, drifting ambience — from a single entity. You never
+choreograph individual particles; you author the **distribution** they are drawn
+from, and the field's one per-frame step emits, moves, and retires them.
+
+Crucially, the whole field is **one instance, one fiber, one frame-barrier
+party**, no matter how many particles are live. The particles are packed state
+inside the field's data, advanced as a batch — so a thousand of them cost the
+scene the same barrier work as one animated shape, not a thousand times as much.
+
+A field comes in two kinds, chosen by which constructor you use.
+`Particles.emitter` is a **source** — particles launch from a point and live
+out a lifetime (fountains, confetti, sparks). `Particles.field` is a **floating
+field** — particles spread evenly and drift in place (dust, starfields). Each
+constructor accepts only the props that make sense for it, and `simulate` only
+accepts the matching emission.
+
+```ts
+import { Particles, Scene } from "effect-motion";
+
+const sparks = yield* Particles.emitter({
+  x: 250,
+  y: 150,
+  speed: [80, 140], // px/sec, drawn per particle
+  angle: [-30, 30], // degrees; 0 = straight up
+  life: [0.8, 1.4], // seconds
+  size: [2, 5], // px radius
+  opacityRange: [0.6, 1], // per-particle opacity, drawn at birth
+  gravity: 400, // shared force, not a range
+  palette: ["#ffcc44", "#ff8906"],
+});
+
+yield* Particles.simulate(sparks, "2 seconds", { burst: 200 });
+```
+
+## You author ranges, the seed picks values
+
+Every property that varies between particles is written as a **range**
+`[min, max]`. At birth the field draws one sample per property from the scene's
+seeded `Random`, so the same seed reproduces the same field byte-for-byte. Shared
+forces like `gravity` are plain values, not ranges.
+
+The *shape* of the effect lives entirely in the ranges. A wide `angle` with
+downward `gravity` is a fountain; a narrow `angle` a jet; `angle: [-180, 180]` an
+explosion; low `speed` with long `life` a drifting ambience — all the same
+engine.
+
+## Behaviour splits on two axes
+
+- **At birth** — a random draw from a range gives *variety between* particles.
+- **Over life** — a deterministic curve of a particle's own age gives the *arc
+  each one follows*.
+
+Over-life curves take a `from`/`to` and an easing name (the same
+[timing functions](/docs/concepts/timing) every animator uses), evaluated against
+the particle's age from 0 at birth to 1 at end of life. `size` and `opacity`
+support them, so a particle can be born big and bright and shrink and fade to
+nothing:
+
+```ts
+sizeOverLife: { from: 1, to: 0, ease: "easeInQuad" },
+opacityOverLife: { from: 1, to: 0, ease: "easeOutCubic" },
+```
+
+Over-life evolution is pure — two particles at the same age always agree,
+regardless of when each was born.
+
+Opacity has both axes: `opacityRange: [min, max]` draws a per-particle baseline
+at birth (so a field varies in brightness), and `opacityOverLife` fades that
+baseline across each particle's life. Set either or both.
+
+## Burst and stream
+
+`simulate(field, duration, emission)` advances a field. A source
+(`Particles.emitter`) accepts:
+
+- `{ burst: n }` — all `n` on the first frame, then none. Confetti, impacts.
+- `{ rate: n }` — `n` per second, continuously. Snow, embers, ambience.
+
+and a floating field (`Particles.field`) accepts `{ fill: n }` (below). The two
+emitter emissions write into the same fixed-capacity buffer; when it fills, the
+oldest live particles are overwritten. `simulate` is dual — call it data-first
+`simulate(field, ...)` or pipeable `field.pipe(simulate(...))` — and ticks the
+frame barrier exactly once per frame. The emission is checked against the field's
+kind at compile time: a `{ fill }` on an emitter (or a `{ burst }` on a field) is
+a type error.
+
+<Example name="particle-field" />
+
+## Floating fields
+
+`Particles.emitter` launches particles from a point — a fountain. For an
+evenly-spread ambient field with **no source** — drifting dust, a starfield,
+motes suspended in the frame — use `Particles.field` and the `{ fill: n }`
+emission. It scatters `n` particles across the region at frame zero, gives each a
+small random `drift`, and wraps them at the edges so the field stays populated
+forever with no lifecycle churn.
+
+The region defaults to the whole frame; set `region: { w, h }` to bound it. A
+floating field takes `drift` and `size` (and `opacityRange`) — the launch props
+`speed`, `angle`, and `life` don't apply, and the constructor won't accept them:
+
+```ts
+const stars = yield* Particles.field({
+  size: [1, 2.5],
+  opacityRange: [0.2, 1], // faint stars and bright ones
+  drift: [4, 12], // gentle wander, px/sec, in a random direction
+  palette: ["#a7a9be", "#d4d4e0", "#fffffe"],
+});
+
+yield* Particles.simulate(stars, "6 seconds", { fill: 140 });
+```
+
+<Example name="floating-field" />
+
+## Ambience
+
+The same field, aimed and paced differently, reads as calm rather than
+celebratory. Floating motes drift up from a slow, wide launch cone with a faint
+upward buoyancy and a long fade:
+
+<Example name="floating-motes" />
+
+Point the cone down, add a little gravity, and the identical machinery becomes
+snow — only the angles, forces, and emission rate changed:
+
+<Example name="snow" />
+
+## Determinism
+
+The only randomness is at emission. Each particle is seeded from the scene's
+`Random` at birth and then carries its own independent generator, so consuming
+one particle's randomness never shifts another's. Evolution after birth is a pure
+function of age and shared forces. The result is the library's usual guarantee:
+[same seed, byte-identical output](/docs/concepts/determinism) — scrub the
+timeline and every particle retraces its exact path.
