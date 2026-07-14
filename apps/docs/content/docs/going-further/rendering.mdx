@@ -1,0 +1,52 @@
+---
+title: Rendering & sinks
+description: How frames become output — the SVG string and DOM sinks
+---
+
+Rendering is a pluggable layer. A scene produces frames (pure data); a **sink**
+folds each frame — plus its metadata (width, height, background) — into output.
+Entities register a per-shape render function; the sink combines them.
+
+Two SVG sinks ship today, differing in what they produce:
+
+## SvgRenderer — a self-contained string
+
+`Svg.SvgRenderer` folds a frame into a single self-contained SVG document
+**string**. Nothing touches the DOM. This is the export path: the string goes to
+the rasterizer, which turns it into a PNG.
+
+```ts
+import { Svg } from "effect-motion";
+
+const renderer = yield* Svg.SvgRenderer.Context;
+const svg = yield* renderer.render(frame, { width: 500, height: 300 });
+// svg is a string: "<svg …>…</svg>"
+```
+
+Deterministic and side-effect-free — the same frame always yields the same
+string.
+
+## SvgDomRenderer — live DOM
+
+`Svg.SvgDomRenderer` renders a frame **into a DOM element** (clear-and-rebuild per
+frame). This is what the React player uses for live playback: each frame it
+rebuilds the SVG subtree under the player's element.
+
+```ts
+const renderer = yield* Svg.SvgDomRenderer.Context;
+yield* renderer.render(frame, { target: element });
+```
+
+## Which to use
+
+| | `SvgRenderer` | `SvgDomRenderer` |
+| --- | --- | --- |
+| output | SVG string | live DOM nodes |
+| use | export, snapshots, tests | live playback in a browser |
+| environment | any (no DOM needed) | browser / DOM |
+
+Both fold the same `SvgNode`s the same way, so a scene renders identically
+through either — which is exactly why exported video matches live playback frame
+for frame. Most apps never call a sink directly: the [React Player](/docs/going-further/react-player)
+wraps `SvgDomRenderer`, and [Export](/docs/going-further/export) wraps
+`SvgRenderer`.

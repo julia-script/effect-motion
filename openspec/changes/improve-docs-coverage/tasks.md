@@ -1,7 +1,7 @@
 ## 1. Structure & navigation
 
-- [ ] 1.1 Design the new nav: rewrite `apps/docs/content/docs/meta.json` for the concept spine (Introduction, Getting started, Core Concepts group, Going Further group, Examples gallery, Patterns). Add section `meta.json` files for the Core Concepts and Going Further folders.
-- [ ] 1.2 Decide the fate of the current `content/docs/examples/*.mdx` gallery pages (dissolve into concept pages vs. keep thin) and the `made-by-*` showcase pages (keep as the Examples gallery).
+- [x] 1.1 Design the new nav: rewrite `apps/docs/content/docs/meta.json` for the concept spine (Introduction, Getting started, Core Concepts group, Going Further group, Examples gallery, Patterns). Add section `meta.json` files for the Core Concepts and Going Further folders.
+- [x] 1.2 Decide the fate of the current `content/docs/examples/*.mdx` gallery pages (dissolve into concept pages vs. keep thin) and the `made-by-*` showcase pages (keep as the Examples gallery).
 
 ## 2. New example scenes (new APIs)
 
@@ -21,17 +21,17 @@
 
 ## 4. Going Further pages
 
-- [ ] 4.1 **Custom entities** — `Entity.make` with fields + trait lenses + a render function registered on a sink. Embed the custom-entity example.
-- [ ] 4.2 **Rendering & sinks** — `SvgRenderer` (self-contained string, the export path) vs `SvgDomRenderer` (live DOM, clear-and-rebuild). When to use which.
-- [ ] 4.3 **React Player** — `usePlayer` / `Player`; how a scene becomes something on screen in a user's app (live consumption). Pair conceptually with Export.
-- [ ] 4.4 **Export to video** — update the existing `export.mdx`: resvg → ffmpeg pipeline, `Video.render`, and the bundled-ffmpeg default with the `binary` override. Ensure it matches the export README.
-- [ ] 4.5 **Fonts** — the `Fonts` annotation, player (FontFace) and export (resvg) paths. Embed the custom-fonts example. (Largely a relocation/accuracy pass of existing content.)
+- [x] 4.1 **Custom entities** — `Entity.make` with fields + trait lenses + a render function registered on a sink. Embed the custom-entity example.
+- [x] 4.2 **Rendering & sinks** — `SvgRenderer` (self-contained string, the export path) vs `SvgDomRenderer` (live DOM, clear-and-rebuild). When to use which.
+- [x] 4.3 **React Player** — `usePlayer` / `Player`; how a scene becomes something on screen in a user's app (live consumption). Pair conceptually with Export.
+- [x] 4.4 **Export to video** — update the existing `export.mdx`: resvg → ffmpeg pipeline, `Video.render`, and the bundled-ffmpeg default with the `binary` override. Ensure it matches the export README.
+- [x] 4.5 **Fonts** — the `Fonts` annotation, player (FontFace) and export (resvg) paths. Embed the custom-fonts example. (Largely a relocation/accuracy pass of existing content.)
 
 ## 5. Accuracy pass on existing pages
 
-- [ ] 5.1 `text` — plain-string `Text` + composition via children; remove all rich-text tree / `strong` / `emphasis` / `Motion.reveal` references (fold into Entities page or keep as a short Text section).
-- [ ] 5.2 `getting-started`, `index`, `pacing`, `composition` — audit against the current API; fix any pre-refactor structure (`parent` arg) or removed-feature references.
-- [ ] 5.3 Showcase scenes (`moon-moth`, `the-box`) pages — confirm prose matches the current scene source (they were migrated during the refactor).
+- [x] 5.1 `text` — plain-string `Text` + composition via children; remove all rich-text tree / `strong` / `emphasis` / `Motion.reveal` references (fold into Entities page or keep as a short Text section).
+- [x] 5.2 `getting-started`, `index`, `pacing`, `composition` — audit against the current API; fix any pre-refactor structure (`parent` arg) or removed-feature references.
+- [x] 5.3 Showcase scenes (`moon-moth`, `the-box`) pages — confirm prose matches the current scene source (they were migrated during the refactor).
 
 ## 6. Patterns (fast-follow, lower priority)
 

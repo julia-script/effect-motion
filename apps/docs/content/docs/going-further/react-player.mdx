@@ -1,0 +1,61 @@
+---
+title: React Player
+description: Play a scene live in a React app with @effect-motion/react
+---
+
+A scene is data; the **player** is how you watch it live in a browser. The
+`@effect-motion/react` package provides a ready-made `<Player>` component and the
+`usePlayer` hook it's built on. (Every live example in these docs is a `<Player>`.)
+
+```bash
+npm install @effect-motion/react
+```
+
+## The Player component
+
+Drop in a scene and go — `<Player>` sizes its SVG viewport from the scene's frame
+metadata and renders a transport bar (play/pause, progress, time, loop):
+
+```tsx
+import { Player } from "@effect-motion/react";
+import { scene } from "./my-scene";
+
+export function Demo() {
+	return <Player scene={scene} width={500} height={300} />;
+}
+```
+
+`PlayerProps` is the scene plus the same options as `usePlayer`:
+`seed`, `frameRate`, `width`, `height`, `autoPlay`. Focus the player for keyboard
+control (Space toggles play/pause).
+
+## The usePlayer hook
+
+For a custom transport UI, drive it yourself with `usePlayer(scene, options)`. It
+pulls frames from the scene's stream with a read-ahead buffer and plays them on a
+`requestAnimationFrame` clock — playback starts as soon as the first frame is
+buffered, so long and infinite scenes play without waiting for completion.
+
+```tsx
+import { usePlayer } from "@effect-motion/react";
+
+function CustomPlayer({ scene }) {
+	const player = usePlayer(scene, { autoPlay: true });
+	// player.currentFrame, .frame, .playing, .progress, .totalFrames
+	// player.play(), .pause(), .toggle(), .seek(n), .setLoop(bool)
+	return <button onClick={player.toggle}>{player.playing ? "Pause" : "Play"}</button>;
+}
+```
+
+Played frames are retained, so backward seeking is free; forward seeking clamps
+to the buffered edge. `totalFrames` is `null` until the stream completes (never,
+for infinite scenes), so a progress bar reads against the buffered edge until
+then.
+
+## Live vs. file
+
+The player is one of two ways to consume a scene's frames — the **live/browser**
+path (`SvgDomRenderer` under the hood). The other is
+[Export to video](/docs/going-further/export), the **file** path
+(`SvgRenderer` → rasterizer → ffmpeg). Because both fold the same frames, what
+you preview in the player is exactly what you export.

@@ -1,0 +1,43 @@
+---
+title: Fonts
+description: Declaring the fonts a scene depends on, for player and export
+---
+
+`Text` only ever *names* a font family — making that name resolve to actual
+glyphs is the job of whatever displays the frames. A scene declares the fonts it
+depends on with the `Fonts` annotation, one entry per face (declare bold or
+italic faces as separate entries with `weight` / `style`).
+
+<Example name="custom-fonts" />
+
+The runtime never reads the annotation — fonts cannot affect frame data — but
+each consumer honors it its own way.
+
+## In the player
+
+The player loads every entry with a `src.url` through the browser's `FontFace`
+API while it buffers the first frames, and reports `ready` only once the loads
+settle — so the first visible frame is drawn with the declared fonts. A font that
+fails to load logs a warning and playback proceeds with the browser's normal
+fallback.
+
+## In export
+
+Export maps every entry with a `src.path` to resvg's font files via
+`Fonts.resvgOptions` from `@effect-motion/export`:
+
+```ts
+import { Fonts, Resvg } from "@effect-motion/export";
+
+yield* Resvg.rasterize(svg, Fonts.resvgOptions(scene));
+```
+
+System fonts stay available by default; pass `font: { loadSystemFonts: false }`
+alongside the mapped options when the declared files should be the only ones
+resvg sees.
+
+## Matching player and export
+
+Pointing `url` and `path` at the same font file is what makes browser playback
+and exported frames render with matching families — the same face, resolved two
+ways for two consumers.

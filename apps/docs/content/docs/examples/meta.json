@@ -1,11 +1,9 @@
 {
 	"title": "Examples",
 	"pages": [
-		"easing-race",
-		"springs",
 		"groups",
-		"seeded-randomness",
 		"particles",
-		"text"
+		"moon-moth",
+		"the-box"
 	]
 }

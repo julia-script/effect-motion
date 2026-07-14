@@ -1,0 +1,76 @@
+---
+title: Custom entities
+description: Define your own schema-backed entity and teach a sink to render it
+---
+
+The built-in shapes are ordinary entities — nothing about them is privileged.
+You can define your own with `Entity.make` and teach a renderer how to draw it.
+
+An entity is three things: a **name**, a **schema** for its data, and optional
+**trait lenses** that let semantic animators (`move`, `fade`) reach into that
+data.
+
+```ts
+import { Entity } from "effect-motion";
+import * as Schema from "effect/Schema";
+
+const Star = Entity.make(
+	"custom/Star",
+	{
+		x: Schema.Number,
+		y: Schema.Number,
+		points: Schema.Number,
+		radius: Schema.Number,
+		fill: Schema.String,
+	},
+	{
+		// a trait lens is a get/set pair over the whole data — all or nothing
+		"~position": {
+			get: (d) => ({ x: d.x, y: d.y }),
+			set: (d, { x, y }) => ({ ...d, x, y }),
+		},
+	},
+);
+```
+
+With the `~position` trait declared, `Motion.moveTo(star, { x: 100 })` works on a
+`Star` exactly as it does on a `Circle`. Numeric fields like `radius` are
+tweenable via `Motion.tweenTo` with no extra wiring.
+
+## Teaching a sink to render it
+
+An entity carries no rendering — that's the renderer's job. Register a **render
+function** for your entity with the SVG sink; it maps the entity's data to an
+`SvgNode`:
+
+```ts
+import { Svg } from "effect-motion";
+import * as Effect from "effect/Effect";
+
+const starLayer = Svg.entityRendererLayer(Star, ({ data }) =>
+	Effect.succeed({
+		tag: "polygon",
+		props: {
+			points: starPoints(data), // your geometry
+			fill: data.fill,
+		},
+	}),
+);
+```
+
+Provide that layer alongside the built-in `shapesLayer` when you render:
+
+```ts
+const layers = Svg.layer.pipe(
+	Layer.provideMerge(Svg.shapesLayer),
+	Layer.provideMerge(starLayer),
+);
+```
+
+The same custom entity rasterizes for export with no rasterizer-specific setup —
+the render function produces `SvgNode`s, and both the string and DOM sinks fold
+them the same way.
+
+> The Player in these docs is wired with only the built-in shapes, so a custom
+> entity won't render in an embedded example here — provide its layer in your own
+> app's renderer as shown above.

@@ -38,7 +38,9 @@ H.264, `yuv420p`, faststart MP4.
 - **`settings`** — the scene's `frameRate`, `width`, `height`, and
   `maxFrames` for this export. Set `maxFrames: Infinity` for an intentionally
   infinite scene (paired with `frames`).
-- **`binary`** — path to a specific ffmpeg (defaults to `"ffmpeg"` on `PATH`).
+- **`binary`** — override the ffmpeg binary. Defaults to the **bundled**
+  `ffmpeg-static` build; pass `"ffmpeg"` (or a path) to use a system/custom
+  ffmpeg instead.
 - **`extraArgs`** — extra ffmpeg arguments appended before the output path,
   e.g. `["-crf", "18"]` for higher quality, or a `-vf` scale filter.
 
@@ -55,12 +57,18 @@ Fonts declared on the scene with the `Fonts` annotation are passed to the
 rasterizer automatically, so exported frames use the same faces the player
 shows. Declare a `path` source per face for offline rendering.
 
-## System requirement: ffmpeg
+## ffmpeg is bundled
 
-ffmpeg is **not bundled** — it must be installed and on your `PATH` (or passed
-via `binary`). On macOS: `brew install ffmpeg`; on Debian/Ubuntu:
-`apt install ffmpeg`. If it can't be run, `Video.render` fails with an
-`EncodeError` telling you so.
+Video encoding uses the bundled `ffmpeg-static` binary by default — a full build
+that includes **libx264**, so H.264 output works out of the box with no system
+ffmpeg required (installing `@effect-motion/export` downloads that binary for
+your platform). To use a system or custom ffmpeg instead, pass `binary`
+(`"ffmpeg"`, or a path). If the chosen binary can't run, `Video.render` fails
+with an `EncodeError`.
+
+> The bundled ffmpeg build (and libx264) is GPL-licensed — a standalone
+> executable invoked over a process boundary, not linked into your code. Pass
+> your own `binary` if you'd rather not ship it.
 
 ## Lower-level building blocks
 
