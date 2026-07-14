@@ -5,7 +5,8 @@ import type * as Entity from "../Entity";
 /**
  * The portable styling prop set shared by built-in shapes — deliberately
  * limited to what any plausible render target (SVG, canvas, Lottie) can
- * express. Transforms (rotation, scale) are future camera territory.
+ * express. Camera pan/zoom is a sink-level view transform (see Camera.ts);
+ * per-shape transforms (rotation) remain future territory.
  *
  * Visible defaults: a default-constructed shape must be visible on the
  * default (dark) background. Filled shapes default `fill` to white with

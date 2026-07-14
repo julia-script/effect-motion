@@ -86,6 +86,7 @@ const allShapesFrame: Scene.Frame<Builtin> = {
 	width: 500,
 	height: 300,
 	backgroundColor: "#16161d",
+	camera: { x: 0, y: 0, zoom: 1 },
 };
 
 const layers = Svg.layer.pipe(Layer.provideMerge(Svg.shapesLayer));

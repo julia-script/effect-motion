@@ -1,3 +1,4 @@
+export * as Camera from "./Camera";
 export * as Entity from "./Entity";
 export * as Fonts from "./Fonts";
 export * as Instance from "./Instance";

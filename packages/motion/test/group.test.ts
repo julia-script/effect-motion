@@ -27,6 +27,7 @@ const frameOf = (
 	width: 500,
 	height: 300,
 	backgroundColor: "#16161d",
+	camera: { x: 0, y: 0, zoom: 1 },
 });
 
 const renderString = (frame: Scene.Frame<Entities>) =>

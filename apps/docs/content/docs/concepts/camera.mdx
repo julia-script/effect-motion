@@ -1,0 +1,92 @@
+---
+title: Camera
+description: An animatable camera and per-layer parallax — pan and zoom the view without touching world coordinates
+---
+
+The camera is the view onto your scene: pan and zoom it, and the whole scene
+moves without any shape's data changing. It is an **ordinary instance**, so the
+same animators drive it as drive everything else.
+
+```ts
+import { Motion, Scene } from "effect-motion";
+
+const cam = yield* Scene.camera;
+// pan and zoom with the primitives you already know
+yield* cam.pipe(
+	Motion.moveTo({ x: 200 }, "2 seconds", "easeInOutCubic"),
+	Motion.tweenTo({ zoom: 1.5 }, "1 second"),
+);
+```
+
+- `~position` (`x`, `y`) is the camera's **pan** in world units — `moveTo`,
+  `move`, `spring` all apply.
+- `zoom` is a numeric field (1 = identity) — animate it with `tween` / `tweenTo`.
+- The camera is never drawn. A default identity camera is always present, so
+  `Scene.camera` never returns null and scenes that ignore it render unchanged.
+
+World coordinates never move: a circle authored at `x: 100` always has
+`data.x === 100`, whatever the camera does. The camera is applied at render
+time, so determinism and `moveTo` semantics are untouched.
+
+## Parallax with `depth`
+
+A `Group` carries a `depth` — the fraction of the camera that layer feels, pan
+and zoom together. Far layers (small depth) drift slowly; the default layer
+moves fully; a `depth: 0` layer is pinned to the screen.
+
+| `depth` | effect |
+|---|---|
+| `1` (default) | full camera — pans and zooms with the view |
+| `0.3` | parallax — pans 30% and zooms 30% of the way (a distant layer) |
+| `0` | screen-fixed — no pan, no zoom (a HUD) |
+
+Because a layer is just a `Group`, parallax needs no new structure — stack a few
+Groups at different depths and pan the camera:
+
+<Example name="camera-parallax" />
+
+The far stars barely move, the mid squares drift at half speed, the near circles
+track the camera fully, and the HUD box stays put — all from one camera pan.
+
+## Movements
+
+Because the camera is just an instance, every animator composes. A few common
+shots:
+
+**Punch-in** — zoom and recentre together with `Scene.all`, so the subject stays
+framed the whole way in, then pull back out:
+
+<Example name="camera-zoom" />
+
+**Impact shake** — `Physics.springTo` the camera off-centre and let it settle;
+the overshoot-and-decay of the spring _is_ the shake, no keyframed wobble:
+
+<Example name="camera-shake" />
+
+**Follow** — `Scene.fork` a camera pan so it tracks a moving subject
+concurrently while the background slides past:
+
+<Example name="camera-follow" />
+
+## Swapping the camera
+
+`Scene.camera` is the active camera. To drive the view from an instance you
+create yourself (for example, to have it follow a subject), swap it in with
+`Scene.setCamera`:
+
+```ts
+import { Camera } from "effect-motion";
+
+const chase = yield* Scene.instantiate(Camera.Camera, { x: 0, y: 0 });
+yield* Scene.setCamera(chase);
+// animating `chase` now moves the view
+```
+
+Only one camera is active at a time; its live data becomes the view on every
+subsequent frame. Swapping between two pre-framed cameras is an instant **cut**:
+
+<Example name="camera-swap" />
+
+The default camera pushes in on the left subject; `Scene.setCamera` hands off to
+a second camera already framed on the right subject (the cut), which then eases
+back out to the wide two-shot.

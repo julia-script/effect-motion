@@ -6,6 +6,7 @@
 		"animators",
 		"physics",
 		"particles",
+		"camera",
 		"timing",
 		"composition",
 		"pacing",

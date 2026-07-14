@@ -1,5 +1,6 @@
 import * as Effect from "effect/Effect";
 import * as Renderer from "../Renderer";
+import { depthOf, layerTransform, wrapLayer } from "./camera";
 import { SVG_NS, type SvgNode } from "./SvgNode";
 
 export interface SvgDomConfig {
@@ -37,17 +38,32 @@ export const SvgDomRenderer = Renderer.make<SvgNode, SvgDomConfig>()(
 		render: (entities, config, meta) =>
 			Effect.gen(function* () {
 				const doc = config.target.ownerDocument;
+				const width = config.width ?? meta.width;
+				const height = config.height ?? meta.height;
 				const root = doc.createElementNS(SVG_NS, "svg");
-				root.setAttribute("width", String(config.width ?? meta.width));
-				root.setAttribute("height", String(config.height ?? meta.height));
+				root.setAttribute("width", String(width));
+				root.setAttribute("height", String(height));
 				root.append(
 					createSvgElement(doc, {
 						tag: "rect",
-						props: { width: "100%", height: "100%", fill: meta.backgroundColor },
+						props: {
+							width: "100%",
+							height: "100%",
+							fill: meta.backgroundColor,
+						},
 					}),
 				);
-				for (const { render } of entities) {
-					root.append(createSvgElement(doc, yield* render));
+				// each top-level layer gets the camera scaled by its own depth
+				for (const { render, entry } of entities) {
+					const transform = layerTransform(
+						meta.camera,
+						depthOf(entry.data),
+						width,
+						height,
+					);
+					root.append(
+						createSvgElement(doc, wrapLayer(yield* render, transform)),
+					);
 				}
 				config.target.replaceChildren(root);
 			}),

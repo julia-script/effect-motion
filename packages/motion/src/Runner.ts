@@ -4,6 +4,7 @@ import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import type * as Fiber from "effect/Fiber";
 import type * as Schema from "effect/Schema";
+import { Camera, type CameraState, IDENTITY } from "./Camera";
 import type * as Entity from "./Entity";
 import * as Instance from "./Instance";
 import * as Phaser from "./Phaser";
@@ -170,6 +171,20 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 		const root: GroupInstance = Instance.make(Group, ROOT_ID);
 		setDataUnsafe(root, {});
 
+		// the active camera: an ordinary instance (so the animators drive it),
+		// never registered with a sink so it never draws. A default identity
+		// camera is present from the start, so `depth`/zoom work with no author
+		// ceremony; `setCamera` swaps which instance is active.
+		const camera: Instance.Of<typeof Camera> = Instance.make(Camera, "camera");
+		setDataUnsafe(camera, {});
+		let activeCameraId = camera.id;
+		const cameraState = (): CameraState => {
+			const data = instances[activeCameraId]?.data as CameraState | undefined;
+			// a destroyed active camera falls back to identity rather than dying:
+			// the view is not scene-critical state
+			return data ?? IDENTITY;
+		};
+
 		// append `id` to a group's children and record it as the child's parent
 		const attach = (parent: GroupInstance, id: string): void => {
 			const data = getDataUnsafe(parent);
@@ -289,9 +304,15 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 				if ($visible === false) {
 					setVisibleUnsafe(id, false);
 				}
-				// mount under the ambient parent (Scene.play), defaulting to root
-				const ambient = yield* CurrentParent;
-				attach(ambient ?? root, id);
+				// cameras are view state, not tree nodes: they live in `instances`
+				// so the animators drive them, but must NOT be mounted into the
+				// render tree (no sink renders a Camera — the renderer would die on
+				// the unknown entity). Everything else mounts under the ambient
+				// parent (Scene.play), defaulting to root.
+				if (entity.name !== Camera.name) {
+					const ambient = yield* CurrentParent;
+					attach(ambient ?? root, id);
+				}
 				// adopt listed children: they were attached to the ambient parent
 				// at birth; detach them there and record this instance as parent
 				// (their ids already live in this instance's `children` data)
@@ -316,14 +337,29 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 
 			setDataUnsafe,
 
-			state: Effect.sync(() => ({
-				instances: { ...instances },
-				root: ROOT_ID,
-				frameRate: resolvedSettings.frameRate,
-				width: resolvedSettings.width,
-				height: resolvedSettings.height,
-				backgroundColor: resolvedSettings.backgroundColor,
-			})),
+			state: Effect.sync(() => {
+				// the active camera lives in `instances` so the animators drive it,
+				// but it is view state, not a renderable instance — omit it from the
+				// frame's instance map (its data is surfaced separately as `camera`)
+				const { [activeCameraId]: _camera, ...renderable } = instances;
+				return {
+					instances: renderable,
+					root: ROOT_ID,
+					frameRate: resolvedSettings.frameRate,
+					width: resolvedSettings.width,
+					height: resolvedSettings.height,
+					backgroundColor: resolvedSettings.backgroundColor,
+					camera: cameraState(),
+				};
+			}),
+
+			// the default identity camera (animate it, or swap via setCamera)
+			camera,
+			// swap the active camera to another instance; its live data becomes
+			// the view on every subsequent frame
+			setCamera: (instance: Instance.Instance): void => {
+				activeCameraId = instance.id;
+			},
 
 			destroy: <Name extends string, Data extends Schema.Top>(
 				instance: Instance.Instance<Name, Data>,

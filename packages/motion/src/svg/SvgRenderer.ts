@@ -1,5 +1,6 @@
 import * as Effect from "effect/Effect";
 import * as Renderer from "../Renderer";
+import { depthOf, layerTransform, wrapLayer } from "./camera";
 import { SVG_NS, type SvgNode, vnodeToString } from "./SvgNode";
 
 export interface SvgConfig {
@@ -12,11 +13,20 @@ export interface SvgConfig {
 export const SvgRenderer = Renderer.make<SvgNode, SvgConfig>()("SvgRenderer", {
 	render: (entities, config, meta) =>
 		Effect.gen(function* () {
-			let svg = `<svg xmlns="${SVG_NS}" width="${config.width ?? meta.width}" height="${config.height ?? meta.height}">`;
+			const width = config.width ?? meta.width;
+			const height = config.height ?? meta.height;
+			let svg = `<svg xmlns="${SVG_NS}" width="${width}" height="${height}">`;
 			// a rect, not a style attr — survives rasterizers that ignore CSS
 			svg += `<rect width="100%" height="100%" fill="${meta.backgroundColor}"/>`;
-			for (const { render } of entities) {
-				svg += vnodeToString(yield* render);
+			// each top-level layer gets the camera scaled by its own depth
+			for (const { render, entry } of entities) {
+				const transform = layerTransform(
+					meta.camera,
+					depthOf(entry.data),
+					width,
+					height,
+				);
+				svg += vnodeToString(wrapLayer(yield* render, transform));
 			}
 			return `${svg}</svg>`;
 		}),

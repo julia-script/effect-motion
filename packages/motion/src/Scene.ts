@@ -138,6 +138,8 @@ export interface Frame<Entities extends Entity.AnyEntity> {
 	width: number;
 	height: number;
 	backgroundColor: string;
+	/** the active camera's view; identity `{0,0,1}` when unused */
+	camera: { x: number; y: number; zoom: number };
 }
 export const step = <E, R, Entities extends Entity.AnyEntity>(
 	runningScene: RunningScene<E, R, Entities>,
@@ -378,6 +380,26 @@ export const settings = Effect.fnUntraced(function* () {
 	const runner = yield* Runner.Runner;
 	return runner.settings;
 });
+
+/**
+ * The active camera instance — an ordinary instance carrying `~position`
+ * (x/y pan) and a `zoom` field, so the existing animators drive it:
+ * `Scene.make(function* () { const cam = yield* Scene.camera; yield*
+ * cam.pipe(Motion.moveTo({ x: 400 })) })`. A default identity camera is
+ * always present; animate it directly, or `Scene.setCamera` to swap in
+ * another instance. The camera is never drawn.
+ */
+export const camera = Effect.gen(function* () {
+	const runner = yield* Runner.Runner;
+	return runner.camera;
+});
+
+/** Swap the active camera to `instance`; its live data becomes the view. */
+export const setCamera = (instance: Instance.Instance) =>
+	Effect.gen(function* () {
+		const runner = yield* Runner.Runner;
+		runner.setCamera(instance);
+	});
 
 // ── branches: semantic vs physical ends ────────────────────────────────
 

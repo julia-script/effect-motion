@@ -28,6 +28,17 @@ export interface FrameMeta {
 	readonly width: number;
 	readonly height: number;
 	readonly backgroundColor: string;
+	/**
+	 * the active camera's view — `{x, y}` pan in world units, `zoom` a
+	 * uniform scale (1 = identity). Sinks apply it per top-level layer,
+	 * scaled by that layer's `depth`. Absent camera work leaves this at
+	 * identity `{0, 0, 1}` and output is unchanged.
+	 */
+	readonly camera: {
+		readonly x: number;
+		readonly y: number;
+		readonly zoom: number;
+	};
 }
 
 export interface EntityRenderer<
@@ -221,6 +232,7 @@ export const make =
 					width: frame.width,
 					height: frame.height,
 					backgroundColor: frame.backgroundColor,
+					camera: frame.camera,
 				});
 			}),
 		});
