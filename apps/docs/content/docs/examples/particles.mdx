@@ -1,16 +1,22 @@
 ---
-title: Particles
-description: A seeded-random particle fountain from repeat + fork
+title: Particle fountain
+description: A confetti fountain from a single ParticleField emitter
 ---
 
-Three features compose into a particle system with no dedicated particle
-API: `Scene.repeat` spawns on a strict 40ms cadence, `Scene.fork` makes
-each spawn return immediately so particle lives overlap, and the scene's
-seeded `Random` draws every trajectory, size, color, and duration.
+A fountain from the [particle system](/docs/concepts/particles): one
+`Particles.emitter` streams particles up in a narrow cone, gravity arcs them
+back down, and each shrinks and fades as it ages. You author the *distribution* —
+speed, angle, life, and size as ranges — and the seed draws each particle.
 
-Because the randomness is seeded, the chaos is fully deterministic —
-scrub the timeline back and forth and every particle retraces its exact
-path. The scene also knows when to end on its own: forks are awaited, so
-it finishes precisely when the last particle fades.
+The whole spray is **one instance and one animator fiber**, not one per
+particle: the particles are packed state advanced as a batch, so the frame
+barrier does the same work for a thousand as for one. And because the only
+randomness is the scene's seeded `Random`, the fountain is fully
+deterministic — scrub the timeline back and forth and every jet retraces its
+exact path.
 
 <Example name="particles" />
+
+See the [Particles concept page](/docs/concepts/particles) for the full model:
+burst / stream / fill emission, over-life curves, and evenly-spread floating
+fields.
