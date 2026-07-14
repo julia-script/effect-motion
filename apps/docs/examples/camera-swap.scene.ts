@@ -1,39 +1,55 @@
 import { Camera, Motion, Scene, Shapes } from "effect-motion";
 
-// Two cameras, one cut. The default camera frames the left subject and pushes
-// in; then Scene.setCamera hands the view to a second camera already framed on
-// the right subject — an instant cut — which then eases back to the wide shot.
+// Two cameras, one cut. We OPEN on the wide two-shot so the viewer sees both
+// subjects and where they are — that's the reference frame that makes the cut
+// readable. Then camera A pushes in on the left subject; Scene.setCamera hands
+// the view to camera B, already framed on the right subject (an instant cut);
+// B eases back out to the wide shot.
 export const scene = Scene.make(function* () {
-	yield* Scene.instantiate(Shapes.Circle, {
-		x: 110,
+	const left = yield* Scene.instantiate(Shapes.Circle, {
+		x: 130,
 		y: 150,
-		radius: 22,
+		radius: 24,
 		fill: "#e53170",
 	});
-	yield* Scene.instantiate(Shapes.Circle, {
-		x: 390,
+	const right = yield* Scene.instantiate(Shapes.Circle, {
+		x: 370,
 		y: 150,
-		radius: 22,
+		radius: 24,
 		fill: "#2cb67d",
 	});
 
-	// shot A: the default camera pushes in on the left subject
 	const camA = yield* Scene.camera;
-	yield* camA.pipe(
-		Motion.tweenTo({ zoom: 1.8 }, "1.2 seconds", "easeInOutCubic"),
+	// hold the wide two-shot so the viewer registers both subjects first
+	yield* Motion.wait("900 millis");
+	// a small "who's talking" cue on the left before we push in
+	yield* left.pipe(
+		Motion.tweenTo({ radius: 30 }, "300 millis", "easeOutCubic"),
 	);
-	// a second camera, pre-framed on the right subject (pan (140,0) at 1.8×
-	// centres roughly on x=390). Swapping to it is a hard cut.
+
+	// shot A: push in on the LEFT subject (pan so x=130 sits on frame centre)
+	yield* Scene.all([
+		camA.pipe(Motion.tweenTo({ zoom: 1.9 }, "900 millis", "easeInOutCubic")),
+		camA.pipe(Motion.moveTo({ x: -120, y: 0 }, "900 millis", "easeInOutCubic")),
+	]);
+	yield* Motion.wait("500 millis");
+
+	// CUT: swap to camera B, pre-framed on the RIGHT subject at the same zoom
 	const camB = yield* Scene.instantiate(Camera.Camera, {
-		x: 140,
+		x: 120,
 		y: 0,
-		zoom: 1.8,
+		zoom: 1.9,
 	});
 	yield* Scene.setCamera(camB);
-	yield* Motion.wait("600 millis");
-	// shot B eases back out to the wide two-shot
+	// the right subject reacts, so the cut clearly lands on a different subject
+	yield* right.pipe(
+		Motion.tweenTo({ radius: 30 }, "300 millis", "easeOutCubic"),
+	);
+	yield* Motion.wait("400 millis");
+
+	// pull back out to the wide two-shot — re-establishes context
 	yield* Scene.all([
-		camB.pipe(Motion.tweenTo({ zoom: 1 }, "1 second", "easeInOutCubic")),
-		camB.pipe(Motion.moveTo({ x: 0, y: 0 }, "1 second", "easeInOutCubic")),
+		camB.pipe(Motion.tweenTo({ zoom: 1 }, "900 millis", "easeInOutCubic")),
+		camB.pipe(Motion.moveTo({ x: 0, y: 0 }, "900 millis", "easeInOutCubic")),
 	]);
 });

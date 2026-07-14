@@ -45,8 +45,10 @@ Groups at different depths and pan the camera:
 
 <Example name="camera-parallax" />
 
-The far stars barely move, the mid squares drift at half speed, the near circles
-track the camera fully, and the HUD box stays put — all from one camera pan.
+The far starfield barely moves, the mid squares drift at half speed, the near
+circles track the camera fully, and the HUD pill stays pinned to the screen — all
+from one camera pan. The starfield is a `Particles.field` living inside the far
+`depth: 0.2` group, so the whole field parallaxes as one layer.
 
 ## Movements
 
@@ -58,13 +60,16 @@ framed the whole way in, then pull back out:
 
 <Example name="camera-zoom" />
 
-**Impact shake** — `Physics.springTo` the camera off-centre and let it settle;
-the overshoot-and-decay of the spring _is_ the shake, no keyframed wobble:
+**Impact shake** — the block lands, then the camera jolts along the impact axis
+and an under-damped `Physics.springTo` rings it back to centre. The decaying
+oscillation _is_ the shake — no keyframed wobble:
 
 <Example name="camera-shake" />
 
 **Follow** — `Scene.fork` a camera pan so it tracks a moving subject
-concurrently while the background slides past:
+concurrently. Floor marks and a drifting dust field slide past, and the subject
+bobs as it goes, so it reads as moving _through_ a world rather than the
+background merely animating:
 
 <Example name="camera-follow" />
 
@@ -87,6 +92,7 @@ subsequent frame. Swapping between two pre-framed cameras is an instant **cut**:
 
 <Example name="camera-swap" />
 
-The default camera pushes in on the left subject; `Scene.setCamera` hands off to
-a second camera already framed on the right subject (the cut), which then eases
-back out to the wide two-shot.
+It opens on the wide two-shot so you register both subjects first — that's the
+reference frame that makes the cut readable. The default camera then pushes in on
+the left subject; `Scene.setCamera` hands off to a second camera already framed
+on the right subject (the instant cut), which eases back out to the wide shot.
