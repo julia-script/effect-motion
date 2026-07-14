@@ -56,7 +56,12 @@ export const scene = Scene.make(function* () {
 	) =>
 		Scene.all([
 			Motion.tweenTo(ball, { rx, ry }, `${ms} millis`, timing as never),
-			Motion.tweenTo(ball, { y: surface - ry }, `${ms} millis`, timing as never),
+			Motion.tweenTo(
+				ball,
+				{ y: surface - ry },
+				`${ms} millis`,
+				timing as never,
+			),
 		]);
 	const landOn = (surface: number) =>
 		Effect.gen(function* () {
@@ -68,8 +73,18 @@ export const scene = Scene.make(function* () {
 		Scene.all([
 			Motion.tweenTo(ball, { x: toX }, `${ms} millis`),
 			Effect.gen(function* () {
-				yield* Motion.tweenTo(ball, { y: peakY }, `${ms / 2} millis`, "easeOutQuad");
-				yield* Motion.tweenTo(ball, { y: landY }, `${ms / 2} millis`, "easeInQuad");
+				yield* Motion.tweenTo(
+					ball,
+					{ y: peakY },
+					`${ms / 2} millis`,
+					"easeOutQuad",
+				);
+				yield* Motion.tweenTo(
+					ball,
+					{ y: landY },
+					`${ms / 2} millis`,
+					"easeInQuad",
+				);
 			}),
 		]);
 
@@ -142,8 +157,17 @@ export const scene = Scene.make(function* () {
 	// …and returns, pushing the answer. Leaning into the work.
 	yield* Scene.all([
 		Motion.tweenTo(box, { x: LEDGE_X - 56 }, "1500 millis", "easeInOutSine"),
-		Motion.tweenTo(ball, { x: LEDGE_X - 56 - R }, "1500 millis", "easeInOutSine"),
-		Motion.tweenTo(ball, { rx: R + 2, ry: R - 2, y: GROUND - (R - 2) }, "300 millis"),
+		Motion.tweenTo(
+			ball,
+			{ x: LEDGE_X - 56 - R },
+			"1500 millis",
+			"easeInOutSine",
+		),
+		Motion.tweenTo(
+			ball,
+			{ rx: R + 2, ry: R - 2, y: GROUND - (R - 2) },
+			"300 millis",
+		),
 	]);
 	yield* squash(GROUND, R, R, 250);
 	yield* Motion.wait("250 millis");
@@ -192,18 +216,7 @@ export const scene = Scene.make(function* () {
 
 	// ── the moral ──
 	const caption = yield* Scene.instantiate(Shapes.Text, {
-		text: {
-			type: "root",
-			children: [
-				{
-					type: "paragraph",
-					children: [
-						{ type: "text", value: "persistence < " },
-						{ type: "strong", children: [{ type: "text", value: "tooling" }] },
-					],
-				},
-			],
-		},
+		text: "persistence < tooling",
 		x: 250,
 		y: 70,
 		fontSize: 6,

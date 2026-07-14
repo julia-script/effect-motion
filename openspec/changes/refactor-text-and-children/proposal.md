@@ -19,6 +19,7 @@ Before release — while breaking changes are still free — we collapse to one 
 ### New Capabilities
 - `instance-children`: `Scene.instantiate` accepts a polymorphic `children` list (`string | Instance | Effect<Instance>`), normalizing it to stored child ids; strings default to `Text`; nested instantiate effects are yielded internally.
 - `instance-visibility`: a builtin `$`-namespaced instance property (`$visible`) held beside entity data, defaulting to visible, with `$`-prefixed entity schema fields rejected at `Entity.make`.
+- `node-mutation`: HTML-style tree mutation — instances born under the ambient parent, with `Scene.appendChild`/`removeChild` reparenting explicitly (O(1) via per-instance parent tracking; append detaches from the current parent first). Replaces the removed `parent` instantiation argument for the lazy-child case.
 
 ### Modified Capabilities
 - `text-entity`: `text` becomes a plain string; the rich-text tree (`root`/`paragraph`/`strong`/`emphasis`) and its `<tspan>` rendering requirements are removed.

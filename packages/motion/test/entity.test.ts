@@ -4,9 +4,9 @@ import * as Entity from "../src/Entity";
 
 describe("Entity.make reserved $ namespace", () => {
 	it("rejects a field with a $ prefix, naming it", () => {
-		expect(() =>
-			Entity.make("test/Bad", { $visible: Schema.Boolean }),
-		).toThrow(/\$visible/);
+		expect(() => Entity.make("test/Bad", { $visible: Schema.Boolean })).toThrow(
+			/\$visible/,
+		);
 	});
 
 	it("rejects an arbitrary $-prefixed field", () => {

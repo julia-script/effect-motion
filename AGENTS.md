@@ -75,3 +75,44 @@ ambiguous). Animators resolve with the instance, so they chain.
 - Failures are loud: missing traits, invalid springs, unknown timing
   names, and scene-graph violations die with defects naming the
   offender.
+
+## The engine renders, it does not parse
+
+Push preprocessing to **userland**. The engine's job is to render a tree
+of instances frame by frame; turning source material (markdown, rich
+text, data files) into that tree is the author's job, done **before** the
+scene runs — not inside it.
+
+- Prefer a plain function that returns instances (or an
+  instance-producing structure) over an in-engine representation. Rich
+  text is a userland builder that emits `Group`/`Text` instances, not a
+  schema the engine special-cases.
+- This lets authors use familiar tools — `memoize(mdToComponents(md))`
+  parses once, outside `Scene.make`, and never re-runs.
+- It matters for playback: frames may be computed as they play, so
+  parsing inside the scene body can drop frames. Keep the per-frame path
+  to rendering only.
+
+New feature that needs to *transform* content? Default to a userland
+helper. Only put it in the engine if it genuinely needs runtime state
+(the seeded `Random`, the phaser, per-frame instance data).
+
+## One structure: the instance tree
+
+There is a single tree — instances, structured by `Group.children`
+(stored as an `Array<string>` of ids). Do not introduce a second
+representation of structure inside an entity's data.
+
+- **Children-defined.** `instantiate(entity, { children: [...] })` takes a
+  polymorphic list — `string` (→ a `Text`), an `Instance`, or an
+  `Effect<Instance>` (a not-yet-yielded `instantiate`, yielded internally
+  so a future JSX layer needs no `yield*`). Stored `children` stays ids.
+- **Born mounted, then moved.** An instance is born under the ambient
+  parent (root, or a `Scene.play` mount). To place a lazily-created node
+  elsewhere use `Scene.appendChild(parent, child)` / `removeChild` — HTML
+  DOM semantics; append detaches from the current parent first (O(1) via
+  tracked parent). There is no per-callsite `parent` argument.
+- **Builtin instance props are `$`-namespaced.** They live *beside* entity
+  data, not in the schema, so every entity has them uniformly. `$visible`
+  (default `true`) is the first; renderers skip `$visible: false`.
+  `Entity.make` rejects any schema field starting with `$`.

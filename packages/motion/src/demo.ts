@@ -1,14 +1,14 @@
 import { Effect, Layer, Schedule, Stream } from "effect";
-import * as Scene from "./Scene";
-import * as Shapes from "./shapes";
-import * as Motion from "./Motion";
-import * as Physics from "./Physics";
 import * as Schema from "effect/Schema";
+import { Name } from "effect/unstable/ai/Tool";
+import { Svg } from ".";
 import * as Entity from "./Entity";
 import * as Instance from "./Instance";
-import { Svg } from ".";
+import * as Motion from "./Motion";
+import * as Physics from "./Physics";
+import * as Scene from "./Scene";
+import * as Shapes from "./shapes";
 import { shapesLayer } from "./svg";
-import { Name } from "effect/unstable/ai/Tool";
 
 // children live in the group's local coordinates: one motion moves them all
 export const scene = Scene.make(function* () {
@@ -83,7 +83,12 @@ export const staggered = Scene.make(function* () {
 			});
 			// reparent the freshly-born dot from root into the stage group
 			yield* Scene.appendChild(stage, circle);
-			yield* Motion.tweenTo(circle, { x: x + 300 }, "1 second", "easeInOutCubic");
+			yield* Motion.tweenTo(
+				circle,
+				{ x: x + 300 },
+				"1 second",
+				"easeInOutCubic",
+			);
 		});
 	yield* Scene.stagger(
 		[dot(0), dot(25), dot(50)],

@@ -1,22 +1,7 @@
 import { Schedule } from "effect";
 import { Motion, Physics, Scene, Shapes } from "effect-motion";
 
-const finalCaption = {
-	type: "root",
-	children: [
-		{
-			type: "paragraph",
-			children: [
-				{ type: "text", value: "Some lights " },
-				{
-					type: "strong",
-					children: [{ type: "text", value: "meet you" }],
-				},
-				{ type: "text", value: " halfway." },
-			],
-		},
-	],
-} satisfies Shapes.TextContent;
+const finalCaption = "Some lights meet you halfway.";
 
 export const scene = Scene.make(function* () {
 	// A quiet room, one closed window, and a very ambitious moth.
@@ -66,43 +51,68 @@ export const scene = Scene.make(function* () {
 		fill: "#252d3a",
 	});
 
-	const moon = yield* Scene.instantiate(Shapes.Group, { x: 424, y: 72 });
-	const halo = yield* Scene.instantiate(
-		Shapes.Circle,
-		{ x: 0, y: 0, radius: 42, fill: "#fde68a", opacity: 0.14 },
-		{ parent: moon },
-	);
-	yield* Scene.instantiate(
-		Shapes.Circle,
-		{ x: 0, y: 0, radius: 29, fill: "#fef3c7" },
-		{ parent: moon },
-	);
-	yield* Scene.instantiate(
-		Shapes.Circle,
-		{ x: -9, y: -7, radius: 4, fill: "#e7d7a5", opacity: 0.55 },
-		{ parent: moon },
-	);
+	// instantiate children that need handles first, then group them via the
+	// children list — the group adopts them (reparents out of the root)
+	const halo = yield* Scene.instantiate(Shapes.Circle, {
+		x: 0,
+		y: 0,
+		radius: 42,
+		fill: "#fde68a",
+		opacity: 0.14,
+	});
+	const moon = yield* Scene.instantiate(Shapes.Group, {
+		x: 424,
+		y: 72,
+		children: [
+			halo,
+			Scene.instantiate(Shapes.Circle, {
+				x: 0,
+				y: 0,
+				radius: 29,
+				fill: "#fef3c7",
+			}),
+			Scene.instantiate(Shapes.Circle, {
+				x: -9,
+				y: -7,
+				radius: 4,
+				fill: "#e7d7a5",
+				opacity: 0.55,
+			}),
+		],
+	});
 
+	const leftWing = yield* Scene.instantiate(Shapes.Ellipse, {
+		x: -8,
+		y: -1,
+		rx: 11,
+		ry: 7,
+		fill: "#f9a8d4",
+		opacity: 0.85,
+	});
+	const rightWing = yield* Scene.instantiate(Shapes.Ellipse, {
+		x: 8,
+		y: -1,
+		rx: 11,
+		ry: 7,
+		fill: "#c4b5fd",
+		opacity: 0.85,
+	});
 	const moth = yield* Scene.instantiate(Shapes.Group, {
 		x: 48,
 		y: 224,
 		opacity: 0,
+		children: [
+			leftWing,
+			rightWing,
+			Scene.instantiate(Shapes.Ellipse, {
+				x: 0,
+				y: 1,
+				rx: 7,
+				ry: 4,
+				fill: "#fbbf24",
+			}),
+		],
 	});
-	const leftWing = yield* Scene.instantiate(
-		Shapes.Ellipse,
-		{ x: -8, y: -1, rx: 11, ry: 7, fill: "#f9a8d4", opacity: 0.85 },
-		{ parent: moth },
-	);
-	const rightWing = yield* Scene.instantiate(
-		Shapes.Ellipse,
-		{ x: 8, y: -1, rx: 11, ry: 7, fill: "#c4b5fd", opacity: 0.85 },
-		{ parent: moth },
-	);
-	yield* Scene.instantiate(
-		Shapes.Ellipse,
-		{ x: 0, y: 1, rx: 7, ry: 4, fill: "#fbbf24" },
-		{ parent: moth },
-	);
 
 	const caption = yield* Scene.instantiate(Shapes.Text, {
 		text: "ONE TINY MOTH. ONE VERY LARGE MOON.",

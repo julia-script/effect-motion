@@ -62,6 +62,22 @@ Instance state grows from `{ data, entity }` to `{ data, entity, $visible: boole
 - **Why delete rather than keep both**: the whole point is one representation. Inline formatting (`strong`/`emphasis`) and multi-run styling are better expressed later as userland components composing plain `Text` instances (and eventually JSX), not as an in-engine tree. Markdown→components can reuse existing markdown libraries entirely in userland.
 - **Why drop reveal now**: its grapheme/mark machinery is built for the inline tree being deleted; a reveal over sibling `Text` instances is a different algorithm and a different feature. Text animation is deferred to the lazy/reactive-instance direction. Not essential to v1.
 
+### D4a — Node mutation: HTML-style detached create + appendChild/removeChild (added during apply)
+
+Removing the `parent` option surfaced a gap the original design missed: a **lazily-created** instance (e.g. staggered dots) auto-attaches to the ambient parent (root), so there was no way to place it into an already-existing group without double-referencing it (which the renderer rejects as a cycle). The children-list form only helps when all children are known at the parent's creation.
+
+Resolution (an HTML-DOM-shaped model):
+
+- `Scene.instantiate` keeps auto-mounting under the ambient parent — every existing top-level scene is unchanged.
+- Each instance **tracks its current parent id** (`parentOf` map in the Runner), so reparenting detaches from the old parent in O(1) instead of scanning the tree.
+- `Scene.appendChild(parent, child)` moves a child under a new parent, **detaching from its current parent first** — this is the explicit reparent, and the door to placing a lazily-created node into an existing group. `Scene.removeChild(parent, child)` detaches (no-op unless currently that parent's child).
+- A parent built with a `children` list **adopts** those children: they are born under the ambient parent by `normalizeChildren`, then reparented into the new instance — the same mechanic `appendChild` uses.
+- `destroy` uses the O(1) `detach` first, keeping the full-scan as a backstop for raw-data-update reparenting.
+
+A separate detached `Scene.create` (instantiate-without-mount) was considered but deferred (YAGNI): `instantiate` + `appendChild` already covers the lazy-child case, since `appendChild` reparents out of root. `insertBefore`/`replaceChild` are likewise deferred until a real need appears.
+
+- **Why not keep the `parent` option**: it conflated "where a node is born" with "structure," and only covered the create-time case. The DOM model separates creation from placement cleanly and generalizes to a future component/JSX layer.
+
 ### D5 — Archive `add-text-reveal` before landing this
 
 Archive the completed change first (history: shipped-then-superseded), then this change removes the code. Keeps the archive honest instead of rewriting a change that did ship.

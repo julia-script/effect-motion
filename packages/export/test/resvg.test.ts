@@ -6,20 +6,68 @@ import { expect, it } from "vitest";
 import { Resvg } from "../src";
 
 const allSurfaceScene = Scene.make(function* () {
-	yield* Scene.instantiate(Shapes.Circle, { x: 40, y: 40, radius: 20, fill: "#fde68a" });
-	yield* Scene.instantiate(Shapes.Rect, { x: 80, y: 10, width: 60, height: 40, fill: "#7c3aed" });
-	yield* Scene.instantiate(Shapes.Square, { x: 150, y: 10, size: 30, fill: "#333" });
-	yield* Scene.instantiate(Shapes.Ellipse, { x: 220, y: 40, rx: 25, ry: 12, fill: "#f9a8d4" });
-	yield* Scene.instantiate(Shapes.Line, { x: 10, y: 90, x2: 290, y2: 90, stroke: "#94a3b8", strokeWidth: 2 });
-	yield* Scene.instantiate(Shapes.Path, { x: 10, y: 110, d: "M 0 0 C 20 -20, 60 -20, 80 0", stroke: "#34d399", strokeWidth: 3, fill: "none" });
+	yield* Scene.instantiate(Shapes.Circle, {
+		x: 40,
+		y: 40,
+		radius: 20,
+		fill: "#fde68a",
+	});
+	yield* Scene.instantiate(Shapes.Rect, {
+		x: 80,
+		y: 10,
+		width: 60,
+		height: 40,
+		fill: "#7c3aed",
+	});
+	yield* Scene.instantiate(Shapes.Square, {
+		x: 150,
+		y: 10,
+		size: 30,
+		fill: "#333",
+	});
+	yield* Scene.instantiate(Shapes.Ellipse, {
+		x: 220,
+		y: 40,
+		rx: 25,
+		ry: 12,
+		fill: "#f9a8d4",
+	});
+	yield* Scene.instantiate(Shapes.Line, {
+		x: 10,
+		y: 90,
+		x2: 290,
+		y2: 90,
+		stroke: "#94a3b8",
+		strokeWidth: 2,
+	});
+	yield* Scene.instantiate(Shapes.Path, {
+		x: 10,
+		y: 110,
+		d: "M 0 0 C 20 -20, 60 -20, 80 0",
+		stroke: "#34d399",
+		strokeWidth: 3,
+		fill: "none",
+	});
 	yield* Scene.instantiate(Shapes.Group, {
 		x: 200,
 		y: 120,
 		children: [
-			Scene.instantiate(Shapes.Circle, { x: 0, y: 0, radius: 10, fill: "#fef3c7" }),
+			Scene.instantiate(Shapes.Circle, {
+				x: 0,
+				y: 0,
+				radius: 10,
+				fill: "#fef3c7",
+			}),
 		],
 	});
-	yield* Scene.instantiate(Shapes.Text, { text: "plain bold", x: 20, y: 160, fontSize: 14, fontFamily: "Helvetica, sans-serif", fill: "#f8fafc" });
+	yield* Scene.instantiate(Shapes.Text, {
+		text: "plain bold",
+		x: 20,
+		y: 160,
+		fontSize: 14,
+		fontFamily: "Helvetica, sans-serif",
+		fill: "#f8fafc",
+	});
 	yield* Scene.tick;
 });
 

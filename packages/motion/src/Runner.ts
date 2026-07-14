@@ -78,7 +78,7 @@ export type InstantiateProps<Data extends Schema.Top> = Omit<
 	BuiltinProps &
 	("children" extends keyof Data["~type.make.in"]
 		? { readonly children?: ReadonlyArray<Child> }
-		: {});
+		: Record<never, never>);
 
 /**
  * The ambient mount parent for `instantiate` — provided per scene
@@ -204,7 +204,10 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 
 		// move `child` under `parent`: detach from its current parent first
 		// (so it is never double-referenced), then attach.
-		const appendChild = (parent: GroupInstance, child: Instance.Instance): void => {
+		const appendChild = (
+			parent: GroupInstance,
+			child: Instance.Instance,
+		): void => {
 			if (instances[child.id] === undefined) {
 				throw new Error(`Runner: child "${child.id}" was destroyed`);
 			}
@@ -226,7 +229,11 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 		// Effect<Instance> yielded here (JSX children need no yield*).
 		const normalizeChildren = (
 			children: ReadonlyArray<Child>,
-		): Effect.Effect<ReadonlyArray<string>, unknown, Entity.AnyEntity | Runner> =>
+		): Effect.Effect<
+			ReadonlyArray<string>,
+			unknown,
+			Entity.AnyEntity | Runner
+		> =>
 			Effect.gen(function* () {
 				const ids: string[] = [];
 				for (const child of children) {

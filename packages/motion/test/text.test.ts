@@ -64,7 +64,9 @@ describe("Text SVG rendering", () => {
 	});
 
 	it("preserves literal newlines in content", async () => {
-		const node = await renderText(Shapes.Text.data.make({ text: "line1\nline2" }));
+		const node = await renderText(
+			Shapes.Text.data.make({ text: "line1\nline2" }),
+		);
 		expect(node.children).toBe("line1\nline2");
 	});
 
