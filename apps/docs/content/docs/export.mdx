@@ -1,0 +1,72 @@
+---
+title: Exporting to video
+description: Turn a scene into an MP4 file with @effect-motion/export and ffmpeg
+---
+
+A scene is a stream of frames. `@effect-motion/export` turns that stream into
+a shareable artifact: each frame is rendered to an SVG string, rasterized to
+PNG with [resvg](https://github.com/linebender/resvg), and piped into
+[ffmpeg](https://ffmpeg.org) to produce an MP4 — no intermediate files ever
+touch disk.
+
+## One call: scene to file
+
+`Video.render` composes the whole pipeline. It reads the framerate and
+dimensions from the scene's own frame metadata, so you never repeat them.
+
+```ts
+import { Effect } from "effect"
+import { NodeServices } from "@effect/platform-node"
+import { Video } from "@effect-motion/export"
+import { myScene } from "./scene"
+
+await Effect.runPromise(
+  Video.render(myScene, "out.mp4", {
+    settings: { width: 1920, height: 1080, frameRate: 60 },
+  }).pipe(Effect.provide(NodeServices.layer)),
+)
+```
+
+`NodeServices.layer` (from `@effect/platform-node`) provides the process
+spawner ffmpeg runs through. The output is broadly playable by default:
+H.264, `yuv420p`, faststart MP4.
+
+### Options
+
+- **`frames`** — cap the number of frames encoded. An **infinite scene** must
+  set this: without it, the encode runs as long as the scene does, forever.
+- **`settings`** — the scene's `frameRate`, `width`, `height`, and
+  `maxFrames` for this export. Set `maxFrames: Infinity` for an intentionally
+  infinite scene (paired with `frames`).
+- **`binary`** — path to a specific ffmpeg (defaults to `"ffmpeg"` on `PATH`).
+- **`extraArgs`** — extra ffmpeg arguments appended before the output path,
+  e.g. `["-crf", "18"]` for higher quality, or a `-vf` scale filter.
+
+### Even dimensions
+
+`yuv420p` requires even width and height. `Video.render` checks the first
+frame and fails with an `EncodeError` *before* spawning ffmpeg if either is
+odd — no silent resizing. Use even dimensions, or pass a scale filter through
+`extraArgs`.
+
+## Fonts
+
+Fonts declared on the scene with the `Fonts` annotation are passed to the
+rasterizer automatically, so exported frames use the same faces the player
+shows. Declare a `path` source per face for offline rendering.
+
+## System requirement: ffmpeg
+
+ffmpeg is **not bundled** — it must be installed and on your `PATH` (or passed
+via `binary`). On macOS: `brew install ffmpeg`; on Debian/Ubuntu:
+`apt install ffmpeg`. If it can't be run, `Video.render` fails with an
+`EncodeError` telling you so.
+
+## Lower-level building blocks
+
+`Video.render` is the composed path. Its pieces are also exported for custom
+pipelines:
+
+- `Resvg.rasterize(svg, options?)` — SVG string → PNG bytes.
+- `Ffmpeg.encode(pngStream, outPath, options)` — a `Stream` of PNG frames →
+  a video file, requiring a `ChildProcessSpawner`.

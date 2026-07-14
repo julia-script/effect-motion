@@ -2,7 +2,7 @@
 
 > Direction, not commitment — Now is committed; Next is planned; Later is exploration.
 > Only Now items may be promised to anyone. This document changes as we learn.
-> Last reviewed: 2026-07-13 · Review cadence: monthly
+> Last reviewed: 2026-07-14 · Review cadence: monthly
 
 ## Vision
 
@@ -26,51 +26,28 @@ end-to-end through the export pipeline.
 
 ## Now
 
-### Rich text
-- **Problem:** the single-run `Shapes.Text` (shipped 2026-07-13) can't
-  express mixed styles — a title with one bold word, multi-color captions.
-  Table stakes for motion graphics.
-- **Outcome & done-when:** an entity for multi-style text runs, animatable
-  through the existing trait/animator pairs like any other shape.
-- **Status:** in progress — simple Text shipped as the foundation; the rich
-  entity itself is unshaped. The core design question is text measurement:
-  positioning run N needs the width of runs 1..N-1, which SVG delegation
-  (`textAnchor`/`baseline`) can't answer. Options range from SVG `<tspan>`
-  flow (no measurement, limited animation) to a real measurement step.
-- **Appetite:** worth ~2 weeks part-time.
-- **Links:** change `add-text-entity` (done, ready to archive) · spec `shapes`
+_The export pipeline is complete — nothing is committed for Now. The next
+bets are the export polish (`add-text-font-fallback`) and the docs push toward
+a quiet publish; pull one into Now when starting it._
 
 ## Next
-
-### Video export — scenes become files (SVG → PNG → MP4)
-- **Problem:** scenes only exist inside the browser player; there is no way
-  to produce an artifact you can share or upload.
-- **Hypothesis:** a staged pipeline where each stage is useful alone —
-  (1) SVG file per frame, reusing the existing string sink; (2) rasterize
-  to PNG per frame via [resvg](https://github.com/linebender/resvg);
-  (3) encode PNGs to video via ffmpeg.
-- **Confidence:** high for stage 1 (the string renderer exists); med for 2–3.
-- **Assumes:** resvg's SVG subset covers our output — unvalidated; fonts are
-  resolvable at raster time — unvalidated (couples with Custom fonts below).
-- **Open questions:** resvg binding (resvg-js napi vs wasm vs CLI); ffmpeg
-  as system binary vs bundled.
-- **Links:** spec `svg-rendering`
 
 ### Text animation helpers
 - **Problem:** typewriter reveals (letter-by-letter, word-by-word) — the
   bread and butter of text animation — require manual scene gymnastics.
 - **Hypothesis:** helpers layered on rich text, revealing runs progressively.
-- **Confidence:** med — follows rich text.
+- **Confidence:** med — rich text v1 shipped 2026-07-13, so this is unblocked.
 - **Assumes:** per-unit reveal is expressible without text measurement
   (per-letter *positioning* likely isn't) — unvalidated.
 
-### Custom fonts
-- **Problem:** only platform-resolvable families work; a brand or display
-  font can't be used, which caps what the output can look like.
-- **Hypothesis:** a font loader that serves both render paths — FontFace in
-  the browser player, font files handed to resvg for offline rasterization.
-- **Confidence:** med.
-- **Open questions:** one API for both paths, or per-sink config?
+### Markdown → rich text
+- **Problem:** authoring the mdast-shaped rich-text tree by hand is verbose;
+  markdown is the natural authoring format for styled text.
+- **Hypothesis:** a parser helper translating markdown into the mdast-subset
+  tree `Shapes.Text` already accepts — rich text v1 (shipped 2026-07-13) is
+  deliberately mdast-shaped, so the mapping is close to direct.
+- **Confidence:** high — promoted from Later once rich text landed and made
+  the target format concrete.
 
 ### Docs that let a stranger self-serve
 - **Problem:** the docs site covers pacing and examples but not the full API
@@ -97,8 +74,9 @@ Post-release, one line each:
   text measurement, currently a non-goal.
 - **JSX for complex entities** — declare nested entity structures as JSX
   instead of constructor calls; why: complex scenes get verbose in plain code.
-- **Markdown → rich text** — a helper translating markdown into rich text
-  runs; why: cheapest way to author styled text · follows rich text.
+- **Per-run text styling** — color/size/font per rich-text run (v1 shipped
+  only bold/italic marks); why: multi-color captions are common in motion
+  graphics · deliberately cut from rich text v1.
 
 ## Maintenance budget
 
@@ -116,11 +94,6 @@ Post-release, one line each:
 
 ## Open questions
 
-- Rich text v1 scope: styled runs only, or also wrapping? And does it need
-  real text measurement, or can SVG `<tspan>` flow carry v1? (Measurement
-  would also unblock per-letter positioning for text animation helpers, and
-  couples with the resvg raster path — browser and offline must measure
-  identically or frames won't match.)
 - Is the unscoped `effect-motion` npm name available (react pkg is scoped
   `@effect-motion/react`) — publish both unscoped-core, or scope everything?
 
@@ -139,3 +112,29 @@ Post-release, one line each:
   viewport sizing, icon transport with loop toggle, time readout, keyboard
   shortcuts. Done-when met in full; hook API break (`totalFrames` nullable)
   had no external consumers.
+- 2026-07-13 (evening sync): Shipped **Rich text v1** (change
+  `add-rich-text-spans`, 17/17 tasks, ready to archive): mdast-subset tree
+  (`text`/`strong`/`emphasis`, multiple paragraphs) rendered as `<tspan>`s —
+  the open scope question resolved as tspan flow, no measurement. Closed as
+  done; per-run color/size styling was cut and moved to Later. Shipped
+  **Custom fonts** (change `2026-07-13-add-font-loading`, archived) exactly
+  as hypothesized: one `Fonts` annotation serving both paths (FontFace in
+  player, `fontFiles` for resvg) — open question answered: one API. Shipped
+  **export stages 1–2** (change `2026-07-13-add-resvg-rasterizer`, archived);
+  Video export promoted Next → Now with ffmpeg as remaining scope; both its
+  assumptions validated. Markdown → rich text promoted Later → Next (mdast
+  shape made it concrete). Unplanned: `backgroundColor` scene setting
+  (`1e3007c`), Vercel deploy fixes (pnpm pin, allow builds) — one-offs, not
+  tracked.
+- 2026-07-14: Shipped **Video export stage 3 — the full pipeline**
+  (change `add-ffmpeg-encoder`, archived; spec `video-encoding` synced):
+  `Ffmpeg.encode` (PNG stream → ffmpeg stdin via `image2pipe`, no temp files)
+  and `Video.render` (one-call scene → MP4, framerate/dimensions from frame
+  metadata, fonts auto-wired, odd-dim guard, infinite-scene `frames` cap).
+  **Done-when met and verified end-to-end**: a real scene rendered through
+  stream → SVG → resvg → ffmpeg into a valid H.264/yuv420p MP4, frame-count
+  and dimensions confirmed via ffprobe. Video export leaves Now — the v0.1
+  objective's second half is done. Open question resolved: **system ffmpeg**,
+  not bundled (with a `binary` override). Now is empty; the remaining pre-
+  publish work is `add-text-font-fallback` (exported-frame variant fidelity,
+  0/5 tasks) and the docs push.
