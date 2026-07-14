@@ -4,26 +4,36 @@ import * as Fiber from "effect/Fiber";
 import type * as PlatformError from "effect/PlatformError";
 import * as Stream from "effect/Stream";
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
+import ffmpegStatic from "ffmpeg-static";
 
 type Spawner = ChildProcessSpawner.ChildProcessSpawner;
 
 /**
  * ffmpeg encoding is an export tool, not a renderer: it consumes the PNG
- * frames the rasterizer produces and pipes them into a system ffmpeg over
- * stdin (`-f image2pipe`), yielding a video file. No frame touches disk.
+ * frames the rasterizer produces and pipes them into ffmpeg over stdin
+ * (`-f image2pipe`), yielding a video file. No frame touches disk.
  *
- * ffmpeg is a system binary resolved from PATH; `binary` overrides it.
- * Process spawning goes through the `ChildProcessSpawner` service — the
- * consumer provides it (e.g. `NodeServices.layer` from
- * `@effect/platform-node`), the same way `Resvg.rasterizeToFile` takes a
- * consumer-provided `FileSystem`.
+ * By default the bundled `ffmpeg-static` binary is used (a full build with
+ * libx264, so H.264 works out of the box); `binary` overrides it to point
+ * at a system or custom ffmpeg. If the bundle is unavailable for the host
+ * platform, it falls back to `"ffmpeg"` on PATH. Process spawning goes
+ * through the `ChildProcessSpawner` service — the consumer provides it
+ * (e.g. `NodeServices.layer` from `@effect/platform-node`), the same way
+ * `Resvg.rasterizeToFile` takes a consumer-provided `FileSystem`.
  */
+
+// the bundled ffmpeg (null only on a platform ffmpeg-static doesn't ship)
+const bundledFfmpeg: string | null = ffmpegStatic;
 
 /** Options for {@link encode}. */
 export interface EncodeOptions {
 	/** Input framerate handed to ffmpeg (`-framerate`). */
 	readonly frameRate: number;
-	/** ffmpeg binary; defaults to `"ffmpeg"` resolved from PATH. */
+	/**
+	 * ffmpeg binary; defaults to the bundled `ffmpeg-static` build (falling
+	 * back to `"ffmpeg"` on PATH). Set to `"ffmpeg"` or a path to use a
+	 * system/custom ffmpeg instead.
+	 */
 	readonly binary?: string | undefined;
 	/**
 	 * Extra ffmpeg arguments appended before the output path — e.g.
@@ -71,7 +81,7 @@ export const encode = (
 	options: EncodeOptions,
 ): Effect.Effect<void, EncodeError, Spawner> =>
 	Effect.gen(function* () {
-		const binary = options.binary ?? "ffmpeg";
+		const binary = options.binary ?? bundledFfmpeg ?? "ffmpeg";
 		const args = [
 			"-f",
 			"image2pipe",

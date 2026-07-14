@@ -7,7 +7,9 @@ import { Effect } from "effect";
 import { Scene, Shapes } from "effect-motion";
 import { afterAll, expect, it } from "vitest";
 
-// gated: only runs when a real ffmpeg (and ffprobe) is on PATH
+// Encoding uses the bundled ffmpeg-static binary, so no system ffmpeg is
+// needed. The test only gates on `ffprobe` — a system tool it uses to
+// VERIFY the output (ffmpeg-static ships ffmpeg, not ffprobe).
 const has = (bin: string) => {
 	try {
 		execFileSync(bin, ["-version"], { stdio: "ignore" });
@@ -16,11 +18,9 @@ const has = (bin: string) => {
 		return false;
 	}
 };
-const ffmpegAvailable = has("ffmpeg") && has("ffprobe");
+const canVerify = has("ffprobe");
 
-const dir = ffmpegAvailable
-	? mkdtempSync(join(tmpdir(), "effect-motion-e2e-"))
-	: "";
+const dir = canVerify ? mkdtempSync(join(tmpdir(), "effect-motion-e2e-")) : "";
 afterAll(() => {
 	if (dir) rmSync(dir, { recursive: true, force: true });
 });
@@ -43,7 +43,7 @@ const scene = Scene.make(function* () {
 	for (let i = 0; i < 9; i++) yield* Scene.tick;
 });
 
-it.runIf(ffmpegAvailable)(
+it.runIf(canVerify)(
 	"renders a scene to a real playable MP4 end-to-end",
 	async () => {
 		const { Video } = await import("../src");

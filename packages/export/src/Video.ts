@@ -46,7 +46,11 @@ export interface VideoOptions {
 	 * produces an encode that never ends — an infinite scene must set this.
 	 */
 	readonly frames?: number;
-	/** ffmpeg binary; defaults to `"ffmpeg"` on PATH. */
+	/**
+	 * ffmpeg binary; defaults to the bundled `ffmpeg-static` build (falls
+	 * back to `"ffmpeg"` on PATH). Pass `"ffmpeg"` or a path for a
+	 * system/custom ffmpeg.
+	 */
 	readonly binary?: string;
 	/** Extra ffmpeg arguments, appended before the output path. */
 	readonly extraArgs?: ReadonlyArray<string>;

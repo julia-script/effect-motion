@@ -5,6 +5,7 @@ import {
 	type ChildProcess,
 	ChildProcessSpawner,
 } from "effect/unstable/process";
+import ffmpegStatic from "ffmpeg-static";
 import { expect, it } from "vitest";
 import { Ffmpeg } from "../src";
 
@@ -82,7 +83,9 @@ it("spawns ffmpeg with image2pipe defaults and pipes PNG bytes to stdin", async 
 
 	expect(record).toHaveLength(1);
 	const { command, args, stdinBytes } = record[0]!;
-	expect(command).toBe("ffmpeg");
+	// defaults to the bundled ffmpeg-static binary (falls back to "ffmpeg"
+	// only where ffmpeg-static ships no build)
+	expect(command).toBe(ffmpegStatic ?? "ffmpeg");
 	expect(args).toEqual([
 		"-f",
 		"image2pipe",
