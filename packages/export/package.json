@@ -1,0 +1,33 @@
+{
+	"name": "@effect-motion/export",
+	"version": "0.0.1",
+	"description": "Node-only export tools for effect-motion: rasterize SVG frames to PNG via resvg",
+	"type": "module",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		}
+	},
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "tsc -p tsconfig.build.json",
+		"dev": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
+		"test": "vitest run",
+		"check": "tsc --noEmit"
+	},
+	"license": "MIT",
+	"dependencies": {
+		"@resvg/resvg-js": "^2.6.2",
+		"effect": "4.0.0-beta.94"
+	},
+	"devDependencies": {
+		"@effect/platform-node": "4.0.0-beta.94",
+		"@types/node": "^26.1.1",
+		"effect-motion": "workspace:*",
+		"typescript": "^7.0.2",
+		"vitest": "^4.1.10"
+	}
+}
