@@ -12,17 +12,24 @@ import { Name } from "effect/unstable/ai/Tool";
 
 // children live in the group's local coordinates: one motion moves them all
 export const scene = Scene.make(function* () {
-	const duo = yield* Scene.instantiate(Shapes.Group, { x: 70, y: 200 });
-	yield* Scene.instantiate(
-		Shapes.Circle,
-		{ x: 0, y: 0, radius: 14, fill: "#e53170" },
-		{ parent: duo },
-	);
-	yield* Scene.instantiate(
-		Shapes.Square,
-		{ x: 20, y: -16, size: 28, fill: "#a786df" },
-		{ parent: duo },
-	);
+	const duo = yield* Scene.instantiate(Shapes.Group, {
+		x: 70,
+		y: 200,
+		children: [
+			Scene.instantiate(Shapes.Circle, {
+				x: 0,
+				y: 0,
+				radius: 14,
+				fill: "#e53170",
+			}),
+			Scene.instantiate(Shapes.Square, {
+				x: 20,
+				y: -16,
+				size: 28,
+				fill: "#a786df",
+			}),
+		],
+	});
 
 	const moveA = Motion.moveTo({ x: 380 }, "1.5 seconds", "easeInOutCubic");
 	const moveB = Motion.moveTo({ x: 70 }, "1.5 seconds", "easeInOutCubic");
@@ -68,11 +75,14 @@ export const staggered = Scene.make(function* () {
 	);
 	const dot = (x: number) =>
 		Effect.gen(function* () {
-			const circle = yield* Scene.instantiate(
-				Shapes.Circle,
-				{ x, y: 0, radius: 10, fill: "#e53170" },
-				{ parent: stage },
-			);
+			const circle = yield* Scene.instantiate(Shapes.Circle, {
+				x,
+				y: 0,
+				radius: 10,
+				fill: "#e53170",
+			});
+			// reparent the freshly-born dot from root into the stage group
+			yield* Scene.appendChild(stage, circle);
 			yield* Motion.tweenTo(circle, { x: x + 300 }, "1 second", "easeInOutCubic");
 		});
 	yield* Scene.stagger(

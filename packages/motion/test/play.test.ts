@@ -187,17 +187,16 @@ describe("Scene.play mounting", () => {
 		expect(childOf(frames, "root")).not.toContain(circleId);
 	});
 
-	it("explicit parent beats the ambient mount", async () => {
+	it("children-defined structure composes under the ambient mount", async () => {
 		const child = Scene.make(function* () {
-			// ambient mount parent applies here…
-			const inner = yield* Scene.instantiate(Shapes.Group, { x: 0, y: 0 });
-			// …but this instance names its parent explicitly
-			const c = yield* Scene.instantiate(
-				Shapes.Circle,
-				{ x: 0 },
-				{ parent: inner as never },
-			);
-			yield* Motion.tween(c, { x: 0 }, { x: 100 }, "100 millis");
+			// the group mounts under the ambient parent; its child circle is
+			// defined via the children list (structure, not a parent argument)
+			const inner = yield* Scene.instantiate(Shapes.Group, {
+				x: 0,
+				y: 0,
+				children: [Scene.instantiate(Shapes.Circle, { x: 0 })],
+			});
+			yield* Motion.tween(inner, { x: 0 }, { x: 100 }, "100 millis");
 		} as never);
 		const movie = Scene.make(function* () {
 			const mount = yield* Scene.instantiate(Shapes.Group, { x: 0, y: 0 });

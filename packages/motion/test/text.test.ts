@@ -1,43 +1,11 @@
 // @vitest-environment happy-dom
-import { Effect, Layer } from "effect";
+import { Effect } from "effect";
 import * as Stream from "effect/Stream";
 import { describe, expect, it } from "vitest";
 import * as Motion from "../src/Motion";
 import * as Scene from "../src/Scene";
 import * as Shapes from "../src/shapes";
 import * as Svg from "../src/svg";
-
-const richContent = {
-	type: "root",
-	children: [
-		{
-			type: "paragraph",
-			children: [
-				{ type: "text", value: "plain < " },
-				{
-					type: "strong",
-					children: [{ type: "text", value: "bold &" }],
-				},
-				{ type: "text", value: "\n" },
-			],
-		},
-		{
-			type: "paragraph",
-			children: [
-				{
-					type: "emphasis",
-					children: [
-						{ type: "text", value: "italic " },
-						{
-							type: "strong",
-							children: [{ type: "text", value: "both" }],
-						},
-					],
-				},
-			],
-		},
-	],
-} satisfies Shapes.TextContent;
 
 const renderText = (data: (typeof Shapes.Text)["data"]["Type"]) =>
 	Effect.runPromise(
@@ -69,40 +37,10 @@ describe("Shapes.Text schema", () => {
 		expect(() => Shapes.Text.data.make({} as never)).toThrow();
 	});
 
-	it("accepts and retains multiple rich paragraphs", () => {
-		expect(Shapes.Text.data.make({ text: richContent }).text).toEqual(
-			richContent,
-		);
-	});
-
-	it.each([
-		[
-			"heading",
-			{ type: "root", children: [{ type: "heading", children: [] }] },
-		],
-		[
-			"link",
-			{
-				type: "root",
-				children: [
-					{ type: "paragraph", children: [{ type: "link", children: [] }] },
-				],
-			},
-		],
-		[
-			"inlineCode",
-			{
-				type: "root",
-				children: [
-					{
-						type: "paragraph",
-						children: [{ type: "inlineCode", value: "code" }],
-					},
-				],
-			},
-		],
-	] as const)("rejects unsupported %s nodes", (_type, text) => {
-		expect(() => Shapes.Text.data.make({ text } as never)).toThrow();
+	it("rejects non-string text", () => {
+		expect(() =>
+			Shapes.Text.data.make({ text: { type: "root" } } as never),
+		).toThrow();
 	});
 });
 
@@ -125,19 +63,9 @@ describe("Text SVG rendering", () => {
 		expect(Svg.vnodeToString(node)).toContain(">a &lt; b &amp; c</text>");
 	});
 
-	it("renders multiple paragraphs with escaped and nested marks", async () => {
-		const node = await renderText(Shapes.Text.data.make({ text: richContent }));
-		const svg = Svg.vnodeToString(node);
-
-		expect(node.children).toHaveLength(2);
-		expect(svg).toContain("<tspan><tspan>plain &lt; </tspan>");
-		expect(svg).toContain("<tspan>\n</tspan>");
-		expect(svg).toContain(
-			'<tspan font-weight="bold"><tspan>bold &amp;</tspan></tspan>',
-		);
-		expect(svg).toContain(
-			'<tspan font-style="italic"><tspan>italic </tspan><tspan font-weight="bold"><tspan>both</tspan></tspan></tspan>',
-		);
+	it("preserves literal newlines in content", async () => {
+		const node = await renderText(Shapes.Text.data.make({ text: "line1\nline2" }));
+		expect(node.children).toBe("line1\nline2");
 	});
 
 	it("omits alignment attributes when unset", async () => {
@@ -156,46 +84,6 @@ describe("Text SVG rendering", () => {
 		);
 		expect(node.props["text-anchor"]).toBe("middle");
 		expect(node.props["dominant-baseline"]).toBe("middle");
-	});
-});
-
-describe("Text SVG DOM rendering", () => {
-	it("materializes rich content as nested tspan elements", async () => {
-		const target = document.createElement("div");
-		const frame: Scene.Frame<typeof Shapes.Group | typeof Shapes.Text> = {
-			instances: {
-				t: {
-					data: Shapes.Text.data.make({ text: richContent }),
-					entity: Shapes.Text,
-				},
-				root: {
-					data: Shapes.Group.data.make({ children: ["t"] }),
-					entity: Shapes.Group,
-				},
-			},
-			root: "root",
-			frameRate: 60,
-			width: 500,
-			height: 300,
-			backgroundColor: "#16161d",
-		};
-
-		await Effect.runPromise(
-			Effect.gen(function* () {
-				const renderer = yield* Svg.SvgDomRenderer.Context;
-				yield* renderer.render(frame, { target, width: 500, height: 300 });
-			}).pipe(
-				Effect.provide(Svg.layer.pipe(Layer.provideMerge(Svg.shapesLayer))),
-			),
-		);
-
-		const text = target.querySelector("text");
-		const italic = text?.querySelector('tspan[font-style="italic"]');
-		expect(text?.children).toHaveLength(2);
-		expect(text?.querySelectorAll("tspan")).toHaveLength(10);
-		expect(text?.textContent).toBe("plain < bold &\nitalic both");
-		expect(text?.querySelector('tspan[font-weight="bold"]')).not.toBeNull();
-		expect(italic?.querySelector('tspan[font-weight="bold"]')).not.toBeNull();
 	});
 });
 

@@ -6,20 +6,6 @@ import * as Scene from "../src/Scene";
 import * as Shapes from "../src/shapes";
 import * as Svg from "../src/svg";
 
-const richText = {
-	type: "root",
-	children: [
-		{
-			type: "paragraph",
-			children: [
-				{ type: "text", value: "plain " },
-				{ type: "strong", children: [{ type: "text", value: "bold" }] },
-				{ type: "emphasis", children: [{ type: "text", value: "italic" }] },
-			],
-		},
-	],
-} satisfies Shapes.TextContent;
-
 // one frame exercising every entry in the built-in coverage manifest
 const allShapesScene = Scene.make(function* () {
 	yield* Scene.instantiate(Shapes.Circle, { x: 10, y: 20, radius: 5, fill: "#111", opacity: 0.5 });
@@ -28,13 +14,20 @@ const allShapesScene = Scene.make(function* () {
 	yield* Scene.instantiate(Shapes.Ellipse, { x: 50, y: 60, rx: 7, ry: 8, fill: "#444" });
 	yield* Scene.instantiate(Shapes.Line, { x: 0, y: 0, x2: 100, y2: 100, stroke: "#555" });
 	yield* Scene.instantiate(Shapes.Path, { x: 5, y: 6, d: "M 0 0 L 10 10", fill: "#666" });
-	const group = yield* Scene.instantiate(Shapes.Group, { x: 70, y: 80, opacity: 0.9 });
-	yield* Scene.instantiate(Shapes.Circle, { x: 1, y: 1, radius: 2, fill: "#777" }, { parent: group });
+	yield* Scene.instantiate(Shapes.Group, {
+		x: 70,
+		y: 80,
+		opacity: 0.9,
+		children: [
+			Scene.instantiate(Shapes.Circle, { x: 1, y: 1, radius: 2, fill: "#777" }),
+		],
+	});
 	yield* Scene.instantiate(
 		Shapes.Text,
 		{ text: "hello & <world>", x: 9, y: 9, fontSize: 12, textAnchor: "middle", baseline: "hanging", fill: "#888" },
 	);
-	yield* Scene.instantiate(Shapes.Text, { text: richText, x: 11, y: 12, fill: "#999" });
+	// a hidden shape: both sinks must skip it identically
+	yield* Scene.instantiate(Shapes.Square, { x: 5, y: 5, size: 8, fill: "#000", $visible: false });
 	yield* Scene.tick;
 });
 
@@ -95,7 +88,11 @@ it("string and DOM sinks agree on the full built-in shape surface", async () => 
 
 	// the frame actually contains the whole surface
 	const tags = [...parsed.querySelectorAll("*")].map((e) => e.tagName.toLowerCase());
-	for (const tag of ["circle", "rect", "ellipse", "line", "path", "g", "text", "tspan"]) {
+	for (const tag of ["circle", "rect", "ellipse", "line", "path", "g", "text"]) {
 		expect(tags).toContain(tag);
 	}
+	// the hidden square is skipped by BOTH sinks (parity already asserted
+	// above): 3 <rect>s — background + Rect + visible Square — not 4. The
+	// hidden Square (also a <rect>) is absent.
+	expect(tags.filter((t) => t === "rect")).toHaveLength(3);
 });

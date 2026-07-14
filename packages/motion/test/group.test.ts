@@ -193,10 +193,12 @@ describe("scene attachment", () => {
 		);
 	});
 
-	it("instances attach to a given parent group", async () => {
+	it("structure is defined by children", async () => {
 		const frames = await collectFrames(function* () {
-			const group = yield* Scene.instantiate(Shapes.Group, { x: 100 });
-			yield* Scene.instantiate(Shapes.Circle, { x: 5 }, { parent: group });
+			yield* Scene.instantiate(Shapes.Group, {
+				x: 100,
+				children: [Scene.instantiate(Shapes.Circle, { x: 5 })],
+			});
 			yield* Scene.tick;
 		});
 		const frame = frames[0]!;
@@ -210,15 +212,29 @@ describe("scene attachment", () => {
 		expect(group.children).toHaveLength(1);
 	});
 
+	it("appendChild reparents a lazily-created instance", async () => {
+		const frames = await collectFrames(function* () {
+			const group = yield* Scene.instantiate(Shapes.Group, { x: 100 });
+			const circle = yield* Scene.instantiate(Shapes.Circle, { x: 5 });
+			yield* Scene.appendChild(group, circle);
+			yield* Scene.tick;
+		});
+		const frame = frames[0]!;
+		const root = frame.instances[frame.root]!.data as {
+			children: ReadonlyArray<string>;
+		};
+		expect(root.children).toHaveLength(1); // circle moved out of root
+		const group = frame.instances[root.children[0]!]!.data as {
+			children: ReadonlyArray<string>;
+		};
+		expect(group.children).toHaveLength(1);
+	});
+
 	it("destroy detaches from the referencing group", async () => {
 		const frames = await collectFrames(function* () {
 			const runner = yield* Runner.Runner;
-			const group = yield* Scene.instantiate(Shapes.Group, {});
-			const circle = yield* Scene.instantiate(
-				Shapes.Circle,
-				{},
-				{ parent: group },
-			);
+			const circle = yield* Scene.instantiate(Shapes.Circle, {});
+			yield* Scene.instantiate(Shapes.Group, { children: [circle] });
 			yield* Scene.tick;
 			runner.destroy(circle);
 			yield* Scene.tick;
@@ -243,5 +259,117 @@ describe("scene attachment", () => {
 		);
 		const svg = await Effect.runPromise(renderString(frame));
 		expect(svg.indexOf('cx="2"')).toBeLessThan(svg.indexOf('cx="1"'));
+	});
+});
+
+describe("polymorphic children", () => {
+	const collectFrames = async (
+		make: () => Generator<Effect.Effect<any, any, any>, void, never>,
+	) => {
+		const scene = Scene.make(make as never);
+		const frames = await Effect.runPromise(
+			Scene.stream(scene as never).pipe(
+				Stream.runCollect,
+			) as unknown as Effect.Effect<Iterable<Scene.Frame<any>>, never, never>,
+		);
+		return [...frames];
+	};
+
+	const childrenOf = (frame: Scene.Frame<any>, id: string) =>
+		(frame.instances[id]!.data as { children: string[] }).children;
+
+	it("a string child becomes a Text", async () => {
+		const frames = await collectFrames(function* () {
+			yield* Scene.instantiate(Shapes.Group, { children: ["hello"] });
+			yield* Scene.tick;
+		});
+		const frame = frames[0]!;
+		const groupId = childrenOf(frame, frame.root)[0]!;
+		const childId = childrenOf(frame, groupId)[0]!;
+		expect(frame.instances[childId]!.entity.name).toBe("shapes/Text");
+		expect((frame.instances[childId]!.data as { text: string }).text).toBe(
+			"hello",
+		);
+	});
+
+	it("a not-yielded nested instantiate is resolved internally", async () => {
+		const frames = await collectFrames(function* () {
+			yield* Scene.instantiate(Shapes.Group, {
+				// the nested instantiate is NOT itself yield*-ed
+				children: [Scene.instantiate(Shapes.Circle, { x: 7 })],
+			});
+			yield* Scene.tick;
+		});
+		const frame = frames[0]!;
+		const groupId = childrenOf(frame, frame.root)[0]!;
+		const childId = childrenOf(frame, groupId)[0]!;
+		expect(frame.instances[childId]!.entity.name).toBe("shapes/Circle");
+	});
+
+	it("an already-instantiated child contributes its id and is reparented", async () => {
+		const frames = await collectFrames(function* () {
+			const circle = yield* Scene.instantiate(Shapes.Circle, { x: 3 });
+			yield* Scene.instantiate(Shapes.Group, { children: [circle] });
+			yield* Scene.tick;
+		});
+		const frame = frames[0]!;
+		// only the group at top level — the circle moved out of root
+		expect(childrenOf(frame, frame.root)).toHaveLength(1);
+		const groupId = childrenOf(frame, frame.root)[0]!;
+		expect(childrenOf(frame, groupId)).toHaveLength(1);
+	});
+
+	it("mixed children preserve order", async () => {
+		const frames = await collectFrames(function* () {
+			const mid = yield* Scene.instantiate(Shapes.Circle, { x: 1 });
+			yield* Scene.instantiate(Shapes.Group, {
+				children: ["a", mid, Scene.instantiate(Shapes.Circle, { x: 2 })],
+			});
+			yield* Scene.tick;
+		});
+		const frame = frames[0]!;
+		const groupId = childrenOf(frame, frame.root)[0]!;
+		const kids = childrenOf(frame, groupId);
+		expect(kids).toHaveLength(3);
+		expect(frame.instances[kids[0]!]!.entity.name).toBe("shapes/Text");
+		expect(frame.instances[kids[1]!]!.entity.name).toBe("shapes/Circle");
+		expect(frame.instances[kids[2]!]!.entity.name).toBe("shapes/Circle");
+	});
+});
+
+describe("builtin $visible", () => {
+	const collectFrames = async (
+		make: () => Generator<Effect.Effect<any, any, any>, void, never>,
+	) => {
+		const scene = Scene.make(make as never);
+		const frames = await Effect.runPromise(
+			Scene.stream(scene as never).pipe(
+				Stream.runCollect,
+			) as unknown as Effect.Effect<Iterable<Scene.Frame<any>>, never, never>,
+		);
+		return [...frames];
+	};
+
+	it("defaults to visible and is carried on the frame", async () => {
+		const frames = await collectFrames(function* () {
+			yield* Scene.instantiate(Shapes.Circle, { x: 1 });
+			yield* Scene.tick;
+		});
+		const frame = frames[0]!;
+		const id = (frame.instances[frame.root]!.data as { children: string[] })
+			.children[0]!;
+		expect(frame.instances[id]!.$visible).toBe(true);
+	});
+
+	it("a hidden instance is skipped by the renderer", async () => {
+		const frames = await collectFrames(function* () {
+			yield* Scene.instantiate(Shapes.Circle, { x: 1, $visible: false });
+			yield* Scene.instantiate(Shapes.Circle, { x: 2 });
+			yield* Scene.tick;
+		});
+		const frame = frames[0]!;
+		const svg = await Effect.runPromise(renderString(frame));
+		expect(svg).not.toContain('cx="1"'); // hidden
+		expect(svg).toContain('cx="2"'); // visible
 	});
 });

@@ -106,12 +106,11 @@ describe("trait-based helpers", () => {
 	it("moveTo on a group moves the rendered subtree", async () => {
 		const track = await runScene(
 			function* () {
-				const group = yield* Scene.instantiate(Shapes.Group, { x: 0, y: 0 });
-				yield* Scene.instantiate(
-					Shapes.Circle,
-					{ x: 5, y: 5 },
-					{ parent: group },
-				);
+				const group = yield* Scene.instantiate(Shapes.Group, {
+					x: 0,
+					y: 0,
+					children: [Scene.instantiate(Shapes.Circle, { x: 5, y: 5 })],
+				});
 				yield* group.pipe(Motion.moveTo({ x: 40 }, "200 millis"));
 			},
 			(frame) => {

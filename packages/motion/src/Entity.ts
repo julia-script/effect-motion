@@ -81,10 +81,20 @@ export const make = <
 	data: Data,
 	traits?: Traits,
 ): Entity<Name, NormalizeStructLike<Data>, Traits> => {
+	const normalized = normalizeStructLike(data);
+	// `$` is reserved for builtin, engine-owned instance properties (e.g.
+	// `$visible`), which live beside the data — never as entity-data fields.
+	for (const field of Object.keys(normalized.fields)) {
+		if (field.startsWith("$")) {
+			throw new Error(
+				`Entity "${name}": field "${field}" uses the reserved "$" prefix (reserved for builtin instance properties like $visible)`,
+			);
+		}
+	}
 	return {
 		[TypeId]: TypeId,
 		name,
-		data: normalizeStructLike(data),
+		data: normalized,
 		traits: traits ?? ({} as Traits),
 	};
 };

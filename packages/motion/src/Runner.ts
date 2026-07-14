@@ -8,6 +8,7 @@ import type * as Entity from "./Entity";
 import * as Instance from "./Instance";
 import * as Phaser from "./Phaser";
 import { Group } from "./shapes/Group";
+import { Text } from "./shapes/Text";
 
 export const TypeId = "~motion/SceneRunner" as const;
 
@@ -44,13 +45,40 @@ export type Settings = {
 
 export type GroupInstance = Instance.Of<typeof Group>;
 
-export interface InstantiateOptions {
-	/**
-	 * the group to attach the new instance to; defaults to the ambient
-	 * mount parent (see `CurrentParent`), which defaults to the root
-	 */
-	readonly parent?: GroupInstance;
+/**
+ * A child in a polymorphic `children` list: a plain string (→ a `Text`),
+ * an already-created `Instance`, or an `Effect` that resolves to one (a
+ * not-yet-yielded `instantiate` — yielded internally so JSX children need
+ * no `yield*`). Normalized to a stored child id in list order.
+ */
+export type Child =
+	| string
+	| Instance.Instance
+	| Effect.Effect<Instance.Instance, unknown, unknown>;
+
+/**
+ * Builtin, engine-owned instance properties — namespaced with `$` and
+ * held BESIDE entity data, never in the entity schema. Every entity gets
+ * them uniformly. `$visible` defaults to `true`.
+ */
+export interface BuiltinProps {
+	readonly $visible?: boolean;
 }
+
+/**
+ * The input accepted by `instantiate`: an entity's own make-input, plus
+ * builtin props ($visible), plus — when the entity has a `children` field
+ * — a polymorphic `children` list (strings/instances/effects) in place of
+ * the stored `Array<string>` of ids.
+ */
+export type InstantiateProps<Data extends Schema.Top> = Omit<
+	Data["~type.make.in"],
+	"children"
+> &
+	BuiltinProps &
+	("children" extends keyof Data["~type.make.in"]
+		? { readonly children?: ReadonlyArray<Child> }
+		: {});
 
 /**
  * The ambient mount parent for `instantiate` — provided per scene
@@ -75,8 +103,12 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 	make: Effect.fnUntraced(function* (settings: Partial<Settings> = {}) {
 		const instances: Record<
 			string,
-			{ data: unknown; entity: Entity.AnyEntity }
+			{ data: unknown; entity: Entity.AnyEntity; $visible: boolean }
 		> = {};
+		// each instance's current parent group id (or null = detached / root).
+		// Tracked so appendChild detaches from the old parent in O(1) rather
+		// than scanning the tree. The root is not tracked (it has no parent).
+		const parentOf: Record<string, string | null> = {};
 		const phaser = yield* Phaser.Phaser.make;
 		// concurrent branches spawned by Scene.fork / Scene.play /
 		// Scene.background. `forks` hold the scene's end hostage until their
@@ -101,10 +133,21 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 			instance: Instance.Instance<Name, Data>,
 			data: Data["~type.make.in"],
 		): void => {
+			// preserve $visible across data updates; new instances default visible
+			// ($visible is set explicitly by instantiate when overridden)
+			const prev = instances[instance.id];
 			instances[instance.id] = {
 				data: instance.entity.data.make(data),
 				entity: instance.entity,
+				$visible: prev?.$visible ?? true,
 			};
+		};
+
+		const setVisibleUnsafe = (id: string, visible: boolean): void => {
+			const entry = instances[id];
+			if (entry !== undefined) {
+				instances[id] = { ...entry, $visible: visible };
+			}
 		};
 
 		const getDataUnsafe = <Name extends string, Data extends Schema.Top>(
@@ -127,15 +170,84 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 		const root: GroupInstance = Instance.make(Group, ROOT_ID);
 		setDataUnsafe(root, {});
 
+		// append `id` to a group's children and record it as the child's parent
 		const attach = (parent: GroupInstance, id: string): void => {
 			const data = getDataUnsafe(parent);
 			if (data === null) {
 				throw new Error(`Runner: parent group "${parent.id}" was destroyed`);
 			}
 			setDataUnsafe(parent, { ...data, children: [...data.children, id] });
+			parentOf[id] = parent.id;
 		};
 
-		return {
+		// remove `id` from its current parent's children (O(1) via parentOf),
+		// leaving it detached. No-op if already detached or parent is gone.
+		const detach = (id: string): void => {
+			const parentId = parentOf[id];
+			if (parentId == null) {
+				return;
+			}
+			const parentEntry = instances[parentId];
+			const children = (parentEntry?.data as { children?: unknown } | undefined)
+				?.children;
+			if (parentEntry !== undefined && Array.isArray(children)) {
+				setDataUnsafe(
+					{ id: parentId, entity: parentEntry.entity } as Instance.Instance,
+					{
+						...(parentEntry.data as object),
+						children: children.filter((c) => c !== id),
+					},
+				);
+			}
+			parentOf[id] = null;
+		};
+
+		// move `child` under `parent`: detach from its current parent first
+		// (so it is never double-referenced), then attach.
+		const appendChild = (parent: GroupInstance, child: Instance.Instance): void => {
+			if (instances[child.id] === undefined) {
+				throw new Error(`Runner: child "${child.id}" was destroyed`);
+			}
+			detach(child.id);
+			attach(parent, child.id);
+		};
+
+		const removeChild = (
+			parent: GroupInstance,
+			child: Instance.Instance,
+		): void => {
+			if (parentOf[child.id] === parent.id) {
+				detach(child.id);
+			}
+		};
+
+		// normalize a polymorphic children list into stored child ids, in
+		// order: a string → a Text; an Instance → its id; otherwise an
+		// Effect<Instance> yielded here (JSX children need no yield*).
+		const normalizeChildren = (
+			children: ReadonlyArray<Child>,
+		): Effect.Effect<ReadonlyArray<string>, unknown, Entity.AnyEntity | Runner> =>
+			Effect.gen(function* () {
+				const ids: string[] = [];
+				for (const child of children) {
+					if (typeof child === "string") {
+						const child$ = yield* self.instantiate(Text, { text: child });
+						ids.push(child$.id);
+					} else if (Instance.isInstance(child)) {
+						ids.push(child.id);
+					} else {
+						const resolved = yield* child;
+						ids.push(resolved.id);
+					}
+				}
+				return ids;
+			}) as Effect.Effect<
+				ReadonlyArray<string>,
+				unknown,
+				Entity.AnyEntity | Runner
+			>;
+
+		const self = {
 			root,
 			instantiate: Effect.fnUntraced(function* <
 				Name extends string,
@@ -143,22 +255,55 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 				Traits extends Partial<Entity.EntityTraits<Data["Type"]>>,
 			>(
 				entity: Entity.Entity<Name, Data, Traits>,
-				props: Data["~type.make.in"],
-				options?: InstantiateOptions,
+				props: InstantiateProps<Data>,
 			): Effect.fn.Return<
 				Instance.Instance<Name, Data, Traits>,
-				void,
-				Entity.Entity<Name, Data, Traits>
+				unknown,
+				Entity.Entity<Name, Data, Traits> | Runner
 			> {
+				// peel off builtin ($visible) and polymorphic children before the
+				// schema constructs the data — neither is an entity-data field
+				const { $visible, children, ...rest } = props as Record<
+					string,
+					unknown
+				>;
+				// children are born (via normalizeChildren) attached to their
+				// ambient parent — reparent them into THIS instance below
+				const childIds =
+					children === undefined
+						? undefined
+						: yield* normalizeChildren(children as ReadonlyArray<Child>);
+				const dataInput =
+					childIds === undefined ? rest : { ...rest, children: childIds };
+
 				const id = generateId(entity.name);
 				const instance = Instance.make(entity, id);
-				setDataUnsafe(instance, props);
-				// explicit parent > ambient mount parent (Scene.play) > root
+				setDataUnsafe(instance, dataInput as Data["~type.make.in"]);
+				if ($visible === false) {
+					setVisibleUnsafe(id, false);
+				}
+				// mount under the ambient parent (Scene.play), defaulting to root
 				const ambient = yield* CurrentParent;
-				attach(options?.parent ?? ambient ?? root, id);
+				attach(ambient ?? root, id);
+				// adopt listed children: they were attached to the ambient parent
+				// at birth; detach them there and record this instance as parent
+				// (their ids already live in this instance's `children` data)
+				if (childIds !== undefined) {
+					for (const childId of childIds) {
+						detach(childId);
+						parentOf[childId] = id;
+					}
+				}
 
 				return instance;
 			}),
+			// move `child` under `parent` (detaching from its current parent
+			// first, so it is never double-referenced). Instances are born
+			// attached to the ambient parent; this reparents them.
+			appendChild,
+			// detach `child` from `parent` (no-op unless currently its child),
+			// leaving it detached from the tree (still alive, just unmounted)
+			removeChild,
 			settings: resolvedSettings,
 			getDataUnsafe,
 
@@ -176,14 +321,18 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 			destroy: <Name extends string, Data extends Schema.Top>(
 				instance: Instance.Instance<Name, Data>,
 			): void => {
+				// O(1) detach from the tracked parent, then drop the instance
+				detach(instance.id);
 				delete instances[instance.id];
-				// detach from whichever group references it — a full scan stays
-				// correct even after manual reparenting via data updates
+				delete parentOf[instance.id];
+				// backstop scan: stays correct even after manual reparenting via
+				// raw data updates (which bypass parentOf tracking)
 				for (const [id, entry] of Object.entries(instances)) {
 					const children = (entry.data as { children?: unknown }).children;
 					if (Array.isArray(children) && children.includes(instance.id)) {
 						instances[id] = {
 							entity: entry.entity,
+							$visible: entry.$visible,
 							data: entry.entity.data.make({
 								...(entry.data as object),
 								children: children.filter((child) => child !== instance.id),
@@ -204,6 +353,7 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 			},
 			failureCause: (): Cause.Cause<unknown> | undefined => failure,
 		};
+		return self;
 	}),
 }) {}
 

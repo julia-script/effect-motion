@@ -145,6 +145,13 @@ export const make =
 			return Array.isArray(children) ? children : [];
 		};
 
+		// a hidden instance ($visible false) and its subtree are skipped
+		// entirely — target-agnostic, so every sink honors visibility for free
+		const isVisible = <Entities extends Entity.AnyEntity>(
+			frame: Frame<Entities>,
+			id: string,
+		): boolean => frame.instances[id]?.$visible !== false;
+
 		const service = context.of({
 			render: Effect.fnUntraced(function* <
 				const Entities extends Entity.AnyEntity,
@@ -175,7 +182,9 @@ export const make =
 							);
 						}
 						const childEntries = yield* Effect.all(
-							childIdsOf(entry.data).map(buildEntry),
+							childIdsOf(entry.data)
+								.filter((childId) => isVisible(frame, childId))
+								.map(buildEntry),
 						);
 						const entityRenderer = yield* getEntityRenderer(entry.entity);
 						return {
@@ -203,7 +212,9 @@ export const make =
 				visited.add(frame.root);
 				// the root group never renders; its children are the top level
 				const entries = yield* Effect.all(
-					childIdsOf(rootEntry.data).map(buildEntry),
+					childIdsOf(rootEntry.data)
+						.filter((childId) => isVisible(frame, childId))
+						.map(buildEntry),
 				);
 				return yield* config.render(entries, customConfig, {
 					frameRate: frame.frameRate,

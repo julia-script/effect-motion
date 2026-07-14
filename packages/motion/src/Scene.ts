@@ -85,15 +85,14 @@ export const instantiate = Effect.fnUntraced(function* <
 	Traits extends Partial<Entity.EntityTraits<Data["Type"]>>,
 >(
 	entity: Entity.Entity<Name, Data, Traits>,
-	props: Data["~type.make.in"],
-	options?: Runner.InstantiateOptions,
+	props: Runner.InstantiateProps<Data>,
 ): Effect.fn.Return<
 	Instance.Instance<Name, Data, Traits>,
-	void,
+	unknown,
 	Entity.Entity<Name, Data, Traits> | Runner.Runner
 > {
 	const runner = yield* Runner.Runner;
-	return yield* runner.instantiate(entity, props, options);
+	return yield* runner.instantiate(entity, props);
 });
 
 export const tick = Effect.gen(function* () {
@@ -118,6 +117,12 @@ export const sleep = (duration: Duration.Input) =>
 export interface FrameEntry<Entity extends Entity.AnyEntity> {
 	data: Entity["data"]["Type"];
 	entity: Entity;
+	/**
+	 * builtin visibility, held beside the data; renderers skip `false`.
+	 * Optional in the frame type (a hand-built frame or external producer
+	 * may omit it) — absent means visible; the runner always sets it.
+	 */
+	$visible?: boolean;
 }
 export type EntriesFromEntities<Entities> = Entities extends Entity.AnyEntity
 	? {
@@ -342,6 +347,31 @@ export const update = <Name extends string, Data extends Schema.Top>(
 			return runner.setDataUnsafe(instance, props(current));
 		}
 		return runner.setDataUnsafe(instance, props);
+	});
+
+/**
+ * Move `child` under `parent`, detaching it from its current parent first
+ * (so it is never double-referenced). Instances are born mounted under the
+ * ambient parent; `appendChild` is the explicit reparent — the door to
+ * placing a lazily-created node into an existing group.
+ */
+export const appendChild = (
+	parent: Runner.GroupInstance,
+	child: Instance.Instance,
+) =>
+	Effect.gen(function* () {
+		const runner = yield* Runner.Runner;
+		runner.appendChild(parent, child);
+	});
+
+/** Detach `child` from `parent` (no-op unless it is currently its child). */
+export const removeChild = (
+	parent: Runner.GroupInstance,
+	child: Instance.Instance,
+) =>
+	Effect.gen(function* () {
+		const runner = yield* Runner.Runner;
+		runner.removeChild(parent, child);
 	});
 
 export const settings = Effect.fnUntraced(function* () {
