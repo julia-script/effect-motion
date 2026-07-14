@@ -1,7 +1,7 @@
 import * as Effect from "effect/Effect";
 import * as Pull from "effect/Pull";
 import * as Stream from "effect/Stream";
-import { type Entity, Scene } from "effect-motion";
+import { type Entity, Fonts, Scene } from "effect-motion";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 export type PlayerStatus = "loading" | "ready" | "error";
@@ -72,6 +72,44 @@ export const usePlayer = (
 	const [frame, setFrame] = useState(0);
 	const [playing, setPlaying] = useState(false);
 	const [loop, setLoop] = useState(false);
+	const [fontsReady, setFontsReady] = useState(false);
+
+	// font preload: load the scene's declared url fonts (Fonts annotation)
+	// alongside initial buffering. Fonts cannot affect frame data, so this
+	// only gates `status` — a failed load warns and proceeds with the
+	// browser's normal fallback.
+	useEffect(() => {
+		const entries = Fonts.get(scene).filter((f) => f.src.url !== undefined);
+		if (
+			entries.length === 0 ||
+			typeof FontFace === "undefined" ||
+			typeof document === "undefined" ||
+			document.fonts === undefined
+		) {
+			setFontsReady(true);
+			return;
+		}
+		setFontsReady(false);
+		let cancelled = false;
+		const loads = entries.map((f) => {
+			const face = new FontFace(f.family, `url(${f.src.url})`, {
+				...(f.weight !== undefined && { weight: String(f.weight) }),
+				...(f.style !== undefined && { style: f.style }),
+			});
+			document.fonts.add(face);
+			return face.load().then(undefined, (err) => {
+				console.warn(`effect-motion: font "${f.family}" failed to load`, err);
+			});
+		});
+		Promise.all(loads).then(() => {
+			if (!cancelled) {
+				setFontsReady(true);
+			}
+		});
+		return () => {
+			cancelled = true;
+		};
+	}, [scene]);
 
 	// latest-value refs keep the fill loop and the rAF clock out of effect
 	// deps: neither should restart on every frame or buffer growth
@@ -218,7 +256,11 @@ export const usePlayer = (
 	}, []);
 
 	const status: PlayerStatus =
-		error !== null ? "error" : bufferedFrames > 0 ? "ready" : "loading";
+		error !== null
+			? "error"
+			: bufferedFrames > 0 && fontsReady
+				? "ready"
+				: "loading";
 	const denominator = (totalFrames ?? bufferedFrames) - 1;
 
 	return {

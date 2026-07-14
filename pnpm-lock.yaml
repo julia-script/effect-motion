@@ -84,6 +84,9 @@ importers:
       effect:
         specifier: 4.0.0-beta.94
         version: 4.0.0-beta.94
+      effect-motion:
+        specifier: workspace:*
+        version: link:../motion
     devDependencies:
       '@effect/platform-node':
         specifier: 4.0.0-beta.94
@@ -91,9 +94,6 @@ importers:
       '@types/node':
         specifier: ^26.1.1
         version: 26.1.1
-      effect-motion:
-        specifier: workspace:*
-        version: link:../motion
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
