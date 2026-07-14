@@ -1,0 +1,55 @@
+---
+title: Determinism
+description: Why the same scene always produces the same frames
+---
+
+effect-motion is **deterministic and frame-exact** by construction. The same
+scene with the same settings produces byte-identical frames every run. This is
+what makes export match live playback exactly, and what makes scenes safe to
+cache, diff, and reproduce.
+
+Three invariants hold, always:
+
+## 1. No wall-clock, no `Math.random()`
+
+A scene is a pure function of `(scene, settings)`. It never reads the wall clock
+(durations are frame counts at the runner's frame rate) and never calls
+`Math.random()`. Instead, Effect's **`Random`** service is provided to every
+scene, seeded from settings:
+
+```ts
+import { Random } from "effect";
+
+// reproducible: same seed → same sequence, every run
+const x = yield* Random.nextBetween(40, 460);
+const y = yield* Random.nextBetween(40, 260);
+```
+
+The default seed is the fixed string `"effect-motion"`, so even a
+default-constructed scene replays identically. Pass a different `seed` in
+settings for a different — but equally reproducible — result.
+
+<Example name="seeded-randomness" />
+
+## 2. Animations land exactly on target
+
+Duration-based animations land their **final frame exactly** on the target value,
+whatever the easing — no sub-pixel drift from accumulated rounding. Springs run
+until the simulation settles, then **snap exactly** onto the target. So a value
+tweened to `x: 440` *is* `440` on the last frame, and chained animations start
+from a clean value.
+
+## 3. Failures are loud
+
+Scene-graph violations don't fail silently — they die with defects that name the
+offender: a missing trait, an invalid spring, an unknown timing name, a duplicate
+parent, exceeding `maxFrames`. You find out at author time, not from a subtly
+wrong frame.
+
+## Why it matters
+
+Because concurrency runs on a per-frame barrier (see
+[Scenes & the frame model](/docs/concepts/scenes)), frame *n* is identical no
+matter how the work was scheduled. That's the foundation the whole library sits
+on: `run` and `stream` agree, nested scenes replay like standalone runs, and a
+video export is exactly what you saw in the player.

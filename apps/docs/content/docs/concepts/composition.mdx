@@ -1,0 +1,98 @@
+---
+title: Composition
+description: Sequencing, overlapping, forking, repeating, and nesting scenes
+---
+
+Animators move single values; **composition** combinators arrange many of them
+in time. They share the frame barrier, so everything stays frame-exact no matter
+how it's combined.
+
+## Sequential vs parallel
+
+- **`Scene.all(effects)`** — run in lockstep parallel; resolves when all finish.
+- **`Scene.chain(effects, schedule?)`** — run one at a time, in order; items
+  never overlap. Without a schedule it's plain sequential; with one, the schedule
+  paces the gap after each item ends.
+
+```ts
+yield* Scene.all([
+	a.pipe(Motion.moveTo({ x: 100 }, "1 second")),
+	b.pipe(Motion.moveTo({ x: 100 }, "1 second")),
+]);
+```
+
+<Example name="chain" />
+
+## Staggered overlap
+
+`Scene.stagger(effects, schedule)` is the explicit overlap opt-in: starts are
+spaced by the schedule and the released animations run **concurrently**. Where
+`chain` never overlaps, `stagger` always does.
+
+<Example name="stagger" />
+
+## Fork and background
+
+Both run work concurrently with the rest of the scene; they differ in how the
+scene's *end* treats them:
+
+- **`Scene.fork(effect)`** — the scene's end **waits** for the fork. A scene whose
+  body returns while a fork is still animating keeps producing frames until the
+  fork finishes.
+- **`Scene.background(effect)`** — the fork is **interrupted** at scene end. For
+  indefinite work (a looping pulse) that should play for the scene's duration
+  without keeping it alive.
+
+<Example name="fork-background" />
+
+## Repeat
+
+`Scene.repeat(effect, schedule)` re-runs a motion on a schedule, in scene time —
+the first run is immediate, the schedule paces the gaps after each run. Pair it
+with `Scene.background` and `Schedule.forever` for an ambient loop.
+
+<Example name="repeat" />
+
+## Nested scenes: play
+
+A scene is a plain value, and a movie is a scene that plays other scenes.
+`Scene.play(scene, options?)` runs a scene as a **branch** — sharing the movie's
+runner, frame rate, and frame cap — and returns a handle. Await `handle.finished`
+for sequential nesting; don't await it to run scenes concurrently.
+
+```ts
+const intro = yield* Scene.play(introScene);
+yield* intro.finished; // sequential
+```
+
+**Mounting.** Give `play` a `parent` group and the whole child scene lives under
+it — move or fade the group and the nested scene follows:
+
+```ts
+const stage = yield* Scene.instantiate(Shapes.Group, { x: 60, y: 40 });
+const h = yield* Scene.play(intro, { parent: stage });
+yield* h.finished;
+yield* Motion.fadeTo(stage, 0, "500 millis"); // fades the whole sub-scene
+```
+
+**Stable seeds.** Every `play` reseeds a fresh `Random` stream, so a nested scene
+animates exactly as it does standalone — `Scene.play(scene)` inside a movie
+seeded `S` equals `Scene.run(scene, { seed: S })`, frame for frame. Pass a
+per-mount `seed` to vary reused scenes.
+
+## Semantic ends: finish
+
+Every branch (a fork, a played scene, the scene body itself) has two ends. Its
+**semantic** end is when `Scene.finish` is called — or, if it never is, when the
+branch completes. Its **physical** end is when it actually stops. Everything that
+*waits* waits on the semantic end; whatever runs after `finish` is a **tail** that
+blocks nobody and is cut when its parent ends.
+
+This is how crossfades work with no transition API — one scene signals `finish`
+after its crossing, the movie starts the next scene immediately, and the first
+scene's fade-out plays on as a tail. See the crossfade in
+[Animators](/docs/concepts/animators).
+
+A tail failure is not reported (nothing is listening), and an infinite tail (a
+`Schedule.forever` repeat after `finish`) is fine — it's interrupted at the
+parent's end, exactly like `background`.

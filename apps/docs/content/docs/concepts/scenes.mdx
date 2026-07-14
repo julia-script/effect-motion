@@ -1,0 +1,69 @@
+---
+title: Scenes & the frame model
+description: How a scene becomes a deterministic sequence of frames
+---
+
+A scene is a **pure function of `(scene, settings) → frames`**. You author it as
+a generator that instantiates entities and yields animation effects; the runner
+turns that into a deterministic, frame-exact sequence. The same scene with the
+same settings always produces byte-identical frames.
+
+```ts
+import { Motion, Scene, Shapes } from "effect-motion";
+
+export const scene = Scene.make(function* () {
+	const dot = yield* Scene.instantiate(Shapes.Circle, { x: 60, y: 150, radius: 14 });
+	yield* Motion.moveTo(dot, { x: 440 }, "1 second", "easeInOutCubic");
+});
+```
+
+## Getting frames out
+
+A scene value is inert until you evaluate it. Three entry points, from eager to
+lazy:
+
+- **`Scene.run(scene, settings)`** — evaluate the whole scene and collect every
+  frame into an array. Best when you want all frames up front (e.g. to hand to
+  an exporter).
+- **`Scene.stream(scene, settings)`** — produce frames lazily as an Effect
+  `Stream`. This is what the player consumes: playback starts on the first frame,
+  so long — even infinite — scenes play without waiting for completion.
+- **`Scene.step(runningScene)`** — advance exactly one frame. The low-level
+  primitive the other two are built on; reach for it when you drive the clock
+  yourself.
+
+```ts
+// eager: every frame
+const frames = yield* Scene.run(scene, { width: 500, height: 300 });
+
+// lazy: a stream of frames
+const frameStream = Scene.stream(scene, { frameRate: 60 });
+```
+
+Each frame is **self-describing**: it carries its own `width`, `height`,
+`frameRate`, and `backgroundColor` alongside the instance data, so a renderer
+can size and paint itself from the frame alone.
+
+## Settings
+
+Settings are passed to `run`/`stream` and default to sensible values:
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| `frameRate` | `60` | frames per second |
+| `width` / `height` | `500` / `300` | output resolution (stamped on every frame) |
+| `backgroundColor` | `"#16161d"` | canvas background (a near-black, not pure `#000`) |
+| `seed` | `"effect-motion"` | seeds the scene's pseudo-random stream |
+| `maxFrames` | `36_000` | hard cap (10 min at 60fps); a scene that exceeds it fails loudly. Set `Infinity` for an intentionally infinite scene |
+
+Because `frameRate` lives in settings, all durations in a scene are written in
+real time (`"1 second"`, `"500 millis"`) and resolve to the right frame count at
+whatever rate you render.
+
+## Frame timing is deterministic
+
+Concurrency doesn't break determinism. Every animation waits on a per-frame
+barrier (the phaser), so concurrent animations advance in lockstep — the frame
+at index *n* is identical no matter how the work was scheduled. This is what
+makes `run` and `stream` produce the same frames, and what lets export and live
+playback agree exactly.

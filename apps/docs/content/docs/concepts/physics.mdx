@@ -1,0 +1,62 @@
+---
+title: Physics
+description: Spring-based motion — no duration, length emerges from the simulation
+---
+
+Springs are the physics engine's animator. Unlike duration-based motion, a
+spring has **no duration** — it runs until it physically settles, and its length
+emerges from the simulation. `Physics.spring` / `springTo` follow the same
+base/To pair as every other animator.
+
+```ts
+import { Physics } from "effect-motion";
+
+// springTo reads the current position, springs to the target, settles when done
+yield* Physics.springTo(dot, { y: 80 }, "jump");
+```
+
+The last argument is a **spring**: either a named preset or a custom config.
+
+## Presets
+
+`Physics.springs` ships tuned presets, each trading mass, stiffness, and damping
+for a different character:
+
+| Preset | Character |
+| --- | --- |
+| `beat` | a quick pulse with initial velocity |
+| `plop` | a soft settle |
+| `bounce` | loose and springy |
+| `swing` | a damped swing |
+| `jump` | a launch with initial velocity |
+| `strike` | a sharp, fast hit |
+| `smooth` | critically-damped, no overshoot |
+
+```ts
+yield* Physics.springTo(dot, { x: 300 }, "swing");
+```
+
+## Custom springs
+
+Pass a config instead of a name for full control:
+
+```ts
+yield* Physics.springTo(dot, { x: 300 }, {
+	mass: 0.1,
+	stiffness: 15,
+	damping: 0.8,
+	initialVelocity: 4,
+});
+```
+
+## Springs snap exactly on settle
+
+Determinism holds: a spring runs until the simulation is at rest, then snaps
+**exactly** onto the target on its final frame — no lingering sub-pixel drift.
+That's why springs compose cleanly with duration-based animators and with
+`chain` / `stagger`.
+
+> Want a springy *feel* on a raw field without physics? Use an elastic or bounce
+> **easing** with `tween` instead — see [Timing & easing](/docs/concepts/timing).
+
+<Example name="springs" />

@@ -1,0 +1,59 @@
+---
+title: Timing & easing
+description: The easing curve that shapes a duration-based animation
+---
+
+Duration-based animators (`tween`, `move`, `fade`) take an optional **easing** as
+their last argument — the curve that maps linear progress to eased progress. Pass
+a **name** or a **function**.
+
+```ts
+// by name
+yield* Motion.tweenTo(dot, { x: 460 }, "1 second", "easeInOutCubic");
+
+// by function: any (t: number) => number, t in [0, 1]
+yield* Motion.tweenTo(dot, { x: 460 }, "1 second", (t) => t * t);
+```
+
+Omit it for linear.
+
+## The curve library
+
+`Timing.timingFunctions` provides the standard families, each in
+`easeIn` / `easeOut` / `easeInOut` variants:
+
+- **Sine, Quad, Cubic, Quart, Quint, Expo, Circ** — the classic power/trig curves
+- **Back** — overshoots slightly past the target and returns
+- **Elastic** — oscillates like a spring before settling
+- **Bounce** — bounces to rest
+
+Plus `linear`, `sin`, and `cos`. Any of these names is a valid easing argument.
+
+```ts
+yield* dot.pipe(
+	Motion.moveTo({ x: 300 }, "800 millis", "easeOutBack"),
+	Motion.moveTo({ x: 60 }, "800 millis", "easeOutBounce"),
+);
+```
+
+## Parameterized curves
+
+The Back / Elastic / Bounce families also have **factory** forms
+(`createEaseOutBack`, `createEaseInElastic`, …) that take a tuning parameter and
+return a `(t) => t` function you can pass directly — for when the default
+overshoot or oscillation isn't quite right.
+
+## Custom curves
+
+Because an easing is just `(t: number) => number` over `[0, 1]`, you can write
+your own inline. The library extrapolates outside `[0, 1]` on purpose, so
+overshooting curves (back, elastic) work correctly.
+
+> A spring-like *feel* on a raw numeric field is an easing choice (elastic /
+> bounce). Genuine physics — no duration, settle-based — is
+> [`Physics.spring`](/docs/concepts/physics).
+
+The example below races several curves over the same distance and duration, so
+you can read their shapes against each other:
+
+<Example name="easing-race" />

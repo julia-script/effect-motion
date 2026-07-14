@@ -11,13 +11,13 @@
 
 ## 3. Core Concepts pages
 
-- [ ] 3.1 **Scenes & the frame model** — `Scene.make`; `run` (frame list) / `stream` (lazy) / `step`; `Settings` (frameRate/width/height/backgroundColor/seed/maxFrames). Explain the pure-function-of-(scene,settings) model.
+- [x] 3.1 **Scenes & the frame model** — `Scene.make`; `run` (frame list) / `stream` (lazy) / `step`; `Settings` (frameRate/width/height/backgroundColor/seed/maxFrames). Explain the pure-function-of-(scene,settings) model.
 - [x] 3.2 **Entities & instances** — the 8 built-in shapes; `instantiate`; polymorphic `children`; `$visible`; `appendChild`/`removeChild`; `update`/`data`. Embed the children + appendChild examples. `Text` documented as a plain-string leaf composed via children.
-- [ ] 3.3 **Animators** — base/To pair pattern, dual call forms; `tween`/`tweenTo` (raw) vs `move`/`fade` (semantic); `wait`. Embed a relevant example (e.g. crossfade / easing).
-- [ ] 3.4 **Physics** — `spring`/`springTo`, presets (`Physics.springs`), why there's no duration. Embed the springs example.
-- [ ] 3.5 **Timing & easing** — the curve library (named curves, factory curves, custom `(t)=>t` functions), `timingFunctions`. Embed the easing-race example.
-- [ ] 3.6 **Composition** — `chain`/`all`/`stagger`/`fork`/`background`/`repeat`, plus `play` (nested scenes) and `finish`. Embed chain/stagger/fork-background/repeat examples.
-- [ ] 3.7 **Determinism** — `seed`, the seeded `Random`, frame-exact invariants (duration lands on target, springs snap on settle). Embed the seeded-randomness example.
+- [x] 3.3 **Animators** — base/To pair pattern, dual call forms; `tween`/`tweenTo` (raw) vs `move`/`fade` (semantic); `wait`. Embed a relevant example (e.g. crossfade / easing).
+- [x] 3.4 **Physics** — `spring`/`springTo`, presets (`Physics.springs`), why there's no duration. Embed the springs example.
+- [x] 3.5 **Timing & easing** — the curve library (named curves, factory curves, custom `(t)=>t` functions), `timingFunctions`. Embed the easing-race example.
+- [x] 3.6 **Composition** — `chain`/`all`/`stagger`/`fork`/`background`/`repeat`, plus `play` (nested scenes) and `finish`. Embed chain/stagger/fork-background/repeat examples.
+- [x] 3.7 **Determinism** — `seed`, the seeded `Random`, frame-exact invariants (duration lands on target, springs snap on settle). Embed the seeded-randomness example.
 
 ## 4. Going Further pages
 

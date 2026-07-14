@@ -1,0 +1,85 @@
+---
+title: Animators
+description: Moving values over time — the base/To pairs and the two layers
+---
+
+Animators move an instance's values over a duration. They take the instance as
+their first argument and resolve with it, so they chain naturally.
+
+## The base/To pair
+
+Every animator comes as a **pair**, distinguished only by where the starting
+value comes from:
+
+- **`verb(instance, from, to, …)`** — explicit origin. Partial origins are
+  filled from the current value.
+- **`verbTo(instance, to, …)`** — origin read from the instance itself.
+
+```ts
+// explicit origin: fade from 0 to 1
+yield* Motion.fade(dot, 0, 1, "600 millis");
+
+// origin from the instance: move to x:440 from wherever it is now
+yield* Motion.moveTo(dot, { x: 440 }, "1 second", "easeInOutCubic");
+```
+
+`moveTo`, `fadeTo`, `tweenTo`, `springTo` all read the current value; `move`,
+`fade`, `tween`, `spring` take it explicitly.
+
+## Two layers: raw and semantic
+
+| Layer | Functions | Operates on |
+| --- | --- | --- |
+| **raw** | `tween` / `tweenTo` | numeric fields by name |
+| **semantic** | `move` / `moveTo`, `fade` / `fadeTo` | trait lenses |
+
+The **semantic** helpers carry per-entity meaning through trait lenses — moving a
+`Line` translates both endpoints, moving a `Group` carries its whole subtree.
+Prefer them when one exists.
+
+```ts
+// semantic: position + opacity traits
+yield* Motion.moveTo(box, { x: 100, y: 40 }, "500 millis");
+yield* Motion.fadeTo(box, 0.5, "500 millis");
+```
+
+The **raw** `tween` reaches any numeric field on the schema by name — use it for
+fields without a trait (`radius`, `width`, `fontSize`, custom entity fields):
+
+```ts
+yield* Motion.tweenTo(dot, { radius: 40 }, "1 second", "easeOutCubic");
+```
+
+## Dual call forms
+
+Every animator is a **dual**: call it data-first, or pipe it. Dispatch is by the
+first argument, so both forms mean the same thing.
+
+```ts
+// data-first
+yield* Motion.moveTo(dot, { x: 440 }, "1 second");
+
+// pipeable — chain several on one instance
+yield* dot.pipe(
+	Motion.moveTo({ x: 440 }, "1 second", "easeInOutCubic"),
+	Motion.fadeTo(0, "500 millis"),
+);
+```
+
+## Holding: wait
+
+`Motion.wait(duration)` holds the scene, and doubles as a pipe step — placed
+between two animations it inserts a pause and passes the instance through:
+
+```ts
+yield* dot.pipe(
+	Motion.moveTo({ x: 440 }, "1 second"),
+	Motion.wait("500 millis"),
+	Motion.moveTo({ x: 60 }, "1 second"),
+);
+```
+
+Durations are frame-exact: the final frame lands **exactly** on the target,
+whatever the easing.
+
+<Example name="crossfade" />
