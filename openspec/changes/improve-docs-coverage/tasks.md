@@ -35,7 +35,7 @@
 
 ## 6. Patterns (fast-follow, lower priority)
 
-- [ ] 6.1 A **Patterns** page of recipes: loop forever (`repeat` + `Schedule.forever` in `background`), crossfade, stagger into a group, compose styled/multi-line text via children. Include only if it doesn't delay the publish-gating pages.
+- [ ] 6.1 **Deferred (out of scope for this change).** A Patterns page of recipes (loop forever, crossfade, stagger into a group, styled/multi-line text via children). Explicitly optional/fast-follow from the start; all publish-gating pages shipped without it. Pick up as a small future change if wanted.
 
 ## 7. Verify
 
