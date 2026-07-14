@@ -2,7 +2,7 @@
 
 > Direction, not commitment — Now is committed; Next is planned; Later is exploration.
 > Only Now items may be promised to anyone. This document changes as we learn.
-> Last reviewed: 2026-07-14 (sync 3) · Review cadence: monthly
+> Last reviewed: 2026-07-14 (sync 4) · Review cadence: monthly
 
 ## Vision
 
@@ -26,26 +26,14 @@ end-to-end through the export pipeline.
 
 ## Now
 
-### One representation for the entity tree
-- **Problem:** the engine carries two tree spines — instances via `Group.children`,
-  and a *second* rich-text tree buried inside `Shapes.Text`'s data. The duplicate
-  blocks a future component/JSX layer and pins text preprocessing on the per-frame
-  path where it can't be memoized.
-- **Solution:** children-defining instantiation (`instantiate(Group, { children: [...] })`
-  accepting `string | Instance | Effect<Instance>`), a builtin `$visible` instance
-  prop, `Text` as a plain-string leaf, and the removal of rich text + reveal. One
-  tree, styling as ordinary entity data.
-- **Why now:** breaking changes are free pre-publish and expensive after; this is
-  the last window to fix the shape.
-- **Confidence:** high — shaped and specced; mostly deletion plus one normalization step.
-- **Links:** change `refactor-text-and-children` (proposed, 0/~9 task groups)
-
 ### Docs that let a stranger self-serve
 - **Problem:** the docs site covers pacing and examples but not the full API
   surface; a quiet publish still means someone who finds it must be able to
   learn it unassisted.
-- **Confidence:** high — the churning surfaces (Player v2, export) have landed;
-  the text surface settles once the refactor above applies.
+- **Confidence:** high — every churning surface has now landed (Player v2,
+  export, the text/entity-tree refactor), so the API is stable to document.
+- **This is the last committed item before v0.1** — both halves of the publish
+  objective (install-from-registry, real-video-end-to-end) are done.
 - **Links:** spec `docs-site`
 
 _(Export-frame font fidelity — `add-text-font-fallback` — was dropped unbuilt;
@@ -57,13 +45,14 @@ revisit only if exported frames show a real fallback gap.)_
 - **Problem:** nested entity structures get verbose as plain constructor calls;
   `instantiate(<Group><Text>Hello</Text></Group>)` is the natural authoring form.
 - **Hypothesis:** JSX desugars onto the polymorphic-children instantiation the
-  `refactor-text-and-children` change introduces — accepting `Effect<Instance>`
-  children (no `yield*` at the callsite) is the load-bearing choice that makes
-  it expressible.
-- **Confidence:** med — de-risked by the refactor (the shape is designed for it),
-  but not scoped; post-publish unless it proves cheap.
-- **Assumes:** the children shape holds up under real nested scenes — to validate
-  once the refactor lands.
+  refactor shipped — `children: (string | Instance | Effect<Instance>)[]`, with
+  the `Effect<Instance>` case (no `yield*` at the callsite) as the load-bearing
+  choice that makes JSX expressible.
+- **Confidence:** med — the foundation now exists and is exercised by real nested
+  scenes (moon-moth, groups, tests); the children shape held up. Still not scoped;
+  post-publish unless it proves cheap.
+- **Assumes:** ~~children shape holds under real nested scenes~~ → validated. The
+  open piece is the JSX runtime/tsconfig wiring itself.
 
 ### Text rethink (post-component)
 - **Problem:** text animation (typewriter/reveal) and markdown authoring are real
@@ -106,7 +95,7 @@ Post-release, one line each:
   pre-release; whatever measurement rich text turns out to need is scoped to
   text · revisit when Layout enters Next.
 - **Rich text as an in-engine tree** — the mdast-shaped content tree inside
-  `Shapes.Text` is being deleted as a duplicate representation. Inline
+  `Shapes.Text` was deleted (sync 4) as a duplicate representation. Inline
   formatting and per-run styling (color/size/font per run) return as userland
   components composing plain `Text` instances, not as engine schema · revisit
   never as an engine tree; the component/JSX path is the replacement.
@@ -118,6 +107,27 @@ Post-release, one line each:
 
 ## Changelog
 
+- 2026-07-14 (sync 4): **Shipped the refactor synced-3 had only proposed.**
+  **One representation for the entity tree** — change `refactor-text-and-children`
+  (archived `2026-07-14-refactor-text-and-children`, 29/29 tasks; 6 delta specs
+  synced, 28 specs valid). Landed: polymorphic `children` instantiation
+  (`string | Instance | Effect<Instance>`), builtin `$visible` instance prop
+  (`$`-namespace reserved), `Text` as a plain-string leaf, rich text + reveal
+  removed, and an HTML-style node model (`Scene.appendChild`/`removeChild`, O(1)
+  parent tracking) that replaced the `parent` instantiation arg — a gap the
+  implementation surfaced and resolved (design D4a). AGENTS.md gained the "engine
+  renders, it does not parse" principle. Leaves Now — the JSX Next item is now
+  de-risked (its children shape shipped and is exercised by real scenes; its one
+  remaining unknown is the JSX runtime wiring). **Unplanned but shipped:** bundled
+  ffmpeg via `ffmpeg-static` (commit `216781d`) — the *default* export binary is
+  now a full build with libx264, so H.264 works with no system ffmpeg. This
+  **hardened a fragile done-when**: sync-3 claimed the objective's "real video
+  end-to-end" half was verified, but it only passed on a machine that happened to
+  have a libx264 ffmpeg (the e2e failed locally with `Unknown encoder 'libx264'`);
+  it is now portably true (export suite 16/16 incl. the e2e). GPL of the bundled
+  binary noted in the export README (separate executable over a process boundary;
+  source stays MIT). **Now is down to the docs push** — the last committed item
+  before v0.1.
 - 2026-07-13: Created. Shipped before this roadmap (see `openspec/changes/archive/`):
   frame driver, tweening, springs, traits, shapes, groups, randomness,
   schedule composition, nested scenes, react player v1, docs site, simple
