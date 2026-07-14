@@ -7,7 +7,7 @@
 
 - [x] 2.1 Add a `children`-composition scene (`apps/docs/examples/children.scene.ts`) — a Group built from a polymorphic `children` list (string → Text, nested instantiate, an instance) — and register it.
 - [x] 2.2 Add an `appendChild` reparent scene (lazily-created node moved into a group) and register it.
-- [ ] 2.3 ~~Add a custom-entity scene~~ → **no live scene**: the docs Player hardcodes only the built-in shapes layer (`Player.tsx:19`) and `PlayerProps` has no layer override, so a custom entity cannot render in `<Example>`. The custom-entity page (4.1) uses a **code sample only**, verified out-of-band. (No library change — matches the docs-only scope.)
+- [x] 2.3 ~~Add a custom-entity scene~~ → **resolved: no live scene**. the docs Player hardcodes only the built-in shapes layer (`Player.tsx:19`) and `PlayerProps` has no layer override, so a custom entity cannot render in `<Example>`. The custom-entity page (4.1) uses a **code sample only**, verified out-of-band. (No library change — matches the docs-only scope.)
 
 ## 3. Core Concepts pages
 
@@ -39,7 +39,7 @@
 
 ## 7. Verify
 
-- [ ] 7.1 `pnpm docs` (dev) — every page renders, every embedded `<Example>` plays, navigation reflects the concept spine.
-- [ ] 7.2 `pnpm --filter docs build` (or `pnpm build`) green — no broken MDX, no missing example names.
-- [ ] 7.3 Coverage check: every symbol in the spec's Full public-API coverage requirement has a documented home; no page references removed APIs.
-- [ ] 7.4 `openspec validate improve-docs-coverage` passes.
+- [x] 7.1 `pnpm docs` (dev) — every page renders, every embedded `<Example>` plays, navigation reflects the concept spine.
+- [x] 7.2 `pnpm --filter docs build` (or `pnpm build`) green — no broken MDX, no missing example names.
+- [x] 7.3 Coverage check: every symbol in the spec's Full public-API coverage requirement has a documented home; no page references removed APIs.
+- [x] 7.4 `openspec validate improve-docs-coverage` passes.
