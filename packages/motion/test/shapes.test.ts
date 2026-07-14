@@ -6,12 +6,12 @@ import * as Shapes from "../src/shapes";
 import * as Svg from "../src/svg";
 
 describe("visible defaults", () => {
-	it("default circle: fill black, opacity 1, no stroke", () => {
+	it("default circle: fill white, opacity 1, no stroke", () => {
 		const data = Shapes.Circle.data.make({});
 		expect(data).toMatchObject({
 			x: 0,
 			y: 0,
-			fill: "black",
+			fill: "white",
 			opacity: 1,
 			radius: 10,
 		});
@@ -19,26 +19,26 @@ describe("visible defaults", () => {
 		expect("strokeWidth" in data).toBe(false);
 	});
 
-	it("path: d required, fill black, translate only when offset", () => {
+	it("path: d required, fill white, translate only when offset", () => {
 		const data = Shapes.Path.data.make({ d: "M 0 0 L 10 10 Z" });
 		expect(data).toMatchObject({
 			x: 0,
 			y: 0,
 			d: "M 0 0 L 10 10 Z",
-			fill: "black",
+			fill: "white",
 			opacity: 1,
 		});
 		expect("stroke" in data).toBe(false);
 	});
 
-	it("default line: stroke black, strokeWidth 1, no fill", () => {
+	it("default line: stroke white, strokeWidth 1, no fill", () => {
 		const data = Shapes.Line.data.make({ x2: 50, y2: 20 });
 		expect(data).toMatchObject({
 			x: 0,
 			y: 0,
 			x2: 50,
 			y2: 20,
-			stroke: "black",
+			stroke: "white",
 			strokeWidth: 1,
 			opacity: 1,
 		});
@@ -102,23 +102,23 @@ describe("svg manifest covers every built-in through both sinks", () => {
 			}).pipe(Effect.provide(layers)),
 		);
 
-		expect(svg).toContain('<circle cx="10" cy="20" r="10" fill="black" />');
+		expect(svg).toContain('<circle cx="10" cy="20" r="10" fill="white" />');
 		expect(svg).toContain(
-			'<rect x="0" y="0" width="100" height="100" fill="black" />',
+			'<rect x="0" y="0" width="100" height="100" fill="white" />',
 		);
 		expect(svg).toContain(
-			'<rect x="0" y="0" width="40" height="40" fill="black" />',
+			'<rect x="0" y="0" width="40" height="40" fill="white" />',
 		);
 		expect(svg).toContain(
-			'<ellipse cx="0" cy="0" rx="20" ry="10" fill="black" />',
+			'<ellipse cx="0" cy="0" rx="20" ry="10" fill="white" />',
 		);
 		// line: visibly stroked by default, no fill attribute
 		expect(svg).toContain(
-			'<line x1="0" y1="0" x2="50" y2="20" stroke="black" stroke-width="1" />',
+			'<line x1="0" y1="0" x2="50" y2="20" stroke="white" stroke-width="1" />',
 		);
 		// path: offset becomes a translate; d passes through
 		expect(svg).toContain(
-			'<path d="M 0 0 L 10 10 Z" transform="translate(5 7)" fill="black" />',
+			'<path d="M 0 0 L 10 10 Z" transform="translate(5 7)" fill="white" />',
 		);
 		// absent stroke is omitted, not emitted with a placeholder
 		expect(svg).not.toContain('stroke="none"');
@@ -143,8 +143,8 @@ describe("svg manifest covers every built-in through both sinks", () => {
 		expect(target.querySelectorAll("ellipse")).toHaveLength(1);
 		expect(target.querySelectorAll("line")).toHaveLength(1);
 		expect(target.querySelectorAll("path")).toHaveLength(1);
-		expect(target.querySelector("circle")?.getAttribute("fill")).toBe("black");
+		expect(target.querySelector("circle")?.getAttribute("fill")).toBe("white");
 		expect(target.querySelector("circle")?.hasAttribute("stroke")).toBe(false);
-		expect(target.querySelector("line")?.getAttribute("stroke")).toBe("black");
+		expect(target.querySelector("line")?.getAttribute("stroke")).toBe("white");
 	});
 });

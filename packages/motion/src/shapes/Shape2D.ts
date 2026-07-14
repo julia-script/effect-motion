@@ -7,10 +7,11 @@ import type * as Entity from "../Entity";
  * limited to what any plausible render target (SVG, canvas, Lottie) can
  * express. Transforms (rotation, scale) are future camera territory.
  *
- * Visible defaults: a default-constructed shape must be visible. Filled
- * shapes default `fill` to black with stroke absent; Line overrides this
- * (stroke black, width 1 — see Line.ts). Absent optional props are
- * omitted by render targets, never emitted with placeholder values.
+ * Visible defaults: a default-constructed shape must be visible on the
+ * default (dark) background. Filled shapes default `fill` to white with
+ * stroke absent; Line overrides this (stroke white, width 1 — see
+ * Line.ts). Absent optional props are omitted by render targets, never
+ * emitted with placeholder values.
  */
 
 export const defaultedNumber = (value: number) =>
@@ -29,7 +30,7 @@ export const opacity = {
 export const filled = {
 	...position,
 	fill: Schema.String.pipe(
-		Schema.withConstructorDefault(Effect.succeed("black")),
+		Schema.withConstructorDefault(Effect.succeed("white")),
 	),
 	stroke: Schema.optionalKey(Schema.String),
 	strokeWidth: Schema.optionalKey(Schema.Number),

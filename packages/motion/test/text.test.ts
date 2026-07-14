@@ -24,7 +24,7 @@ describe("Shapes.Text schema", () => {
 			text: "hi",
 			x: 0,
 			y: 0,
-			fill: "black",
+			fill: "white",
 			opacity: 1,
 			fontSize: 16,
 			fontFamily: "sans-serif",
