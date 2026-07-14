@@ -2,7 +2,7 @@
 
 > Direction, not commitment — Now is committed; Next is planned; Later is exploration.
 > Only Now items may be promised to anyone. This document changes as we learn.
-> Last reviewed: 2026-07-14 (sync 2) · Review cadence: monthly
+> Last reviewed: 2026-07-14 (sync 3) · Review cadence: monthly
 
 ## Vision
 
@@ -26,38 +26,56 @@ end-to-end through the export pipeline.
 
 ## Now
 
-_The export pipeline is complete — nothing is committed for Now. The
-remaining bet toward a quiet publish is the docs push; pull it into Now when
-starting it. (Export-frame font fidelity — `add-text-font-fallback` — was
-dropped unbuilt; revisit only if exported frames show a real fallback gap.)_
-
-## Next
-
-### Text animation helpers
-- **Problem:** typewriter reveals (letter-by-letter, word-by-word) — the
-  bread and butter of text animation — require manual scene gymnastics.
-- **Hypothesis:** helpers layered on rich text, revealing runs progressively.
-- **Confidence:** med — rich text v1 shipped 2026-07-13, so this is unblocked.
-- **Assumes:** per-unit reveal is expressible without text measurement
-  (per-letter *positioning* likely isn't) — unvalidated.
-
-### Markdown → rich text
-- **Problem:** authoring the mdast-shaped rich-text tree by hand is verbose;
-  markdown is the natural authoring format for styled text.
-- **Hypothesis:** a parser helper translating markdown into the mdast-subset
-  tree `Shapes.Text` already accepts — rich text v1 (shipped 2026-07-13) is
-  deliberately mdast-shaped, so the mapping is close to direct.
-- **Confidence:** high — promoted from Later once rich text landed and made
-  the target format concrete.
+### One representation for the entity tree
+- **Problem:** the engine carries two tree spines — instances via `Group.children`,
+  and a *second* rich-text tree buried inside `Shapes.Text`'s data. The duplicate
+  blocks a future component/JSX layer and pins text preprocessing on the per-frame
+  path where it can't be memoized.
+- **Solution:** children-defining instantiation (`instantiate(Group, { children: [...] })`
+  accepting `string | Instance | Effect<Instance>`), a builtin `$visible` instance
+  prop, `Text` as a plain-string leaf, and the removal of rich text + reveal. One
+  tree, styling as ordinary entity data.
+- **Why now:** breaking changes are free pre-publish and expensive after; this is
+  the last window to fix the shape.
+- **Confidence:** high — shaped and specced; mostly deletion plus one normalization step.
+- **Links:** change `refactor-text-and-children` (proposed, 0/~9 task groups)
 
 ### Docs that let a stranger self-serve
 - **Problem:** the docs site covers pacing and examples but not the full API
   surface; a quiet publish still means someone who finds it must be able to
   learn it unassisted.
-- **Hypothesis:** deepen docs *after* Player v2 and export land — documenting
-  APIs that are still churning is wasted work.
-- **Confidence:** high.
+- **Confidence:** high — the churning surfaces (Player v2, export) have landed;
+  the text surface settles once the refactor above applies.
 - **Links:** spec `docs-site`
+
+_(Export-frame font fidelity — `add-text-font-fallback` — was dropped unbuilt;
+revisit only if exported frames show a real fallback gap.)_
+
+## Next
+
+### JSX for complex entities
+- **Problem:** nested entity structures get verbose as plain constructor calls;
+  `instantiate(<Group><Text>Hello</Text></Group>)` is the natural authoring form.
+- **Hypothesis:** JSX desugars onto the polymorphic-children instantiation the
+  `refactor-text-and-children` change introduces — accepting `Effect<Instance>`
+  children (no `yield*` at the callsite) is the load-bearing choice that makes
+  it expressible.
+- **Confidence:** med — de-risked by the refactor (the shape is designed for it),
+  but not scoped; post-publish unless it proves cheap.
+- **Assumes:** the children shape holds up under real nested scenes — to validate
+  once the refactor lands.
+
+### Text rethink (post-component)
+- **Problem:** text animation (typewriter/reveal) and markdown authoring are real
+  needs, but the rich-text-tree approach that backed them is being deleted as a
+  duplicate representation.
+- **Hypothesis:** rebuild them on the component/JSX foundation instead — reveal as
+  lazy/reactive instances (functions of scene state, re-evaluated per frame),
+  markdown as a *userland* builder emitting `Group`/`Text` instances (reusing
+  existing markdown libs, memoizable outside the scene).
+- **Confidence:** low — direction chosen, no solution shaped; explicitly deferred.
+- **Assumes:** per-unit reveal is expressible without text measurement
+  (per-letter *positioning* likely isn't) — carried over, still unvalidated.
 
 ## Later
 
@@ -73,11 +91,6 @@ Post-release, one line each:
 - **Layout (flexbox-like)** — arrange entities without hand-placing
   coordinates; why: composition scales past toy scenes · revisit-if: requires
   text measurement, currently a non-goal.
-- **JSX for complex entities** — declare nested entity structures as JSX
-  instead of constructor calls; why: complex scenes get verbose in plain code.
-- **Per-run text styling** — color/size/font per rich-text run (v1 shipped
-  only bold/italic marks); why: multi-color captions are common in motion
-  graphics · deliberately cut from rich text v1.
 
 ## Maintenance budget
 
@@ -92,6 +105,11 @@ Post-release, one line each:
 - **General layout engine** — full box-model layout stays out of scope
   pre-release; whatever measurement rich text turns out to need is scoped to
   text · revisit when Layout enters Next.
+- **Rich text as an in-engine tree** — the mdast-shaped content tree inside
+  `Shapes.Text` is being deleted as a duplicate representation. Inline
+  formatting and per-run styling (color/size/font per run) return as userland
+  components composing plain `Text` instances, not as engine schema · revisit
+  never as an engine tree; the component/JSX path is the replacement.
 
 ## Open questions
 
@@ -139,6 +157,25 @@ Post-release, one line each:
   not bundled (with a `binary` override). Now is empty; the remaining pre-
   publish work is `add-text-font-fallback` (exported-frame variant fidelity,
   0/5 tasks) and the docs push.
+- 2026-07-14 (sync 3): **Text direction pivot.** An explore session concluded
+  rich text is a duplicate tree representation (a second spine beside the
+  id-based entity tree) that blocks a future component/JSX layer and pins
+  preprocessing on the per-frame path. New change **`refactor-text-and-children`**
+  proposed (proposal/design/specs/tasks written, validates; not yet applied):
+  polymorphic `children` instantiation (`string | Instance | Effect<Instance>`),
+  builtin `$visible` instance prop, `Text` as a plain-string leaf, and removal of
+  rich text + reveal. Consequences: **`add-text-reveal`** shipped the Next item
+  *Text animation helpers* (12/12, `Motion.reveal` + `segment`/`prefix`) but is
+  now **superseded** — the refactor deletes it (archive-then-revert planned so
+  history stays honest); text animation reframed onto lazy/reactive instances,
+  post-component. *Markdown → rich text* dropped from Next → reframed as a
+  **userland** builder (reuse markdown libs, memoizable), folded into a new
+  *Text rethink (post-component)* Next item. *Per-run text styling* and the
+  rich-text engine tree moved to **Not doing** (premise deleted). **JSX**
+  promoted Later → Next (de-risked: the children shape is designed for it). The
+  refactor enters **Now** as a committed pre-publish bet; docs push pulled into
+  Now alongside it. New principle to record in AGENTS.md: *the engine renders,
+  it does not parse* — push preprocessing to userland.
 - 2026-07-14 (sync 2): Housekeeping, no direction change. **Rich text v1**
   archived (`add-rich-text-spans`, 17/17) and its delta synced into the
   `text-entity` spec (single-line requirement removed; rich-content + tspan
