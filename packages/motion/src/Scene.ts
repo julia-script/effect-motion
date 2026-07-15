@@ -83,13 +83,14 @@ export const instantiate = Effect.fnUntraced(function* <
 	Name extends string,
 	Data extends Schema.Top,
 	Traits extends Partial<Entity.EntityTraits<Data["Type"]>>,
+	MakeInput,
 >(
-	entity: Entity.Entity<Name, Data, Traits>,
-	props: Runner.InstantiateProps<Data>,
+	entity: Entity.Entity<Name, Data, Traits, MakeInput>,
+	props: Runner.InstantiateProps<MakeInput>,
 ): Effect.fn.Return<
 	Instance.Instance<Name, Data, Traits>,
 	unknown,
-	Entity.Entity<Name, Data, Traits> | Runner.Runner
+	Entity.Entity<Name, Data, Traits, MakeInput> | Runner.Runner
 > {
 	const runner = yield* Runner.Runner;
 	return yield* runner.instantiate(entity, props);

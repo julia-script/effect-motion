@@ -42,16 +42,21 @@ const circleAt = (x: number) => ({
 });
 
 describe("group rendering", () => {
-	it("wraps children with translate and opacity through both sinks", async () => {
+	it("normalizes transforms to a matrix through both sinks", async () => {
+		const groupData = Shapes.Group.make({
+			x: 100,
+			y: 50,
+			transform: [
+				{ _tag: "transform/translate", x: 1, y: 2 },
+				{ _tag: "transform/scale", x: 2, y: 3 },
+			],
+			opacity: 0.5,
+			children: ["c1"],
+		});
 		const frame = frameOf(
 			{
 				g1: {
-					data: Shapes.Group.data.make({
-						x: 100,
-						y: 50,
-						opacity: 0.5,
-						children: ["c1"],
-					}),
+					data: groupData,
 					entity: Shapes.Group,
 				},
 				c1: circleAt(10),
@@ -61,8 +66,16 @@ describe("group rendering", () => {
 
 		const svg = await Effect.runPromise(renderString(frame));
 		expect(svg).toContain(
-			'<g transform="translate(100 50)" opacity="0.5"><circle cx="10"',
+			'<g transform="matrix(2 0 0 3 101 52)" opacity="0.5"><circle cx="10"',
 		);
+		expect(groupData.transform).toEqual({
+			a: 2,
+			b: 0,
+			c: 0,
+			d: 3,
+			e: 1,
+			f: 2,
+		});
 
 		const target = document.createElement("div");
 		await Effect.runPromise(
@@ -72,7 +85,7 @@ describe("group rendering", () => {
 			}).pipe(Effect.provide(layers)),
 		);
 		const g = target.querySelector("g");
-		expect(g?.getAttribute("transform")).toBe("translate(100 50)");
+		expect(g?.getAttribute("transform")).toBe("matrix(2 0 0 3 101 52)");
 		// child coordinates stay local — position comes from the transform
 		expect(g?.querySelector("circle")?.getAttribute("cx")).toBe("10");
 	});
@@ -94,7 +107,7 @@ describe("group rendering", () => {
 		);
 		const svg = await Effect.runPromise(renderString(frame));
 		expect(svg).toContain(
-			'<g transform="translate(10 0)"><g transform="translate(20 0)"><circle cx="5"',
+			'<g transform="matrix(1 0 0 1 10 0)"><g transform="matrix(1 0 0 1 20 0)"><circle cx="5"',
 		);
 	});
 
@@ -198,6 +211,7 @@ describe("scene attachment", () => {
 		const frames = await collectFrames(function* () {
 			yield* Scene.instantiate(Shapes.Group, {
 				x: 100,
+				transform: [{ _tag: "transform/scale", x: 2, y: 3 }],
 				children: [Scene.instantiate(Shapes.Circle, { x: 5 })],
 			});
 			yield* Scene.tick;
@@ -207,10 +221,10 @@ describe("scene attachment", () => {
 			children: ReadonlyArray<string>;
 		};
 		expect(root.children).toHaveLength(1); // only the group at top level
-		const group = frame.instances[root.children[0]!]!.data as {
-			children: ReadonlyArray<string>;
-		};
+		const group = frame.instances[root.children[0]!]!
+			.data as typeof Shapes.Group.data.Type;
 		expect(group.children).toHaveLength(1);
+		expect(group.transform).toMatchObject({ a: 2, d: 3 });
 	});
 
 	it("appendChild reparents a lazily-created instance", async () => {

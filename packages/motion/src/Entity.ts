@@ -32,14 +32,17 @@ export interface Entity<
 	Name extends string = string,
 	Data extends Schema.Top = Schema.Top,
 	Traits extends Partial<EntityTraits<Data["Type"]>> = {},
+	MakeInput = Data["~type.make.in"],
 > {
 	readonly [TypeId]: typeof TypeId;
 	readonly name: Name;
 	readonly data: Data;
 	readonly traits: Traits;
+	make(input: MakeInput | Data["~type.make.in"]): Data["Type"];
+	readonly _MakeInput?: MakeInput;
 }
 
-export type AnyEntity = Entity<any, any, any>;
+export type AnyEntity = Entity<any, any, any, any>;
 
 /** the entity's trait lens, or a defect naming entity and trait */
 export const traitOrDie = <Data, Value>(
@@ -76,11 +79,17 @@ export const make = <
 	const Traits extends Partial<
 		EntityTraits<NormalizeStructLike<Data>["Type"]>
 	> = {},
+	MakeInput = NormalizeStructLike<Data>["~type.make.in"],
 >(
 	name: Name,
 	data: Data,
 	traits?: Traits,
-): Entity<Name, NormalizeStructLike<Data>, Traits> => {
+	options?: {
+		readonly normalize: (
+			input: MakeInput | NormalizeStructLike<Data>["~type.make.in"],
+		) => NormalizeStructLike<Data>["~type.make.in"];
+	},
+): Entity<Name, NormalizeStructLike<Data>, Traits, MakeInput> => {
 	const normalized = normalizeStructLike(data);
 	// `$` is reserved for builtin, engine-owned instance properties (e.g.
 	// `$visible`), which live beside the data — never as entity-data fields.
@@ -96,5 +105,13 @@ export const make = <
 		name,
 		data: normalized,
 		traits: traits ?? ({} as Traits),
+		make: (input: MakeInput | NormalizeStructLike<Data>["~type.make.in"]) =>
+			normalized.make(
+				options === undefined
+					? (input as never)
+					: (options.normalize(
+							input as MakeInput | NormalizeStructLike<Data>["~type.make.in"],
+						) as never),
+			),
 	};
 };

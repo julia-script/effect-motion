@@ -72,12 +72,9 @@ export interface BuiltinProps {
  * — a polymorphic `children` list (strings/instances/effects) in place of
  * the stored `Array<string>` of ids.
  */
-export type InstantiateProps<Data extends Schema.Top> = Omit<
-	Data["~type.make.in"],
-	"children"
-> &
+export type InstantiateProps<MakeInput> = Omit<MakeInput, "children"> &
 	BuiltinProps &
-	("children" extends keyof Data["~type.make.in"]
+	("children" extends keyof MakeInput
 		? { readonly children?: ReadonlyArray<Child> }
 		: Record<never, never>);
 
@@ -132,13 +129,13 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 
 		const setDataUnsafe = <Name extends string, Data extends Schema.Top>(
 			instance: Instance.Instance<Name, Data>,
-			data: Data["~type.make.in"],
+			data: unknown,
 		): void => {
 			// preserve $visible across data updates; new instances default visible
 			// ($visible is set explicitly by instantiate when overridden)
 			const prev = instances[instance.id];
 			instances[instance.id] = {
-				data: instance.entity.data.make(data),
+				data: instance.entity.make(data),
 				entity: instance.entity,
 				$visible: prev?.$visible ?? true,
 			};
@@ -275,13 +272,14 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 				Name extends string,
 				Data extends Schema.Top,
 				Traits extends Partial<Entity.EntityTraits<Data["Type"]>>,
+				MakeInput,
 			>(
-				entity: Entity.Entity<Name, Data, Traits>,
-				props: InstantiateProps<Data>,
+				entity: Entity.Entity<Name, Data, Traits, MakeInput>,
+				props: InstantiateProps<MakeInput>,
 			): Effect.fn.Return<
 				Instance.Instance<Name, Data, Traits>,
 				unknown,
-				Entity.Entity<Name, Data, Traits> | Runner
+				Entity.Entity<Name, Data, Traits, MakeInput> | Runner
 			> {
 				// peel off builtin ($visible) and polymorphic children before the
 				// schema constructs the data — neither is an entity-data field
@@ -300,7 +298,7 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 
 				const id = generateId(entity.name);
 				const instance = Instance.make(entity, id);
-				setDataUnsafe(instance, dataInput as Data["~type.make.in"]);
+				setDataUnsafe(instance, dataInput);
 				if ($visible === false) {
 					setVisibleUnsafe(id, false);
 				}
@@ -376,7 +374,7 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 						instances[id] = {
 							entity: entry.entity,
 							$visible: entry.$visible,
-							data: entry.entity.data.make({
+							data: entry.entity.make({
 								...(entry.data as object),
 								children: children.filter((child) => child !== instance.id),
 							}),

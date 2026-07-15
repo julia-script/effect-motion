@@ -11,12 +11,12 @@ export interface Instance<
 > extends Pipeable.Pipeable {
 	readonly [TypeId]: typeof TypeId;
 	readonly id: string;
-	readonly entity: Entity.Entity<Name, Data, Traits>;
+	readonly entity: Entity.Entity<Name, Data, Traits, any>;
 }
 
 /** the Instance type of a given entity, traits included */
 export type Of<E extends Entity.AnyEntity> =
-	E extends Entity.Entity<infer Name, infer Data, infer Traits>
+	E extends Entity.Entity<infer Name, infer Data, infer Traits, any>
 		? Instance<Name, Data, Traits>
 		: never;
 
@@ -35,8 +35,9 @@ export const make = <
 	Name extends string,
 	Data extends Schema.Top,
 	Traits extends Partial<Entity.EntityTraits<Data["Type"]>>,
+	MakeInput,
 >(
-	entity: Entity.Entity<Name, Data, Traits>,
+	entity: Entity.Entity<Name, Data, Traits, MakeInput>,
 	id: string,
 ): Instance<Name, Data, Traits> =>
 	Object.assign(Object.create(Proto), { id, entity });

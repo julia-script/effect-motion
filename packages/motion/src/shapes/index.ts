@@ -1,6 +1,6 @@
 export { Circle } from "./Circle";
 export { Ellipse } from "./Ellipse";
-export { Group } from "./Group";
+export * from "./Group";
 export { Layer } from "./Layer";
 export { Line } from "./Line";
 export { Path } from "./Path";

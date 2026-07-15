@@ -42,7 +42,12 @@ Each render target SHALL provide its shape implementations in a single manifest 
 - **THEN** no per-entity renderer registration is needed in consumer code
 
 ### Requirement: Group container entity
-The library SHALL ship a `Group` container entity with position (`x`, `y`), `opacity`, and `children` — an ordered array of instance ids held as ordinary schema data. Groups structure and position their children and paint nothing themselves. Structure SHALL be defined by children: a group's `children` input MAY be given as a polymorphic list (see the instance-children capability) that instantiation normalizes into stored ids, and instantiation SHALL NOT accept a `parent` argument on the child. Every new instance SHALL attach to its ambient parent group, defaulting to the root group (conventional id `"root"`). Destroying an instance SHALL remove its id from any group that references it. Because `children` is plain data, scene updates on a group MAY reparent and reorder children; paint order SHALL follow the children array order.
+The library SHALL ship a `Group` container entity with position (`x`, `y`), `opacity`, `transform`, and `children` — an ordered array of instance ids held as ordinary schema data. A transform input SHALL be an ordered Effect Schema tagged-union list (including `transform/translate`, `transform/scale`, and `transform/matrix`) normalized at construction into one affine `{a,b,c,d,e,f}` matrix. Renderers SHALL receive the normalized matrix, never the operation list. Groups structure and position their children and paint nothing themselves. Structure SHALL be defined by children: a group's `children` input MAY be given as a polymorphic list (see the instance-children capability) that instantiation normalizes into stored ids, and instantiation SHALL NOT accept a `parent` argument on the child. Every new instance SHALL attach to its ambient parent group, defaulting to the root group (conventional id `"root"`). Destroying an instance SHALL remove its id from any group that references it. Because `children` is plain data, scene updates on a group MAY reparent and reorder children; paint order SHALL follow the children array order.
+
+#### Scenario: Transform operations normalize before rendering
+- **WHEN** a Group is instantiated with translate followed by scale operations
+- **THEN** its stored data contains their affine matrix, post-multiplied in list order
+- **AND** render targets consume only that matrix
 
 #### Scenario: Instances attach to the ambient parent by default
 - **WHEN** an instance is created at the top level

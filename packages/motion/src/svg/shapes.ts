@@ -145,17 +145,21 @@ export const text: Renderer.RenderFunction<SvgNode, typeof Shapes.Text> = ({
 export const group: Renderer.RenderFunction<SvgNode, typeof Shapes.Group> = ({
 	data,
 	children,
-}) =>
-	Effect.succeed({
+}) => {
+	const transform = Shapes.resolvedTransform(data);
+	return Effect.succeed({
 		tag: "g",
 		props: {
-			...(data.x !== 0 || data.y !== 0
-				? { transform: `translate(${data.x} ${data.y})` }
-				: {}),
+			...(Shapes.isIdentityTransform(transform)
+				? {}
+				: {
+						transform: `matrix(${transform.a} ${transform.b} ${transform.c} ${transform.d} ${transform.e} ${transform.f})`,
+					}),
 			...styleAttrs(data),
 		},
 		children,
 	});
+};
 
 // a parallax layer is a bare container: one <g> holding its children. It has
 // no position/opacity of its own; `depth` is consumed by the sink (svg/camera),
