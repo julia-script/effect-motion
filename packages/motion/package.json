@@ -1,8 +1,24 @@
 {
 	"name": "effect-motion",
-	"version": "0.0.1",
-	"description": "",
+	"version": "0.1.0",
+	"description": "Deterministic, frame-exact motion graphics in code, composed with Effect",
 	"type": "module",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/julia-script/effect-motion.git",
+		"directory": "packages/motion"
+	},
+	"homepage": "https://github.com/julia-script/effect-motion#readme",
+	"bugs": "https://github.com/julia-script/effect-motion/issues",
+	"keywords": [
+		"effect",
+		"motion",
+		"animation",
+		"motion-graphics",
+		"svg",
+		"deterministic"
+	],
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
@@ -18,13 +34,15 @@
 		"test": "vitest run",
 		"check": "tsc --noEmit"
 	},
-	"license": "MIT",
-	"dependencies": {
-		"effect": "4.0.0-beta.94",
-		"xstate": "^5.32.4"
+	"publishConfig": {
+		"access": "public"
+	},
+	"peerDependencies": {
+		"effect": ">=4.0.0-beta.94"
 	},
 	"devDependencies": {
 		"@types/node": "^26.1.1",
+		"effect": "4.0.0-beta.94",
 		"happy-dom": "^20.10.6",
 		"tsx": "^4.23.0",
 		"typescript": "^7.0.2",
