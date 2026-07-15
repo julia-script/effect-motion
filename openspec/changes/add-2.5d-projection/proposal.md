@@ -1,0 +1,33 @@
+## Why
+
+The engine fakes depth. Today "depth" is a `Layer.depth ∈ [0,1]` parallax knob — the *fraction of the camera* a top-level layer feels — and the camera itself is a 2D pan (`{x, y}`) plus a uniform `zoom`. There is no z axis: an entity cannot sit *behind* another in world space, the camera cannot leave the picture plane, and **paint order is tree order** (the post-order render walk embeds each container's children into its own output). That last point is the ceiling: in a scene with real depth, the tree order is *not* what should be in front of the camera — a child of one group can be behind a child of another.
+
+We want a **2.5D library**: flat 2D primitives (circles, rects, text, paths — unchanged) placed and animated at a world `{x, y, z}`, viewed through a **free camera** that can be positioned and aimed anywhere, with **paint order decided by camera-space depth**, not by the tree. This is the moment to do it — pre-release, breaking changes are free (roadmap: "quiet publish v0.1"), and the explore session is explicitly unconstrained by backwards compatibility.
+
+The core architectural move: **divorce the two roles the entity tree currently conflates.** The tree keeps its *coordinate-composition* role (a group at `z: 100` offsets its subtree) but loses its *paint-order* role. Paint order becomes a global, deterministic depth sort over a flattened draw list. Everything else follows from that.
+
+## What Changes
+
+- **A z axis on every positioned entity. BREAKING.** `Shape2D.position` gains `z` (defaulting to `0`), so the `~position` trait becomes `{x, y, z}`. `move`/`moveTo`, `spring`/`springTo`, and raw `tween` on `z` all work with no new animators (they operate on the position lens / numeric fields already). A z-less scene renders identically (everything sits on the `z: 0` plane).
+- **A free 3D camera. BREAKING.** The `Camera` entity's `{x, y, zoom}` is replaced by a world-space eye `position: {x, y, z}`, a look-at `target: {x, y, z}`, an `up`, and a `projection` (`perspective` | `orthographic`). It stays an ordinary `Instance`, so `moveTo`/`spring`/`fork` drive dollies, orbits, and cranes for free. The old `zoom` is expressed as dolly (perspective) or ortho scale.
+- **A projection pass. NEW capability `depth-projection`.** Between the runner's world-space frame and the sink, a pure pass flattens the visible tree into leaves, accumulates each leaf's world anchor (and opacity) down its ancestor path, projects each anchor through the camera to a screen anchor + billboard scale + a camera-space depth, and returns a **single draw list ordered back-to-front** by that depth (stable, with an explicit index tiebreak for determinism). Shapes stay 2D: the sink wraps each shape's existing output in a per-leaf `translate/scale`. The per-entity SVG render functions do not change.
+- **Sinks consume the draw list, not the tree.** `SvgRenderer` / `SvgDomRenderer` stop wrapping per-top-level-layer camera transforms and instead emit the ordered, pre-projected draw list. The `Renderer.make` fold contract changes from "post-order tree of nested nodes" to "flat ordered list of projected nodes."
+- **Parallax is subsumed; HUD survives as screen-space. BREAKING.** Real z makes far things lag the camera automatically under perspective — `Layer.depth ∈ [0,1]` is deleted. The one piece worth keeping is the *screen-space overlay* (a HUD that ignores the camera): reframed as an explicit `space: "world" | "screen"` on a top-level container, `screen` meaning "not projected."
+- **A proof-of-concept, already landed additively.** `packages/motion/src/Projection.ts` (pure, dependency-free projection + `depthOrder`) and `packages/motion/test/projection.test.ts` prove the core — camera-decided paint order, camera-flip reversal, perspective falloff, culling, and deterministic tie-breaking — without touching the runner or sinks. The tasks below promote this core into the engine.
+
+## Capabilities
+
+### New Capabilities
+- `depth-projection`: a pure per-frame pass that flattens the visible instance tree into leaves with accumulated world anchors, projects each through the active camera to a screen anchor + billboard scale + camera-space depth, and orders them back-to-front by depth with a deterministic index tiebreak. Culls points at/behind the camera. Sink-agnostic and dependency-free.
+
+### Modified Capabilities
+- `camera`: the camera becomes a free 3D camera (eye `position`, `target`, `up`, `projection`) instead of `{x, y, zoom}`; still an ordinary animatable `Instance`, still never drawn, still world-space (never mutates instance data). The per-layer `depth`-scaled transform and the `Layer` parallax entity are removed; a `space: "world" | "screen"` container replaces the HUD use of `depth: 0`.
+- `traits`: the `~position` trait value becomes `{x, y, z}` (z defaulting to 0); `Shape2D.positionLens()` and `Shape2D.position` carry z. `move`/`moveTo`/`spring` accept an optional `z`.
+
+## Impact
+
+- **Core (`packages/motion`):** `shapes/Shape2D.ts` (`position` + `positionLens` gain z), `Camera.ts` (3D fields, `viewBasis`), `Runner.ts` (`FrameMeta.camera` shape, camera state, drop the camera-omit-from-tree stays), `Renderer.ts` (fold contract: flat ordered list; run the projection pass), `svg/SvgRenderer.ts` + `svg/SvgDomRenderer.ts` (emit draw list, per-leaf transform), `svg/camera.ts` (replaced by projection wrapping), delete `shapes/Layer.ts` + `svg/layers.ts` parallax bits, `svg/shapes.ts` (Layer render removed / `space` container added). Promote `Projection.ts` from experimental to wired-in. `Motion.ts`/`Physics.ts` unchanged (z rides the existing lens/field paths).
+- **Tests:** `camera.test.ts` (3D camera + projection), `traits.test.ts` (z in `~position`), `group.test.ts` (subtree z offset), `sink-parity.test.ts` (both sinks agree on draw order), new `depth-projection.test.ts` (flatten + accumulate + order); `projection.test.ts` already landed. `packages/export` golden frames re-baselined.
+- **Docs (`apps/docs`):** replace `camera-parallax.scene.ts` with a `depth-orbit` example (camera orbits depth-staggered cards; order visibly re-sorts); update `camera-zoom`/`camera-shake`/`camera-swap` to the 3D camera; `content/docs/` camera + depth pages; `examples/registry.ts`.
+- **Specs:** add `depth-projection`; modify `camera`, `traits`; the `camera` delta removes the `Layer`/parallax requirements.
+- **Roadmap & AGENTS.md:** add a "2.5D world / free camera / depth-ordered paint" direction; record the new invariant *paint order is camera-space depth, deterministically tie-broken by tree index* alongside the existing determinism invariants; note that shapes remain flat billboards (no per-entity 3D mesh) as a scoped non-goal.
