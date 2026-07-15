@@ -1,13 +1,13 @@
-import { Layer } from "effect";
+import type { ThorvgException } from "@effect-motion/thorvg";
+import { ThorvgWasmNode } from "@effect-motion/thorvg/node";
 import * as Effect from "effect/Effect";
 import type * as Scope from "effect/Scope";
 import * as Sink from "effect/Sink";
 import * as Stream from "effect/Stream";
 import type { ChildProcessSpawner } from "effect/unstable/process";
-import { type Entity, Scene, Svg } from "effect-motion";
+import { type Entity, Render, Scene } from "effect-motion";
+import { renderToPng } from "effect-motion/render-node";
 import * as Ffmpeg from "./Ffmpeg";
-import { resvgOptions } from "./Fonts";
-import * as Resvg from "./Resvg";
 
 // Scene.instantiate/tick leak the runner requirement into a scene's static R,
 // and Scene.make adds Scope; both are provided at runtime (by Scene.stream and
@@ -21,9 +21,9 @@ type SceneInternalR = SceneRunner | Scope.Scope;
 
 /**
  * The one-call export path: a scene becomes a video file. Composes the whole
- * pipeline — `Scene.stream` → SVG string sink → resvg → ffmpeg — reading the
- * framerate and dimensions from the scene's own frame metadata and feeding
- * declared fonts to the rasterizer.
+ * pipeline — `Scene.stream` → ThorVG PNG renderer → ffmpeg — reading the
+ * framerate and dimensions from the scene's own frame metadata. The ThorVG
+ * engine is acquired internally (Node SW layer), so callers wire nothing.
  */
 
 /**
@@ -60,15 +60,12 @@ export interface VideoOptions {
 	readonly settings?: VideoSceneSettings;
 }
 
-// SVG string sink + built-in shape renderers, provided internally so callers
-// don't wire renderers for the export path
-const renderLayer = Svg.layer.pipe(Layer.provideMerge(Svg.shapesLayer));
-
 /**
  * Render a scene to a video file at `outPath`.
  *
  * Fails with {@link Ffmpeg.EncodeError} on odd output dimensions (invalid for
- * `yuv420p`) — before any ffmpeg process is spawned — or on an ffmpeg failure.
+ * `yuv420p`) — before any ffmpeg process is spawned — or on an ffmpeg failure;
+ * a ThorVG render failure surfaces as `ThorvgException`.
  */
 export const render = <E, R, Entities extends Entity.AnyEntity>(
 	scene: Scene.Scene<E, R, Entities>,
@@ -76,16 +73,13 @@ export const render = <E, R, Entities extends Entity.AnyEntity>(
 	options: VideoOptions = {},
 ): Effect.Effect<
 	void,
-	E | Ffmpeg.EncodeError | Resvg.RasterizeError,
+	E | Ffmpeg.EncodeError | ThorvgException,
 	// the scene is run to completion internally, so its Scope is discharged
-	// here; the SVG renderers are provided internally too
-	| Exclude<R, Scope.Scope | SceneInternalR>
-	| ChildProcessSpawner.ChildProcessSpawner
+	// here; the ThorVG engine is provided internally too
+	Exclude<R, Scope.Scope | SceneInternalR> | ChildProcessSpawner.ChildProcessSpawner
 > =>
 	Effect.scoped(
 		Effect.gen(function* () {
-			const renderer = yield* Svg.SvgRenderer.Context;
-			const fontOpts = resvgOptions(scene);
 			const concurrency = options.concurrency ?? 4;
 
 			let frames = Scene.stream(
@@ -106,9 +100,7 @@ export const render = <E, R, Entities extends Entity.AnyEntity>(
 
 			if (meta.width % 2 !== 0 || meta.height % 2 !== 0) {
 				const odd =
-					meta.width % 2 !== 0
-						? `width ${meta.width}`
-						: `height ${meta.height}`;
+					meta.width % 2 !== 0 ? `width ${meta.width}` : `height ${meta.height}`;
 				return yield* new Ffmpeg.EncodeError({
 					message:
 						`Video dimensions must be even for yuv420p, got ${odd}. ` +
@@ -119,12 +111,11 @@ export const render = <E, R, Entities extends Entity.AnyEntity>(
 			}
 
 			const allFrames = Stream.concat(Stream.make(meta), rest);
+			// each frame is rasterized to PNG by the ThorVG renderer; the engine
+			// (provided below) is shared across the whole stream.
 			const pngStream = Stream.mapEffect(
 				allFrames,
-				(frame) =>
-					renderer
-						.render(frame as never, {})
-						.pipe(Effect.flatMap((svg) => Resvg.rasterize(svg, fontOpts))),
+				(frame) => renderToPng(frame as never, Render.builtinPaints),
 				{ concurrency },
 			);
 
@@ -134,9 +125,8 @@ export const render = <E, R, Entities extends Entity.AnyEntity>(
 				extraArgs: options.extraArgs,
 			});
 		}),
-	).pipe(Effect.provide(renderLayer)) as unknown as Effect.Effect<
+	).pipe(Effect.provide(ThorvgWasmNode.layer("sw"))) as unknown as Effect.Effect<
 		void,
-		E | Ffmpeg.EncodeError | Resvg.RasterizeError,
-		| Exclude<R, Scope.Scope | SceneInternalR>
-		| ChildProcessSpawner.ChildProcessSpawner
+		E | Ffmpeg.EncodeError | ThorvgException,
+		Exclude<R, Scope.Scope | SceneInternalR> | ChildProcessSpawner.ChildProcessSpawner
 	>;

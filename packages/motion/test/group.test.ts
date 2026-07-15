@@ -1,16 +1,13 @@
-// @vitest-environment happy-dom
-import { Effect, Exit, Layer } from "effect";
+import { Effect, Exit } from "effect";
 import * as Stream from "effect/Stream";
 import { describe, expect, it } from "vitest";
 import * as Camera from "../src/Camera";
 import * as Runner from "../src/Runner";
 import * as Scene from "../src/Scene";
 import * as Shapes from "../src/shapes";
-import * as Svg from "../src/svg";
+import { render, renderExit } from "./support/framebuffer";
 
 type Entities = typeof Shapes.Group | typeof Shapes.Circle;
-
-const layers = Svg.layer.pipe(Layer.provideMerge(Svg.shapesLayer));
 
 const frameOf = (
 	instances: Scene.Frame<Entities>["instances"],
@@ -31,78 +28,70 @@ const frameOf = (
 	camera: Camera.IDENTITY,
 });
 
-const renderString = (frame: Scene.Frame<Entities>) =>
-	Effect.gen(function* () {
-		const renderer = yield* Svg.SvgRenderer.Context;
-		return yield* renderer.render(frame, { width: 500, height: 300 });
-	}).pipe(Effect.provide(layers));
-
-const circleAt = (x: number) => ({
-	data: Shapes.Circle.data.make({ x }),
+// a white default circle at (x, y); big enough to give a solid painted center
+const circleAt = (x: number, y = 0, radius = 12) => ({
+	data: Shapes.Circle.data.make({ x, y, radius }),
 	entity: Shapes.Circle,
 });
 
 describe("group rendering", () => {
-	// A Group is coordinate composition, not a paint-order boundary: it emits
-	// no wrapper element. Its position shifts each child's WORLD coordinates,
-	// so the child projects to the composed screen position. (ponytail: only
-	// the group's translation composes down for the POC; its 2D affine
-	// `transform` matrix is not yet threaded into child world coords.)
-	it("a group's position shifts its child's projected screen position", async () => {
+	// A Group is coordinate composition, not a paint-order boundary: it paints
+	// no element of its own. Its position shifts each child's WORLD coordinates,
+	// so the child renders at the composed screen position. (ponytail: only the
+	// group's translation composes down for the POC; its 2D affine `transform`
+	// matrix is not yet threaded into child world coords.)
+	it("a group's position shifts its child's rendered screen position", async () => {
 		const frame = frameOf(
 			{
 				g1: {
 					data: Shapes.Group.data.make({ x: 100, y: 50, children: ["c1"] }),
 					entity: Shapes.Group,
 				},
-				c1: circleAt(10),
+				c1: circleAt(10, 20),
 			},
 			["g1"],
 		);
 
-		// child local x=10 + group x=100 → world x=110; under the resting
-		// camera world == screen, wrapped in a camera <g matrix> that carries
-		// the composed translation. The circle keeps its own cx=10.
-		const svg = await Effect.runPromise(renderString(frame));
-		expect(svg).toContain('<g transform="matrix(1 0 0 1 100 50)">');
-		expect(svg).toContain('<circle cx="10"');
+		// child local (10,20) + group (100,50) → world/screen (110,70) under the
+		// resting camera. The circle paints there, not at its un-composed (10,20).
+		const r = await render(frame);
+		expect(r.isPainted(110, 70)).toBe(true);
+		expect(r.isPainted(10, 20)).toBe(false);
 	});
 
-	it("nested groups compose their translations (no nested wrappers)", async () => {
+	it("nested groups compose their translations", async () => {
 		const frame = frameOf(
 			{
 				outer: {
-					data: Shapes.Group.data.make({ x: 10, children: ["inner"] }),
+					data: Shapes.Group.data.make({ x: 10, y: 40, children: ["inner"] }),
 					entity: Shapes.Group,
 				},
 				inner: {
-					data: Shapes.Group.data.make({ x: 20, children: ["c1"] }),
+					data: Shapes.Group.data.make({ x: 20, y: 30, children: ["c1"] }),
 					entity: Shapes.Group,
 				},
-				c1: circleAt(5),
+				c1: circleAt(5, 5),
 			},
 			["outer"],
 		);
-		// outer(10) + inner(20) = 30 composed translation, ONE camera <g>, no
-		// per-group nesting
-		const svg = await Effect.runPromise(renderString(frame));
-		expect(svg).toContain('<g transform="matrix(1 0 0 1 30 0)"><circle cx="5"');
-		// exactly one <g> (the camera placement), not one per group
-		expect(svg.match(/<g /g)).toHaveLength(1);
+		// outer(10,40) + inner(20,30) + local(5,5) = (35,75) composed
+		const r = await render(frame);
+		expect(r.isPainted(35, 75)).toBe(true);
 	});
 
 	it("the root group itself does not render", async () => {
-		const frame = frameOf({ c1: circleAt(1) }, ["c1"]);
-		const svg = await Effect.runPromise(renderString(frame));
-		// c1 at world (1,0) under the resting camera is identity-placed: no
-		// camera wrapper, and the root never emits its own element
-		expect(svg).not.toContain("<g");
+		// c1 at world (60,60); the root contributes no paint of its own, and the
+		// corner stays background — only the circle is painted.
+		const frame = frameOf({ c1: circleAt(60, 60) }, ["c1"]);
+		const r = await render(frame);
+		expect(r.isPainted(60, 60)).toBe(true);
+		expect(r.isPainted(0, 0)).toBe(false);
 	});
 });
 
 describe("traversal defects", () => {
 	const dies = async (frame: Scene.Frame<Entities>) => {
-		const exit = await Effect.runPromiseExit(renderString(frame));
+		const exit = await renderExit(frame);
 		expect(Exit.isFailure(exit)).toBe(true);
 		// JSON.stringify drops Error internals; surface defect messages
 		return JSON.stringify(exit, (_key, value) =>
@@ -250,29 +239,66 @@ describe("scene attachment", () => {
 	});
 
 	it("depth controls paint order, not tree order", async () => {
-		// a deeper circle paints first (behind) regardless of tree order. The
-		// nearer circle (z closer to the camera) is painted last, on top.
+		// two overlapping circles at the same screen point: the nearer one (z
+		// closer to the camera) paints LAST, so it wins the shared pixel — even
+		// though the near one is authored FIRST in tree order.
 		const near = {
-			data: Shapes.Circle.data.make({ x: 1, z: 0 }),
+			// z=0, red, painted on top
+			data: Shapes.Circle.data.make({
+				x: 250,
+				y: 150,
+				radius: 20,
+				fill: "#ff0000",
+			}),
 			entity: Shapes.Circle,
 		};
 		const far = {
-			data: Shapes.Circle.data.make({ x: 2, z: -400 }),
+			// z behind, green; overlaps the same center
+			data: Shapes.Circle.data.make({
+				x: 250,
+				y: 150,
+				z: -400,
+				radius: 20,
+				fill: "#00ff00",
+			}),
 			entity: Shapes.Circle,
 		};
-		// author the NEAR one first in tree order; depth must still win
 		const frame = frameOf({ near, far }, ["near", "far"]);
-		const svg = await Effect.runPromise(renderString(frame));
-		// far (cx=2) painted before near (cx=1)
-		expect(svg.indexOf('cx="2"')).toBeLessThan(svg.indexOf('cx="1"'));
+		const r = await render(frame);
+		// the shared center shows the NEAR circle's red (painted last), not the
+		// far green — depth won over tree order.
+		const [red, green] = r.at(250, 150);
+		expect(red).toBeGreaterThan(200);
+		expect(green).toBeLessThan(80);
 	});
 
 	it("equal-depth paintables tie-break on id deterministically", async () => {
-		// both at z=0: tie broken by id ("a" < "b"), independent of tree order
-		const frame = frameOf({ a: circleAt(1), b: circleAt(2) }, ["b", "a"]);
-		const svg = await Effect.runPromise(renderString(frame));
-		// "a" (cx=1) paints before "b" (cx=2) by id order, not tree order
-		expect(svg.indexOf('cx="1"')).toBeLessThan(svg.indexOf('cx="2"'));
+		// both at z=0, overlapping: tie broken by id ("a" < "b"), so "b" paints
+		// LAST and wins the shared pixel — independent of tree order ("b","a").
+		const a = {
+			data: Shapes.Circle.data.make({
+				x: 250,
+				y: 150,
+				radius: 20,
+				fill: "#ff0000",
+			}),
+			entity: Shapes.Circle,
+		};
+		const b = {
+			data: Shapes.Circle.data.make({
+				x: 250,
+				y: 150,
+				radius: 20,
+				fill: "#00ff00",
+			}),
+			entity: Shapes.Circle,
+		};
+		const frame = frameOf({ a, b }, ["b", "a"]);
+		const r = await render(frame);
+		// "b" (green) painted after "a" by id order → green wins the center
+		const [red, green] = r.at(250, 150);
+		expect(green).toBeGreaterThan(200);
+		expect(red).toBeLessThan(80);
 	});
 });
 
@@ -377,13 +403,18 @@ describe("builtin $visible", () => {
 
 	it("a hidden instance is skipped by the renderer", async () => {
 		const frames = await collectFrames(function* () {
-			yield* Scene.instantiate(Shapes.Circle, { x: 1, $visible: false });
-			yield* Scene.instantiate(Shapes.Circle, { x: 2 });
+			// hidden circle centered at (120,120); visible one at (300,150)
+			yield* Scene.instantiate(Shapes.Circle, {
+				x: 120,
+				y: 120,
+				radius: 15,
+				$visible: false,
+			});
+			yield* Scene.instantiate(Shapes.Circle, { x: 300, y: 150, radius: 15 });
 			yield* Scene.tick;
 		});
-		const frame = frames[0]!;
-		const svg = await Effect.runPromise(renderString(frame));
-		expect(svg).not.toContain('cx="1"'); // hidden
-		expect(svg).toContain('cx="2"'); // visible
+		const r = await render(frames[0]! as Scene.Frame<Entities>);
+		expect(r.isPainted(120, 120)).toBe(false); // hidden → background
+		expect(r.isPainted(300, 150)).toBe(true); // visible → painted
 	});
 });

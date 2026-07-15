@@ -2,7 +2,23 @@
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { Effect } from "effect";
 import { Motion, Scene, Shapes } from "effect-motion";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+// stub the wasm engine runtime (no wasm under happy-dom): the engine reads as
+// ready immediately and renders are no-op fibers, so these hook tests exercise
+// frame production / buffering / status logic, not real rendering (design D5)
+vi.mock("../src/runtime", () => {
+	const fiber = Effect.runFork(Effect.void);
+	return {
+		DEFAULT_WASM_BASE: "mock://wasm/",
+		getRuntime: () => ({
+			runPromise: () => Promise.resolve(undefined),
+			runFork: () => fiber,
+			dispose: () => Promise.resolve(),
+		}),
+	};
+});
+
 import { type AnyScene, usePlayer } from "../src/usePlayer";
 
 afterEach(cleanup);

@@ -1,7 +1,7 @@
 # video-encoding Specification
 
 ## Purpose
-Encode a stream of PNG frames into a video file via a system ffmpeg, and compose the whole scene → video pipeline in one call, in the Node-only `@effect-motion/export` package. Encoding is an export tool, not a renderer: it consumes the rasterizer's PNG output and produces a shareable artifact — a stream of frames that no per-frame `render()` contract can express.
+Encode a stream of PNG frames into a video file via a system ffmpeg, and compose the whole scene → video pipeline in one call, in the Node-only `@effect-motion/export` package. Encoding is an export tool, not a renderer: it consumes the ThorVG PNG renderer's output (`renderToPng`) and produces a shareable artifact — a stream of frames that no per-frame `render()` contract can express.
 
 ## Requirements
 
@@ -28,15 +28,15 @@ Failures — the binary missing from `PATH`, a nonzero ffmpeg exit, or a broken 
 - **THEN** the effect fails with an `EncodeError` that includes the process's stderr output
 
 ### Requirement: A scene renders to a video file in one call
-`Video.render(scene, outPath, options?)` SHALL compose the full pipeline: stream the scene's frames, render each through the SVG string sink, rasterize each document with resvg, and encode the PNGs with `Ffmpeg.encode`. The input framerate SHALL come from the frames' render metadata, not from a caller option. Fonts declared via the scene's `Fonts` annotation SHALL be passed to resvg as font files, so exported frames use the same families the player displays. Entity renderers registered for the string sink SHALL require no export-specific setup.
+`Video.render(scene, outPath, options?)` SHALL compose the full pipeline: stream the scene's frames, rasterize each to PNG through the ThorVG renderer (`renderToPng`), and encode the PNGs with `Ffmpeg.encode`. The ThorVG engine SHALL be acquired internally (the Node SW layer), so callers wire no renderer. The input framerate SHALL come from the frames' render metadata, not from a caller option.
 
 #### Scenario: End-to-end scene to MP4
 - **WHEN** `Video.render(scene, "out.mp4")` runs for a finite scene with ffmpeg available
 - **THEN** a playable MP4 exists at `out.mp4` whose frame count matches the scene's frames and whose framerate matches the scene's frame metadata
 
-#### Scenario: Scene fonts reach the rasterizer
-- **WHEN** the scene declares a `Fonts` annotation entry with a `path` source
-- **THEN** every rasterized frame passes that font file to resvg
+#### Scenario: The ThorVG engine is provided internally
+- **WHEN** `Video.render` runs
+- **THEN** it acquires the ThorVG engine itself and the caller supplies no renderer layer or engine
 
 ### Requirement: Odd output dimensions fail before ffmpeg is spawned
 Because `yuv420p` requires even dimensions, `Video.render` SHALL inspect the first frame's metadata and fail with an `EncodeError` naming the offending dimension when width or height is odd. The error message MUST state the remedy (use even scene dimensions, or supply a scale filter via `extraArgs`). The library SHALL NOT silently resize or pad frames.

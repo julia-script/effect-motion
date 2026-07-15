@@ -5,28 +5,10 @@
  * biome-ignore-all lint/a11y/noStaticElementInteractions: keyboard transport
  * is scoped to the focused player root
  */
-import { Layer } from "effect";
 import * as Effect from "effect/Effect";
-import { Svg } from "effect-motion";
+import * as Fiber from "effect/Fiber";
 import { useEffect, useRef } from "react";
-import {
-	type AnyScene,
-	type PlayerFrame,
-	type UsePlayerOptions,
-	usePlayer,
-} from "./usePlayer";
-
-const layers = Svg.layer.pipe(Layer.provideMerge(Svg.shapesLayer));
-
-// everything in the SVG DOM sink and its entity renderers is synchronous
-const renderFrame = (frame: PlayerFrame, target: HTMLElement): void =>
-	Effect.runSync(
-		Effect.gen(function* () {
-			const renderer = yield* Svg.SvgDomRenderer.Context;
-			// no size in the config: the sink falls back to frame metadata
-			yield* renderer.render(frame as never, { target });
-		}).pipe(Effect.provide(layers)) as Effect.Effect<void>,
-	);
+import { type AnyScene, type UsePlayerOptions, usePlayer } from "./usePlayer";
 
 const iconProps = {
 	width: 14,
@@ -78,39 +60,34 @@ export interface PlayerProps extends UsePlayerOptions {
 }
 
 /**
- * A scene player: metadata-sized SVG viewport and a transport bar with
- * play/pause, a scrubber clamped to the buffered range, a time readout,
- * and a loop toggle. Focus the player for keyboard control: Space toggles
- * playback, arrow keys step one frame.
+ * A scene player: metadata-sized canvas viewport (rendered by the single
+ * ThorVG renderer) and a transport bar with play/pause, a scrubber clamped to
+ * the buffered range, a time readout, and a loop toggle. Focus the player for
+ * keyboard control: Space toggles playback, arrow keys step one frame.
  */
 export const Player = ({ scene, ...options }: PlayerProps) => {
 	const player = usePlayer(scene, options);
-	const viewportRef = useRef<HTMLDivElement>(null);
+	const canvasRef = useRef<HTMLCanvasElement>(null);
 
 	// scene resolution: frame metadata once available, else explicit props
 	const sceneWidth = player.currentFrame?.width ?? options.width;
 	const sceneHeight = player.currentFrame?.height ?? options.height;
 
+	// render the current frame onto the canvas through the shared ThorVG engine.
+	// The render is async (the engine is wasm), so a superseded frame's fiber is
+	// interrupted on cleanup — the latest requested frame wins.
 	useEffect(() => {
-		const target = viewportRef.current;
-		if (target === null || player.currentFrame === null) {
+		const canvas = canvasRef.current;
+		if (canvas === null || player.currentFrame === null) {
 			return;
 		}
-		renderFrame(player.currentFrame, target);
-		// ponytail: post-process the sink's root for responsive scaling —
-		// viewBox + CSS size lets the fixed-pixel SVG fill the viewport box;
-		// move viewBox into the sink if another consumer needs scaling
-		const svg = target.querySelector("svg");
-		if (svg !== null) {
-			svg.setAttribute(
-				"viewBox",
-				`0 0 ${player.currentFrame.width} ${player.currentFrame.height}`,
-			);
-			svg.style.width = "100%";
-			svg.style.height = "100%";
-			svg.style.display = "block";
-		}
-	}, [player.currentFrame]);
+		const fiber = player.renderFrame(player.currentFrame, canvas);
+		// interrupt a still-running render when the frame changes or on unmount,
+		// so a slow paint can't clobber a newer frame
+		return () => {
+			Effect.runFork(Fiber.interrupt(fiber));
+		};
+	}, [player.currentFrame, player.renderFrame]);
 
 	const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
 		// buttons and the scrubber already handle these keys natively
@@ -158,7 +135,12 @@ export const Player = ({ scene, ...options }: PlayerProps) => {
 					minHeight: sceneHeight === undefined ? 120 : undefined,
 				}}
 			>
-				<div ref={viewportRef} style={{ width: "100%", height: "100%" }} />
+				{/* fixed-pixel canvas scaled to fill the aspect-ratio box, like the
+				    old viewBox post-process — now native to <canvas> */}
+				<canvas
+					ref={canvasRef}
+					style={{ width: "100%", height: "100%", display: "block" }}
+				/>
 				{player.status === "loading" ? (
 					<div
 						style={{

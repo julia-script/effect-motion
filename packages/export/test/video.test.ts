@@ -5,7 +5,7 @@ import {
 	type ChildProcess,
 	ChildProcessSpawner,
 } from "effect/unstable/process";
-import { Fonts, Scene, Shapes } from "effect-motion";
+import { Scene, Shapes } from "effect-motion";
 import { expect, it } from "vitest";
 import { Ffmpeg, Video } from "../src";
 
@@ -97,18 +97,6 @@ it("streams a scene to N PNG frames at the scene's framerate", async () => {
 	// framerate is read from metadata, not repeated by the caller
 	const args = record[0]!.args;
 	expect(args[args.indexOf("-framerate") + 1]).toBe("30");
-});
-
-it("passes declared font files through to the rasterizer via resvgOptions", () => {
-	// the render path applies resvgOptions(scene); this asserts the mapping the
-	// path relies on picks up a declared font path (rasterization itself is
-	// covered by resvg/fonts tests)
-	const withFont = threeFrameScene.annotate(Fonts.Fonts, [
-		{ family: "Inter", src: { path: "/fonts/Inter.ttf" } },
-	]);
-	expect(
-		Fonts.get(withFont).some((f) => f.src.path === "/fonts/Inter.ttf"),
-	).toBe(true);
 });
 
 it("rejects odd output dimensions before spawning ffmpeg", async () => {

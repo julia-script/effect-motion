@@ -1,13 +1,10 @@
-// @vitest-environment happy-dom
-import { Effect, Layer } from "effect";
 import { describe, expect, it } from "vitest";
 import * as Camera from "../src/Camera";
 import type * as Scene from "../src/Scene";
 import * as Shapes from "../src/shapes";
-import * as Svg from "../src/svg";
+import { type Rendered, render } from "./support/framebuffer";
 
 type Entities = typeof Shapes.Rect | typeof Shapes.Group;
-const layers = Svg.layer.pipe(Layer.provideMerge(Svg.shapesLayer));
 
 const frameOf = (
 	instances: Scene.Frame<Entities>["instances"],
@@ -27,22 +24,6 @@ const frameOf = (
 	backgroundColor: "#000",
 	camera: Camera.IDENTITY,
 });
-
-const renderString = (frame: Scene.Frame<Entities>) =>
-	Effect.runPromise(
-		Effect.gen(function* () {
-			const r = yield* Svg.SvgRenderer.Context;
-			return yield* r.render(frame, {});
-		}).pipe(Effect.provide(layers)),
-	);
-
-const renderDom = (frame: Scene.Frame<Entities>, target: HTMLElement) =>
-	Effect.runPromise(
-		Effect.gen(function* () {
-			const r = yield* Svg.SvgDomRenderer.Context;
-			yield* r.render(frame, { target });
-		}).pipe(Effect.provide(layers)),
-	);
 
 // a Rect centered on the viewport (250,150) so it sits on the camera axis,
 // tilted about X so its top edge recedes and its bottom edge comes forward
@@ -64,42 +45,45 @@ const tiltedRectFrame = (rotX: number) =>
 		["r1"],
 	);
 
-describe("tilted solid planes render as exact polygons", () => {
-	it("a tilted Rect emits a <polygon>, not a <rect>", async () => {
-		const svg = await renderString(tiltedRectFrame(Math.PI / 4));
-		expect(svg).toContain("<polygon");
-		expect(svg).toContain('fill="tomato"');
-		// the flat <rect> primitive is replaced by the projected polygon
-		expect(svg).not.toContain("<rect x=");
+// width of the painted span on a scanline: last painted x − first painted x
+const paintedWidth = (r: Rendered, y: number): number => {
+	let first = -1;
+	let last = -1;
+	for (let x = 0; x < r.width; x++) {
+		if (r.isPainted(x, y)) {
+			if (first === -1) {
+				first = x;
+			}
+			last = x;
+		}
+	}
+	return first === -1 ? 0 : last - first;
+};
+
+describe("tilted solid planes render as projected trapezoids", () => {
+	it("a tilted Rect still paints (as its projected quad)", async () => {
+		const r = await render(tiltedRectFrame(Math.PI / 4));
+		// the plane covers the viewport center when tilted about its middle
+		expect(r.isPainted(250, 150)).toBe(true);
 	});
 
-	it("an un-tilted Rect stays a plain <rect> (billboard)", async () => {
-		const svg = await renderString(tiltedRectFrame(0));
-		expect(svg).toContain("<rect");
-		expect(svg).not.toContain("<polygon");
-	});
-
-	it("the receding plane is a trapezoid: far edge shorter than near edge", async () => {
-		const svg = await renderString(tiltedRectFrame(Math.PI / 4));
-		const points = svg.match(/points="([^"]+)"/)?.[1];
-		expect(points).toBeDefined();
-		const pts = points!
-			.split(" ")
-			.map((p) => p.split(",").map(Number) as [number, number]);
-		// winding TL, TR, BR, BL: top edge = pts[0]->pts[1], bottom = pts[3]->pts[2]
-		const topWidth = Math.abs(pts[1]![0] - pts[0]![0]);
-		const bottomWidth = Math.abs(pts[2]![0] - pts[3]![0]);
-		// top edge recedes (rotX tilts top away) → narrower on screen
+	it("the receding plane is a trapezoid: far edge narrower than near edge", async () => {
+		const r = await render(tiltedRectFrame(Math.PI / 4));
+		// rotX tilts the TOP edge away (recedes → narrower on screen) and brings
+		// the BOTTOM edge forward (wider). Compare a high scanline to a low one.
+		const topWidth = paintedWidth(r, 110);
+		const bottomWidth = paintedWidth(r, 190);
+		expect(topWidth).toBeGreaterThan(0);
+		expect(bottomWidth).toBeGreaterThan(0);
 		expect(topWidth).toBeLessThan(bottomWidth);
 	});
 
-	it("both sinks agree on the tilted polygon points", async () => {
-		const frame = tiltedRectFrame(Math.PI / 3);
-		const svg = await renderString(frame);
-		const target = document.createElement("div");
-		await renderDom(frame, target);
-		const stringPoints = svg.match(/points="([^"]+)"/)?.[1];
-		const domPoints = target.querySelector("polygon")?.getAttribute("points");
-		expect(domPoints).toBe(stringPoints);
+	it("an un-tilted Rect paints a uniform-width rectangle (billboard)", async () => {
+		const r = await render(tiltedRectFrame(0));
+		// no tilt → the painted span is the same width top and bottom
+		const topWidth = paintedWidth(r, 110);
+		const bottomWidth = paintedWidth(r, 190);
+		expect(topWidth).toBeGreaterThan(0);
+		expect(Math.abs(topWidth - bottomWidth)).toBeLessThanOrEqual(2);
 	});
 });

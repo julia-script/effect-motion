@@ -1,0 +1,56 @@
+{
+	"name": "@effect-motion/thorvg",
+	"version": "0.0.0",
+	"description": "ThorVG canvas renderer for effect-motion",
+	"type": "module",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/julia-script/effect-motion.git",
+		"directory": "packages/thorvg"
+	},
+	"homepage": "https://github.com/julia-script/effect-motion#readme",
+	"bugs": "https://github.com/julia-script/effect-motion/issues",
+	"keywords": [
+		"effect",
+		"motion",
+		"thorvg",
+		"canvas",
+		"motion-graphics"
+	],
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		},
+		"./node": {
+			"types": "./dist/node.d.ts",
+			"default": "./dist/node.js"
+		}
+	},
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "tsc -p tsconfig.build.json",
+		"dev": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
+		"test": "vitest run",
+		"check": "tsc --noEmit"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"dependencies": {
+		"@thorvg/webcanvas": "^1.0.8"
+	},
+	"devDependencies": {
+		"@types/node": "^26.1.1",
+		"effect": "4.0.0-beta.94",
+		"tsx": "^4.23.0",
+		"typescript": "^7.0.2",
+		"vitest": "^4.1.10"
+	},
+	"peerDependencies": {
+		"effect": ">=4.0.0-beta.94"
+	}
+}

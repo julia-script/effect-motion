@@ -1,11 +1,10 @@
 import { Effect } from "effect";
-import * as Layer from "effect/Layer";
 import * as Stream from "effect/Stream";
 import { describe, expect, it } from "vitest";
 import type * as Runner from "../src/Runner";
 import * as Scene from "../src/Scene";
 import * as Shapes from "../src/shapes";
-import * as Svg from "../src/svg";
+import { render } from "./support/framebuffer";
 
 const oneFrameScene = Scene.make(function* () {
 	yield* Scene.instantiate(Shapes.Circle, { x: 5, y: 6 });
@@ -43,31 +42,26 @@ describe("frame render metadata", () => {
 	});
 });
 
-describe("SVG string sink sizing from frame metadata", () => {
-	const layers = Svg.layer.pipe(Layer.provideMerge(Svg.shapesLayer));
-	const renderString = (
-		frame: Scene.Frame<typeof Shapes.Circle | typeof Shapes.Group>,
-		config: Svg.SvgConfig,
-	) =>
-		Effect.runPromise(
-			Effect.gen(function* () {
-				const renderer = yield* Svg.SvgRenderer.Context;
-				return yield* renderer.render(frame, config);
-			}).pipe(Effect.provide(layers)),
+describe("renderer sizes and backgrounds the framebuffer from frame metadata", () => {
+	it("the framebuffer takes the frame's resolution", async () => {
+		const frame = await firstFrame({ width: 320, height: 200 });
+		const r = await render(
+			frame as Scene.Frame<typeof Shapes.Circle | typeof Shapes.Group>,
 		);
-
-	it("no size in config falls back to the frame's resolution", async () => {
-		const frame = await firstFrame({ width: 800, height: 600 });
-		const svg = await renderString(frame, {});
-		expect(svg).toContain('width="800"');
-		expect(svg).toContain('height="600"');
-		expect(svg).toContain('<rect width="100%" height="100%" fill="#16161d"/>');
+		expect(r.width).toBe(320);
+		expect(r.height).toBe(200);
 	});
 
-	it("explicit config overrides frame metadata", async () => {
-		const frame = await firstFrame({ width: 800, height: 600 });
-		const svg = await renderString(frame, { width: 100, height: 100 });
-		expect(svg).toContain('width="100"');
-		expect(svg).toContain('height="100"');
+	it("the frame's background color fills the buffer", async () => {
+		// a corner far from the single small circle shows the background color
+		const frame = await firstFrame({
+			width: 320,
+			height: 200,
+			backgroundColor: "#224466",
+		});
+		const r = await render(
+			frame as Scene.Frame<typeof Shapes.Circle | typeof Shapes.Group>,
+		);
+		expect(r.at(310, 190)).toEqual([0x22, 0x44, 0x66, 255]);
 	});
 });

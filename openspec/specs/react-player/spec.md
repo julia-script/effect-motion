@@ -1,108 +1,68 @@
 # react-player Specification
 
 ## Purpose
-React bindings for playing scenes: the `usePlayer` hook (frame collection, playback clock, transport controls) and the `<Player>` component (SVG viewport + play/pause + progress bar), shipped as `@effect-motion/react`.
+The ThorVG-backed React player: `usePlayer`/`<Player>` rendering scene frames onto a canvas through a shared, lazily-acquired ThorVG engine, with async latest-frame-wins rendering, a configurable wasm location, and a browser-safe package surface.
+
 ## Requirements
-### Requirement: usePlayer hook prepares a scene for playback
-The `@effect-motion/react` package SHALL provide a `usePlayer` hook that accepts a scene (and optional settings: `seed`, `frameRate`, `width`, `height`) and acquires frames by pulling them incrementally from the scene's stream with a read-ahead buffer, rather than running the scene to completion first. The hook SHALL expose a `status` of `'loading'` until the first frame is available, `'ready'` once at least one frame is buffered, and `'error'` (with the error value) if the scene fails. Optional `width`/`height` settings SHALL be forwarded to the runner so frames are produced at that resolution.
 
-#### Scenario: Playback is ready before the stream completes
-- **WHEN** a component using `usePlayer(scene)` mounts with a long or infinite scene
-- **THEN** `status` becomes `'ready'` once the initial buffer holds frames, without waiting for the stream to end
+### Requirement: ThorVG-backed canvas rendering
+The React player SHALL render frames through the single ThorVG renderer's browser adapter onto a `<canvas>` it owns, sized from frame metadata. It SHALL NOT depend on any SVG sink. Frame production (the scene stream, read-ahead buffer, and rAF playback clock) SHALL be unchanged from the streaming player.
 
-#### Scenario: Infinite scene plays indefinitely
-- **WHEN** the scene's stream never completes
-- **THEN** frames continue to be pulled ahead of playback and playback continues without termination
+#### Scenario: Player mounts a canvas viewport
+- **WHEN** a `Player` is rendered for a scene
+- **THEN** its viewport contains a `<canvas>` element sized to the frame's resolution
 
-#### Scenario: Failing scene surfaces as error state
-- **WHEN** the scene's effect fails during frame production
-- **THEN** `status` is `'error'` and the error value is exposed, without throwing during render
+#### Scenario: Frames blit onto the canvas
+- **WHEN** the current frame changes
+- **THEN** that frame is rendered through the ThorVG browser adapter onto the player's canvas
 
-#### Scenario: Acquisition is cancelled on unmount
-- **WHEN** the component unmounts while frames are still being pulled
-- **THEN** the pull scope is closed, the underlying stream is interrupted, and no state updates occur afterwards
+### Requirement: Shared, lazily-acquired engine
+The ThorVG engine SHALL be acquired asynchronously on first use and shared across all players through one process-level runtime, so multiple players do not each acquire a separate wasm engine. The engine SHALL be reused for every frame render rather than re-acquired per frame.
 
-#### Scenario: Resolution settings reach the runner
-- **WHEN** `usePlayer(scene, { width: 800, height: 600 })` runs
-- **THEN** produced frames carry width 800 and height 600 in their metadata
+#### Scenario: One engine across players
+- **WHEN** two players are mounted on the same page
+- **THEN** they share a single acquired ThorVG engine (one wasm module), not one each
 
-### Requirement: Playback controls
-`usePlayer` SHALL expose playback state — `playing`, `frame` (current index), `bufferedFrames` (count pulled so far), `totalFrames` (`null` until the stream completes, then the final count), `progress` (0..1, computed against `totalFrames` when known, else against `bufferedFrames`) — and controls: `play()`, `pause()`, `toggle()`, `seek(frame)`, and a `loop` toggle. While playing, the current frame SHALL advance at the scene's frame rate. On reaching the last frame of a completed stream, playback SHALL pause when `loop` is off and restart from frame 0 when `loop` is on.
+#### Scenario: Engine acquired once, reused per frame
+- **WHEN** many frames are rendered
+- **THEN** the engine is acquired once (on first render) and reused; no per-frame engine acquisition occurs
 
-#### Scenario: Play advances frames
-- **WHEN** `play()` is called on a ready player
-- **THEN** `frame` advances over time at the configured frame rate
+### Requirement: Asynchronous render with latest-frame-wins
+Because rendering requires the async engine, frame rendering SHALL be asynchronous, and a superseded frame's in-flight render SHALL NOT overwrite a newer frame. The most recently requested frame SHALL be the one displayed.
 
-#### Scenario: Pause freezes the current frame
-- **WHEN** `pause()` is called during playback
-- **THEN** `frame` stops advancing and the rendered output stays on the current frame
+#### Scenario: A newer frame supersedes a slow render
+- **WHEN** frame N+1 is requested before frame N's render completes
+- **THEN** the canvas ends on frame N+1, not frame N
 
-#### Scenario: Seek clamps to the buffered range
-- **WHEN** `seek(n)` is called
-- **THEN** `frame` becomes `n` clamped to `[0, bufferedFrames - 1]`, so seeking cannot outrun the buffer
+### Requirement: Configurable wasm location with a working default
+The player SHALL locate the ThorVG `.wasm` from a base URL that defaults to a working CDN location (pinned to the packaged `@thorvg/webcanvas` version) and SHALL accept an override option for consumers serving the asset elsewhere or operating offline.
 
-#### Scenario: totalFrames resolves on stream completion
-- **WHEN** a finite scene's stream completes
-- **THEN** `totalFrames` transitions from `null` to the final frame count and `progress` becomes determinate
+#### Scenario: Works with no configuration
+- **WHEN** a player is used without specifying a wasm location
+- **THEN** it loads the `.wasm` from the default pinned CDN URL
 
-#### Scenario: Playback completes without loop
-- **WHEN** the last frame of a completed stream is reached during playback and `loop` is off
-- **THEN** `playing` becomes `false` and `progress` is 1
+#### Scenario: Override is honored
+- **WHEN** a player is given an explicit wasm base URL
+- **THEN** it loads the `.wasm` from that URL instead of the default
 
-#### Scenario: Loop restarts playback
-- **WHEN** the last frame of a completed stream is reached during playback and `loop` is on
-- **THEN** playback continues from frame 0 without pausing
+### Requirement: Loading and error status reflect the engine
+The player's status SHALL be `loading` until both the engine is available and the first frame is buffered, then `ready`; a failed engine acquisition (e.g. blocked wasm fetch) SHALL surface as the player's `error` status rather than a silent hang.
 
-#### Scenario: Replay after completion
-- **WHEN** `play()` is called while the player sits on the last frame of a completed stream
-- **THEN** playback restarts from frame 0
+#### Scenario: Ready only when engine and first frame are available
+- **WHEN** the first frame is buffered but the engine has not finished acquiring (or vice versa)
+- **THEN** the player status is `loading`, becoming `ready` once both are available
 
-### Requirement: Player component renders scene with transport controls
-The package SHALL provide a `<Player>` component that takes a scene (plus optional `width`, `height`, `seed`, `frameRate`, `autoPlay`) and renders: an SVG viewport showing the current frame, a styled control bar with an icon play/pause toggle, an icon loop toggle, a scrubbable progress bar, and a time readout derived from the frame rate (`m:ss / m:ss` when `totalFrames` is known, elapsed time only otherwise). Frames SHALL be rendered using the library's existing SVG DOM renderer. Transport buttons SHALL use icon graphics (not text glyphs) with accessible labels.
+#### Scenario: Engine acquisition failure is surfaced
+- **WHEN** the wasm cannot be loaded
+- **THEN** the player enters the `error` status carrying the failure, not an indefinite loading state
 
-#### Scenario: Scene renders in the viewport
-- **WHEN** `<Player scene={scene} />` has buffered its first frame
-- **THEN** that frame's SVG output is present in the DOM
+### Requirement: Browser-safe package surface
+The renderer packages SHALL keep Node-only code (modules importing `node:*` built-ins) out of the browser-reachable entry points, so a bundler compiling the player for the browser does not pull in `node:fs`/`node:zlib`. Node-only functionality SHALL be reachable through dedicated subpath exports.
 
-#### Scenario: Play/pause button toggles playback
-- **WHEN** the user clicks the play/pause button
-- **THEN** playback starts if paused, and pauses if playing, with the button reflecting the new state
+#### Scenario: Browser bundle excludes Node modules
+- **WHEN** a bundler builds the player for the browser from the packages' default (`.`) entry points
+- **THEN** no module importing a `node:*` built-in is included in the browser bundle
 
-#### Scenario: Loop toggle wraps playback
-- **WHEN** the user enables the loop toggle and a finite scene reaches its last frame during playback
-- **THEN** playback continues from frame 0
-
-#### Scenario: Progress bar scrubbing seeks
-- **WHEN** the user drags the progress bar to a position within the buffered range
-- **THEN** the player seeks to the corresponding frame and the viewport updates
-
-#### Scenario: Time readout reflects position
-- **WHEN** playback sits at frame 90 of a completed 300-frame scene at 30 fps
-- **THEN** the readout shows `0:03 / 0:10`
-
-### Requirement: Viewport sizing follows frame metadata
-The `<Player>` SHALL fill the width of its container (like a video element) while the viewport preserves the scene's aspect ratio from the current frame's `width`/`height` metadata via CSS `aspect-ratio`. Explicit `width`/`height` props SHALL act as overrides forwarded to the runner (and therefore reflected in the metadata); the component SHALL NOT pass a size into the render config, leaving the SVG sink's metadata fallback in effect. Before the first frame arrives, the viewport SHALL reserve space from explicit props when given.
-
-#### Scenario: Default aspect ratio comes from the scene
-- **WHEN** `<Player scene={scene} />` renders a scene whose frames carry width 800 and height 600
-- **THEN** the viewport displays at an 800×600 aspect ratio without any size props
-
-#### Scenario: Props override scene resolution
-- **WHEN** `<Player scene={scene} width={400} height={400} />` renders
-- **THEN** frames are produced at 400×400 and the viewport shows a square aspect ratio
-
-#### Scenario: Container width drives display size
-- **WHEN** the player is placed in a container narrower or wider than the frame width
-- **THEN** the player fills the container's width and the viewport keeps the scene's aspect ratio
-
-### Requirement: Keyboard transport shortcuts
-The `<Player>` root SHALL be focusable and, while focused, SHALL handle: Space to toggle play/pause, ArrowRight to step forward one frame, and ArrowLeft to step back one frame (arrow stepping pauses playback). Shortcuts SHALL be scoped to the focused player instance so multiple players on one page do not interfere.
-
-#### Scenario: Space toggles playback
-- **WHEN** the player root has focus and the user presses Space
-- **THEN** playback toggles and the page does not scroll
-
-#### Scenario: Arrow keys step frames
-- **WHEN** the player root has focus during playback and the user presses ArrowRight
-- **THEN** playback pauses and `frame` advances by exactly one
-
+#### Scenario: Node adapters remain available via a subpath
+- **WHEN** a Node program needs the PNG/buffer output adapters or the Node wasm layer
+- **THEN** they are importable from a dedicated subpath (not the browser-safe default entry)

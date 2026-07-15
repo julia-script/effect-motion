@@ -1,5 +1,4 @@
 import { Effect } from "effect";
-import * as Layer from "effect/Layer";
 import * as Stream from "effect/Stream";
 import { describe, expect, it } from "vitest";
 import * as CameraMod from "../src/Camera";
@@ -7,7 +6,7 @@ import * as Motion from "../src/Motion";
 import type * as Runner from "../src/Runner";
 import * as Scene from "../src/Scene";
 import * as Shapes from "../src/shapes";
-import * as Svg from "../src/svg";
+import { render } from "./support/framebuffer";
 
 type Entities = typeof Shapes.Circle | typeof Shapes.Group;
 type Frame = Scene.Frame<Entities>;
@@ -108,19 +107,11 @@ describe("camera animated by the existing primitives", () => {
 	});
 });
 
-// the sink projects every instance through the camera; assert the results
-describe("SVG sink projects instances through the camera", () => {
-	const layers = Svg.layer.pipe(Layer.provideMerge(Svg.shapesLayer));
-	const renderString = (frame: Frame) =>
-		Effect.runPromise(
-			Effect.gen(function* () {
-				const renderer = yield* Svg.SvgRenderer.Context;
-				return yield* renderer.render(frame, {});
-			}).pipe(Effect.provide(layers)),
-		);
-
+// the renderer projects every instance through the camera; assert the painted
+// results. Positions are screen coords in a 500×300 frame (origin = 250,150).
+describe("the renderer projects instances through the camera", () => {
 	const oneCircle = async (
-		props: { x?: number; y?: number; z?: number },
+		props: { x?: number; y?: number; z?: number; radius?: number },
 		camera: CameraMod.CameraState = CameraMod.IDENTITY,
 	) => {
 		const frame = await lastFrame(
@@ -130,51 +121,60 @@ describe("SVG sink projects instances through the camera", () => {
 			},
 			{ width: 500, height: 300 },
 		);
-		return renderString({ ...frame, camera });
+		return render({ ...frame, camera } as Frame);
 	};
 
-	it("identity camera adds no transform for z=0 content (plain-2D preserved)", async () => {
-		const svg = await oneCircle({ x: 10, y: 10 });
-		expect(svg).not.toContain("transform");
-		expect(svg).toContain('cx="10"');
+	it("identity camera places z=0 content at its plain-2D screen position", async () => {
+		const r = await oneCircle({ x: 200, y: 120, radius: 15 });
+		expect(r.isPainted(200, 120)).toBe(true);
 	});
 
 	it("panning the camera shifts a z=0 shape on screen", async () => {
-		// camera pans +100 in x → the world shifts -100 on screen
-		const svg = await oneCircle(
-			{ x: 10, y: 10 },
+		// camera pans +100 in x → the world shifts -100 on screen. A circle at
+		// world x=200 lands at screen x=100; its original 200 is now background.
+		const r = await oneCircle(
+			{ x: 200, y: 120, radius: 15 },
 			{ ...CameraMod.IDENTITY, x: 100 },
 		);
-		// screen x = 10 - 100 = -90; affine translation e = -100
-		expect(svg).toContain("matrix(1 0 0 1 -100 0)");
+		expect(r.isPainted(100, 120)).toBe(true);
+		expect(r.isPainted(200, 120)).toBe(false);
 	});
 
 	it("a receding shape (z<0) is scaled down by perspective", async () => {
-		const svg = await oneCircle({ x: 0, y: 0, z: -1000 });
-		// depth = F - (-1000) = 2000; scale = F/2000 = 0.5 (F=1000)
-		expect(svg).toContain("matrix(0.5 0 0 0.5");
+		// depth = F - (-1000) = 2000; scale = F/2000 = 0.5 (F=1000). A radius-40
+		// circle whose center is world (0,0) projects to screen
+		// (250 + (0-250)*0.5, 150 + (0-150)*0.5) = (125, 75), shrunk to ~20px.
+		const r = await oneCircle({ x: 0, y: 0, z: -1000, radius: 40 });
+		expect(r.isPainted(125, 75)).toBe(true); // scaled center
+		// a point at the full-scale radius (40px away) is outside the shrunk circle
+		expect(r.isPainted(125 + 32, 75)).toBe(false);
 	});
 });
 
 describe("depth-sorted render order", () => {
-	const layers = Svg.layer.pipe(Layer.provideMerge(Svg.shapesLayer));
-	const renderString = (frame: Frame) =>
-		Effect.runPromise(
-			Effect.gen(function* () {
-				const renderer = yield* Svg.SvgRenderer.Context;
-				return yield* renderer.render(frame, {});
-			}).pipe(Effect.provide(layers)),
-		);
-
 	it("a farther shape paints behind a nearer one, whatever the tree order", async () => {
 		const frame = await lastFrame(function* () {
-			// author near first, far second; depth must still decide
-			yield* Scene.instantiate(Shapes.Circle, { x: 1, z: 0 }); // near
-			yield* Scene.instantiate(Shapes.Circle, { x: 2, z: -400 }); // far
+			// author near (red) first, far (green) second; depth must still
+			// decide. Both overlap screen center so the winner shows there.
+			yield* Scene.instantiate(Shapes.Circle, {
+				x: 250,
+				y: 150,
+				radius: 20,
+				fill: "#ff0000",
+			}); // near, z=0
+			yield* Scene.instantiate(Shapes.Circle, {
+				x: 250,
+				y: 150,
+				z: -400,
+				radius: 20,
+				fill: "#00ff00",
+			}); // far
 			yield* Scene.tick;
 		});
-		const svg = await renderString(frame);
-		// far (cx=2) painted before near (cx=1)
-		expect(svg.indexOf('cx="2"')).toBeLessThan(svg.indexOf('cx="1"'));
+		const r = await render(frame);
+		// near (red) painted last, on top: red wins the shared center
+		const [red, green] = r.at(250, 150);
+		expect(red).toBeGreaterThan(200);
+		expect(green).toBeLessThan(80);
 	});
 });

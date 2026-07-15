@@ -1,14 +1,15 @@
-import { Effect, Layer, Schedule, Stream } from "effect";
-import * as Schema from "effect/Schema";
-import { Name } from "effect/unstable/ai/Tool";
-import { Svg } from ".";
-import * as Entity from "./Entity";
-import * as Instance from "./Instance";
+import { writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { wrapPromise } from "@effect-motion/thorvg";
+import { ThorvgWasmNode } from "@effect-motion/thorvg/node";
+import { Effect, Schedule, Stream } from "effect";
 import * as Motion from "./Motion";
 import * as Physics from "./Physics";
+import { builtinPaints } from "./render";
+import { renderToPng } from "./render/node";
 import * as Scene from "./Scene";
 import * as Shapes from "./shapes";
-import { shapesLayer } from "./svg";
 
 // children live in the group's local coordinates: one motion moves them all
 export const scene = Scene.make(function* () {
@@ -31,8 +32,6 @@ export const scene = Scene.make(function* () {
 		],
 	});
 
-	const moveA = Motion.moveTo({ x: 380 }, "1.5 seconds", "easeInOutCubic");
-	const moveB = Motion.moveTo({ x: 70 }, "1.5 seconds", "easeInOutCubic");
 	yield* Motion.wait("1.5 seconds");
 	yield* duo.pipe(
 		Motion.moveTo({ x: 380 }, "1.5 seconds", "easeInOutCubic"),
@@ -42,23 +41,6 @@ export const scene = Scene.make(function* () {
 		Motion.fadeTo(0.15, "1 second"),
 	);
 });
-// const program = Effect.gen(function* () {
-// 	const renderer = yield* Svg.SvgRenderer.Context;
-// 	const sceneResult = yield* Scene.stream(scene, {
-
-// 	}).pipe(
-// 		Stream.runCollect,
-// 		Effect.provide(renderer)
-// 	)
-
-// 	console.log(sceneResult);
-// 	//  renderer.render(scene, {
-// 	// 	width: 500,
-// 	// 	height: 300,
-// 	// });
-// }).pipe(Effect.provide(shapesLayer));
-
-// Effect.runPromise(program);
 
 // schedule-driven composition: a background pulse loops for the scene's
 // duration while three staggered dots define its actual length
@@ -96,18 +78,22 @@ export const staggered = Scene.make(function* () {
 	);
 });
 
+// render the middle frame of the duo scene to a PNG through the single ThorVG
+// renderer (Node adapter) — the end-to-end path: Scene.stream → renderToPng.
 const movie = Effect.gen(function* () {
-	// const svgRenderer = yield* Svg.SvgRenderer.Context;
-	// const frames = yield* Scene.stream(scene).pipe(Stream.runCollect);
-	// let n = 0;
-	// for (const frame of frames) {
-	// 	console.log(`\x1b[36mframe ${n++}\x1b[0m`);
-	// 	console.log(yield* svgRenderer.render(frame, { width: 500, height: 300 }));
-	// }
-	const frames = yield* Scene.stream(staggered).pipe(Stream.runCollect);
-	console.log(`staggered scene: ${[...frames].length} frames`);
+	const frames = yield* Scene.stream(scene, { width: 500, height: 300 }).pipe(
+		Stream.runCollect,
+	);
+	const list = [...frames];
+	const mid = list[Math.floor(list.length / 2)]!;
+	const png = yield* renderToPng(mid, builtinPaints);
+	const out = join(tmpdir(), "effect-motion-demo.png");
+	yield* wrapPromise(() => writeFile(out, png));
+	console.log(
+		`rendered frame ${Math.floor(list.length / 2)}/${list.length} → ${out}`,
+	);
 });
 
-const layers = Svg.layer.pipe(Layer.provideMerge(Svg.shapesLayer));
-
-Effect.runPromise(movie.pipe(Effect.provide(layers)));
+Effect.runPromise(
+	movie.pipe(Effect.scoped, Effect.provide(ThorvgWasmNode.layer("sw"))),
+);

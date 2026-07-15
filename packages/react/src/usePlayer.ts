@@ -1,10 +1,23 @@
 import * as Effect from "effect/Effect";
+import type * as Fiber from "effect/Fiber";
 import * as Pull from "effect/Pull";
 import * as Stream from "effect/Stream";
-import { type Entity, Fonts, Scene } from "effect-motion";
+import { type Entity, Fonts, Render, Scene } from "effect-motion";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { DEFAULT_WASM_BASE, getRuntime } from "./runtime";
 
 export type PlayerStatus = "loading" | "ready" | "error";
+
+/**
+ * Render a single frame onto a canvas through the shared ThorVG runtime. The
+ * runtime acquires the engine once and reuses it; each call folds the frame
+ * onto its own scoped canvas. Returned as a running fiber so a superseded
+ * frame's render can be interrupted (latest-frame-wins).
+ */
+export type RenderFrame = (
+	frame: PlayerFrame,
+	canvas: HTMLCanvasElement,
+) => Fiber.Fiber<void, unknown>;
 
 /** A scene as produced by `Scene.make`, requirements erased. */
 // ponytail: the core's own tests erase scene generics the same way
@@ -23,6 +36,13 @@ export interface UsePlayerOptions {
 	readonly height?: number | undefined;
 	/** start playing as soon as the first frame is buffered */
 	readonly autoPlay?: boolean | undefined;
+	/**
+	 * Base URL the ThorVG `.wasm` is fetched from. Defaults to a pinned CDN
+	 * location (see runtime.ts) so the player works with no config; override
+	 * when serving the asset locally or when offline/CSP-restricted. The engine
+	 * is process-global, so the first player's value wins for the page.
+	 */
+	readonly wasmBaseUrl?: string | undefined;
 }
 
 export interface Player {
@@ -47,6 +67,12 @@ export interface Player {
 	readonly toggle: () => void;
 	readonly seek: (frame: number) => void;
 	readonly setLoop: (loop: boolean) => void;
+	/**
+	 * Render a frame onto a canvas through the shared ThorVG engine, returning
+	 * the running fiber. The `Player` calls this on frame change and interrupts
+	 * the prior fiber so a slow render can't overwrite a newer frame.
+	 */
+	readonly renderFrame: RenderFrame;
 }
 
 /**
@@ -60,7 +86,14 @@ export const usePlayer = (
 	scene: AnyScene,
 	options: UsePlayerOptions = {},
 ): Player => {
-	const { seed, frameRate = 60, width, height, autoPlay = false } = options;
+	const {
+		seed,
+		frameRate = 60,
+		width,
+		height,
+		autoPlay = false,
+		wasmBaseUrl = DEFAULT_WASM_BASE,
+	} = options;
 	// ponytail: the buffer is append-only and unbounded — infinite scenes
 	// grow it forever; swap in a ring buffer with a re-run-from-0 story if
 	// memory ever matters. buffer[i] never changes once present, so reading
@@ -73,6 +106,49 @@ export const usePlayer = (
 	const [playing, setPlaying] = useState(false);
 	const [loop, setLoop] = useState(false);
 	const [fontsReady, setFontsReady] = useState(false);
+	// the shared ThorVG engine acquires asynchronously on first use; the player
+	// is not `ready` until it is available, and an acquisition failure (e.g. a
+	// blocked wasm fetch) surfaces as the player's error rather than hanging.
+	const [engineReady, setEngineReady] = useState(false);
+
+	// force the shared engine to acquire once, up front, so `status` can reflect
+	// its readiness. Runs a trivial effect on the runtime — ManagedRuntime
+	// memoizes the acquired engine, so this does not re-init per player.
+	useEffect(() => {
+		let cancelled = false;
+		const runtime = getRuntime(wasmBaseUrl);
+		runtime.runPromise(Effect.void).then(
+			() => {
+				if (!cancelled) {
+					setEngineReady(true);
+				}
+			},
+			(err) => {
+				if (!cancelled) {
+					setError(err);
+				}
+			},
+		);
+		return () => {
+			cancelled = true;
+		};
+	}, [wasmBaseUrl]);
+
+	// render a frame onto a canvas via the shared runtime. renderToCanvas needs
+	// a Scope (per-frame canvas) which Effect.scoped discharges; the runtime
+	// provides the engine. Forked so the Player can interrupt a superseded
+	// frame's render (latest-frame-wins).
+	const renderFrame = useCallback<RenderFrame>(
+		(frame, canvas) =>
+			getRuntime(wasmBaseUrl).runFork(
+				Render.renderToCanvas(
+					frame as never,
+					Render.builtinPaints,
+					canvas,
+				).pipe(Effect.scoped),
+			),
+		[wasmBaseUrl],
+	);
 
 	// font preload: load the scene's declared url fonts (Fonts annotation)
 	// alongside initial buffering. Fonts cannot affect frame data, so this
@@ -258,7 +334,7 @@ export const usePlayer = (
 	const status: PlayerStatus =
 		error !== null
 			? "error"
-			: bufferedFrames > 0 && fontsReady
+			: bufferedFrames > 0 && fontsReady && engineReady
 				? "ready"
 				: "loading";
 	const denominator = (totalFrames ?? bufferedFrames) - 1;
@@ -284,5 +360,6 @@ export const usePlayer = (
 		toggle,
 		seek,
 		setLoop,
+		renderFrame,
 	};
 };

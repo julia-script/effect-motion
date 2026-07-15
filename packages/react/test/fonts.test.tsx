@@ -1,7 +1,24 @@
 // @vitest-environment happy-dom
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
+import { Effect } from "effect";
 import { Fonts, Scene, Shapes } from "effect-motion";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+// stub the wasm engine runtime (no wasm under happy-dom) so the engine reads as
+// ready immediately — these tests are about the font-preload gate on `status`,
+// not rendering (design D5)
+vi.mock("../src/runtime", () => {
+	const fiber = Effect.runFork(Effect.void);
+	return {
+		DEFAULT_WASM_BASE: "mock://wasm/",
+		getRuntime: () => ({
+			runPromise: () => Promise.resolve(undefined),
+			runFork: () => fiber,
+			dispose: () => Promise.resolve(),
+		}),
+	};
+});
+
 import { type AnyScene, usePlayer } from "../src/usePlayer";
 
 /** controllable FontFace: loads settle only when the test says so */

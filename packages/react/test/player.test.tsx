@@ -6,8 +6,26 @@ import {
 	screen,
 	waitFor,
 } from "@testing-library/react";
+import { Effect } from "effect";
 import { Motion, Scene, Shapes } from "effect-motion";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+// The real runtime loads a wasm engine over the network, which doesn't
+// instantiate under happy-dom. Stub it so the engine reads as "ready" and each
+// render is a no-op fiber — these tests cover player *behavior*, not pixels
+// (real rendering is proven by the motion framebuffer tests). (design D5)
+vi.mock("../src/runtime", () => {
+	const fiber = Effect.runFork(Effect.void);
+	return {
+		DEFAULT_WASM_BASE: "mock://wasm/",
+		getRuntime: () => ({
+			runPromise: () => Promise.resolve(undefined),
+			runFork: () => fiber,
+			dispose: () => Promise.resolve(),
+		}),
+	};
+});
+
 import { Player } from "../src/Player";
 import type { AnyScene } from "../src/usePlayer";
 
@@ -34,19 +52,26 @@ const readyPlayer = async (
 };
 
 describe("Player", () => {
-	it("renders the first frame's SVG into the viewport", async () => {
+	it("mounts a canvas viewport", async () => {
 		const { container } = await readyPlayer();
-		const circle = container.querySelector("svg circle");
-		expect(circle).not.toBeNull();
-		expect(circle?.getAttribute("cx")).toBe("0");
+		expect(container.querySelector("canvas")).not.toBeNull();
+	});
+
+	it("becomes ready once the engine and first frame are available", async () => {
+		render(<Player scene={tweenScene} width={200} height={100} />);
+		// the Play button is disabled while loading, enabled once ready
+		await waitFor(() => {
+			const button = screen.getByRole<HTMLButtonElement>("button", {
+				name: "Play",
+			});
+			expect(button.disabled).toBe(false);
+		});
 	});
 
 	it("sizes the viewport from frame metadata with aspect ratio", async () => {
 		// no width/height props: the scene's own metadata (runner defaults
-		// 500x300) drives the viewport
+		// 500x300) drives the viewport box
 		const { container } = await readyPlayer({});
-		const svg = container.querySelector("svg");
-		expect(svg?.getAttribute("viewBox")).toBe("0 0 500 300");
 		const viewport = container.querySelector<HTMLElement>(
 			"[style*='aspect-ratio']",
 		);
@@ -55,8 +80,10 @@ describe("Player", () => {
 
 	it("forwards width/height props into the frame metadata", async () => {
 		const { container } = await readyPlayer({ width: 200, height: 100 });
-		const svg = container.querySelector("svg");
-		expect(svg?.getAttribute("viewBox")).toBe("0 0 200 100");
+		const viewport = container.querySelector<HTMLElement>(
+			"[style*='aspect-ratio']",
+		);
+		expect(viewport?.style.aspectRatio).toBe("200 / 100");
 	});
 
 	it("play/pause button toggles playback", async () => {
@@ -68,8 +95,8 @@ describe("Player", () => {
 		expect(screen.getByRole("button", { name: "Play" })).toBe(button);
 	});
 
-	it("scrubbing the progress bar seeks the viewport", async () => {
-		const { container } = await readyPlayer();
+	it("scrubbing the progress bar seeks", async () => {
+		await readyPlayer();
 		const slider = screen.getByRole("slider", {
 			name: "Progress",
 		}) as HTMLInputElement;
@@ -77,10 +104,6 @@ describe("Player", () => {
 		const last = Number(slider.max);
 		fireEvent.change(slider, { target: { value: String(last) } });
 		expect(slider.value).toBe(String(last));
-		await waitFor(() => {
-			const circle = container.querySelector("svg circle");
-			expect(circle?.getAttribute("cx")).toBe("100");
-		});
 	});
 
 	it("loop button toggles pressed state", async () => {

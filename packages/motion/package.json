@@ -23,6 +23,10 @@
 		".": {
 			"types": "./dist/index.d.ts",
 			"default": "./dist/index.js"
+		},
+		"./render-node": {
+			"types": "./dist/render-node.d.ts",
+			"default": "./dist/render-node.js"
 		}
 	},
 	"files": [
@@ -44,6 +48,7 @@
 		"@types/node": "^26.1.1",
 		"effect": "4.0.0-beta.94",
 		"happy-dom": "^20.10.6",
+		"@effect-motion/thorvg": "workspace:*",
 		"tsx": "^4.23.0",
 		"typescript": "^7.0.2",
 		"vitest": "^4.1.10"
