@@ -54,7 +54,9 @@ export const resolve = (input: SpringInput): Effect.Effect<Spring> =>
 			);
 		}
 		if (spring.mass <= 0) {
-			return Effect.die(new Error("Physics: spring mass must be greater than 0"));
+			return Effect.die(
+				new Error("Physics: spring mass must be greater than 0"),
+			);
 		}
 		if (spring.stiffness < 0) {
 			return Effect.die(new Error("Physics: spring stiffness must be >= 0"));

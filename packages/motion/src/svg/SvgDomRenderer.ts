@@ -1,6 +1,6 @@
 import * as Effect from "effect/Effect";
 import * as Renderer from "../Renderer";
-import { depthOf, layerTransform, wrapLayer } from "./camera";
+import { wrapProjected } from "./project";
 import { SVG_NS, type SvgNode } from "./SvgNode";
 
 export interface SvgDomConfig {
@@ -53,17 +53,13 @@ export const SvgDomRenderer = Renderer.make<SvgNode, SvgDomConfig>()(
 						},
 					}),
 				);
-				// each top-level layer gets the camera scaled by its own depth
-				for (const { render, entry } of entities) {
-					const transform = layerTransform(
-						meta.camera,
-						depthOf(entry.data),
-						width,
-						height,
-					);
-					root.append(
-						createSvgElement(doc, wrapLayer(yield* render, transform)),
-					);
+				// entities arrive depth-sorted (far→near); wrap each in its
+				// camera projection and append in that order
+				for (const { render, projection } of entities) {
+					const wrapped = wrapProjected(yield* render, projection);
+					if (wrapped !== null) {
+						root.append(createSvgElement(doc, wrapped));
+					}
 				}
 				config.target.replaceChildren(root);
 			}),

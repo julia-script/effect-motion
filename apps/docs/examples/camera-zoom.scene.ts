@@ -1,8 +1,10 @@
 import { Motion, Scene, Shapes } from "effect-motion";
 
-// A punch-in: zoom the camera onto a subject while recentering on it, hold,
-// then pull back out. Pan and zoom animate together via Scene.all, so the
-// subject stays framed the whole way in.
+// A punch-in, the 3D-camera way: there is no `zoom` scalar any more. Grow the
+// camera's `focalLength` to narrow the field of view (an optical zoom) while
+// panning to keep the subject centred, hold, then pull back. Dollying (moving
+// the camera's `z`) is the other way to get closer — a different look, since
+// it changes perspective; focal length does not.
 export const scene = Scene.make(function* () {
 	// a field of dots; we punch in on the red one at (350, 90)
 	for (const [x, y, fill] of [
@@ -15,11 +17,13 @@ export const scene = Scene.make(function* () {
 	}
 
 	const cam = yield* Scene.camera;
-	// zoom to 2.5× centered on the subject: at zoom Z about the viewport
-	// centre (250,150), panning the camera to (subject - centre) keeps the
-	// subject on screen centre — here roughly (100, -60).
+	// zoom in: 2.5× the default focal length narrows the FOV. Pan the camera
+	// so the subject (350,90) sits at the viewport centre (250,150) — the pan
+	// is (subject - centre) = (100, -60).
 	yield* Scene.all([
-		cam.pipe(Motion.tweenTo({ zoom: 2.5 }, "1.2 seconds", "easeInOutCubic")),
+		cam.pipe(
+			Motion.tweenTo({ focalLength: 2500 }, "1.2 seconds", "easeInOutCubic"),
+		),
 		cam.pipe(
 			Motion.moveTo({ x: 100, y: -60 }, "1.2 seconds", "easeInOutCubic"),
 		),
@@ -27,7 +31,9 @@ export const scene = Scene.make(function* () {
 	yield* Motion.wait("500 millis");
 	// pull back out to the establishing shot
 	yield* Scene.all([
-		cam.pipe(Motion.tweenTo({ zoom: 1 }, "1 second", "easeInOutCubic")),
+		cam.pipe(
+			Motion.tweenTo({ focalLength: 1000 }, "1 second", "easeInOutCubic"),
+		),
 		cam.pipe(Motion.moveTo({ x: 0, y: 0 }, "1 second", "easeInOutCubic")),
 	]);
 });

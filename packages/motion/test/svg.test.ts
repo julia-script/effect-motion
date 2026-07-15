@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { Effect, Layer, Schema } from "effect";
 import { describe, expect, it } from "vitest";
+import * as Camera from "../src/Camera";
 import * as Entity from "../src/Entity";
 import type * as Scene from "../src/Scene";
 import * as Shapes from "../src/shapes";
@@ -84,7 +85,7 @@ const frameOf = (
 	width: 500,
 	height: 300,
 	backgroundColor: "#16161d",
-	camera: { x: 0, y: 0, zoom: 1 },
+	camera: Camera.IDENTITY,
 });
 
 const circleFrame = frameOf({

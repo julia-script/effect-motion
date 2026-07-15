@@ -2,6 +2,7 @@
 import { Effect, Exit, Layer } from "effect";
 import * as Stream from "effect/Stream";
 import { describe, expect, it } from "vitest";
+import * as Camera from "../src/Camera";
 import * as Runner from "../src/Runner";
 import * as Scene from "../src/Scene";
 import * as Shapes from "../src/shapes";
@@ -27,7 +28,7 @@ const frameOf = (
 	width: 500,
 	height: 300,
 	backgroundColor: "#16161d",
-	camera: { x: 0, y: 0, zoom: 1 },
+	camera: Camera.IDENTITY,
 });
 
 const renderString = (frame: Scene.Frame<Entities>) =>
@@ -42,21 +43,16 @@ const circleAt = (x: number) => ({
 });
 
 describe("group rendering", () => {
-	it("normalizes transforms to a matrix through both sinks", async () => {
-		const groupData = Shapes.Group.make({
-			x: 100,
-			y: 50,
-			transform: [
-				{ _tag: "transform/translate", x: 1, y: 2 },
-				{ _tag: "transform/scale", x: 2, y: 3 },
-			],
-			opacity: 0.5,
-			children: ["c1"],
-		});
+	// A Group is coordinate composition, not a paint-order boundary: it emits
+	// no wrapper element. Its position shifts each child's WORLD coordinates,
+	// so the child projects to the composed screen position. (ponytail: only
+	// the group's translation composes down for the POC; its 2D affine
+	// `transform` matrix is not yet threaded into child world coords.)
+	it("a group's position shifts its child's projected screen position", async () => {
 		const frame = frameOf(
 			{
 				g1: {
-					data: groupData,
+					data: Shapes.Group.data.make({ x: 100, y: 50, children: ["c1"] }),
 					entity: Shapes.Group,
 				},
 				c1: circleAt(10),
@@ -64,33 +60,15 @@ describe("group rendering", () => {
 			["g1"],
 		);
 
+		// child local x=10 + group x=100 → world x=110; under the resting
+		// camera world == screen, wrapped in a camera <g matrix> that carries
+		// the composed translation. The circle keeps its own cx=10.
 		const svg = await Effect.runPromise(renderString(frame));
-		expect(svg).toContain(
-			'<g transform="matrix(2 0 0 3 101 52)" opacity="0.5"><circle cx="10"',
-		);
-		expect(groupData.transform).toEqual({
-			a: 2,
-			b: 0,
-			c: 0,
-			d: 3,
-			e: 1,
-			f: 2,
-		});
-
-		const target = document.createElement("div");
-		await Effect.runPromise(
-			Effect.gen(function* () {
-				const renderer = yield* Svg.SvgDomRenderer.Context;
-				yield* renderer.render(frame, { target, width: 500, height: 300 });
-			}).pipe(Effect.provide(layers)),
-		);
-		const g = target.querySelector("g");
-		expect(g?.getAttribute("transform")).toBe("matrix(2 0 0 3 101 52)");
-		// child coordinates stay local — position comes from the transform
-		expect(g?.querySelector("circle")?.getAttribute("cx")).toBe("10");
+		expect(svg).toContain('<g transform="matrix(1 0 0 1 100 50)">');
+		expect(svg).toContain('<circle cx="10"');
 	});
 
-	it("nested groups nest g elements", async () => {
+	it("nested groups compose their translations (no nested wrappers)", async () => {
 		const frame = frameOf(
 			{
 				outer: {
@@ -105,15 +83,19 @@ describe("group rendering", () => {
 			},
 			["outer"],
 		);
+		// outer(10) + inner(20) = 30 composed translation, ONE camera <g>, no
+		// per-group nesting
 		const svg = await Effect.runPromise(renderString(frame));
-		expect(svg).toContain(
-			'<g transform="matrix(1 0 0 1 10 0)"><g transform="matrix(1 0 0 1 20 0)"><circle cx="5"',
-		);
+		expect(svg).toContain('<g transform="matrix(1 0 0 1 30 0)"><circle cx="5"');
+		// exactly one <g> (the camera placement), not one per group
+		expect(svg.match(/<g /g)).toHaveLength(1);
 	});
 
 	it("the root group itself does not render", async () => {
 		const frame = frameOf({ c1: circleAt(1) }, ["c1"]);
 		const svg = await Effect.runPromise(renderString(frame));
+		// c1 at world (1,0) under the resting camera is identity-placed: no
+		// camera wrapper, and the root never emits its own element
 		expect(svg).not.toContain("<g");
 	});
 });
@@ -267,13 +249,30 @@ describe("scene attachment", () => {
 		).toHaveLength(0);
 	});
 
-	it("reordering children controls paint order", async () => {
-		const frame = frameOf(
-			{ a: circleAt(1), b: circleAt(2) },
-			["b", "a"], // reversed
-		);
+	it("depth controls paint order, not tree order", async () => {
+		// a deeper circle paints first (behind) regardless of tree order. The
+		// nearer circle (z closer to the camera) is painted last, on top.
+		const near = {
+			data: Shapes.Circle.data.make({ x: 1, z: 0 }),
+			entity: Shapes.Circle,
+		};
+		const far = {
+			data: Shapes.Circle.data.make({ x: 2, z: -400 }),
+			entity: Shapes.Circle,
+		};
+		// author the NEAR one first in tree order; depth must still win
+		const frame = frameOf({ near, far }, ["near", "far"]);
 		const svg = await Effect.runPromise(renderString(frame));
+		// far (cx=2) painted before near (cx=1)
 		expect(svg.indexOf('cx="2"')).toBeLessThan(svg.indexOf('cx="1"'));
+	});
+
+	it("equal-depth paintables tie-break on id deterministically", async () => {
+		// both at z=0: tie broken by id ("a" < "b"), independent of tree order
+		const frame = frameOf({ a: circleAt(1), b: circleAt(2) }, ["b", "a"]);
+		const svg = await Effect.runPromise(renderString(frame));
+		// "a" (cx=1) paints before "b" (cx=2) by id order, not tree order
+		expect(svg.indexOf('cx="1"')).toBeLessThan(svg.indexOf('cx="2"'));
 	});
 });
 

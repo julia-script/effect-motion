@@ -9,6 +9,7 @@ import type * as Schedule from "effect/Schedule";
 import type * as Schema from "effect/Schema";
 import type * as Scope from "effect/Scope";
 import * as Stream from "effect/Stream";
+import type * as Camera from "./Camera";
 import type * as Entity from "./Entity";
 import type * as Instance from "./Instance";
 import * as Phaser from "./Phaser";
@@ -139,8 +140,8 @@ export interface Frame<Entities extends Entity.AnyEntity> {
 	width: number;
 	height: number;
 	backgroundColor: string;
-	/** the active camera's view; identity `{0,0,1}` when unused */
-	camera: { x: number; y: number; zoom: number };
+	/** the active camera's view; Camera.IDENTITY when unused */
+	camera: Camera.CameraState;
 }
 export const step = <E, R, Entities extends Entity.AnyEntity>(
 	runningScene: RunningScene<E, R, Entities>,

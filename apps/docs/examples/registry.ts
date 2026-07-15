@@ -8,6 +8,7 @@ import { scene as chain } from "./chain.scene";
 import { scene as children } from "./children.scene";
 import { scene as crossfade } from "./crossfade.scene";
 import { scene as customFonts } from "./custom-fonts.scene";
+import { scene as depth3d } from "./depth-3d.scene";
 import { scene as easingRace } from "./easing-race.scene";
 import { scene as floatingField } from "./floating-field.scene";
 import { scene as floatingMotes } from "./floating-motes.scene";
@@ -33,6 +34,7 @@ export const examples: Record<string, AnyScene> = {
 	springs,
 	groups,
 	"camera-parallax": cameraParallax,
+	"depth-3d": depth3d,
 	"camera-zoom": cameraZoom,
 	"camera-shake": cameraShake,
 	"camera-swap": cameraSwap,

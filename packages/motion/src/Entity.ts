@@ -15,10 +15,15 @@ export interface TraitLens<Data, Value> {
 	readonly set: (data: Data, value: Value) => Data;
 }
 
-/** a type alias (not interface) so it satisfies Record constraints */
+/**
+ * a type alias (not interface) so it satisfies Record constraints.
+ * Position is 3D: `z` is depth (0 = the screen plane). 2D shapes default
+ * z to 0 and read as plain-2D; the camera projects x/y/z to screen.
+ */
 export type Position = {
 	readonly x: number;
 	readonly y: number;
+	readonly z: number;
 };
 
 export type EntityTraits<Data> = {

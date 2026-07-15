@@ -28,7 +28,8 @@ export const rasterize = (
 	options?: ResvgRenderOptions,
 ): Effect.Effect<Uint8Array, RasterizeError> =>
 	Effect.try({
-		try: () => new Uint8Array(new ResvgJs(svg, options ?? null).render().asPng()),
+		try: () =>
+			new Uint8Array(new ResvgJs(svg, options ?? null).render().asPng()),
 		catch: (cause) => new RasterizeError({ cause }),
 	});
 

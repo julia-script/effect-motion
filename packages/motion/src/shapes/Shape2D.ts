@@ -18,9 +18,20 @@ import type * as Entity from "../Entity";
 export const defaultedNumber = (value: number) =>
 	Schema.Number.pipe(Schema.withConstructorDefault(Effect.succeed(value)));
 
+// z is depth (0 = the screen plane); a default-constructed shape sits at
+// z=0 and projects to plain-2D coordinates under the resting camera.
 export const position = {
 	x: defaultedNumber(0),
 	y: defaultedNumber(0),
+	z: defaultedNumber(0),
+};
+
+// Euler orientation for a shape's plane. All-zero (the default) is a
+// billboard facing the camera; non-zero tilts the plane in 3D.
+export const orientation = {
+	rotX: defaultedNumber(0),
+	rotY: defaultedNumber(0),
+	rotZ: defaultedNumber(0),
 };
 
 export const opacity = {
@@ -38,12 +49,15 @@ export const filled = {
 	...opacity,
 };
 
-/** standard x/y position lens for shapes whose position IS x/y */
-export const positionLens = <Data extends { x: number; y: number }>(): //
+/** standard x/y/z position lens for shapes whose position IS x/y/z */
+export const positionLens = <
+	Data extends { x: number; y: number; z: number },
+>(): //
 Entity.TraitLens<Data, Entity.Position> => ({
-	get: (data) => ({ x: data.x, y: data.y }),
+	get: (data) => ({ x: data.x, y: data.y, z: data.z }),
 	// spread of a generic yields Data & {...}; assignable back to Data
-	set: (data, value) => ({ ...data, x: value.x, y: value.y }) as Data,
+	set: (data, value) =>
+		({ ...data, x: value.x, y: value.y, z: value.z }) as Data,
 });
 
 /** standard opacity lens */

@@ -1,6 +1,6 @@
 import * as Effect from "effect/Effect";
 import * as Renderer from "../Renderer";
-import { depthOf, layerTransform, wrapLayer } from "./camera";
+import { wrapProjected } from "./project";
 import { SVG_NS, type SvgNode, vnodeToString } from "./SvgNode";
 
 export interface SvgConfig {
@@ -18,15 +18,13 @@ export const SvgRenderer = Renderer.make<SvgNode, SvgConfig>()("SvgRenderer", {
 			let svg = `<svg xmlns="${SVG_NS}" width="${width}" height="${height}">`;
 			// a rect, not a style attr — survives rasterizers that ignore CSS
 			svg += `<rect width="100%" height="100%" fill="${meta.backgroundColor}"/>`;
-			// each top-level layer gets the camera scaled by its own depth
-			for (const { render, entry } of entities) {
-				const transform = layerTransform(
-					meta.camera,
-					depthOf(entry.data),
-					width,
-					height,
-				);
-				svg += vnodeToString(wrapLayer(yield* render, transform));
+			// entities arrive depth-sorted (far→near); wrap each in its camera
+			// projection and paint in that order
+			for (const { render, projection } of entities) {
+				const wrapped = wrapProjected(yield* render, projection);
+				if (wrapped !== null) {
+					svg += vnodeToString(wrapped);
+				}
 			}
 			return `${svg}</svg>`;
 		}),

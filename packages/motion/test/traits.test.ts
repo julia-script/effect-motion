@@ -11,10 +11,10 @@ describe("lens laws on built-ins", () => {
 	it("set returns new immutable data; get(set(d, v)) = v", () => {
 		const position = Shapes.Circle.traits["~position"];
 		const data = Shapes.Circle.data.make({ x: 1, y: 2 });
-		const moved = position.set(data, { x: 10, y: 20 });
+		const moved = position.set(data, { x: 10, y: 20, z: 5 });
 		expect(moved).not.toBe(data);
 		expect(data.x).toBe(1); // original untouched
-		expect(position.get(moved)).toEqual({ x: 10, y: 20 });
+		expect(position.get(moved)).toEqual({ x: 10, y: 20, z: 5 });
 
 		const opacity = Shapes.Circle.traits["~opacity"];
 		const faded = opacity.set(data, 0.5);
@@ -25,9 +25,9 @@ describe("lens laws on built-ins", () => {
 	it("Line's position translates both endpoints", () => {
 		const position = Shapes.Line.traits["~position"];
 		const data = Shapes.Line.data.make({ x: 0, y: 0, x2: 50, y2: 20 });
-		const moved = position.set(data, { x: 100, y: 100 });
+		const moved = position.set(data, { x: 100, y: 100, z: 0 });
 		expect(moved).toMatchObject({ x: 100, y: 100, x2: 150, y2: 120 });
-		expect(position.get(moved)).toEqual({ x: 100, y: 100 });
+		expect(position.get(moved)).toEqual({ x: 100, y: 100, z: 0 });
 	});
 });
 

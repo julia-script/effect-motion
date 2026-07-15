@@ -1,65 +1,95 @@
 ---
 title: Camera
-description: An animatable camera and per-layer parallax — pan and zoom the view without touching world coordinates
+description: A free 3D camera — position, orientation, and focal length — projecting a 2.5D scene without touching world coordinates
 ---
 
-The camera is the view onto your scene: pan and zoom it, and the whole scene
-moves without any shape's data changing. It is an **ordinary instance**, so the
-same animators drive it as drive everything else.
+The camera is the view onto your scene: a real 3D camera with a position, an
+orientation, and a focal length. Move it and the whole scene reprojects without
+any shape's data changing. It is an **ordinary instance**, so the same animators
+drive it as drive everything else.
 
 ```ts
 import { Motion, Scene } from "effect-motion";
 
 const cam = yield* Scene.camera;
-// pan and zoom with the primitives you already know
+// dolly forward and orbit — the primitives you already know
 yield* cam.pipe(
-	Motion.moveTo({ x: 200 }, "2 seconds", "easeInOutCubic"),
-	Motion.tweenTo({ zoom: 1.5 }, "1 second"),
+	Motion.moveTo({ z: -400 }, "2 seconds", "easeInOutCubic"),
+	Motion.tweenTo({ rotY: Math.PI / 6 }, "1 second"),
 );
 ```
 
-- `~position` (`x`, `y`) is the camera's **pan** in world units — `moveTo`,
-  `move`, `spring` all apply.
-- `zoom` is a numeric field (1 = identity) — animate it with `tween` / `tweenTo`.
+- `~position` (`x`, `y`, `z`) is the camera's **world position** — `moveTo`,
+  `move`, `spring` all apply. `x`/`y` pan; `z` dollies (moves toward or away).
+- `rotX`, `rotY`, `rotZ` are the camera's **Euler orientation** — animate them
+  with `tween` / `tweenTo` to orbit, tilt, or roll.
+- `focalLength` sets the **field of view** (a longer focal length is a tighter,
+  more telephoto zoom). It replaces the old flat `zoom` scalar.
 - The camera is never drawn. A default identity camera is always present, so
-  `Scene.camera` never returns null and scenes that ignore it render unchanged.
+  `Scene.camera` never returns null and scenes that ignore depth render
+  unchanged.
 
-World coordinates never move: a circle authored at `x: 100` always has
-`data.x === 100`, whatever the camera does. The camera is applied at render
-time, so determinism and `moveTo` semantics are untouched.
+World coordinates never move: a circle authored at `x: 100, z: -300` always has
+that data, whatever the camera does. Projection happens at render time, so
+determinism and `moveTo` semantics are untouched.
 
-## Parallax with `depth`
+## Depth is real
 
-A `Layer` is a container that carries a `depth` — the fraction of the camera
-that layer feels, pan and zoom together. Far layers (small depth) drift slowly;
-the default layer moves fully; a `depth: 0` layer is pinned to the screen.
+Every object carries a world `z` (default 0 — the screen plane). The camera
+projects `(x, y, z)` to the screen through a perspective projection, so:
 
-| `depth` | effect |
-|---|---|
-| `1` (default) | full camera — pans and zooms with the view |
-| `0.3` | parallax — pans 30% and zooms 30% of the way (a distant layer) |
-| `0` | screen-fixed — no pan, no zoom (a HUD) |
+- **near is bigger, far is smaller** — same world size, foreshortened by depth.
+- **render order is depth-to-camera, not tree order** — a deeper object paints
+  behind a nearer one no matter where it sits in the tree. Objects re-sort as
+  the camera moves.
+- **parallax falls out for free** — pan the camera and far objects drift slower
+  than near ones, with no dedicated parallax primitive.
 
-`Layer` is deliberately minimal — just `children` and `depth`, no position or
-opacity of its own. `depth` lives on its own entity (not on `Group`) so it never
-collides with the transforms a `Group` carries, and so layers can grow their own
-rules later. Parallax is opt-in: content outside a `Layer` simply feels the full
-camera. Stack a few Layers at different depths and pan the camera:
+<Example name="depth-3d" />
+
+Cards at increasing depth scatter into the distance, a big `Rect` tilts back as
+a floor, and the free camera dollies forward while orbiting — the draw order
+re-sorts every frame as the camera swings around.
+
+### Parallax from depth
+
+Give objects (or a `Group` of them) different `z` values and pan the camera:
+the far ones lag, the near ones track. This is the old "layered parallax", now
+just a consequence of perspective.
 
 <Example name="camera-parallax" />
 
-The far starfield barely moves, the mid squares drift at half speed, the near
-circles track the camera fully, and the HUD pill stays pinned to the screen — all
-from one camera pan. The starfield is a `Particles.field` living inside the far
-`depth: 0.2` layer, so the whole field parallaxes as one layer.
+The far starfield barely moves, the mid squares drift at half speed, and the
+near circles track the camera fully — all from one camera pan and three depths.
+
+## Tilted planes
+
+A `Rect` carries an Euler orientation (`rotX`/`rotY`/`rotZ`). Leave it at zero
+and the Rect is a camera-facing billboard; tilt it and it becomes a flat plane
+in 3D — a floor, a wall, a card lying back. Its four corners are projected
+individually, so a receding plane renders as a true perspective trapezoid in
+both the live DOM sink and the self-contained SVG export.
+
+```ts
+// a floor: a wide Rect tilted back so it recedes toward the horizon
+yield* Scene.instantiate(Shapes.Rect, {
+	x: -300, y: 180, z: -200,
+	width: 900, height: 900,
+	rotX: Math.PI / 2.3,
+	fill: "#232946",
+});
+```
+
+Tilt is scoped to `Rect` for now; other shapes keep their orientation fields but
+render as billboards.
 
 ## Movements
 
 Because the camera is just an instance, every animator composes. A few common
 shots:
 
-**Punch-in** — zoom and recentre together with `Scene.all`, so the subject stays
-framed the whole way in, then pull back out:
+**Punch-in** — grow `focalLength` and recentre together with `Scene.all`, so the
+subject stays framed the whole way in, then pull back out:
 
 <Example name="camera-zoom" />
 
@@ -78,7 +108,7 @@ create yourself (for example, to have it follow a subject), swap it in with
 ```ts
 import { Camera } from "effect-motion";
 
-const chase = yield* Scene.instantiate(Camera.Camera, { x: 0, y: 0 });
+const chase = yield* Scene.instantiate(Camera.Camera, { x: 0, y: 0, z: 1000 });
 yield* Scene.setCamera(chase);
 // animating `chase` now moves the view
 ```

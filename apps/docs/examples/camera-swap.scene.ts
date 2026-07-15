@@ -27,18 +27,21 @@ export const scene = Scene.make(function* () {
 		Motion.tweenTo({ radius: 30 }, "300 millis", "easeOutCubic"),
 	);
 
-	// shot A: push in on the LEFT subject (pan so x=130 sits on frame centre)
+	// shot A: push in on the LEFT subject (pan so x=130 sits on frame centre).
+	// A longer focal length narrows the FOV — the 3D-camera "zoom".
 	yield* Scene.all([
-		camA.pipe(Motion.tweenTo({ zoom: 1.9 }, "900 millis", "easeInOutCubic")),
+		camA.pipe(
+			Motion.tweenTo({ focalLength: 1900 }, "900 millis", "easeInOutCubic"),
+		),
 		camA.pipe(Motion.moveTo({ x: -120, y: 0 }, "900 millis", "easeInOutCubic")),
 	]);
 	yield* Motion.wait("500 millis");
 
-	// CUT: swap to camera B, pre-framed on the RIGHT subject at the same zoom
+	// CUT: swap to camera B, pre-framed on the RIGHT subject at the same FOV
 	const camB = yield* Scene.instantiate(Camera.Camera, {
 		x: 120,
 		y: 0,
-		zoom: 1.9,
+		focalLength: 1900,
 	});
 	yield* Scene.setCamera(camB);
 	// the right subject reacts, so the cut clearly lands on a different subject
@@ -49,7 +52,9 @@ export const scene = Scene.make(function* () {
 
 	// pull back out to the wide two-shot — re-establishes context
 	yield* Scene.all([
-		camB.pipe(Motion.tweenTo({ zoom: 1 }, "900 millis", "easeInOutCubic")),
+		camB.pipe(
+			Motion.tweenTo({ focalLength: 1000 }, "900 millis", "easeInOutCubic"),
+		),
 		camB.pipe(Motion.moveTo({ x: 0, y: 0 }, "900 millis", "easeInOutCubic")),
 	]);
 });

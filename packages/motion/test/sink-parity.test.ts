@@ -139,15 +139,11 @@ it("string and DOM sinks agree on the full built-in shape surface", async () => 
 	const tags = [...parsed.querySelectorAll("*")].map((e) =>
 		e.tagName.toLowerCase(),
 	);
-	for (const tag of [
-		"circle",
-		"rect",
-		"ellipse",
-		"line",
-		"path",
-		"g",
-		"text",
-	]) {
+	// no "g": a Group no longer emits a wrapper element — it flattens into
+	// the depth-sorted draw list, so its children render directly. Under the
+	// resting camera those children keep their plain-2D placement, so no
+	// camera <g matrix> wrapper appears either.
+	for (const tag of ["circle", "rect", "ellipse", "line", "path", "text"]) {
 		expect(tags).toContain(tag);
 	}
 	// the hidden square is skipped by BOTH sinks (parity already asserted

@@ -28,7 +28,9 @@ describe("Scene.fork", () => {
 	it("a scene containing only a fork still plays to completion", async () => {
 		const frames = await collectFrames(function* () {
 			const circle = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
-			yield* Scene.fork(Motion.tween(circle, { x: 0 }, { x: 100 }, "0.5 seconds"));
+			yield* Scene.fork(
+				Motion.tween(circle, { x: 0 }, { x: 100 }, "0.5 seconds"),
+			);
 			// body returns immediately — the fork must keep the scene alive
 		});
 		// 30 animation frames + the scene-completion settle frame

@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { Effect, Layer } from "effect";
 import { describe, expect, it } from "vitest";
+import * as Camera from "../src/Camera";
 import type * as Scene from "../src/Scene";
 import * as Shapes from "../src/shapes";
 import * as Svg from "../src/svg";
@@ -86,7 +87,7 @@ const allShapesFrame: Scene.Frame<Builtin> = {
 	width: 500,
 	height: 300,
 	backgroundColor: "#16161d",
-	camera: { x: 0, y: 0, zoom: 1 },
+	camera: Camera.IDENTITY,
 };
 
 const layers = Svg.layer.pipe(Layer.provideMerge(Svg.shapesLayer));

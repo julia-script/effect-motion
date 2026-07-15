@@ -23,11 +23,12 @@ export const Line = Entity.make("shapes/Line", fields, {
 	// position moves the WHOLE line: translating x/y alone would stretch
 	// it, so set shifts both endpoints by the delta (get = start point)
 	"~position": {
-		get: (data: LineData) => ({ x: data.x, y: data.y }),
+		get: (data: LineData) => ({ x: data.x, y: data.y, z: data.z }),
 		set: (data: LineData, value: Entity.Position): LineData => ({
 			...data,
 			x: value.x,
 			y: value.y,
+			z: value.z,
 			x2: data.x2 + (value.x - data.x),
 			y2: data.y2 + (value.y - data.y),
 		}),

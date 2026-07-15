@@ -161,13 +161,6 @@ export const group: Renderer.RenderFunction<SvgNode, typeof Shapes.Group> = ({
 	});
 };
 
-// a parallax layer is a bare container: one <g> holding its children. It has
-// no position/opacity of its own; `depth` is consumed by the sink (svg/camera),
-// not emitted as an attribute here.
-export const layer: Renderer.RenderFunction<SvgNode, typeof Shapes.Layer> = ({
-	children,
-}) => Effect.succeed({ tag: "g", props: {}, children });
-
 /** Every built-in shape registered with both sinks. */
 export const shapesLayer = Layer.mergeAll(
 	entityRendererLayer(Shapes.Circle, circle),
@@ -177,7 +170,6 @@ export const shapesLayer = Layer.mergeAll(
 	entityRendererLayer(Shapes.Line, line),
 	entityRendererLayer(Shapes.Path, path),
 	entityRendererLayer(Shapes.Group, group),
-	entityRendererLayer(Shapes.Layer, layer),
 	entityRendererLayer(Shapes.Text, text),
 	entityRendererLayer(ParticleField, particleField),
 );
