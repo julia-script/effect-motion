@@ -1,4 +1,4 @@
-import { Motion, Scene, Shapes } from "effect-motion";
+import { Camera, Motion, Scene, Shapes } from "effect-motion";
 
 // A punch-in, the 3D-camera way: there is no `zoom` scalar any more. Grow the
 // camera's `focalLength` to narrow the field of view (an optical zoom) while
@@ -17,12 +17,20 @@ export const scene = Scene.make(function* () {
 	}
 
 	const cam = yield* Scene.camera;
+	// the resting focal length is width-relative (AE's 50mm equivalent) —
+	// read it off the identity view instead of hardcoding a number
+	const { width } = yield* Scene.settings();
+	const rest = Camera.identity(width).focalLength;
 	// zoom in: 2.5× the default focal length narrows the FOV. Pan the camera
 	// so the subject (350,90) sits at the viewport centre (250,150) — the pan
 	// is (subject - centre) = (100, -60).
 	yield* Scene.all([
 		cam.pipe(
-			Motion.tweenTo({ focalLength: 2500 }, "1.2 seconds", "easeInOutCubic"),
+			Motion.tweenTo(
+				{ focalLength: rest * 2.5 },
+				"1.2 seconds",
+				"easeInOutCubic",
+			),
 		),
 		cam.pipe(
 			Motion.moveTo({ x: 100, y: -60 }, "1.2 seconds", "easeInOutCubic"),
@@ -32,7 +40,7 @@ export const scene = Scene.make(function* () {
 	// pull back out to the establishing shot
 	yield* Scene.all([
 		cam.pipe(
-			Motion.tweenTo({ focalLength: 1000 }, "1 second", "easeInOutCubic"),
+			Motion.tweenTo({ focalLength: rest }, "1 second", "easeInOutCubic"),
 		),
 		cam.pipe(Motion.moveTo({ x: 0, y: 0 }, "1 second", "easeInOutCubic")),
 	]);

@@ -3,7 +3,8 @@ import * as P from "../src/Projection";
 
 // The resting camera used across these tests: sits a focal-length back on
 // +z, no rotation — the identity view that must reproduce plain-2D placement.
-const F = P.DEFAULT_FOCAL_LENGTH;
+// 720 wide × 50/36 = a round 1000px focal length
+const F = P.defaultFocalLength(720);
 const identity: P.CameraView = {
 	x: 0,
 	y: 0,
@@ -63,7 +64,7 @@ describe("depth drives scale (perspective foreshortening)", () => {
 	});
 });
 
-describe("tilted quad projects to a trapezoid", () => {
+describe("projectPlane: tilted quad projects to a clipped screen polygon", () => {
 	it("a receding plane's far edge is shorter than its near edge", () => {
 		// a plane tilted so its top edge (y-) recedes in depth: near edge at
 		// z=0, far edge pushed to z=-400. Corners: TL, TR, BR, BL.
@@ -73,10 +74,57 @@ describe("tilted quad projects to a trapezoid", () => {
 			{ x: 100, y: 50, z: 0 }, // bottom-right, near
 			{ x: -100, y: 50, z: 0 }, // bottom-left, near
 		];
-		const [tl, tr, br, bl] = P.projectQuad(identity, corners, origin);
+		const projected = P.projectPlane(identity, corners, origin);
+		// fully in front of the camera: nothing clipped, winding preserved
+		expect(projected).toHaveLength(4);
+		const [tl, tr, br, bl] = projected as [P.Vec2, P.Vec2, P.Vec2, P.Vec2];
 		const farWidth = Math.abs(tr.x - tl.x);
 		const nearWidth = Math.abs(br.x - bl.x);
 		expect(farWidth).toBeLessThan(nearWidth);
+	});
+
+	it("a quad straddling the camera plane is clipped, not folded", () => {
+		// bottom edge BEHIND the camera (world z beyond the camera's own z).
+		// The old projection pinned behind-corners to the viewport center;
+		// clipping instead yields a polygon whose vertices all project finitely
+		// and whose clipped edge sits at the near plane.
+		const corners: [P.Vec3, P.Vec3, P.Vec3, P.Vec3] = [
+			{ x: -100, y: -50, z: 0 }, // top-left, in front (depth F)
+			{ x: 100, y: -50, z: 0 }, // top-right, in front
+			{ x: 100, y: 50, z: F + 100 }, // bottom-right, behind
+			{ x: -100, y: 50, z: F + 100 }, // bottom-left, behind
+		];
+		const projected = P.projectPlane(identity, corners, origin);
+		// two in-front corners kept + two clip intersections
+		expect(projected).toHaveLength(4);
+		// no vertex collapses onto the viewport center (the old folding bug)
+		for (const v of projected) {
+			expect(Number.isFinite(v.x)).toBe(true);
+			expect(Number.isFinite(v.y)).toBe(true);
+			expect(
+				Math.abs(v.x - origin.x) + Math.abs(v.y - origin.y),
+			).toBeGreaterThan(1);
+		}
+	});
+
+	it("clipping one corner off a quad yields five vertices", () => {
+		const corners: [P.Vec3, P.Vec3, P.Vec3, P.Vec3] = [
+			{ x: -100, y: -50, z: 0 },
+			{ x: 100, y: -50, z: 0 },
+			{ x: 100, y: 50, z: F + 100 }, // only this corner is behind
+			{ x: -100, y: 50, z: 0 },
+		];
+		expect(P.projectPlane(identity, corners, origin)).toHaveLength(5);
+	});
+
+	it("a plane fully behind the camera projects to nothing", () => {
+		const corners: [P.Vec3, P.Vec3, P.Vec3, P.Vec3] = [
+			{ x: -100, y: -50, z: F + 10 },
+			{ x: 100, y: -50, z: F + 10 },
+			{ x: 100, y: 50, z: F + 100 },
+			{ x: -100, y: 50, z: F + 100 },
+		];
+		expect(P.projectPlane(identity, corners, origin)).toHaveLength(0);
 	});
 });
 

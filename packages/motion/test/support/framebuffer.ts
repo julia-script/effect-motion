@@ -1,9 +1,7 @@
 import { ThorvgWasmNode } from "@effect-motion/thorvg/node";
 import { Effect } from "effect";
 import type * as Entity from "../../src/Entity";
-import type { PaintFunctions } from "../../src/Renderer";
-import { builtinPaints } from "../../src/render";
-import { renderToBuffer } from "../../src/render/node";
+import * as Renderer from "../../src/Renderer";
 import type { Frame } from "../../src/Scene";
 
 /**
@@ -23,17 +21,13 @@ export interface Rendered {
 
 export const render = <const Entities extends Entity.AnyEntity>(
 	frame: Frame<Entities>,
-	paints: PaintFunctions<Entities> = builtinPaints as unknown as PaintFunctions<Entities>,
 ): Promise<Rendered> =>
 	Effect.runPromise(
-		renderToBuffer(frame, paints).pipe(
+		Renderer.render(frame as Frame).pipe(
 			Effect.scoped,
 			Effect.provide(ThorvgWasmNode.layer("sw")),
-		) as Effect.Effect<
-			{ rgba: Uint8Array; width: number; height: number },
-			never,
-			never
-		>,
+			Effect.orDie,
+		),
 	).then(({ rgba, width, height }) => {
 		const at = (x: number, y: number): [number, number, number, number] => {
 			if (x < 0 || y < 0 || x >= width || y >= height) {
@@ -59,11 +53,10 @@ export const render = <const Entities extends Entity.AnyEntity>(
  */
 export const renderExit = <const Entities extends Entity.AnyEntity>(
 	frame: Frame<Entities>,
-	paints: PaintFunctions<Entities> = builtinPaints as unknown as PaintFunctions<Entities>,
 ) =>
 	Effect.runPromiseExit(
-		renderToBuffer(frame, paints).pipe(
+		Renderer.render(frame as Frame).pipe(
 			Effect.scoped,
 			Effect.provide(ThorvgWasmNode.layer("sw")),
-		) as Effect.Effect<unknown, never, never>,
+		),
 	);

@@ -1,4 +1,4 @@
-import { Motion, Scene, Shapes } from "effect-motion";
+import { Camera, Motion, Scene, Shapes } from "effect-motion";
 
 // The 2.5D showcase: objects live at real depths, a tilted Rect lies back as
 // a floor, and the free camera dollies forward while orbiting. Render order
@@ -45,8 +45,10 @@ export const scene = Scene.make(function* () {
 			),
 		),
 	]);
+	// settle back to the resting view (z = a focal-length back, per identity)
+	const restZ = Camera.identity((yield* Scene.settings()).width).z;
 	yield* Scene.all([
-		cam.pipe(Motion.moveTo({ z: 1000 }, "2.5 seconds", "easeInOutCubic")),
+		cam.pipe(Motion.moveTo({ z: restZ }, "2.5 seconds", "easeInOutCubic")),
 		cam.pipe(
 			Motion.tweenTo({ rotY: 0, rotX: 0 }, "2.5 seconds", "easeInOutCubic"),
 		),

@@ -23,8 +23,12 @@ yield* cam.pipe(
   `move`, `spring` all apply. `x`/`y` pan; `z` dollies (moves toward or away).
 - `rotX`, `rotY`, `rotZ` are the camera's **Euler orientation** — animate them
   with `tween` / `tweenTo` to orbit, tilt, or roll.
-- `focalLength` sets the **field of view** (a longer focal length is a tighter,
-  more telephoto zoom). It replaces the old flat `zoom` scalar.
+- `focalLength` sets the **field of view** — and with it, how strong
+  perspective feels. It is measured in scene pixels, After Effects–style: the
+  default is the AE 50mm-equivalent, `width × 50/36` (≈694 on a 500-wide
+  scene). Smaller values are wider lenses (a given `z` moves and scales
+  things more); larger values are telephoto (depth flattens out). It replaces
+  the old flat `zoom` scalar.
 - The camera is never drawn. A default identity camera is always present, so
   `Scene.camera` never returns null and scenes that ignore depth render
   unchanged.
@@ -67,8 +71,7 @@ near circles track the camera fully — all from one camera pan and three depths
 A `Rect` carries an Euler orientation (`rotX`/`rotY`/`rotZ`). Leave it at zero
 and the Rect is a camera-facing billboard; tilt it and it becomes a flat plane
 in 3D — a floor, a wall, a card lying back. Its four corners are projected
-individually, so a receding plane renders as a true perspective trapezoid in
-both the live DOM sink and the self-contained SVG export.
+individually, so a receding plane renders as a true perspective trapezoid.
 
 ```ts
 // a floor: a wide Rect tilted back so it recedes toward the horizon

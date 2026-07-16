@@ -34,7 +34,7 @@ describe("camera state on the frame", () => {
 			yield* Scene.instantiate(Shapes.Circle, { x: 100, y: 0 });
 			yield* Scene.tick;
 		});
-		expect(frame.camera).toEqual(CameraMod.IDENTITY);
+		expect(frame.camera).toEqual(CameraMod.identity(500));
 	});
 
 	it("the camera is not in the frame's instance map", async () => {
@@ -112,7 +112,7 @@ describe("camera animated by the existing primitives", () => {
 describe("the renderer projects instances through the camera", () => {
 	const oneCircle = async (
 		props: { x?: number; y?: number; z?: number; radius?: number },
-		camera: CameraMod.CameraState = CameraMod.IDENTITY,
+		camera: CameraMod.CameraState = CameraMod.identity(500),
 	) => {
 		const frame = await lastFrame(
 			function* () {
@@ -134,17 +134,22 @@ describe("the renderer projects instances through the camera", () => {
 		// world x=200 lands at screen x=100; its original 200 is now background.
 		const r = await oneCircle(
 			{ x: 200, y: 120, radius: 15 },
-			{ ...CameraMod.IDENTITY, x: 100 },
+			{ ...CameraMod.identity(500), x: 100 },
 		);
 		expect(r.isPainted(100, 120)).toBe(true);
 		expect(r.isPainted(200, 120)).toBe(false);
 	});
 
 	it("a receding shape (z<0) is scaled down by perspective", async () => {
-		// depth = F - (-1000) = 2000; scale = F/2000 = 0.5 (F=1000). A radius-40
-		// circle whose center is world (0,0) projects to screen
-		// (250 + (0-250)*0.5, 150 + (0-150)*0.5) = (125, 75), shrunk to ~20px.
-		const r = await oneCircle({ x: 0, y: 0, z: -1000, radius: 40 });
+		// an explicit F=1000 camera keeps the arithmetic round (the width-
+		// relative default would be 694.4): depth = F - (-1000) = 2000;
+		// scale = F/2000 = 0.5. A radius-40 circle whose center is world (0,0)
+		// projects to screen (250 + (0-250)*0.5, 150 + (0-150)*0.5) = (125, 75),
+		// shrunk to ~20px.
+		const r = await oneCircle(
+			{ x: 0, y: 0, z: -1000, radius: 40 },
+			{ ...CameraMod.identity(500), z: 1000, focalLength: 1000 },
+		);
 		expect(r.isPainted(125, 75)).toBe(true); // scaled center
 		// a point at the full-scale radius (40px away) is outside the shrunk circle
 		expect(r.isPainted(125 + 32, 75)).toBe(false);

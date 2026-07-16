@@ -4,10 +4,11 @@ import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import type * as Fiber from "effect/Fiber";
 import type * as Schema from "effect/Schema";
-import { Camera, type CameraState, IDENTITY } from "./Camera";
+import { Camera, type CameraState, identity } from "./Camera";
 import type * as Entity from "./Entity";
 import * as Instance from "./Instance";
 import * as Phaser from "./Phaser";
+import * as Projection from "./Projection";
 import { Group } from "./shapes/Group";
 import { Text } from "./shapes/Text";
 
@@ -173,13 +174,13 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 		// camera is present from the start, so `depth`/zoom work with no author
 		// ceremony; `setCamera` swaps which instance is active.
 		const camera: Instance.Of<typeof Camera> = Instance.make(Camera, "camera");
-		setDataUnsafe(camera, {});
+		setDataUnsafe(camera, identity(resolvedSettings.width));
 		let activeCameraId = camera.id;
 		const cameraState = (): CameraState => {
 			const data = instances[activeCameraId]?.data as CameraState | undefined;
 			// a destroyed active camera falls back to identity rather than dying:
 			// the view is not scene-critical state
-			return data ?? IDENTITY;
+			return data ?? identity(resolvedSettings.width);
 		};
 
 		// append `id` to a group's children and record it as the child's parent
@@ -286,8 +287,24 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 
 				const id = generateId(entity.name);
 				const instance = Instance.make(entity, id);
+				// cameras get width-relative z/focalLength defaults filled here
+				// (AE's 50mm equivalent — see Camera.ts): the schema can't default
+				// them because only the Runner knows the scene width. Filling for
+				// EVERY Camera instance (not just the built-in one) keeps a
+				// setCamera swap from jumping zoom.
+				const cameraDefaults = (() => {
+					if (entity.name !== Camera.name) {
+						return undefined;
+					}
+					const p = props as { z?: number; focalLength?: number };
+					const focalLength =
+						p.focalLength ??
+						Projection.defaultFocalLength(resolvedSettings.width);
+					return { focalLength, z: p.z ?? focalLength };
+				})();
 				setDataUnsafe(instance, {
 					...props,
+					...cameraDefaults,
 					children: childIds,
 				});
 				if (props.$visible === false) {

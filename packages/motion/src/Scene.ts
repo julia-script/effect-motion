@@ -367,11 +367,14 @@ export const settings = Effect.fnUntraced(function* () {
 
 /**
  * The active camera instance — an ordinary instance carrying `~position`
- * (x/y pan) and a `zoom` field, so the existing animators drive it:
- * `Scene.make(function* () { const cam = yield* Scene.camera; yield*
- * cam.pipe(Motion.moveTo({ x: 400 })) })`. A default identity camera is
- * always present; animate it directly, or `Scene.setCamera` to swap in
- * another instance. The camera is never drawn.
+ * (world x/y/z), Euler orientation (`rotX`/`rotY`/`rotZ`), and
+ * `focalLength` (perspective strength — see Projection.defaultFocalLength),
+ * so the existing animators drive it: `Scene.make(function* () { const cam
+ * = yield* Scene.camera; yield* cam.pipe(Motion.moveTo({ z: -400 })) })`.
+ * A default resting camera is always present (width-relative 50mm-equivalent
+ * focal length, projecting z=0 content to plain-2D placement); animate it
+ * directly, or `Scene.setCamera` to swap in another instance. The camera is
+ * never drawn.
  */
 export const camera = Effect.gen(function* () {
 	const runner = yield* Runner.Runner;

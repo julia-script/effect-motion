@@ -12,8 +12,10 @@ import * as Timing from "./Timing";
 
 export type InterpolableValue = number;
 
+// optional numeric fields (schema optionalKey, e.g. the camera's
+// z/focalLength) are tweenable too — strip undefined before matching
 type InterpolableKeys<T> = {
-	[K in keyof T]: T[K] extends InterpolableValue ? K : never;
+	[K in keyof T]-?: NonNullable<T[K]> extends InterpolableValue ? K : never;
 }[keyof T];
 
 export type InterpolableOnly<T> = Pick<T, InterpolableKeys<T>>;
@@ -84,8 +86,15 @@ export const startValues = (
 ): Record<string, number> => {
 	const start: Record<string, number> = {};
 	for (const key of Object.keys(target)) {
-		start[key] =
-			explicitFrom[key] ?? ((current as Record<string, number>)[key] as number);
+		const from = explicitFrom[key] ?? (current as Record<string, number>)[key];
+		// an optional field that was never set has no start value — lerping
+		// from undefined would silently produce NaN frames; die loudly instead
+		if (from === undefined) {
+			throw new Error(
+				`tween: "${key}" has no current value to start from — pass an explicit from`,
+			);
+		}
+		start[key] = from;
 	}
 	return start;
 };

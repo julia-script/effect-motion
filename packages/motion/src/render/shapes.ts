@@ -33,6 +33,22 @@ export const rect: PaintFunction<typeof Shapes.Rect> = ({
 }) =>
 	Effect.gen(function* () {
 		const shape = yield* Tvg.makeShape();
+		const quad = projection.quad;
+		if (quad !== undefined) {
+			// a tilted plane: the vertices are already projected to screen
+			// (near-plane-clipped, 3–5 points — true perspective foreshortening,
+			// not an affine), so paint the exact polygon and skip the billboard
+			// transform
+			for (const [i, p] of quad.entries()) {
+				yield* i === 0
+					? Tvg.moveTo(shape, p.x, p.y)
+					: Tvg.lineTo(shape, p.x, p.y);
+			}
+			yield* Tvg.close(shape);
+			yield* applyStyle(shape, data);
+			yield* Tvg.addToScene(scene, shape);
+			return;
+		}
 		yield* Tvg.appendRect(shape, data.x, data.y, data.width, data.height);
 		yield* applyStyle(shape, data);
 		yield* finishPaint(shape, scene, projection);

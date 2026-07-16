@@ -10,11 +10,13 @@
  * is the inverse of the camera's own world transform), then divided by their
  * depth in front of the camera to land on screen.
  *
- * Identity invariant: the default camera (see `DEFAULT_FOCAL_LENGTH` and
+ * Identity invariant: the default camera (see `defaultFocalLength` and
  * `defaultCameraZ`) projects a world point at `z = 0` to screen `(x, y)` at
  * scale 1 — so a scene that never touches depth renders exactly as the old
  * plain-2D pipeline did. That falls out of placing the resting camera a
- * focal-length back on +z and dividing by focal length at the z=0 plane.
+ * focal-length back on +z and dividing by focal length at the z=0 plane —
+ * and holds for ANY focal length, which is why the default can be
+ * width-relative without breaking plain-2D scenes.
  */
 
 export interface Vec3 {
@@ -51,8 +53,13 @@ export interface Projected {
 	readonly scale: number;
 }
 
-/** Focal length (px) giving a natural field of view at rest. */
-export const DEFAULT_FOCAL_LENGTH = 1000;
+/**
+ * Default focal length (px) for a comp of the given width — After Effects'
+ * default lens: 50mm on 36mm-wide film, so `zoom = width × 50/36`. Width-
+ * relative so perspective strength (how much a given z moves/scales a shape)
+ * reads the same at every output resolution.
+ */
+export const defaultFocalLength = (width: number): number => (width * 50) / 36;
 
 /**
  * The resting camera sits this far back on +z, looking toward -z, so that
@@ -226,21 +233,52 @@ export const billboardAffine = (proj: Projected, anchor: Vec2): Affine => ({
 });
 
 /**
- * Project the four world-space corners of a tilted plane to screen. Order is
- * preserved (caller decides winding); each corner is projected independently,
- * so a receding plane yields a trapezoid — true perspective foreshortening,
- * not a parallelogram.
+ * View-space depth (px) of the near clip plane. A tilted plane can be
+ * PARTIALLY behind the camera — projecting a corner at depth <= 0 is
+ * meaningless (the old code pinned it to the viewport center, folding the
+ * polygon), so the polygon is clipped against this plane first. 1px keeps
+ * the worst-case projected scale bounded at `focalLength` per unit.
  */
-export const projectQuad = (
+const NEAR = 1;
+
+/**
+ * Project the world-space corners of a tilted plane to a screen polygon.
+ * The polygon is clipped against the near plane in view space
+ * (Sutherland–Hodgman, winding preserved) before the per-vertex perspective
+ * divide, so a plane crossing the camera renders its visible part instead
+ * of folding — a quad straddling the plane yields up to 5 vertices; a plane
+ * fully behind yields none (cull). Fully in front, this is plain per-corner
+ * projection: a receding plane is a true perspective trapezoid.
+ */
+export const projectPlane = (
 	camera: CameraView,
-	corners: readonly [Vec3, Vec3, Vec3, Vec3],
+	corners: ReadonlyArray<Vec3>,
 	origin: Vec2,
-): [Vec2, Vec2, Vec2, Vec2] => {
-	const to2 = (c: Vec3): Vec2 => {
-		const p = project(camera, c, origin);
-		return { x: p.x, y: p.y };
-	};
-	return [to2(corners[0]), to2(corners[1]), to2(corners[2]), to2(corners[3])];
+): Array<Vec2> => {
+	const view = corners.map((c) => toView(camera, c, origin));
+	const clipped: Vec3[] = [];
+	for (let i = 0; i < view.length; i++) {
+		// biome-ignore lint/style/noNonNullAssertion: i and (i+1)%length are in bounds
+		const a = view[i]!;
+		// biome-ignore lint/style/noNonNullAssertion: see above
+		const b = view[(i + 1) % view.length]!;
+		const aIn = a.z >= NEAR;
+		if (aIn) {
+			clipped.push(a);
+		}
+		if (aIn !== b.z >= NEAR) {
+			const t = (NEAR - a.z) / (b.z - a.z);
+			clipped.push({
+				x: a.x + (b.x - a.x) * t,
+				y: a.y + (b.y - a.y) * t,
+				z: NEAR,
+			});
+		}
+	}
+	return clipped.map((v) => {
+		const scale = camera.focalLength / v.z;
+		return { x: origin.x + v.x * scale, y: origin.y + v.y * scale };
+	});
 };
 
 /**

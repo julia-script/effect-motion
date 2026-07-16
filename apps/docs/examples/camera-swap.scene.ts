@@ -20,6 +20,10 @@ export const scene = Scene.make(function* () {
 	});
 
 	const camA = yield* Scene.camera;
+	// the resting view (focal length + z) is width-relative — read it off the
+	// identity view; the push-in framing is 1.9× the resting focal length
+	const rest = Camera.identity((yield* Scene.settings()).width);
+	const tight = rest.focalLength * 1.9;
 	// hold the wide two-shot so the viewer registers both subjects first
 	yield* Motion.wait("900 millis");
 	// a small "who's talking" cue on the left before we push in
@@ -31,17 +35,20 @@ export const scene = Scene.make(function* () {
 	// A longer focal length narrows the FOV — the 3D-camera "zoom".
 	yield* Scene.all([
 		camA.pipe(
-			Motion.tweenTo({ focalLength: 1900 }, "900 millis", "easeInOutCubic"),
+			Motion.tweenTo({ focalLength: tight }, "900 millis", "easeInOutCubic"),
 		),
 		camA.pipe(Motion.moveTo({ x: -120, y: 0 }, "900 millis", "easeInOutCubic")),
 	]);
 	yield* Motion.wait("500 millis");
 
-	// CUT: swap to camera B, pre-framed on the RIGHT subject at the same FOV
+	// CUT: swap to camera B, pre-framed on the RIGHT subject at the same FOV.
+	// z stays at the resting distance so B's framing matches A's push-in (an
+	// unset z would default to a focal-length back — the wide resting view).
 	const camB = yield* Scene.instantiate(Camera.Camera, {
 		x: 120,
 		y: 0,
-		focalLength: 1900,
+		z: rest.z,
+		focalLength: tight,
 	});
 	yield* Scene.setCamera(camB);
 	// the right subject reacts, so the cut clearly lands on a different subject
@@ -53,7 +60,11 @@ export const scene = Scene.make(function* () {
 	// pull back out to the wide two-shot — re-establishes context
 	yield* Scene.all([
 		camB.pipe(
-			Motion.tweenTo({ focalLength: 1000 }, "900 millis", "easeInOutCubic"),
+			Motion.tweenTo(
+				{ focalLength: rest.focalLength },
+				"900 millis",
+				"easeInOutCubic",
+			),
 		),
 		camB.pipe(Motion.moveTo({ x: 0, y: 0 }, "900 millis", "easeInOutCubic")),
 	]);

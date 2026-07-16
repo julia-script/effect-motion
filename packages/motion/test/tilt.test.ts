@@ -9,6 +9,7 @@ type Entities = typeof Shapes.Rect | typeof Shapes.Group;
 const frameOf = (
 	instances: Scene.Frame<Entities>["instances"],
 	rootChildren: ReadonlyArray<string>,
+	camera: Camera.CameraState = Camera.identity(500),
 ): Scene.Frame<Entities> => ({
 	instances: {
 		...instances,
@@ -22,7 +23,7 @@ const frameOf = (
 	width: 500,
 	height: 300,
 	backgroundColor: "#000",
-	camera: Camera.IDENTITY,
+	camera,
 });
 
 // a Rect centered on the viewport (250,150) so it sits on the camera axis,
@@ -85,5 +86,49 @@ describe("tilted solid planes render as projected trapezoids", () => {
 		const bottomWidth = paintedWidth(r, 190);
 		expect(topWidth).toBeGreaterThan(0);
 		expect(Math.abs(topWidth - bottomWidth)).toBeLessThanOrEqual(2);
+	});
+});
+
+describe("a plane crossing the camera is near-plane clipped, not folded", () => {
+	// the depth-3d floor: a big Rect lying nearly flat, its near edge swinging
+	// toward the camera (rotX pushes local +y toward +z)
+	const floor = (camera: Camera.CameraState) =>
+		frameOf(
+			{
+				f1: {
+					data: Shapes.Rect.data.make({
+						x: -300,
+						y: 180,
+						z: -200,
+						width: 900,
+						height: 900,
+						rotX: Math.PI / 2.3,
+						fill: "tomato",
+					}),
+					entity: Shapes.Rect,
+				},
+			},
+			["f1"],
+			camera,
+		);
+
+	it("paints only the visible band when its near corners are behind the camera", async () => {
+		// dolly the camera to z=300: the floor's near corners (world z≈681) are
+		// behind it. The far edge projects to y = 150 + 30·(F/500) ≈ 192, so the
+		// band below is painted and the viewport center is NOT — the old
+		// unclipped projection pinned behind-corners to the center, covering it.
+		const cam = { ...Camera.identity(500), z: 300 };
+		const r = await render(floor(cam));
+		expect(r.isPainted(250, 250)).toBe(true); // inside the visible band
+		expect(r.isPainted(250, 150)).toBe(false); // center stays background
+		expect(r.isPainted(250, 100)).toBe(false); // above the far edge too
+	});
+
+	it("a plane fully behind the camera paints nothing and does not die", async () => {
+		// camera past every corner (nearest corner is at world z≈681)
+		const cam = { ...Camera.identity(500), z: -1000 };
+		const r = await render(floor(cam));
+		expect(r.isPainted(250, 250)).toBe(false);
+		expect(r.isPainted(250, 150)).toBe(false);
 	});
 });

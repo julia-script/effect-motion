@@ -113,7 +113,7 @@ const allShapesFrame: Scene.Frame<Builtin> = {
 	width: 500,
 	height: 300,
 	backgroundColor: "#16161d",
-	camera: Camera.IDENTITY,
+	camera: Camera.identity(500),
 };
 
 describe("the renderer paints every geometric built-in", () => {

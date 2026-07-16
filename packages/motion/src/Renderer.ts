@@ -17,21 +17,17 @@ import type { EntriesFromEntities, Frame } from "./Scene";
  * The projection handed to each paint function — how the camera places a
  * paintable this frame. `screen` is the projected billboard placement (an
  * affine the paint fn applies via `setTransform`); `depth` is the view-space
- * sort key; `scale` is the perspective scale (<= 0 means behind the camera —
- * cull). `quad`, when present, is the four projected screen corners of a
- * tilted plane (see Projection.projectQuad) — a shape that can tilt paints an
- * exact 4-point path from these instead of applying the billboard affine.
+ * sort key; `scale` is the perspective scale (<= 0 means the anchor is behind
+ * the camera — cull, unless a `quad` is present). `quad`, when present, is
+ * the projected, near-plane-clipped screen polygon of a tilted plane (3–5
+ * vertices — see Projection.projectPlane); a shape that can tilt paints an
+ * exact path from these instead of applying the billboard affine.
  */
 export interface PaintProjection {
 	readonly screen: Projection.Affine;
 	readonly depth: number;
 	readonly scale: number;
-	readonly quad?: readonly [
-		Projection.Vec2,
-		Projection.Vec2,
-		Projection.Vec2,
-		Projection.Vec2,
-	];
+	readonly quad?: ReadonlyArray<Projection.Vec2>;
 }
 
 /** The frame's render metadata, handed to paint functions. */
@@ -44,7 +40,7 @@ export interface FrameMeta {
 	 * the active camera's view — world position `{x, y, z}`, Euler
 	 * orientation `{rotX, rotY, rotZ}`, and `focalLength` (FOV). The renderer
 	 * projects every instance through it. The resting camera (see
-	 * Camera.IDENTITY) reproduces plain-2D placement for z=0 content.
+	 * Camera.identity) reproduces plain-2D placement for z=0 content.
 	 */
 	readonly camera: {
 		readonly x: number;
@@ -182,8 +178,33 @@ const renderToCanvas = <const Entities extends Entity.AnyEntity>(
 				// its four corners so the paint fn can emit an exact path. The
 				// pivot is the plane's world anchor, so rotation spins it in
 				// place. Billboards (no rotation, or non-rect shapes) skip this.
-		
-			
+				const rotX = data.rotX ?? 0;
+				const rotY = data.rotY ?? 0;
+				const rotZ = data.rotZ ?? 0;
+				const tilted =
+					(rotX !== 0 || rotY !== 0 || rotZ !== 0) &&
+					data.width !== undefined &&
+					data.height !== undefined;
+				const quad = tilted
+					? Projection.projectPlane(
+							camera,
+							Projection.planeCorners(
+								{
+									x: data.x ?? 0,
+									y: data.y ?? 0,
+									width: data.width as number,
+									height: data.height as number,
+								},
+								{ rotX, rotY, rotZ },
+								world,
+							),
+							origin,
+						)
+					: undefined;
+				if (quad !== undefined && quad.length < 3) {
+					// the tilted plane is entirely behind the near plane — cull
+					return;
+				}
 				paintables.push({
 					id,
 					entry,
@@ -191,10 +212,10 @@ const renderToCanvas = <const Entities extends Entity.AnyEntity>(
 						screen: Projection.billboardAffine(proj, {
 							x: data.x ?? 0,
 							y: data.y ?? 0,
-							
 						}),
 						depth: proj.depth,
 						scale: proj.scale,
+						...(quad !== undefined ? { quad } : {}),
 					},
 				});
 			});
@@ -230,10 +251,13 @@ const renderToCanvas = <const Entities extends Entity.AnyEntity>(
 			camera: frame.camera,
 		};
 
-		// paint far→near. A paintable behind the camera (scale <= 0) is culled
-		// here so paint functions never see an invalid placement.
+		// paint far→near. A paintable whose anchor is behind the camera
+		// (scale <= 0) is culled here so paint functions never see an invalid
+		// placement — EXCEPT a tilted plane carrying a quad: its polygon is
+		// already near-plane-clipped, and it can be visible (near part in
+		// front) while its anchor corner is behind.
 		for (const { id, entry, projection } of paintables) {
-			if (projection.scale <= 0) {
+			if (projection.scale <= 0 && projection.quad === undefined) {
 				continue;
 			}
 			// the concrete paint fn for this entity name; the map is exhaustive
