@@ -1,13 +1,10 @@
-import { writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { wrapPromise } from "@effect-motion/thorvg";
+import { NodeServices } from "@effect/platform-node";
 import { ThorvgWasmNode } from "@effect-motion/thorvg/node";
 import { Effect, Schedule, Stream } from "effect";
 import * as Motion from "./Motion";
 import * as Physics from "./Physics";
-import { builtinPaints } from "./render";
-import { renderToPng } from "./render/node";
+import * as PngExporter from "./PngExporter";
+import * as Renderer from "./Renderer";
 import * as Scene from "./Scene";
 import * as Shapes from "./shapes";
 
@@ -84,16 +81,19 @@ const movie = Effect.gen(function* () {
 	const frames = yield* Scene.stream(scene, { width: 500, height: 300 }).pipe(
 		Stream.runCollect,
 	);
+
 	const list = [...frames];
-	const mid = list[Math.floor(list.length / 2)]!;
-	const png = yield* renderToPng(mid, builtinPaints);
-	const out = join(tmpdir(), "effect-motion-demo.png");
-	yield* wrapPromise(() => writeFile(out, png));
-	console.log(
-		`rendered frame ${Math.floor(list.length / 2)}/${list.length} → ${out}`,
-	);
+	const mid = list[Math.floor(list.length / 2)] as Scene.Frame;
+	const framebuffer = yield* Renderer.render(mid);
+
+	const _png = yield* PngExporter.toBuffer(framebuffer);
+	yield* PngExporter.toFile(framebuffer, "output.png");
 });
 
 Effect.runPromise(
-	movie.pipe(Effect.scoped, Effect.provide(ThorvgWasmNode.layer("sw"))),
+	movie.pipe(
+		Effect.scoped,
+		Effect.provide(ThorvgWasmNode.layer("sw")),
+		Effect.provide(NodeServices.layer),
+	),
 );

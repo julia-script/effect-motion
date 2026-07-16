@@ -41,12 +41,12 @@ describe("Scene.play", () => {
 		} as never);
 		const frames = dataFrames(await collectRaw(movie));
 		const last = frames.at(-1)!;
-		expect(last[0]!.x).toBe(100);
-		expect(last[1]!.x).toBe(100);
+		expect(last[0]?.x).toBe(100);
+		expect(last[1]?.x).toBe(100);
 		// B exists only after A finished, and starts from 0 then
 		const bBirth = frames.findIndex((f) => f.length === 2);
 		expect(bBirth).toBeGreaterThanOrEqual(30);
-		expect(frames[bBirth]![0]!.x).toBe(100); // A already done
+		expect(frames[bBirth]?.[0]?.x).toBe(100); // A already done
 	});
 
 	it("concurrent nesting: scenes share frames; the movie awaits both", async () => {
@@ -57,9 +57,9 @@ describe("Scene.play", () => {
 		} as never);
 		const frames = dataFrames(await collectRaw(movie));
 		expect(frames).toHaveLength(31);
-		expect(frames[15]![0]!.x).toBeGreaterThan(0);
-		expect(frames[15]![1]!.x).toBeGreaterThan(0);
-		expect(frames.at(-1)!.every((d) => d.x === 100)).toBe(true);
+		expect(frames[15]?.[0]?.x).toBeGreaterThan(0);
+		expect(frames[15]?.[1]?.x).toBeGreaterThan(0);
+		expect(frames.at(-1)?.every((d) => d.x === 100)).toBe(true);
 	});
 
 	it("nested finish targets the inner scene: crossfade", async () => {
@@ -77,12 +77,12 @@ describe("Scene.play", () => {
 		} as never);
 		const frames = dataFrames(await collectRaw(movie));
 		// overlap window: B animates while A's tail still moves
-		expect(frames[45]![1]!.x).toBeGreaterThan(0);
-		expect(frames[45]![1]!.x).toBeLessThan(100);
-		expect(frames[45]![0]!.x).toBeGreaterThan(50);
+		expect(frames[45]?.[1]?.x).toBeGreaterThan(0);
+		expect(frames[45]?.[1]?.x).toBeLessThan(100);
+		expect(frames[45]?.[0]?.x).toBeGreaterThan(50);
 		// A's tail was cut at movie end, far from its 500 target
-		expect(frames.at(-1)![0]!.x).toBeLessThan(200);
-		expect(frames.at(-1)![1]!.x).toBe(100);
+		expect(frames.at(-1)?.[0]?.x).toBeLessThan(200);
+		expect(frames.at(-1)?.[1]?.x).toBe(100);
 	});
 
 	it("child finalizers run at the child's end, not the movie's", async () => {
@@ -118,14 +118,14 @@ describe("Scene.play", () => {
 			} as never);
 		const standalone = dataFrames(
 			await collectRaw(rand(), { seed: "stability" }),
-		).map((f) => f[0]!.x);
+		).map((f) => f[0]?.x);
 		const movie = Scene.make(function* () {
 			const h = yield* Scene.play(rand() as never);
 			yield* h.finished;
 		} as never);
 		const nested = dataFrames(
 			await collectRaw(movie, { seed: "stability" }),
-		).map((f) => f[0]!.x);
+		).map((f) => f[0]?.x);
 		expect(nested.slice(0, standalone.length)).toEqual(standalone);
 	});
 
@@ -143,7 +143,7 @@ describe("Scene.play", () => {
 			yield* b.finished;
 		} as never);
 		const last = dataFrames(await collectRaw(movie)).at(-1)!;
-		expect(last[0]!.x).not.toBe(last[1]!.x);
+		expect(last[0]?.x).not.toBe(last[1]?.x);
 	});
 
 	it("movie-global maxFrames reaches nested scenes", async () => {
@@ -177,10 +177,10 @@ describe("Scene.play mounting", () => {
 			yield* h.finished;
 		} as never);
 		const frames = await collectRaw(movie);
-		const groupId = Object.keys(frames.at(-1)!.instances).find((id) =>
+		const groupId = Object.keys(frames.at(-1)?.instances).find((id) =>
 			id.includes("Group"),
 		)!;
-		const circleId = Object.keys(frames.at(-1)!.instances).find((id) =>
+		const circleId = Object.keys(frames.at(-1)?.instances).find((id) =>
 			id.includes("Circle"),
 		)!;
 		expect(childOf(frames, groupId)).toContain(circleId);
@@ -204,7 +204,7 @@ describe("Scene.play mounting", () => {
 			yield* h.finished;
 		} as never);
 		const frames = await collectRaw(movie);
-		const ids = Object.keys(frames.at(-1)!.instances);
+		const ids = Object.keys(frames.at(-1)?.instances);
 		const mountId = ids.find((id) => id.endsWith("_0"))!; // first group
 		const innerId = ids.find((id) => id.includes("Group") && id !== mountId)!;
 		const circleId = ids.find((id) => id.includes("Circle"))!;
@@ -221,7 +221,7 @@ describe("Scene.play mounting", () => {
 			yield* Scene.play(scene as never, { parent: g2 as never });
 		} as never);
 		const frames = await collectRaw(movie);
-		const circles = Object.entries(frames.at(-1)!.instances).filter(([id]) =>
+		const circles = Object.entries(frames.at(-1)?.instances).filter(([id]) =>
 			id.includes("Circle"),
 		);
 		expect(circles).toHaveLength(2);

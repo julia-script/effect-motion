@@ -55,7 +55,7 @@ export type GroupInstance = Instance.Of<typeof Group>;
 export type Child =
 	| string
 	| Instance.Instance
-	| Effect.Effect<Instance.Instance, unknown, unknown>;
+	| Effect.Effect<Instance.Instance, never, Runner>;
 
 /**
  * Builtin, engine-owned instance properties — namespaced with `$` and
@@ -135,7 +135,7 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 			// ($visible is set explicitly by instantiate when overridden)
 			const prev = instances[instance.id];
 			instances[instance.id] = {
-				data: instance.entity.make(data),
+				data: instance.entity.data.make(data),
 				entity: instance.entity,
 				$visible: prev?.$visible ?? true,
 			};
@@ -241,11 +241,7 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 		// Effect<Instance> yielded here (JSX children need no yield*).
 		const normalizeChildren = (
 			children: ReadonlyArray<Child>,
-		): Effect.Effect<
-			ReadonlyArray<string>,
-			unknown,
-			Entity.AnyEntity | Runner
-		> =>
+		): Effect.Effect<string[], never, Runner> =>
 			Effect.gen(function* () {
 				const ids: string[] = [];
 				for (const child of children) {
@@ -260,11 +256,7 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 					}
 				}
 				return ids;
-			}) as Effect.Effect<
-				ReadonlyArray<string>,
-				unknown,
-				Entity.AnyEntity | Runner
-			>;
+			});
 
 		const self = {
 			root,
@@ -272,34 +264,33 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 				Name extends string,
 				Data extends Schema.Top,
 				Traits extends Partial<Entity.EntityTraits<Data["Type"]>>,
-				MakeInput,
 			>(
-				entity: Entity.Entity<Name, Data, Traits, MakeInput>,
-				props: InstantiateProps<MakeInput>,
+				entity: Entity.Entity<Name, Data, Traits>,
+				props: InstantiateProps<Data["~type.make.in"]>,
 			): Effect.fn.Return<
 				Instance.Instance<Name, Data, Traits>,
-				unknown,
-				Entity.Entity<Name, Data, Traits, MakeInput> | Runner
+				never,
+				Runner
 			> {
 				// peel off builtin ($visible) and polymorphic children before the
 				// schema constructs the data — neither is an entity-data field
-				const { $visible, children, ...rest } = props as Record<
-					string,
-					unknown
-				>;
+				// = props
 				// children are born (via normalizeChildren) attached to their
 				// ambient parent — reparent them into THIS instance below
 				const childIds =
-					children === undefined
-						? undefined
-						: yield* normalizeChildren(children as ReadonlyArray<Child>);
-				const dataInput =
-					childIds === undefined ? rest : { ...rest, children: childIds };
+					"children" in props && props.children
+						? yield* normalizeChildren(props.children)
+						: undefined;
+				// const dataInput =
+				// 	childIds === undefined ? rest : { ...rest, children: childIds };
 
 				const id = generateId(entity.name);
 				const instance = Instance.make(entity, id);
-				setDataUnsafe(instance, dataInput);
-				if ($visible === false) {
+				setDataUnsafe(instance, {
+					...props,
+					children: childIds,
+				});
+				if (props.$visible === false) {
 					setVisibleUnsafe(id, false);
 				}
 				// cameras are view state, not tree nodes: they live in `instances`
@@ -374,7 +365,7 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 						instances[id] = {
 							entity: entry.entity,
 							$visible: entry.$visible,
-							data: entry.entity.make({
+							data: entry.entity.data.make({
 								...(entry.data as object),
 								children: children.filter((child) => child !== instance.id),
 							}),

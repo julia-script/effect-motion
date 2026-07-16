@@ -93,9 +93,9 @@ it("streams a scene to N PNG frames at the scene's framerate", async () => {
 	);
 
 	expect(record).toHaveLength(1);
-	expect(record[0]!.pngFrames).toBe(EXPECTED_FRAMES);
+	expect(record[0]?.pngFrames).toBe(EXPECTED_FRAMES);
 	// framerate is read from metadata, not repeated by the caller
-	const args = record[0]!.args;
+	const args = record[0]?.args;
 	expect(args[args.indexOf("-framerate") + 1]).toBe("30");
 });
 
@@ -135,5 +135,5 @@ it("caps an infinite scene with options.frames", async () => {
 		}).pipe(Effect.provide(mockSpawner(record))),
 	);
 
-	expect(record[0]!.pngFrames).toBe(10);
+	expect(record[0]?.pngFrames).toBe(10);
 });

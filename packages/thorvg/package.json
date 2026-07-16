@@ -23,9 +23,9 @@
 			"types": "./dist/index.d.ts",
 			"default": "./dist/index.js"
 		},
-		"./node": {
-			"types": "./dist/node.d.ts",
-			"default": "./dist/node.js"
+		"./*": {
+			"types": "./dist/*.d.ts",
+			"default": "./dist/*.js"
 		}
 	},
 	"files": [
@@ -41,16 +41,17 @@
 		"access": "public"
 	},
 	"dependencies": {
+		"@effect/platform-node": "4.0.0-beta.98",
 		"@thorvg/webcanvas": "^1.0.8"
 	},
 	"devDependencies": {
 		"@types/node": "^26.1.1",
-		"effect": "4.0.0-beta.94",
+		"effect": "4.0.0-beta.98",
 		"tsx": "^4.23.0",
 		"typescript": "^7.0.2",
 		"vitest": "^4.1.10"
 	},
 	"peerDependencies": {
-		"effect": ">=4.0.0-beta.94"
+		"effect": ">=4.0.0-beta.98"
 	}
 }

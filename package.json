@@ -10,7 +10,7 @@
 		"check": "turbo run check",
 		"docs": "turbo run dev --filter=docs",
 		"lint": "biome check",
-		"lint:fix": "biome check --write",
+		"lint:fix": "biome check --write --unsafe",
 		"changeset": "changeset",
 		"version-packages": "changeset version",
 		"release": "changeset publish"

@@ -17,7 +17,5 @@ export {
 	type ThorvgOptions,
 	ThorvgWasm,
 	withScratch,
-	wrap,
-	wrapPromise,
 } from "./ThorvgWasm";
 export * as ThorvgWasmBrowser from "./ThorvgWasmBrowser";

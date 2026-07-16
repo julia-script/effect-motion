@@ -1,4 +1,4 @@
-import { Context, Effect, Latch, Layer } from "effect";
+import { Context, Effect, Latch, Layer, Semaphore } from "effect";
 
 /**
  * An externally paced phaser (cf. java.util.concurrent.Phaser).
@@ -9,13 +9,15 @@ import { Context, Effect, Latch, Layer } from "effect";
  * arrived again. One call = one phase = one animation frame.
  */
 export class Phaser extends Context.Service<Phaser>()("motion/Phaser", {
-	make: Effect.sync(() => {
+	make: Effect.gen(function* () {
 		let phase = 0;
 		let parties = 0;
 		let arrived = 0;
 		let phaseLatch = Latch.makeUnsafe();
 		let state: "idle" | "pending" | "running" = "idle";
 		let waiter: (() => void) | null = null;
+
+		const semaphore = yield* Semaphore.make(1);
 
 		// The single invariant. Every event that touches `arrived` or
 		// `parties` re-runs this.
@@ -79,6 +81,8 @@ export class Phaser extends Context.Service<Phaser>()("motion/Phaser", {
 						),
 					);
 				}),
+			).pipe(
+				// semaphore.withPermit
 			);
 
 		const awaitAdvance: Effect.Effect<number> = Effect.callback<number>(
@@ -110,6 +114,8 @@ export class Phaser extends Context.Service<Phaser>()("motion/Phaser", {
 					state = "idle";
 				});
 			},
+		).pipe(
+			semaphore.withPermits(1)
 		);
 
 		return {
@@ -120,7 +126,9 @@ export class Phaser extends Context.Service<Phaser>()("motion/Phaser", {
 			/** debug/test view of the internal counters */
 			snapshotUnsafe: () => ({ phase, parties, arrived, state }),
 		};
-	}),
+	}).pipe(
+		Effect.scoped
+	),
 }) {}
 
 /**

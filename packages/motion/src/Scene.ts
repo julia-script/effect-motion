@@ -17,15 +17,15 @@ import * as Runner from "./Runner";
 import * as Time from "./Time";
 
 export const TypeId = "~motion/Scene" as const;
-export interface Scene<E, R, Entities> {
+export interface Scene<E, R> {
 	readonly [TypeId]: typeof TypeId;
 	readonly runner: Effect.Effect<void, E, R | Scope.Scope>;
-	readonly "~entities": Entities;
 	/** tooling-facing metadata; never read by the runtime */
 	readonly annotations: Context.Context<never>;
-	annotate<I, S>(key: Context.Key<I, S>, value: S): Scene<E, R, Entities>;
-	annotateMerge(context: Context.Context<never>): Scene<E, R, Entities>;
+	annotate<I, S>(key: Context.Key<I, S>, value: S): Scene<E, R>;
+	annotateMerge(context: Context.Context<never>): Scene<E, R>;
 }
+export type AnyScene = Scene<never, never>;
 
 type MakeEffect<Eff extends Effect.Effect<any, any, any>, AEff> = Effect.Effect<
 	AEff,
@@ -43,22 +43,7 @@ type MakeEffect<Eff extends Effect.Effect<any, any, any>, AEff> = Effect.Effect<
 export const make = <const Eff extends Effect.Effect<any, any, any>, AEff>(
 	f: () => Generator<Eff, void, never>,
 ): MakeEffect<Eff, AEff> extends Effect.Effect<AEff, infer E, infer R>
-	? Scene<
-			E,
-			| Exclude<
-					R,
-					{
-						readonly [Entity.TypeId]: typeof Entity.TypeId;
-					}
-			  >
-			| Scope.Scope,
-			Extract<
-				R,
-				{
-					readonly [Entity.TypeId]: typeof Entity.TypeId;
-				}
-			>
-		>
+	? Scene<E, R | Scope.Scope>
 	: never => {
 	return makeScene(Effect.scoped(Effect.gen(f)), Context.empty()) as never;
 };
@@ -84,14 +69,13 @@ export const instantiate = Effect.fnUntraced(function* <
 	Name extends string,
 	Data extends Schema.Top,
 	Traits extends Partial<Entity.EntityTraits<Data["Type"]>>,
-	MakeInput,
 >(
-	entity: Entity.Entity<Name, Data, Traits, MakeInput>,
-	props: Runner.InstantiateProps<MakeInput>,
+	entity: Entity.Entity<Name, Data, Traits>,
+	props: Runner.InstantiateProps<Data["~type.make.in"]>,
 ): Effect.fn.Return<
 	Instance.Instance<Name, Data, Traits>,
-	unknown,
-	Entity.Entity<Name, Data, Traits, MakeInput> | Runner.Runner
+	never,
+	Runner.Runner
 > {
 	const runner = yield* Runner.Runner;
 	return yield* runner.instantiate(entity, props);
@@ -131,7 +115,7 @@ export type EntriesFromEntities<Entities> = Entities extends Entity.AnyEntity
 			[K in Entities as K["name"]]: FrameEntry<K>;
 		}[Entities["name"]]
 	: never;
-export interface Frame<Entities extends Entity.AnyEntity> {
+export interface Frame<Entities extends Entity.AnyEntity = Entity.AnyEntity> {
 	instances: Record<string, EntriesFromEntities<Entities>>;
 	/** id of the root group (conventionally "root"); never rendered itself */
 	root: string;
@@ -143,9 +127,7 @@ export interface Frame<Entities extends Entity.AnyEntity> {
 	/** the active camera's view; Camera.IDENTITY when unused */
 	camera: Camera.CameraState;
 }
-export const step = <E, R, Entities extends Entity.AnyEntity>(
-	runningScene: RunningScene<E, R, Entities>,
-) =>
+export const step = <E, R>(runningScene: RunningScene<E, R>) =>
 	Effect.gen(function* () {
 		// done: the scene fiber ended. awaitedCount === 0: the body and every
 		// fork completed — the scene is over even if its fiber is still
@@ -185,20 +167,20 @@ export const step = <E, R, Entities extends Entity.AnyEntity>(
 		}
 		yield* runningScene.runner.phaser.awaitAdvance;
 		runningScene.framesDelivered++;
-		return (yield* runningScene.runner.state) as Frame<Entities>;
+		return (yield* runningScene.runner.state) as Frame;
 	});
-interface RunningScene<E, R, Entities> {
+export interface RunningScene<E, R> {
 	readonly runner: Runner.Runner["Service"];
 
-	readonly scene: Scene<E, R, Entities>;
+	readonly scene: Scene<E, R>;
 
 	readonly fiber: Fiber.Fiber<void, E>;
 	readonly done: boolean;
 	/** frames delivered so far — mutated by `step` for the maxFrames cap */
 	framesDelivered: number;
 }
-export const run = <E, R, Entities>(
-	scene: Scene<E, R, Entities>,
+export const run = <E, R>(
+	scene: Scene<E, R>,
 	settings: Partial<Runner.Settings> = {},
 ) =>
 	Effect.gen(function* () {
@@ -286,12 +268,12 @@ export const run = <E, R, Entities>(
 					Effect.provide(Layer.succeed(Runner.Runner, runner)),
 					// seeded pseudo-randomness, scoped to the scene fiber
 					Random.withSeed(runner.settings.seed),
-					Effect.forkChild,
+					Effect.forkScoped,
 				);
 			}),
 		);
 
-		const runningScene: RunningScene<E, R, Entities> = {
+		const runningScene: RunningScene<E, R> = {
 			runner,
 			fiber,
 			scene,
@@ -303,8 +285,8 @@ export const run = <E, R, Entities>(
 		return runningScene;
 	});
 
-export const stream = <E, R, Entities extends Entity.AnyEntity>(
-	scene: Scene<E, R, Entities>,
+export const stream = <E, R>(
+	scene: Scene<E, R>,
 	settings: Partial<Runner.Settings> = {},
 ) =>
 	run(scene, settings).pipe(
@@ -312,7 +294,7 @@ export const stream = <E, R, Entities extends Entity.AnyEntity>(
 			Stream.fromEffectRepeat(step(runningScene)).pipe(
 				// refinement: the stream ends at the first null, so the
 				// element type is Frame<Entities>, not Frame | null
-				Stream.takeWhile((state): state is Frame<Entities> => state !== null),
+				Stream.takeWhile((state): state is Frame => state !== null),
 			),
 		),
 		Stream.unwrap,
@@ -623,8 +605,8 @@ export interface PlayOptions {
  * like a fork — `yield* handle.finished` for sequential nesting, or
  * don't await for concurrent scenes.
  */
-export const play = <E, R, Entities>(
-	scene: Scene<E, R, Entities>,
+export const play = <E, R>(
+	scene: Scene<E, R>,
 	options?: PlayOptions,
 ): Effect.Effect<
 	BranchHandle<void, E>,

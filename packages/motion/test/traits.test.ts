@@ -45,7 +45,7 @@ const runScene = async <A>(
 };
 
 const firstNonRoot = (frame: Scene.Frame<any>) =>
-	Object.entries(frame.instances).find(([id]) => id !== frame.root)![1]
+	Object.entries(frame.instances).find(([id]) => id !== frame.root)?.[1]
 		.data as Record<string, any>;
 
 describe("trait-based helpers", () => {
@@ -94,7 +94,7 @@ describe("trait-based helpers", () => {
 			yield* circle.pipe(Motion.fadeTo(0.8, "200 millis", "easeInQuad"));
 			yield* Motion.fade(circle, 1, 0.25, "200 millis");
 		}, firstNonRoot);
-		expect(track[0]!.x).toBeLessThan(120); // explicit origin, not 500
+		expect(track[0]?.x).toBeLessThan(120); // explicit origin, not 500
 		const last = track.at(-1)!;
 		expect(last.x).toBe(100);
 		expect(last.opacity).toBe(0.25);
@@ -117,9 +117,9 @@ describe("trait-based helpers", () => {
 				const entries = Object.values(frame.instances);
 				const group = entries.find(
 					(e) => e.entity.name === "shapes/Group" && frame.instances.root !== e,
-				)!.data as Record<string, any>;
-				const circle = entries.find((e) => e.entity.name === "shapes/Circle")!
-					.data as Record<string, any>;
+				)?.data as Record<string, any>;
+				const circle = entries.find((e) => e.entity.name === "shapes/Circle")
+					?.data as Record<string, any>;
 				return { groupX: group.x, circleX: circle.x };
 			},
 		);

@@ -2,7 +2,8 @@ import { DEFAULT_FONT_URL, loadFontsIntoEngine } from "@effect-motion/thorvg";
 import * as Effect from "effect/Effect";
 import * as Pull from "effect/Pull";
 import * as Stream from "effect/Stream";
-import { type Entity, Fonts, Render, Scene } from "effect-motion";
+import { type Entity, Fonts, Renderer, Scene } from "effect-motion";
+import * as CanvasExporter from "effect-motion/CanvasExporter";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DEFAULT_WASM_BASE, getRuntime } from "./runtime";
 
@@ -164,12 +165,12 @@ export const usePlayer = (
 			// — but skip the blit if a newer frame was requested meanwhile. The
 			// render is never interrupted, so no half-drawn/blank canvas.
 			getRuntime(wasmBaseUrl, sceneFonts).runFork(
-				Render.renderFramebuffer(frame as never, Render.builtinPaints).pipe(
+				Renderer.render(frame).pipe(
 					Effect.scoped,
 					Effect.flatMap((fb) =>
 						Effect.sync(() => {
 							if (shouldBlit()) {
-								Render.blitToCanvas(fb, canvas);
+								CanvasExporter.toCanvas(fb, canvas);
 							}
 						}),
 					),

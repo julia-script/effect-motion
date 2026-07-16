@@ -169,11 +169,11 @@ describe("scene attachment", () => {
 			yield* Scene.tick;
 		});
 		const frame = frames[0]!;
-		const root = frame.instances[frame.root]!.data as {
+		const root = frame.instances[frame.root]?.data as {
 			children: ReadonlyArray<string>;
 		};
 		expect(root.children).toHaveLength(1);
-		expect(frame.instances[root.children[0]!]!.entity.name).toBe(
+		expect(frame.instances[root.children[0]!]?.entity.name).toBe(
 			"shapes/Circle",
 		);
 	});
@@ -188,12 +188,12 @@ describe("scene attachment", () => {
 			yield* Scene.tick;
 		});
 		const frame = frames[0]!;
-		const root = frame.instances[frame.root]!.data as {
+		const root = frame.instances[frame.root]?.data as {
 			children: ReadonlyArray<string>;
 		};
 		expect(root.children).toHaveLength(1); // only the group at top level
-		const group = frame.instances[root.children[0]!]!
-			.data as typeof Shapes.Group.data.Type;
+		const group = frame.instances[root.children[0]!]
+			?.data as typeof Shapes.Group.data.Type;
 		expect(group.children).toHaveLength(1);
 		expect(group.transform).toMatchObject({ a: 2, d: 3 });
 	});
@@ -206,11 +206,11 @@ describe("scene attachment", () => {
 			yield* Scene.tick;
 		});
 		const frame = frames[0]!;
-		const root = frame.instances[frame.root]!.data as {
+		const root = frame.instances[frame.root]?.data as {
 			children: ReadonlyArray<string>;
 		};
 		expect(root.children).toHaveLength(1); // circle moved out of root
-		const group = frame.instances[root.children[0]!]!.data as {
+		const group = frame.instances[root.children[0]!]?.data as {
 			children: ReadonlyArray<string>;
 		};
 		expect(group.children).toHaveLength(1);
@@ -228,13 +228,13 @@ describe("scene attachment", () => {
 		const before = frames[0]!;
 		const after = frames[1]!;
 		const groupId = (
-			before.instances[before.root]!.data as { children: string[] }
+			before.instances[before.root]?.data as { children: string[] }
 		).children[0]!;
 		expect(
-			(before.instances[groupId]!.data as { children: string[] }).children,
+			(before.instances[groupId]?.data as { children: string[] }).children,
 		).toHaveLength(1);
 		expect(
-			(after.instances[groupId]!.data as { children: string[] }).children,
+			(after.instances[groupId]?.data as { children: string[] }).children,
 		).toHaveLength(0);
 	});
 
@@ -316,7 +316,7 @@ describe("polymorphic children", () => {
 	};
 
 	const childrenOf = (frame: Scene.Frame<any>, id: string) =>
-		(frame.instances[id]!.data as { children: string[] }).children;
+		(frame.instances[id]?.data as { children: string[] }).children;
 
 	it("a string child becomes a Text", async () => {
 		const frames = await collectFrames(function* () {
@@ -326,8 +326,8 @@ describe("polymorphic children", () => {
 		const frame = frames[0]!;
 		const groupId = childrenOf(frame, frame.root)[0]!;
 		const childId = childrenOf(frame, groupId)[0]!;
-		expect(frame.instances[childId]!.entity.name).toBe("shapes/Text");
-		expect((frame.instances[childId]!.data as { text: string }).text).toBe(
+		expect(frame.instances[childId]?.entity.name).toBe("shapes/Text");
+		expect((frame.instances[childId]?.data as { text: string }).text).toBe(
 			"hello",
 		);
 	});
@@ -343,7 +343,7 @@ describe("polymorphic children", () => {
 		const frame = frames[0]!;
 		const groupId = childrenOf(frame, frame.root)[0]!;
 		const childId = childrenOf(frame, groupId)[0]!;
-		expect(frame.instances[childId]!.entity.name).toBe("shapes/Circle");
+		expect(frame.instances[childId]?.entity.name).toBe("shapes/Circle");
 	});
 
 	it("an already-instantiated child contributes its id and is reparented", async () => {
@@ -371,9 +371,9 @@ describe("polymorphic children", () => {
 		const groupId = childrenOf(frame, frame.root)[0]!;
 		const kids = childrenOf(frame, groupId);
 		expect(kids).toHaveLength(3);
-		expect(frame.instances[kids[0]!]!.entity.name).toBe("shapes/Text");
-		expect(frame.instances[kids[1]!]!.entity.name).toBe("shapes/Circle");
-		expect(frame.instances[kids[2]!]!.entity.name).toBe("shapes/Circle");
+		expect(frame.instances[kids[0]!]?.entity.name).toBe("shapes/Text");
+		expect(frame.instances[kids[1]!]?.entity.name).toBe("shapes/Circle");
+		expect(frame.instances[kids[2]!]?.entity.name).toBe("shapes/Circle");
 	});
 });
 
@@ -396,9 +396,9 @@ describe("builtin $visible", () => {
 			yield* Scene.tick;
 		});
 		const frame = frames[0]!;
-		const id = (frame.instances[frame.root]!.data as { children: string[] })
+		const id = (frame.instances[frame.root]?.data as { children: string[] })
 			.children[0]!;
-		expect(frame.instances[id]!.$visible).toBe(true);
+		expect(frame.instances[id]?.$visible).toBe(true);
 	});
 
 	it("a hidden instance is skipped by the renderer", async () => {

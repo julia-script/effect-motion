@@ -6,7 +6,7 @@ import { ParticleField } from "../particles/ParticleField";
 import type { PaintFunction, PaintFunctions } from "../Renderer";
 import * as Shapes from "../shapes";
 import { parseColor } from "./color";
-import { applyStyle, finishPaint, paintQuad } from "./paint";
+import { applyStyle, finishPaint } from "./paint";
 
 /**
  * ThorVG paint functions for the built-in shapes — this file is the coverage
@@ -32,10 +32,6 @@ export const rect: PaintFunction<typeof Shapes.Rect> = ({
 	projection,
 }) =>
 	Effect.gen(function* () {
-		// a tilted plane is an exact projected quad, not a billboard rect
-		if (projection.quad !== undefined) {
-			return yield* paintQuad(scene, projection.quad, data);
-		}
 		const shape = yield* Tvg.makeShape();
 		yield* Tvg.appendRect(shape, data.x, data.y, data.width, data.height);
 		yield* applyStyle(shape, data);

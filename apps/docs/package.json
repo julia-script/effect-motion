@@ -11,7 +11,7 @@
 	"dependencies": {
 		"@effect-motion/react": "workspace:*",
 		"cnfast": "^0.0.8",
-		"effect": "4.0.0-beta.94",
+		"effect": "4.0.0-beta.98",
 		"effect-motion": "workspace:*",
 		"fumadocs-core": "^16.11.3",
 		"fumadocs-mdx": "^15.1.0",

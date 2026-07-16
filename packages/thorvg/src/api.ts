@@ -71,7 +71,7 @@ export const getSharedCanvas = (
 			host.__emCanvasCache.set(key, canvas);
 		} else {
 			// drop the previous frame's paints (clear preserves the font table)
-			yield* wrap(() => canvas!.instance.clear());
+			yield* wrap(() => canvas?.instance.clear());
 		}
 		return canvas;
 	});

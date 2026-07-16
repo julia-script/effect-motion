@@ -35,7 +35,7 @@ describe("Scene.fork", () => {
 		});
 		// 30 animation frames + the scene-completion settle frame
 		expect(frames).toHaveLength(31);
-		expect(frames.at(-1)![0]!.x).toBe(100);
+		expect(frames.at(-1)?.[0]?.x).toBe(100);
 	});
 
 	it("body ends first: frames keep flowing while the fork drains", async () => {
@@ -48,10 +48,10 @@ describe("Scene.fork", () => {
 		});
 		expect(frames).toHaveLength(61);
 		const last = frames.at(-1)!;
-		expect(last[0]!.x).toBe(100);
-		expect(last[1]!.x).toBe(100);
+		expect(last[0]?.x).toBe(100);
+		expect(last[1]?.x).toBe(100);
 		// after the body ended, the fork still progressed frame by frame
-		expect(frames[35]![1]!.x).toBeGreaterThan(frames[30]![1]!.x);
+		expect(frames[35]?.[1]?.x).toBeGreaterThan(frames[30]?.[1]?.x);
 	});
 
 	it("overlapping spawns via repeat drain naturally", async () => {
@@ -101,7 +101,7 @@ describe("Scene.fork", () => {
 		});
 		// 5 body frames + settle — the 600-frame fork is gone, no hang
 		expect(frames).toHaveLength(6);
-		expect(frames.at(-1)![0]!.x).toBeLessThan(2);
+		expect(frames.at(-1)?.[0]?.x).toBeLessThan(2);
 	});
 });
 
@@ -118,10 +118,10 @@ describe("Scene.background", () => {
 		// bounded by the 30-frame body, not the 600-frame background
 		expect(frames).toHaveLength(31);
 		const last = frames.at(-1)!;
-		expect(last[0]!.x).toBe(100);
+		expect(last[0]?.x).toBe(100);
 		// the background animated while the body ran, mid-frame interrupt is safe
-		expect(last[1]!.x).toBeGreaterThan(0);
-		expect(last[1]!.x).toBeLessThan(10);
+		expect(last[1]?.x).toBeGreaterThan(0);
+		expect(last[1]?.x).toBeLessThan(10);
 	});
 
 	it("an indefinite background repeat is bounded by the scene", async () => {
@@ -138,7 +138,7 @@ describe("Scene.background", () => {
 		});
 		expect(frames).toHaveLength(31);
 		// the bounce was live for the whole scene
-		expect(frames[29]![1]!.y).toBeGreaterThan(0);
+		expect(frames[29]?.[1]?.y).toBeGreaterThan(0);
 	});
 
 	it("backgrounds live through the fork drain, then stop", async () => {
@@ -154,6 +154,6 @@ describe("Scene.background", () => {
 		});
 		expect(frames).toHaveLength(61);
 		// the background kept animating during the drain (past the body's end)
-		expect(frames[59]![1]!.x).toBeGreaterThan(frames[6]![1]!.x);
+		expect(frames[59]?.[1]?.x).toBeGreaterThan(frames[6]?.[1]?.x);
 	});
 });

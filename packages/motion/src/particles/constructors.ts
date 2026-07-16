@@ -1,6 +1,4 @@
-import type * as Effect from "effect/Effect";
 import type * as Instance from "../Instance";
-import type * as Runner from "../Runner";
 import * as Scene from "../Scene";
 import type { Range } from "./Particle";
 import { ParticleField } from "./ParticleField";
@@ -72,26 +70,14 @@ export interface FieldInput extends CommonInput {
  * Create a source emitter field. Simulate it with `{ burst: n }` (all at
  * once) or `{ rate: n }` (a continuous stream).
  */
-export const emitter = (
-	props: EmitterInput,
-): Effect.Effect<EmitterField, unknown, typeof ParticleField | Runner.Runner> =>
+export const emitter = (props: EmitterInput) =>
 	// the entity schema is one struct with defaults; the branded return type
 	// is a compile-time cast, runtime data is a plain ParticleField
-	Scene.instantiate(ParticleField, props) as Effect.Effect<
-		EmitterField,
-		unknown,
-		typeof ParticleField | Runner.Runner
-	>;
+	Scene.instantiate(ParticleField, props);
 
 /**
  * Create a floating field: particles spread evenly across the region,
  * drifting and wrapping at the edges. Simulate it with `{ fill: n }`.
  */
-export const field = (
-	props: FieldInput,
-): Effect.Effect<FloatField, unknown, typeof ParticleField | Runner.Runner> =>
-	Scene.instantiate(ParticleField, props) as Effect.Effect<
-		FloatField,
-		unknown,
-		typeof ParticleField | Runner.Runner
-	>;
+export const field = (props: FieldInput) =>
+	Scene.instantiate(ParticleField, props);

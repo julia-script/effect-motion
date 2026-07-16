@@ -43,9 +43,9 @@ describe("Scene.finish", () => {
 		// awaiters resume at the first frame boundary AFTER finish (frame
 		// 31): a runs 31..60, concurrently with b's tail
 		expect(frames).toHaveLength(62);
-		expect(frames[35]![0]!.x).toBeGreaterThan(0); // a moving…
-		expect(frames[35]![1]!.x).toBeGreaterThan(50); // …while b's tail moves
-		expect(frames.at(-1)![1]!.x).toBe(100); // tail completed naturally
+		expect(frames[35]?.[0]?.x).toBeGreaterThan(0); // a moving…
+		expect(frames[35]?.[1]?.x).toBeGreaterThan(50); // …while b's tail moves
+		expect(frames.at(-1)?.[1]?.x).toBe(100); // tail completed naturally
 	});
 
 	it("a finished fork stops blocking scene end; its tail is cut like a background", async () => {
@@ -63,7 +63,7 @@ describe("Scene.finish", () => {
 		});
 		// bounded by the 60-frame body, not the 600-frame tail
 		expect(frames).toHaveLength(61);
-		const lastB = frames.at(-1)![1]!.x;
+		const lastB = frames.at(-1)?.[1]?.x;
 		expect(lastB).toBeGreaterThan(50); // the tail did animate…
 		expect(lastB).toBeLessThan(100); // …but was interrupted early
 	});
@@ -84,7 +84,7 @@ describe("Scene.finish", () => {
 		});
 		expect(frames).toHaveLength(91);
 		// the finished fork's tail animated through the drain
-		expect(frames[80]![1]!.x).toBeGreaterThan(frames[40]![1]!.x);
+		expect(frames[80]?.[1]?.x).toBeGreaterThan(frames[40]?.[1]?.x);
 	});
 
 	it("finish is idempotent; finish-then-complete decrements once", async () => {
@@ -102,7 +102,7 @@ describe("Scene.finish", () => {
 			yield* Scene.fork(Motion.tween(c, { x: 0 }, { x: 100 }, "0.5 seconds"));
 		});
 		expect(frames).toHaveLength(31);
-		expect(frames.at(-1)![0]!.x).toBe(100);
+		expect(frames.at(-1)?.[0]?.x).toBe(100);
 	});
 
 	it("completion implies finish", async () => {
@@ -116,7 +116,7 @@ describe("Scene.finish", () => {
 			yield* Motion.tween(a, { x: 0 }, { x: 100 }, "166 millis");
 		});
 		expect(frames).toHaveLength(42); // 30 + 1 wake frame + 10 + settle
-		expect(frames[29]![0]!.x).toBe(0); // a waited for b's completion
+		expect(frames[29]?.[0]?.x).toBe(0); // a waited for b's completion
 	});
 
 	it("root finish ends an otherwise-infinite body", async () => {
@@ -152,6 +152,6 @@ describe("Scene.finish", () => {
 		});
 		expect(frames).toHaveLength(72); // 30 + 1 wake + 10 + 30 + settle
 		// b frozen after the interrupt at frame 41
-		expect(frames[55]![1]!.x).toBe(frames[42]![1]!.x);
+		expect(frames[55]?.[1]?.x).toBe(frames[42]?.[1]?.x);
 	});
 });

@@ -96,7 +96,7 @@ type GroupInput = Omit<StoredInput, "transform"> & {
 
 const decodeTransform = Schema.decodeUnknownSync(Transform);
 
-const normalizeInput = (input: GroupInput | StoredInput): StoredInput =>
+const _normalizeInput = (input: GroupInput | StoredInput): StoredInput =>
 	Array.isArray(input.transform)
 		? { ...input, transform: decodeTransform(input.transform) }
 		: (input as StoredInput);
@@ -110,12 +110,11 @@ const traits = {
 	"~opacity": Shape2D.opacityLens<GroupData>(),
 };
 
-export const Group = Entity.make<
+export const Group = Entity.make<"shapes/Group", typeof fields, typeof traits>(
 	"shapes/Group",
-	typeof fields,
-	typeof traits,
-	GroupInput
->("shapes/Group", fields, traits, { normalize: normalizeInput });
+	fields,
+	traits,
+);
 
 /** The group's x/y position composed outside its normalized local transform. */
 export const resolvedTransform = (data: {

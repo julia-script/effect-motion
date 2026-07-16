@@ -21,7 +21,7 @@ const collectX = async (
 	return [...frames].map((frame) => {
 		const entry = Object.entries(frame.instances).find(
 			([id]) => id !== frame.root,
-		)![1];
+		)?.[1];
 		return (entry.data as { x: number }).x;
 	});
 };

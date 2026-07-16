@@ -52,7 +52,7 @@ describe("camera state on the frame", () => {
 			yield* Scene.setCamera(cam2 as never);
 			yield* Scene.tick;
 		});
-		const rootData = frame.instances[frame.root]!.data as {
+		const rootData = frame.instances[frame.root]?.data as {
 			children: ReadonlyArray<string>;
 		};
 		expect(rootData.children.some((id) => id.startsWith("Camera"))).toBe(false);
@@ -97,13 +97,13 @@ describe("camera animated by the existing primitives", () => {
 			},
 			{ frameRate: 30 },
 		);
-		const circleId = Object.keys(frames[0]!.instances).find((id) =>
+		const circleId = Object.keys(frames[0]?.instances).find((id) =>
 			id.startsWith("shapes/Circle"),
 		)!;
 		for (const frame of frames) {
-			expect((frame.instances[circleId]!.data as { x: number }).x).toBe(100);
+			expect((frame.instances[circleId]?.data as { x: number }).x).toBe(100);
 		}
-		expect(frames.at(-1)!.camera.x).toBe(300);
+		expect(frames.at(-1)?.camera.x).toBe(300);
 	});
 });
 

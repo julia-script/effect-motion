@@ -101,8 +101,8 @@ describe("planeCorners", () => {
 		);
 		// rotX 90°: the plane lies flat, its former y-extent becomes z-extent
 		// TL/TR (y=0) stay at z=0; BL/BR (y=100) rotate to z≈100, y≈0
-		expect(corners[2]!.z).toBeCloseTo(100, 6);
-		expect(corners[2]!.y).toBeCloseTo(0, 6);
+		expect(corners[2]?.z).toBeCloseTo(100, 6);
+		expect(corners[2]?.y).toBeCloseTo(0, 6);
 	});
 });
 
