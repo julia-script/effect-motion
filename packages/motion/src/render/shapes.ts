@@ -58,6 +58,7 @@ export const ellipse: PaintFunction<typeof Shapes.Ellipse> = ({
 	Effect.gen(function* () {
 		const shape = yield* Tvg.makeShape();
 		yield* Tvg.appendCircle(shape, data.x, data.y, data.rx, data.ry);
+
 		yield* applyStyle(shape, data);
 		yield* finishPaint(shape, scene, projection);
 	});

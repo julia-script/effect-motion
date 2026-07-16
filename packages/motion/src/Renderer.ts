@@ -182,29 +182,8 @@ const renderToCanvas = <const Entities extends Entity.AnyEntity>(
 				// its four corners so the paint fn can emit an exact path. The
 				// pivot is the plane's world anchor, so rotation spins it in
 				// place. Billboards (no rotation, or non-rect shapes) skip this.
-				const rotX = data.rotX ?? 0;
-				const rotY = data.rotY ?? 0;
-				const rotZ = data.rotZ ?? 0;
-				const tilted =
-					(rotX !== 0 || rotY !== 0 || rotZ !== 0) &&
-					data.width !== undefined &&
-					data.height !== undefined;
-				const quad = tilted
-					? Projection.projectQuad(
-							camera,
-							Projection.planeCorners(
-								{
-									x: data.x ?? 0,
-									y: data.y ?? 0,
-									width: data.width as number,
-									height: data.height as number,
-								},
-								{ rotX, rotY, rotZ },
-								world,
-							),
-							origin,
-						)
-					: undefined;
+		
+			
 				paintables.push({
 					id,
 					entry,
@@ -212,10 +191,10 @@ const renderToCanvas = <const Entities extends Entity.AnyEntity>(
 						screen: Projection.billboardAffine(proj, {
 							x: data.x ?? 0,
 							y: data.y ?? 0,
+							
 						}),
 						depth: proj.depth,
 						scale: proj.scale,
-						...(quad !== undefined ? { quad } : {}),
 					},
 				});
 			});
@@ -285,8 +264,15 @@ const renderToCanvas = <const Entities extends Entity.AnyEntity>(
 /** RGBA8888 framebuffer plus its dimensions, straight from the SW canvas. */
 export interface Framebuffer {
 	readonly rgba: Uint8Array;
+	/** physical pixel size of the rgba buffer (logical size × dpr) */
 	readonly width: number;
 	readonly height: number;
+	/**
+	 * logical scene size — the resolution the buffer should be displayed at
+	 * (CSS pixels). Equals width/height when rendered at dpr 1.
+	 */
+	readonly logicalWidth: number;
+	readonly logicalHeight: number;
 }
 
 /**
@@ -304,10 +290,22 @@ export interface Framebuffer {
  */
 export const render = (
 	frame: Frame,
+	options?: {
+		/**
+		 * device-pixel-ratio multiplier for high-dpi displays. The buffer is
+		 * rasterized at `logical × dpr` while paint functions keep working in
+		 * logical scene coordinates (the root scene is scaled). Callers display
+		 * the buffer at the logical size. Default 1 (node/export paths).
+		 */
+		readonly dpr?: number;
+	},
 ): Effect.Effect<Framebuffer, ThorvgException, Tvg.ThorvgWasm | Scope.Scope> =>
 	Effect.gen(function* () {
-		const width = frame.width;
-		const height = frame.height;
+		const logicalWidth = frame.width;
+		const logicalHeight = frame.height;
+		const dpr = options?.dpr ?? 1;
+		const width = Math.round(logicalWidth * dpr);
+		const height = Math.round(logicalHeight * dpr);
 		// reuse a persistent canvas (cleared each frame) — a per-frame
 		// create+delete would wipe the engine's font table via TvgCanvas.delete()
 		// (see api.getSharedCanvas). The scene + shapes below are still scoped
@@ -318,12 +316,18 @@ export const render = (
 		// background as a filled rect covering the viewport (mirrors the SVG
 		// sink's background rect; survives into the raster buffer)
 		const bg = yield* Tvg.makeShape();
-		yield* Tvg.appendRect(bg, 0, 0, width, height);
+		yield* Tvg.appendRect(bg, 0, 0, logicalWidth, logicalHeight);
 		const { r, g, b, a } = parseColor(frame.backgroundColor);
 		yield* Tvg.setFillColor(bg, r, g, b, a);
 		yield* Tvg.addToScene(scene, bg);
 
 		yield* renderToCanvas(frame, canvas, scene);
+
+		// scale the whole subtree to physical pixels; children keep their own
+		// logical affines (parent transforms compose in the scene graph)
+		if (dpr !== 1) {
+			yield* Tvg.scale(scene, dpr);
+		}
 
 		yield* Tvg.addToCanvas(canvas, scene);
 		yield* Tvg.canvasUpdate(canvas);
@@ -331,5 +335,11 @@ export const render = (
 		yield* Tvg.sync(canvas);
 
 		const buffer = yield* Tvg.render(canvas);
-		return { rgba: new Uint8Array(buffer), width, height };
+		return {
+			rgba: new Uint8Array(buffer),
+			width,
+			height,
+			logicalWidth,
+			logicalHeight,
+		};
 	});

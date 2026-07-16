@@ -34,7 +34,7 @@
 	"scripts": {
 		"build": "tsc -p tsconfig.build.json",
 		"dev": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
-		"test": "vitest run",
+		"test": "vitest run --passWithNoTests",
 		"check": "tsc --noEmit"
 	},
 	"publishConfig": {

@@ -17,6 +17,6 @@ export const scene = Scene.make(function* () {
 			Motion.moveTo({ x: 430 }, "600 millis", "easeInOutCubic"),
 			Motion.moveTo({ x: 70 }, "600 millis", "easeInOutCubic"),
 		),
-		Schedule.both(Schedule.spaced("400 millis"), Schedule.recurs(2)),
+		Schedule.spaced("400 millis").pipe(Schedule.upTo({ times: 2 })),
 	);
 });

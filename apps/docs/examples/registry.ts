@@ -1,4 +1,4 @@
-import type { AnyScene } from "@effect-motion/react";
+import type { PlayerProps } from "@effect-motion/react";
 import { scene as appendChild } from "./append-child.scene";
 import { scene as cameraParallax } from "./camera-parallax.scene";
 import { scene as cameraShake } from "./camera-shake.scene";
@@ -29,7 +29,7 @@ import { scene as theBox } from "./the-box.scene";
  * Every example the docs can embed. The key doubles as the source file
  * name (`examples/<key>.scene.ts`) that the Example component displays.
  */
-export const examples: Record<string, AnyScene> = {
+export const examples: Record<string, PlayerProps["scene"]> = {
 	"easing-race": easingRace,
 	springs,
 	groups,

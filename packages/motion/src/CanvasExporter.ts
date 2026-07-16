@@ -34,17 +34,21 @@ const resolveCanvas = Effect.fnUntraced(function* (
 	}
 	return target;
 });
+/**
+ * Blit a framebuffer onto a DOM canvas. The canvas buffer takes the
+ * framebuffer's PHYSICAL size (logical × dpr); CSS display size is left to
+ * the caller — the intrinsic aspect ratio is preserved by the attributes, so
+ * responsive styling (`width: 100%`) or a fixed `fb.logicalWidth`px both
+ * work. Writing CSS here would clobber caller styling (e.g. React inline
+ * styles are not re-applied on rerender).
+ */
 export const toCanvas = Effect.fnUntraced(function* (
 	fb: Renderer.Framebuffer,
 	target: HTMLCanvasElement | "string",
 ) {
 	const canvas = yield* resolveCanvas(target);
-	// if (canvas.width !== fb.width) {
 	canvas.width = fb.width;
-	// }
-	// if (canvas.height !== fb.height) {
 	canvas.height = fb.height;
-	// }
 	const ctx = canvas.getContext("2d");
 	if (ctx === null) {
 		return yield* Effect.fail(

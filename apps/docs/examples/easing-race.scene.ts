@@ -1,4 +1,4 @@
-import { Motion, Phaser, Scene, Shapes } from "effect-motion";
+import { Motion, Scene, Shapes } from "effect-motion";
 
 // same distance, same duration — only the pacing differs
 export const scene = Scene.make(function* () {
@@ -21,7 +21,7 @@ export const scene = Scene.make(function* () {
 		fill: "tomato",
 	});
 
-	yield* Phaser.all([
+	yield* Scene.all([
 		Motion.tweenTo(linear, { x: 460 }, "2 seconds"),
 		Motion.tweenTo(cubic, { x: 460 }, "2 seconds", "easeInOutCubic"),
 		Motion.tweenTo(expo, { x: 460 }, "2 seconds", "easeOutExpo"),

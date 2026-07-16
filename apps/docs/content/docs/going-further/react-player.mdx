@@ -4,8 +4,8 @@ description: Play a scene live in a React app with @effect-motion/react
 ---
 
 A scene is data; the **player** is how you watch it live in a browser. The
-`@effect-motion/react` package provides a ready-made `<Player>` component and the
-`usePlayer` hook it's built on. (Every live example in these docs is a `<Player>`.)
+`@effect-motion/react` package provides a ready-made `<Player>` component.
+(Every live example in these docs is a `<Player>`.)
 
 ```bash
 npm install @effect-motion/react
@@ -13,49 +13,61 @@ npm install @effect-motion/react
 
 ## The Player component
 
-Drop in a scene and go — `<Player>` sizes its SVG viewport from the scene's frame
-metadata and renders a transport bar (play/pause, progress, time, loop):
+Drop in a scene and go — `<Player>` sizes its canvas from the scene's own
+resolution and renders a Vimeo-style transport bar (play/pause, a scrubbable
+progress bar with a time chip, and a repeat toggle):
 
 ```tsx
 import { Player } from "@effect-motion/react";
 import { scene } from "./my-scene";
 
 export function Demo() {
-	return <Player scene={scene} width={500} height={300} />;
+	return <Player scene={scene} autoPlay />;
 }
 ```
 
-`PlayerProps` is the scene plus the same options as `usePlayer`:
-`seed`, `frameRate`, `width`, `height`, `autoPlay`. Focus the player for keyboard
-control (Space toggles play/pause).
+Focus the scrubber for keyboard control — the arrow keys step one second at a
+time. The chrome is styled with inline styles and inline SVG icons only, so the
+player pulls in no stylesheet, font, or image assets.
 
-## The usePlayer hook
+### Props
 
-For a custom transport UI, drive it yourself with `usePlayer(scene, options)`. It
-pulls frames from the scene's stream with a read-ahead buffer and plays them on a
-`requestAnimationFrame` clock — playback starts as soon as the first frame is
-buffered, so long and infinite scenes play without waiting for completion.
+`PlayerProps` is the `scene` plus:
 
-```tsx
-import { usePlayer } from "@effect-motion/react";
+- `fps` — playback frame rate (default `60`). Drives both the scene runner and
+  the real-time playback clock.
+- `autoPlay` — start playing as soon as the first frame is buffered.
+- `defaultRepeatMode` — initial state of the repeat toggle. It's an initial
+  value, not a controlled prop: the player owns repeat after mount (the toggle
+  button). No-op for an infinite scene.
+- `prebufferedFrames` — how many frames to buffer before playback. Defaults to
+  the whole scene (so total time and the progress bar are known up front); an
+  infinite scene windows this instead.
+- `isInfinite` — declare a scene that never ends. The progress bar is hidden
+  (there's no total to scrub against) and the frame buffer is windowed so memory
+  can't grow without bound.
+- `bufferCapacity` — max frames retained in memory (frame data, not pixels).
+  A finite scene keeps everything so far-back seeking is free; an infinite scene
+  is windowed. Seeking before the retained window clamps to its start.
 
-function CustomPlayer({ scene }) {
-	const player = usePlayer(scene, { autoPlay: true });
-	// player.currentFrame, .frame, .playing, .progress, .totalFrames
-	// player.play(), .pause(), .toggle(), .seek(n), .setLoop(bool)
-	return <button onClick={player.toggle}>{player.playing ? "Pause" : "Play"}</button>;
-}
-```
+## How it buffers
 
-Played frames are retained, so backward seeking is free; forward seeking clamps
-to the buffered edge. `totalFrames` is `null` until the stream completes (never,
-for infinite scenes), so a progress bar reads against the buffered edge until
-then.
+The player pulls frames from the scene's stream ahead of the playhead and
+renders each one to the canvas on demand through the shared ThorVG engine — it
+buffers lightweight frame *data*, not rasterized pixels, so long scenes stay
+cheap. Playback runs on a real-time accumulator clock, so it keeps wall-clock
+pace even when a render is briefly slow (it drops intermediate frames rather
+than falling behind). On a high-DPI display the canvas rasterizes at a softened
+device-pixel-ratio for a crisp image.
+
+Because scenes are deterministic and finite, a finite scene collects every
+frame up front, so seeking in both directions is free. `totalFrames` is unknown
+until the stream completes (never, for infinite scenes), so until then the
+progress bar reads against the buffered edge.
 
 ## Live vs. file
 
 The player is one of two ways to consume a scene's frames — the **live/browser**
-path (`SvgDomRenderer` under the hood). The other is
-[Export to video](/docs/going-further/export), the **file** path
-(`SvgRenderer` → rasterizer → ffmpeg). Because both fold the same frames, what
-you preview in the player is exactly what you export.
+path. The other is [Export to video](/docs/going-further/export), the **file**
+path (rasterizer → ffmpeg). Because both fold the same frames through the same
+ThorVG renderer, what you preview in the player is exactly what you export.

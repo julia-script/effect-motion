@@ -10,7 +10,7 @@ export function ExampleScene({ name }: { name: string }) {
 	}
 	return (
 		<div className="my-6">
-			<Player scene={scene} width={500} height={300} />
+			<Player scene={scene} />
 		</div>
 	);
 }

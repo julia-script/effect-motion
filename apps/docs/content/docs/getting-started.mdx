@@ -41,14 +41,11 @@ import { Player } from "@effect-motion/react";
 import { scene } from "./my-scene";
 
 export function App() {
-	return <Player scene={scene} width={500} height={300} autoPlay />;
+	return <Player scene={scene} autoPlay />;
 }
 ```
 
-Because scenes are deterministic and finite, the Player collects every frame
-up front by running the scene once, then plays the frames back — seeking in
-both directions is free.
-
-Prefer your own UI? `usePlayer(scene, options)` exposes the same state and
-controls (`status`, `frame`, `progress`, `play`, `pause`, `seek`, …) without
-any chrome.
+The Player sizes itself from the scene's own resolution, so there's nothing
+else to configure. Because scenes are deterministic and finite, it collects
+every frame up front by running the scene once, then plays the frames back —
+seeking in both directions is free.

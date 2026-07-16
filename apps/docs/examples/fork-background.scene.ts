@@ -37,6 +37,6 @@ export const scene = Scene.make(function* () {
 				);
 			}),
 		),
-		Schedule.both(Schedule.fixed("200 millis"), Schedule.recurs(5)),
+		Schedule.fixed("200 millis").pipe(Schedule.upTo({ times: 5 })),
 	);
 });

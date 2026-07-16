@@ -641,7 +641,15 @@ export const play = <E, R>(
  * list sequentially belongs to {@link chain}, overlapping staggered
  * starts to {@link stagger}.
  */
-export const all: typeof Phaser.all = (effects) => Phaser.all(effects);
+export const all = Effect.fnUntraced(function* <
+	Eff extends Effect.Effect<any, any, any>,
+>(effects: Iterable<Eff>) {
+	const runner = yield* Runner.Runner;
+	// runner.phaser
+	return yield* Phaser.all(effects).pipe(
+		Effect.provideService(Phaser.Phaser, runner.phaser),
+	);
+});
 
 /**
  * Run items one at a time, in order — items NEVER overlap, mirroring

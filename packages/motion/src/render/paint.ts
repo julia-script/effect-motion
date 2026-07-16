@@ -65,25 +65,3 @@ export const finishPaint = (
 		}
 		yield* Tvg.addToScene(scene, shape);
 	});
-
-/**
- * Paint a tilted plane as an exact closed 4-point path from its projected
- * screen corners (design D3). Perspective-correct because the corners were
- * projected individually. Carries the shape's fill/stroke/opacity. No further
- * transform — the corners are already in screen space.
- */
-// export const paintQuad = (
-// 	scene: OwnedPaint,
-// 	quad: NonNullable<PaintProjection["quad"]>,
-// 	style: StyleData,
-// ): Effect.Effect<void, ThorvgException, Tvg.ThorvgWasm | Scope.Scope> =>
-// 	Effect.gen(function* () {
-// 		const shape = yield* Tvg.makeShape();
-// 		yield* Tvg.moveTo(shape, quad[0].x, quad[0].y);
-// 		yield* Tvg.lineTo(shape, quad[1].x, quad[1].y);
-// 		yield* Tvg.lineTo(shape, quad[2].x, quad[2].y);
-// 		yield* Tvg.lineTo(shape, quad[3].x, quad[3].y);
-// 		yield* Tvg.close(shape);
-// 		yield* applyStyle(shape, style);
-// 		yield* Tvg.addToScene(scene, shape);
-// 	});

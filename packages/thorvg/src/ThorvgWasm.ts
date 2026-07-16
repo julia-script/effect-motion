@@ -1,5 +1,14 @@
 import TVG, { type InitOptions } from "@thorvg/webcanvas";
-import { Brand, Context, Effect, Layer, Option, Ref, type Scope } from "effect";
+import {
+	Brand,
+	Context,
+	Effect,
+	Layer,
+	Option,
+	Record,
+	Ref,
+	type Scope,
+} from "effect";
 import { get } from "effect/Record";
 import { messageForCode, ThorvgException } from "./ThorvgException";
 import type { ThorVGModule } from "./thorvgemscripten";
@@ -159,28 +168,35 @@ export class Scratch {
 	}
 }
 
+// ponytail: globalThis steal. The shipped wasm is closure-minified — the
+// symbol map (name → single-letter export) lives only inside the glue, which
+// stashes the fully-named module on __ThorVGModule after init. Own the
+// factory (design D5) only if concurrent engines / worker isolation are
+// needed; a single init side-effect doesn't justify a build pipeline.
+const stealGlobal = () => {
+	const g = globalThis as Record<string, unknown>;
+	const module = get(g, "__ThorVGModule");
+	const threadCount = get(g, "__THORVG_THREAD_COUNT");
+	if (Option.isSome(module)) {
+		return {
+			module: module.value as ThorVGModule,
+			threadCount: Option.isSome(threadCount)
+				? (threadCount.value as number)
+				: 1,
+		};
+	}
+	throw new Error("__ThorVGModule not found after TVG.init");
+};
 export const init = (options: InitOptions) =>
-	wrapPromise(() =>
-		// ponytail: globalThis steal. The shipped wasm is closure-minified — the
-		// symbol map (name → single-letter export) lives only inside the glue, which
-		// stashes the fully-named module on __ThorVGModule after init. Own the
-		// factory (design D5) only if concurrent engines / worker isolation are
-		// needed; a single init side-effect doesn't justify a build pipeline.
-		TVG.init(options).then(() => {
-			const g = globalThis as Record<string, unknown>;
-			const module = get(g, "__ThorVGModule");
-			const threadCount = get(g, "__THORVG_THREAD_COUNT");
-			if (Option.isSome(module)) {
-				return {
-					module: module.value as ThorVGModule,
-					threadCount: Option.isSome(threadCount)
-						? (threadCount.value as number)
-						: 1,
-				};
-			}
-			throw new Error("__ThorVGModule not found after TVG.init");
-		}),
-	);
+	wrapPromise(() => {
+		if (Record.has(globalThis as Record<string, unknown>, "__ThorVGModule")) {
+			return Promise.resolve(stealGlobal());
+		}
+
+		return TVG.init(options).then(() => {
+			return stealGlobal();
+		});
+	});
 
 /**
  * The default font: a CORS-open, static-weight TrueType served by jsdelivr,
