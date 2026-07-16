@@ -7,14 +7,18 @@
  * output adapters (Node PNG, browser blit) that wrap `render` with canvas
  * lifecycle + framebuffer read.
  *
- * Text and Path are not in `builtinPaints`: ThorVG text needs a font loaded
- * into the engine (no default font ships in the wasm) and path-`d` needs an
- * SVG-path-string parser — both are their own follow-up. Provide a paint
- * function per entity for them when needed.
+ * Text renders through ThorVG: fonts load into the engine at setup (see the
+ * ThorVG layer's `fonts` option), fetched by URL, with a default sans. Path is
+ * not in `builtinPaints`: ThorVG has no SVG-`d`-string append, so it needs a
+ * path parser — its own follow-up. Provide a Path paint function when needed.
  */
 
 export { blitToCanvas, renderToCanvas } from "./browser";
 export * from "./color";
+// the browser-safe framebuffer path: render to pixels (async), then blit
+// (sync). A consumer that needs to guard the blit — e.g. drop a stale frame's
+// paint after a newer one is requested — renders then blits in two steps.
+export { type Framebuffer, renderFramebuffer } from "./core";
 export * from "./paint";
 export * as shapes from "./shapes";
 export { builtinPaints } from "./shapes";

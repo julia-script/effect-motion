@@ -1,9 +1,9 @@
+import { DEFAULT_FONT_URL, loadFontsIntoEngine } from "@effect-motion/thorvg";
 import * as Effect from "effect/Effect";
-import type * as Fiber from "effect/Fiber";
 import * as Pull from "effect/Pull";
 import * as Stream from "effect/Stream";
 import { type Entity, Fonts, Render, Scene } from "effect-motion";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DEFAULT_WASM_BASE, getRuntime } from "./runtime";
 
 export type PlayerStatus = "loading" | "ready" | "error";
@@ -11,13 +11,19 @@ export type PlayerStatus = "loading" | "ready" | "error";
 /**
  * Render a single frame onto a canvas through the shared ThorVG runtime. The
  * runtime acquires the engine once and reuses it; each call folds the frame
- * onto its own scoped canvas. Returned as a running fiber so a superseded
- * frame's render can be interrupted (latest-frame-wins).
+ * onto its own scoped canvas.
+ *
+ * The render runs async on the shared engine, THEN blits — but only if
+ * `shouldBlit()` still returns true when the pixels are ready. That lets the
+ * caller drop a stale frame's paint (a newer frame was requested meanwhile)
+ * without interrupting the render mid-flight, which would leave the canvas on
+ * the previous frame (latest-frame-wins, without blanking).
  */
 export type RenderFrame = (
 	frame: PlayerFrame,
 	canvas: HTMLCanvasElement,
-) => Fiber.Fiber<void, unknown>;
+	shouldBlit: () => boolean,
+) => void;
 
 /** A scene as produced by `Scene.make`, requirements erased. */
 // ponytail: the core's own tests erase scene generics the same way
@@ -68,9 +74,9 @@ export interface Player {
 	readonly seek: (frame: number) => void;
 	readonly setLoop: (loop: boolean) => void;
 	/**
-	 * Render a frame onto a canvas through the shared ThorVG engine, returning
-	 * the running fiber. The `Player` calls this on frame change and interrupts
-	 * the prior fiber so a slow render can't overwrite a newer frame.
+	 * Render a frame onto a canvas through the shared ThorVG engine. The `Player`
+	 * calls this on frame change with a `shouldBlit` guard so a stale frame's
+	 * paint is dropped once a newer frame is requested (latest-frame-wins).
 	 */
 	readonly renderFrame: RenderFrame;
 }
@@ -105,19 +111,33 @@ export const usePlayer = (
 	const [frame, setFrame] = useState(0);
 	const [playing, setPlaying] = useState(false);
 	const [loop, setLoop] = useState(false);
-	const [fontsReady, setFontsReady] = useState(false);
 	// the shared ThorVG engine acquires asynchronously on first use; the player
-	// is not `ready` until it is available, and an acquisition failure (e.g. a
+	// is not `ready` until it is available (which includes loading the scene's
+	// declared fonts into the engine), and an acquisition failure (e.g. a
 	// blocked wasm fetch) surfaces as the player's error rather than hanging.
 	const [engineReady, setEngineReady] = useState(false);
 
-	// force the shared engine to acquire once, up front, so `status` can reflect
-	// its readiness. Runs a trivial effect on the runtime — ManagedRuntime
-	// memoizes the acquired engine, so this does not re-init per player.
+	// the scene's declared url fonts, as the engine's family→url map. A failed
+	// individual font load is a warning inside the engine, not an error here.
+	// Memoized on its own JSON identity so it's a stable dependency (a fresh
+	// object each render would re-run the engine/render effects needlessly).
+	const fontsKey = JSON.stringify(Fonts.urlMap(scene));
+	// biome-ignore lint/correctness/useExhaustiveDependencies: fontsKey is the value's identity
+	const sceneFonts = useMemo(() => Fonts.urlMap(scene), [fontsKey]);
+
+	// acquire the shared engine and ensure THIS scene's declared fonts are loaded
+	// into it, then mark ready. The engine is a process-global singleton (shared
+	// across players and SPA navigations), so fonts can't be loaded only at
+	// acquire — a later scene's fonts would be missed. `loadFontsIntoEngine` runs
+	// every mount and is idempotent (already-loaded families are skipped), so
+	// each scene's fonts are present before it renders. `status` gates on it.
 	useEffect(() => {
 		let cancelled = false;
-		const runtime = getRuntime(wasmBaseUrl);
-		runtime.runPromise(Effect.void).then(
+		const runtime = getRuntime(wasmBaseUrl, sceneFonts);
+		// include the default sans so it loads even if the engine was first
+		// acquired by a scene that overrode or omitted fonts
+		const fonts = { "sans-serif": DEFAULT_FONT_URL, ...sceneFonts };
+		runtime.runPromise(loadFontsIntoEngine(fonts)).then(
 			() => {
 				if (!cancelled) {
 					setEngineReady(true);
@@ -132,60 +152,44 @@ export const usePlayer = (
 		return () => {
 			cancelled = true;
 		};
-	}, [wasmBaseUrl]);
+	}, [wasmBaseUrl, sceneFonts]);
 
 	// render a frame onto a canvas via the shared runtime. renderToCanvas needs
 	// a Scope (per-frame canvas) which Effect.scoped discharges; the runtime
 	// provides the engine. Forked so the Player can interrupt a superseded
 	// frame's render (latest-frame-wins).
 	const renderFrame = useCallback<RenderFrame>(
-		(frame, canvas) =>
-			getRuntime(wasmBaseUrl).runFork(
-				Render.renderToCanvas(
-					frame as never,
-					Render.builtinPaints,
-					canvas,
-				).pipe(Effect.scoped),
-			),
-		[wasmBaseUrl],
+		(frame, canvas, shouldBlit) => {
+			// render to a framebuffer async on the engine, then blit synchronously
+			// — but skip the blit if a newer frame was requested meanwhile. The
+			// render is never interrupted, so no half-drawn/blank canvas.
+			getRuntime(wasmBaseUrl, sceneFonts).runFork(
+				Render.renderFramebuffer(frame as never, Render.builtinPaints).pipe(
+					Effect.scoped,
+					Effect.flatMap((fb) =>
+						Effect.sync(() => {
+							if (shouldBlit()) {
+								Render.blitToCanvas(fb, canvas);
+							}
+						}),
+					),
+					Effect.catchCause((cause: unknown) =>
+						Effect.sync(() =>
+							console.error("[effect-motion] frame render failed", cause),
+						),
+					),
+				),
+			);
+		},
+		// sceneFonts is memoized (stable across identical font sets); it only
+		// matters on the first getRuntime (the runtime is a singleton)
+		[wasmBaseUrl, sceneFonts],
 	);
 
-	// font preload: load the scene's declared url fonts (Fonts annotation)
-	// alongside initial buffering. Fonts cannot affect frame data, so this
-	// only gates `status` — a failed load warns and proceeds with the
-	// browser's normal fallback.
-	useEffect(() => {
-		const entries = Fonts.get(scene).filter((f) => f.src.url !== undefined);
-		if (
-			entries.length === 0 ||
-			typeof FontFace === "undefined" ||
-			typeof document === "undefined" ||
-			document.fonts === undefined
-		) {
-			setFontsReady(true);
-			return;
-		}
-		setFontsReady(false);
-		let cancelled = false;
-		const loads = entries.map((f) => {
-			const face = new FontFace(f.family, `url(${f.src.url})`, {
-				...(f.weight !== undefined && { weight: String(f.weight) }),
-				...(f.style !== undefined && { style: f.style }),
-			});
-			document.fonts.add(face);
-			return face.load().then(undefined, (err) => {
-				console.warn(`effect-motion: font "${f.family}" failed to load`, err);
-			});
-		});
-		Promise.all(loads).then(() => {
-			if (!cancelled) {
-				setFontsReady(true);
-			}
-		});
-		return () => {
-			cancelled = true;
-		};
-	}, [scene]);
+	// Fonts are loaded into the ThorVG engine at acquire (see the engine effect
+	// above), not as browser FontFaces — the engine rasterizes text, so the DOM
+	// FontFace API is irrelevant. Readiness gates on engineReady, which already
+	// waits for the font loads.
 
 	// latest-value refs keep the fill loop and the rAF clock out of effect
 	// deps: neither should restart on every frame or buffer growth
@@ -334,7 +338,7 @@ export const usePlayer = (
 	const status: PlayerStatus =
 		error !== null
 			? "error"
-			: bufferedFrames > 0 && fontsReady && engineReady
+			: bufferedFrames > 0 && engineReady
 				? "ready"
 				: "loading";
 	const denominator = (totalFrames ?? bufferedFrames) - 1;

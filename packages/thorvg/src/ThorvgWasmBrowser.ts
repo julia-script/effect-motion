@@ -7,8 +7,13 @@ import * as ThorvgWasm from "./ThorvgWasm";
  * like `https://unpkg.com/@thorvg/webcanvas@1.0.8/dist/`). Same acquire path
  * otherwise (design D1).
  */
-export const layer = (baseUrl: string, renderer: RendererType = "sw") =>
+export const layer = (
+	baseUrl: string,
+	renderer: RendererType = "sw",
+	fonts?: Record<string, string>,
+) =>
 	ThorvgWasm.layer({
 		renderer,
 		locateFile: (file: string) => new URL(file, baseUrl).href,
+		...(fonts !== undefined ? { fonts } : {}),
 	});

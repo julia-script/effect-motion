@@ -34,7 +34,11 @@ export const renderFramebuffer = <const Entities extends Entity.AnyEntity>(
 	Effect.gen(function* () {
 		const width = frame.width;
 		const height = frame.height;
-		const canvas = yield* Tvg.makeCanvas(width, height);
+		// reuse a persistent canvas (cleared each frame) — a per-frame
+		// create+delete would wipe the engine's font table via TvgCanvas.delete()
+		// (see api.getSharedCanvas). The scene + shapes below are still scoped
+		// per frame; clear() drops the prior frame's subtree from the canvas.
+		const canvas = yield* Tvg.getSharedCanvas(width, height);
 		const scene = yield* Tvg.makeScene();
 
 		// background as a filled rect covering the viewport (mirrors the SVG

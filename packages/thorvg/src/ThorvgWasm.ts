@@ -183,12 +183,121 @@ export const init = (options: InitOptions) =>
 	);
 
 /**
- * Scoped ThorVG engine: `init` on acquire, `term()` on release. Callers provide a
- * `locateFile` via the Node/browser layers (design D1).
+ * The default font: a CORS-open, static-weight TrueType served by jsdelivr,
+ * mapped to the family `Text` defaults to (`sans-serif`). Text renders with no
+ * config; a consumer overrides this URL or adds families via `options.fonts`.
+ * ponytail: a network fetch at engine acquire — pass an empty `fonts` map (or
+ * your own) for offline/CSP environments. Must resolve to TTF bytes (verified:
+ * Inter 400 loads into ThorVG and renders glyphs).
  */
-export const make = (options: InitOptions) =>
+export const DEFAULT_FONT_URL =
+	"https://cdn.jsdelivr.net/npm/@expo-google-fonts/inter@0.2.3/Inter_400Regular.ttf";
+
+/** Our engine options: webcanvas init options plus a family→ttfUrl font map. */
+export interface ThorvgOptions extends InitOptions {
+	/**
+	 * Fonts to load into the engine on acquire, as `family -> TrueType URL`.
+	 * Defaults to the single default sans (see {@link DEFAULT_FONT_URL}). An
+	 * empty object loads no fonts (text then has no glyphs). Merged, not
+	 * replaced — the default family is present unless overridden.
+	 */
+	readonly fonts?: Record<string, string>;
+}
+
+// Fonts loaded into a given engine module, so a repeat load — a second player,
+// or a re-mount after SPA navigation — skips the fetch. Keyed PER MODULE (a
+// WeakMap): if the engine is recreated (e.g. HMR, a new runtime) the new module
+// starts with an empty set, so the cache can't desync from the actual engine.
+// The inner set keys on "family\0url" so overriding a family's url reloads it.
+const loadedByModule = new WeakMap<ThorVGModule, Set<string>>();
+
+const loadedSet = (module: ThorVGModule): Set<string> => {
+	let s = loadedByModule.get(module);
+	if (s === undefined) {
+		s = new Set();
+		loadedByModule.set(module, s);
+	}
+	return s;
+};
+
+// Fetch a family's TTF and load it into the engine. A failed fetch/load is a
+// logged skip, never a hard error (design D2). `fetch` is global in Node ≥18
+// and the browser — one code path. A (family,url) already loaded INTO THIS
+// module is a no-op.
+const loadFontIntoModule = (
+	module: ThorVGModule,
+	family: string,
+	url: string,
+): Promise<void> => {
+	const loaded = loadedSet(module);
+	const key = `${family}\0${url}`;
+	if (loaded.has(key)) {
+		return Promise.resolve();
+	}
+	return fetch(url)
+		.then((r) => {
+			if (!r.ok) {
+				throw new Error(`HTTP ${r.status}`);
+			}
+			return r.arrayBuffer();
+		})
+		.then((buf) => {
+			const bytes = new Uint8Array(buf);
+			const enc = new TextEncoder();
+			const nameB = enc.encode(`${family}\0`);
+			const mimeB = enc.encode("ttf\0");
+			const total = nameB.length + mimeB.length + bytes.length;
+			const ptr = module._malloc(total);
+			try {
+				module.HEAPU8.set(nameB, ptr);
+				module.HEAPU8.set(mimeB, ptr + nameB.length);
+				module.HEAPU8.set(bytes, ptr + nameB.length + mimeB.length);
+				const rc = module._tvg_font_load_data(
+					ptr,
+					ptr + nameB.length + mimeB.length,
+					bytes.length,
+					ptr + nameB.length,
+					1,
+				);
+				if (rc !== 0) {
+					throw new Error(`_tvg_font_load_data rc ${rc}`);
+				}
+				loaded.add(key);
+			} finally {
+				module._free(ptr);
+			}
+		})
+		.catch((err) => {
+			console.warn(
+				`@effect-motion/thorvg: font "${family}" failed to load from ${url}`,
+				err,
+			);
+		});
+};
+
+const loadFonts = (
+	module: ThorVGModule,
+	fonts: Record<string, string>,
+): Promise<void> =>
+	Promise.all(
+		Object.entries(fonts).map(([family, url]) =>
+			loadFontIntoModule(module, family, url),
+		),
+	).then(() => undefined);
+
+/**
+ * Scoped ThorVG engine: `init` on acquire (then load fonts), `term()` on
+ * release. Callers provide a `locateFile` via the Node/browser layers (design
+ * D1) and optionally a `fonts` map (design D2); the default sans loads unless
+ * overridden.
+ */
+export const make = (options: ThorvgOptions) =>
 	Effect.acquireRelease(
 		init(options).pipe(
+			Effect.tap(({ module }) => {
+				const fonts = options.fonts ?? { "sans-serif": DEFAULT_FONT_URL };
+				return wrapPromise(() => loadFonts(module, fonts));
+			}),
 			Effect.map(({ module, threadCount }) =>
 				ThorvgWasm.of({ module, threadCount, renderer: "sw" }),
 			),
@@ -196,5 +305,22 @@ export const make = (options: InitOptions) =>
 		(service) => wrap(() => service.module.term()).pipe(Effect.ignore),
 	);
 
-export const layer = (options: InitOptions) =>
+export const layer = (options: ThorvgOptions) =>
 	Layer.effect(ThorvgWasm, make(options));
+
+/**
+ * Load fonts into the ALREADY-ACQUIRED engine on demand (family → TrueType
+ * URL). Idempotent: a family+url already loaded is skipped. Use this when the
+ * fonts a scene needs aren't known at engine-acquire time — e.g. the engine is
+ * a process-global singleton (shared across players / SPA navigations) and a
+ * later scene declares fonts the first acquire didn't load. A failed
+ * fetch/load for one family is a logged skip, not a failure.
+ */
+export const loadFontsIntoEngine = (
+	fonts: Record<string, string>,
+): Effect.Effect<void, never, ThorvgWasm> =>
+	ThorvgWasm.pipe(
+		Effect.flatMap(({ module }) =>
+			Effect.promise(() => loadFonts(module, fonts)),
+		),
+	);

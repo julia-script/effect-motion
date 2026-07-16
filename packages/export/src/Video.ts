@@ -1,11 +1,11 @@
-import type { ThorvgException } from "@effect-motion/thorvg";
+import { DEFAULT_FONT_URL, type ThorvgException } from "@effect-motion/thorvg";
 import { ThorvgWasmNode } from "@effect-motion/thorvg/node";
 import * as Effect from "effect/Effect";
 import type * as Scope from "effect/Scope";
 import * as Sink from "effect/Sink";
 import * as Stream from "effect/Stream";
 import type { ChildProcessSpawner } from "effect/unstable/process";
-import { type Entity, Render, Scene } from "effect-motion";
+import { type Entity, Fonts, Render, Scene } from "effect-motion";
 import { renderToPng } from "effect-motion/render-node";
 import * as Ffmpeg from "./Ffmpeg";
 
@@ -76,7 +76,8 @@ export const render = <E, R, Entities extends Entity.AnyEntity>(
 	E | Ffmpeg.EncodeError | ThorvgException,
 	// the scene is run to completion internally, so its Scope is discharged
 	// here; the ThorVG engine is provided internally too
-	Exclude<R, Scope.Scope | SceneInternalR> | ChildProcessSpawner.ChildProcessSpawner
+	| Exclude<R, Scope.Scope | SceneInternalR>
+	| ChildProcessSpawner.ChildProcessSpawner
 > =>
 	Effect.scoped(
 		Effect.gen(function* () {
@@ -100,7 +101,9 @@ export const render = <E, R, Entities extends Entity.AnyEntity>(
 
 			if (meta.width % 2 !== 0 || meta.height % 2 !== 0) {
 				const odd =
-					meta.width % 2 !== 0 ? `width ${meta.width}` : `height ${meta.height}`;
+					meta.width % 2 !== 0
+						? `width ${meta.width}`
+						: `height ${meta.height}`;
 				return yield* new Ffmpeg.EncodeError({
 					message:
 						`Video dimensions must be even for yuv420p, got ${odd}. ` +
@@ -125,8 +128,18 @@ export const render = <E, R, Entities extends Entity.AnyEntity>(
 				extraArgs: options.extraArgs,
 			});
 		}),
-	).pipe(Effect.provide(ThorvgWasmNode.layer("sw"))) as unknown as Effect.Effect<
+	).pipe(
+		// the scene's declared url fonts, merged over the default sans, so text
+		// in a declared family renders (design D3); path-only entries skipped
+		Effect.provide(
+			ThorvgWasmNode.layer("sw", {
+				"sans-serif": DEFAULT_FONT_URL,
+				...Fonts.urlMap(scene),
+			}),
+		),
+	) as unknown as Effect.Effect<
 		void,
 		E | Ffmpeg.EncodeError | ThorvgException,
-		Exclude<R, Scope.Scope | SceneInternalR> | ChildProcessSpawner.ChildProcessSpawner
+		| Exclude<R, Scope.Scope | SceneInternalR>
+		| ChildProcessSpawner.ChildProcessSpawner
 	>;

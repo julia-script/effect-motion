@@ -32,3 +32,22 @@ export const Fonts = Context.Reference<ReadonlyArray<FontResource>>(
 export const get = (scene: {
 	readonly annotations: Context.Context<never>;
 }): ReadonlyArray<FontResource> => Context.get(scene.annotations, Fonts);
+
+/**
+ * A scene's declared fonts as a `family -> url` map for the ThorVG engine's
+ * `fonts` option. Only entries with a `src.url` are included — the ThorVG
+ * renderer fetches fonts by URL (no filesystem), so `path`-only entries are
+ * skipped. Merge this over the engine default so declared families load and a
+ * `sans-serif` entry can override the default sans.
+ */
+export const urlMap = (scene: {
+	readonly annotations: Context.Context<never>;
+}): Record<string, string> => {
+	const out: Record<string, string> = {};
+	for (const font of get(scene)) {
+		if (font.src.url !== undefined) {
+			out[font.family] = font.src.url;
+		}
+	}
+	return out;
+};

@@ -14,7 +14,10 @@ import { wrapPromise } from "./ThorvgWasm";
  * here the `.wasm` is resolved next to the installed `@thorvg/webcanvas` package
  * (design D1).
  */
-export const layer = (renderer: RendererType = "sw") => {
+export const layer = (
+	renderer: RendererType = "sw",
+	fonts?: Record<string, string>,
+) => {
 	const wasmDir = path.resolve(
 		fileURLToPath(import.meta.resolve("@thorvg/webcanvas")),
 		"..",
@@ -22,6 +25,7 @@ export const layer = (renderer: RendererType = "sw") => {
 	return ThorvgWasm.layer({
 		renderer,
 		locateFile: (file: string) => path.resolve(wasmDir, file),
+		...(fonts !== undefined ? { fonts } : {}),
 	});
 };
 

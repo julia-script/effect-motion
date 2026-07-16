@@ -1,68 +1,38 @@
 // @vitest-environment happy-dom
-import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
+import { cleanup, renderHook, waitFor } from "@testing-library/react";
 import { Effect } from "effect";
 import { Fonts, Scene, Shapes } from "effect-motion";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-// stub the wasm engine runtime (no wasm under happy-dom) so the engine reads as
-// ready immediately — these tests are about the font-preload gate on `status`,
-// not rendering (design D5)
+// Fonts now load INTO the ThorVG engine during acquire (design D5) — not as
+// browser FontFaces. The runtime mock stands in for the engine: its runPromise
+// settling means "engine acquired (fonts loaded)". `capturedFonts` records the
+// family→url map the player passed to getRuntime, and `engineGate` lets a test
+// hold acquisition open to observe the loading→ready transition.
+let capturedFonts: Record<string, string> | undefined;
+let engineGate: Promise<undefined> = Promise.resolve(undefined);
+
 vi.mock("../src/runtime", () => {
 	const fiber = Effect.runFork(Effect.void);
 	return {
 		DEFAULT_WASM_BASE: "mock://wasm/",
-		getRuntime: () => ({
-			runPromise: () => Promise.resolve(undefined),
-			runFork: () => fiber,
-			dispose: () => Promise.resolve(),
-		}),
+		getRuntime: (_url?: string, fonts?: Record<string, string>) => {
+			capturedFonts = fonts;
+			return {
+				runPromise: () => engineGate,
+				runFork: () => fiber,
+				dispose: () => Promise.resolve(),
+			};
+		},
 	};
 });
 
 import { type AnyScene, usePlayer } from "../src/usePlayer";
 
-/** controllable FontFace: loads settle only when the test says so */
-class StubFontFace {
-	static instances: Array<StubFontFace> = [];
-	private resolveLoad!: (face: StubFontFace) => void;
-	private rejectLoad!: (error: unknown) => void;
-	private readonly promise = new Promise<StubFontFace>((resolve, reject) => {
-		this.resolveLoad = resolve;
-		this.rejectLoad = reject;
-	});
-	constructor(
-		readonly family: string,
-		readonly source: string,
-		readonly descriptors?: Record<string, string>,
-	) {
-		StubFontFace.instances.push(this);
-	}
-	load() {
-		return this.promise;
-	}
-	settle() {
-		this.resolveLoad(this);
-	}
-	fail(error: unknown) {
-		this.rejectLoad(error);
-	}
-}
-
-const added: Array<unknown> = [];
-
-beforeEach(() => {
-	StubFontFace.instances = [];
-	added.length = 0;
-	vi.stubGlobal("FontFace", StubFontFace);
-	Object.defineProperty(document, "fonts", {
-		value: { add: (face: unknown) => added.push(face) },
-		configurable: true,
-	});
-});
-
 afterEach(() => {
 	cleanup();
-	vi.unstubAllGlobals();
+	capturedFonts = undefined;
+	engineGate = Promise.resolve(undefined);
 });
 
 const textScene = () =>
@@ -72,56 +42,61 @@ const textScene = () =>
 	}) as AnyScene;
 
 describe("usePlayer font loading", () => {
-	it("holds ready until declared url fonts settle, with descriptors applied", async () => {
+	it("passes the scene's declared url fonts to the engine", async () => {
 		const scene = textScene().annotate(Fonts.Fonts, [
-			{
-				family: "Inter",
-				src: { url: "/fonts/inter-bold.woff2" },
-				weight: 700,
-				style: "italic",
-			},
+			{ family: "Inter", src: { url: "/fonts/inter.ttf" }, weight: 700 },
+		]) as AnyScene;
+		renderHook(() => usePlayer(scene));
+		await waitFor(() => expect(capturedFonts).toBeDefined());
+		expect(capturedFonts).toEqual({ Inter: "/fonts/inter.ttf" });
+	});
+
+	it("holds ready until the engine (with its fonts) has acquired", async () => {
+		// hold the engine acquire open, then release it
+		let release!: () => void;
+		engineGate = new Promise<undefined>((r) => {
+			release = () => r(undefined);
+		});
+		const scene = textScene().annotate(Fonts.Fonts, [
+			{ family: "Inter", src: { url: "/fonts/inter.ttf" } },
 		]) as AnyScene;
 		const { result } = renderHook(() => usePlayer(scene));
 
 		await waitFor(() =>
 			expect(result.current.bufferedFrames).toBeGreaterThan(0),
 		);
+		// frames buffered but the engine hasn't acquired → still loading
 		expect(result.current.status).toBe("loading");
-		expect(added).toHaveLength(1);
-		const face = StubFontFace.instances[0]!;
-		expect(face.family).toBe("Inter");
-		expect(face.source).toBe("url(/fonts/inter-bold.woff2)");
-		expect(face.descriptors).toEqual({ weight: "700", style: "italic" });
 
-		act(() => face.settle());
+		release();
 		await waitFor(() => expect(result.current.status).toBe("ready"));
 	});
 
-	it("a rejecting font load warns and still reaches ready", async () => {
-		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+	it("a font that fails inside the engine still reaches ready", async () => {
+		// a failed FONT load is swallowed inside engine acquire (a warning, not a
+		// rejection), so the engine still resolves and the player reaches ready.
 		const scene = textScene().annotate(Fonts.Fonts, [
-			{ family: "Ghost", src: { url: "/fonts/missing.woff2" } },
+			{ family: "Ghost", src: { url: "/fonts/missing.ttf" } },
 		]) as AnyScene;
 		const { result } = renderHook(() => usePlayer(scene));
-
-		await waitFor(() =>
-			expect(result.current.bufferedFrames).toBeGreaterThan(0),
-		);
-		act(() => StubFontFace.instances[0]!.fail(new Error("404")));
-
 		await waitFor(() => expect(result.current.status).toBe("ready"));
-		expect(warn).toHaveBeenCalledOnce();
-		warn.mockRestore();
 	});
 
-	it("path-only entries attempt no load and do not gate readiness", async () => {
+	it("path-only entries are not passed to the engine", async () => {
 		const scene = textScene().annotate(Fonts.Fonts, [
 			{ family: "Inter", src: { path: "./fonts/Inter.ttf" } },
 		]) as AnyScene;
-		const { result } = renderHook(() => usePlayer(scene));
+		renderHook(() => usePlayer(scene));
+		await waitFor(() => expect(capturedFonts).toBeDefined());
+		// fetch-by-url only: a path-only entry produces no engine font
+		expect(capturedFonts).toEqual({});
+	});
 
-		await waitFor(() => expect(result.current.status).toBe("ready"));
-		expect(StubFontFace.instances).toHaveLength(0);
-		expect(added).toHaveLength(0);
+	it("Fonts.urlMap keeps url entries and drops path-only", () => {
+		const scene = textScene().annotate(Fonts.Fonts, [
+			{ family: "A", src: { url: "/a.ttf" } },
+			{ family: "B", src: { path: "/b.ttf" } },
+		]) as AnyScene;
+		expect(Fonts.urlMap(scene)).toEqual({ A: "/a.ttf" });
 	});
 });

@@ -1,6 +1,6 @@
 import * as Tvg from "@effect-motion/thorvg";
 import * as Effect from "effect/Effect";
-import { renderSize } from "../particles/overLife";
+import { renderOpacity, renderSize } from "../particles/overLife";
 import type { OverLife, Particle } from "../particles/Particle";
 import { ParticleField } from "../particles/ParticleField";
 import type { PaintFunction, PaintFunctions } from "../Renderer";
@@ -93,12 +93,78 @@ export const line: PaintFunction<typeof Shapes.Line> = ({
 // exhaustive.
 export const group: PaintFunction<typeof Shapes.Group> = () => Effect.void;
 
+export const text: PaintFunction<typeof Shapes.Text> = ({
+	data,
+	scene,
+	projection,
+}) =>
+	Effect.gen(function* () {
+		const glyphs = yield* Tvg.makeText();
+		// setFont fails ("insufficient condition") when the family isn't loaded
+		// into the engine yet — a missing/not-yet-fetched font. That must NOT
+		// abort the frame (it would blank every other paint too): swallow it so
+		// this one text simply doesn't draw and the rest of the frame renders.
+		yield* Tvg.setFont(glyphs, data.fontFamily).pipe(Effect.ignore);
+		yield* Tvg.setText(glyphs, data.text);
+		const { r, g, b } = parseColor(data.fill);
+		yield* Tvg.setTextColor(glyphs, r, g, b);
+		if (data.opacity !== 1) {
+			yield* Tvg.setOpacity(glyphs, Math.round(data.opacity * 255));
+		}
+		// ThorVG QUIRK (verified against this build): text inside a nested scene
+		// renders ONLY when positioned by a plain `translate` — `set_transform`,
+		// `scale`, and `text_align` on a scene-child text all produce nothing. So
+		// text can't use the projection's full affine or ThorVG's align. Instead:
+		//  - fold the perspective scale into the FONT SIZE (setTextSize scales the
+		//    glyphs; scale-transform doesn't work),
+		//  - apply textAnchor/baseline as a local offset from an ESTIMATED box,
+		//  - position with translate(screenX, screenY).
+		// ponytail: this handles translate+uniform-scale cameras (the common
+		// case). A rotated/sheared camera on text isn't expressed (text stays
+		// axis-aligned); revisit if a scene tilts text in 3D.
+		const scale = projection.scale > 0 ? projection.scale : 1;
+		const size = data.fontSize * scale;
+		yield* Tvg.setTextSize(glyphs, size);
+		// estimated text box (proportional font, ~0.6 advance/size; ascent/cap
+		// factors) — used because ThorVG align doesn't work on scene-child text
+		const estWidth = size * data.text.length * AVG_CHAR_WIDTH;
+		const dx =
+			data.textAnchor === "middle"
+				? -estWidth / 2
+				: data.textAnchor === "end"
+					? -estWidth
+					: 0;
+		// text origin y is the baseline (bottom of glyphs); shift UP by ~half cap
+		// height to center (middle), or up by the full ascent so the given point
+		// is the TOP (hanging); leave the baseline at y (auto)
+		const dy =
+			data.baseline === "middle"
+				? -size * CAP_CENTER
+				: data.baseline === "hanging"
+					? -size * ASCENT
+					: 0;
+		// where the anchor point (data.x, data.y) lands on screen under the camera
+		const m = projection.screen;
+		const screenX = m.a * data.x + m.c * data.y + m.e;
+		const screenY = m.b * data.x + m.d * data.y + m.f;
+		yield* Tvg.translate(glyphs, screenX + dx, screenY + dy);
+		yield* Tvg.addToScene(scene, glyphs);
+	});
+
+// Text-box estimates (see the `text` paint fn): mean advance / cap-center /
+// ascent as fractions of font size, for the default sans. Used because ThorVG's
+// text align/transform don't work on scene-child text in this build.
+const AVG_CHAR_WIDTH = 0.6;
+const CAP_CENTER = 0.35;
+const ASCENT = 0.8;
+
 /**
- * ParticleField: one shape per LIVE particle, sized/faded by the over-life
- * curves, added to the scene under the field's projection. Dead slots emit
- * nothing.
- * ponytail: N shapes per frame is the paint ceiling; a batched/instanced path
- * is the upgrade if particle count becomes the wall.
+ * ParticleField: live particles batched into one shape PER (color, opacity)
+ * bucket — ThorVG fills a shape uniformly, so particles that share a color and
+ * (quantized) over-life opacity are appended into the same shape and filled
+ * once. Sized/faded by the over-life curves; dead slots emit nothing.
+ * ponytail: one shape per distinct (color, opacity-bucket) — far fewer than one
+ * per particle, but a fully instanced path is the upgrade if this is a wall.
  */
 export const particleField: PaintFunction<typeof ParticleField> = ({
 	data,
@@ -106,23 +172,48 @@ export const particleField: PaintFunction<typeof ParticleField> = ({
 	projection,
 }) =>
 	Effect.gen(function* () {
-		const shape = yield* Tvg.makeShape();
+		// group live particles by fill color + quantized opacity (24 buckets), so
+		// each bucket is one uniformly-filled shape. Circles are appended in the
+		// field's local coords (data.x/y offsets the whole field).
+		const buckets = new Map<
+			string,
+			{ color: string; alpha: number; circles: Array<[number, number, number]> }
+		>();
 		for (const p of data.buffer as ReadonlyArray<Particle>) {
 			if (!p.alive) {
 				continue;
 			}
 			const r = renderSize(p, data.sizeOverLife as OverLife | undefined);
-			// the field's x/y offsets every particle (particles are field-local)
-			yield* Tvg.appendCircle(shape, data.x + p.x, data.y + p.y, r, r);
+			if (r <= 0) {
+				continue;
+			}
+			const o =
+				renderOpacity(p, data.opacityOverLife as OverLife | undefined) *
+				data.opacity;
+			const alpha = Math.max(0, Math.min(255, Math.round(o * 255)));
+			if (alpha === 0) {
+				continue;
+			}
+			// quantize alpha to keep the bucket count bounded (~24 steps)
+			const qAlpha = Math.round(alpha / 11) * 11;
+			const key = `${p.color}\0${qAlpha}`;
+			let bucket = buckets.get(key);
+			if (bucket === undefined) {
+				bucket = { color: p.color, alpha: qAlpha, circles: [] };
+				buckets.set(key, bucket);
+			}
+			bucket.circles.push([data.x + p.x, data.y + p.y, r]);
 		}
-		// ThorVG fills a shape uniformly, so per-particle color/opacity (which
-		// the SVG sink expressed one node at a time) is not yet carried — the
-		// field paints as one shape at field opacity. ponytail: split into
-		// per-color shapes if particles need individual color.
-		if (data.opacity !== 1) {
-			yield* Tvg.setOpacity(shape, Math.round(data.opacity * 255));
+
+		for (const { color, alpha, circles } of buckets.values()) {
+			const shape = yield* Tvg.makeShape();
+			for (const [cx, cy, r] of circles) {
+				yield* Tvg.appendCircle(shape, cx, cy, r, r);
+			}
+			const { r, g, b } = parseColor(color);
+			yield* Tvg.setFillColor(shape, r, g, b, alpha);
+			yield* finishPaint(shape, scene, projection);
 		}
-		yield* finishPaint(shape, scene, projection);
 	});
 
 /**
@@ -130,9 +221,9 @@ export const particleField: PaintFunction<typeof ParticleField> = ({
  * `PaintFunctions<...>` so a missing built-in fails to type-check (the old
  * "coverage manifest" guarantee, without a Context registry).
  *
- * Text and Path are omitted deliberately — see render/index.ts for the
- * font/path-data follow-up. Consumers that use them provide their own paint
- * functions until then.
+ * Path is omitted deliberately — ThorVG has no SVG-`d`-string append, so it
+ * needs a path parser (its own follow-up). Text renders (fonts load at engine
+ * setup); consumers using Path provide their own paint function until then.
  */
 export const builtinPaints = {
 	[Shapes.Circle.name]: circle,
@@ -141,6 +232,7 @@ export const builtinPaints = {
 	[Shapes.Ellipse.name]: ellipse,
 	[Shapes.Line.name]: line,
 	[Shapes.Group.name]: group,
+	[Shapes.Text.name]: text,
 	[ParticleField.name]: particleField,
 } as PaintFunctions<
 	| typeof Shapes.Circle
@@ -149,5 +241,6 @@ export const builtinPaints = {
 	| typeof Shapes.Ellipse
 	| typeof Shapes.Line
 	| typeof Shapes.Group
+	| typeof Shapes.Text
 	| typeof ParticleField
 >;

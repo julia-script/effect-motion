@@ -5,8 +5,6 @@
  * biome-ignore-all lint/a11y/noStaticElementInteractions: keyboard transport
  * is scoped to the focused player root
  */
-import * as Effect from "effect/Effect";
-import * as Fiber from "effect/Fiber";
 import { useEffect, useRef } from "react";
 import { type AnyScene, type UsePlayerOptions, usePlayer } from "./usePlayer";
 
@@ -74,20 +72,37 @@ export const Player = ({ scene, ...options }: PlayerProps) => {
 	const sceneHeight = player.currentFrame?.height ?? options.height;
 
 	// render the current frame onto the canvas through the shared ThorVG engine.
-	// The render is async (the engine is wasm), so a superseded frame's fiber is
-	// interrupted on cleanup — the latest requested frame wins.
+	// The render is async (wasm). We do NOT interrupt an in-flight render on
+	// frame change: renderFramebuffer draws off-screen and blits last, so
+	// interrupting mid-render leaves the canvas blank/stale — which froze
+	// playback. Each frame renders to completion and blits. `shouldBlit` guards
+	// only against a genuinely out-of-order completion: a render may still blit
+	// if it is the newest one that has finished, so the canvas always shows the
+	// latest COMPLETED frame even when rendering can't keep up with the clock.
+	const latestRequestedRef = useRef(0);
+	const latestBlittedRef = useRef(-1);
 	useEffect(() => {
 		const canvas = canvasRef.current;
-		if (canvas === null || player.currentFrame === null) {
+		// wait for the engine (and its fonts) before rendering — otherwise the
+		// first frames paint before fonts load and text is blank until they do
+		if (
+			canvas === null ||
+			player.currentFrame === null ||
+			player.status !== "ready"
+		) {
 			return;
 		}
-		const fiber = player.renderFrame(player.currentFrame, canvas);
-		// interrupt a still-running render when the frame changes or on unmount,
-		// so a slow paint can't clobber a newer frame
-		return () => {
-			Effect.runFork(Fiber.interrupt(fiber));
-		};
-	}, [player.currentFrame, player.renderFrame]);
+		const seq = ++latestRequestedRef.current;
+		player.renderFrame(player.currentFrame, canvas, () => {
+			// blit only if this render is newer than what's currently shown — drops
+			// a late out-of-order completion, never the keep-up case
+			if (seq <= latestBlittedRef.current) {
+				return false;
+			}
+			latestBlittedRef.current = seq;
+			return true;
+		});
+	}, [player.currentFrame, player.renderFrame, player.status]);
 
 	const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
 		// buttons and the scrubber already handle these keys natively

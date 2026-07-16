@@ -32,8 +32,10 @@ export const scene = Scene.make(function* () {
 }).annotate(Fonts.Fonts, [
 	{
 		family: "Pacifico",
+		// the ThorVG renderer loads TrueType (.ttf) fonts by URL — not woff2 —
+		// so declared faces point at a .ttf asset
 		src: {
-			url: "https://fonts.gstatic.com/s/pacifico/v23/FwZY7-Qmy14u9lezJ-6H6MmBp0u-.woff2",
+			url: "https://cdn.jsdelivr.net/npm/@expo-google-fonts/pacifico@0.2.3/Pacifico_400Regular.ttf",
 		},
 	},
 ]);

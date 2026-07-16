@@ -35,6 +35,47 @@ export const makeCanvas = (
 		return { instance, ptr: Ptr(instance.ptr()) };
 	});
 
+// ponytail: `TvgCanvas.delete()` (Embind) wipes the engine's FONT TABLE, not
+// just the canvas (verified) — so a per-frame create+delete canvas breaks text
+// on every frame after the first. The frame renderer must instead reuse ONE
+// canvas across frames and `clear()` it (clear preserves fonts). We cache a
+// canvas per (module, width, height) on the module so it lives for the engine's
+// lifetime; it is never delete()d. If sizes vary a lot this leaks a canvas per
+// size — acceptable (a handful); revisit if a use case churns sizes.
+interface CanvasCacheHost {
+	__emCanvasCache?: Map<string, Canvas>;
+}
+
+/**
+ * A canvas reused across frames (never deleted, so fonts survive), keyed by
+ * size. Clears it before returning so the previous frame's paints are gone.
+ * Use this — not {@link makeCanvas} — for the per-frame render path.
+ */
+export const getSharedCanvas = (
+	width: number,
+	height: number,
+): Effect.Effect<Canvas, ThorvgException, ThorvgWasm> =>
+	Effect.gen(function* () {
+		const { module, renderer } = yield* ThorvgWasm;
+		const host = module as unknown as CanvasCacheHost;
+		if (host.__emCanvasCache === undefined) {
+			host.__emCanvasCache = new Map();
+		}
+		const key = `${width}x${height}`;
+		let canvas = host.__emCanvasCache.get(key);
+		if (canvas === undefined) {
+			const instance = yield* wrap(
+				() => new module.TvgCanvas(renderer, "", width, height),
+			);
+			canvas = { instance, ptr: Ptr(instance.ptr()) };
+			host.__emCanvasCache.set(key, canvas);
+		} else {
+			// drop the previous frame's paints (clear preserves the font table)
+			yield* wrap(() => canvas!.instance.clear());
+		}
+		return canvas;
+	});
+
 export const resize = (canvas: Canvas, width: number, height: number) =>
 	wrap(() => canvas.instance.resize(width, height));
 export const clear = (canvas: Canvas) => wrap(() => canvas.instance.clear());
@@ -424,6 +465,118 @@ export const makePicture = () =>
 
 export const makeText = () =>
 	acquirePaint("_tvg_text_new", (m) => m._tvg_text_new(), freePaint);
+
+// ─── Text mutators + font loading (design D1/D4) ────────────────────────────
+// Strings (text content, font names, mimetype) are marshalled to NUL-terminated
+// UTF-8 in scratch. ThorVG copies what it needs during the call, so the scratch
+// can free on scope close.
+
+const utf8 = new TextEncoder();
+
+/** Encode a string to NUL-terminated UTF-8 bytes (for scratch marshalling). */
+const cstr = (s: string): Uint8Array => utf8.encode(`${s}\0`);
+
+/** Run a text mutator that takes a single marshalled-string pointer. */
+const withCstr = (
+	operation: string,
+	str: string,
+	call: (m: import("./thorvgemscripten").ThorVGModule, ptr: Ptr) => number,
+) =>
+	withScratch(cstr(str).length)((s: Scratch) =>
+		ThorvgWasm.pipe(
+			Effect.flatMap(({ module }) => {
+				s.writeBytes(cstr(str));
+				return checked(operation, () => call(module, s.ptr));
+			}),
+		),
+	);
+
+export const setText = (text: OwnedPaint, content: string) =>
+	withCstr("_tvg_text_set_text", content, (m, ptr) =>
+		m._tvg_text_set_text(text.ptr, ptr),
+	);
+
+export const setFont = (text: OwnedPaint, family: string) =>
+	withCstr("_tvg_text_set_font", family, (m, ptr) =>
+		m._tvg_text_set_font(text.ptr, ptr),
+	);
+
+export const setTextSize = (text: OwnedPaint, size: number) =>
+	ThorvgWasm.pipe(
+		Effect.flatMap(({ module }) =>
+			checked("_tvg_text_set_size", () =>
+				module._tvg_text_set_size(text.ptr, size),
+			),
+		),
+	);
+
+export const setTextColor = (
+	text: OwnedPaint,
+	r: number,
+	g: number,
+	b: number,
+) =>
+	ThorvgWasm.pipe(
+		Effect.flatMap(({ module }) =>
+			checked("_tvg_text_set_color", () =>
+				module._tvg_text_set_color(text.ptr, r, g, b),
+			),
+		),
+	);
+
+/**
+ * Text alignment as normalized anchors (0 = left/top, 0.5 = center, 1 =
+ * right/bottom). ponytail: in the current binding this call succeeds but does
+ * not visibly reposition a translated single-line text (design D4) — passed
+ * through for forward-compat; precise alignment needs a measure pass.
+ */
+export const alignText = (text: OwnedPaint, halign: number, valign: number) =>
+	ThorvgWasm.pipe(
+		Effect.flatMap(({ module }) =>
+			checked("_tvg_text_align", () =>
+				module._tvg_text_align(text.ptr, halign, valign),
+			),
+		),
+	);
+
+/**
+ * Load a font into the engine from bytes, under `name`. Text paints reference
+ * it via {@link setFont}. `mimetype` is the format tag ThorVG expects — "ttf"
+ * for TrueType (the only format supported here). `copy = 1`, so ThorVG owns its
+ * copy and the scratch frees on scope close. Fonts are engine-global (not
+ * paints): loaded once, live for the engine's lifetime.
+ */
+export const loadFontData = (
+	name: string,
+	bytes: Uint8Array,
+	mimetype = "ttf",
+) => {
+	const nameB = cstr(name);
+	const mimeB = cstr(mimetype);
+	// pack [name\0][mime\0][data] in one block; pass offset pointers
+	return withScratch(nameB.length + mimeB.length + bytes.length)((s: Scratch) =>
+		ThorvgWasm.pipe(
+			Effect.flatMap(({ module }) => {
+				s.writeBytes(nameB, 0);
+				s.writeBytes(mimeB, nameB.length);
+				s.writeBytes(bytes, nameB.length + mimeB.length);
+				return checked("_tvg_font_load_data", () =>
+					module._tvg_font_load_data(
+						s.ptr,
+						s.ptr + nameB.length + mimeB.length,
+						bytes.length,
+						s.ptr + nameB.length,
+						1,
+					),
+				);
+			}),
+		),
+	);
+};
+
+/** Unload a named font from the engine. */
+export const unloadFont = (name: string) =>
+	withCstr("_tvg_font_unload", name, (m, ptr) => m._tvg_font_unload(ptr));
 
 /** A gradient is a Fill, not a Paint — freed by `_tvg_gradient_del`, not unref. */
 const acquireGradient = (

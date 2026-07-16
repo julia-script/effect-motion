@@ -8,7 +8,17 @@ import { encodePng } from "../src/png";
 import type { ThorvgWasm } from "../src/ThorvgWasm";
 import * as ThorvgWasmNode from "../src/ThorvgWasmNode";
 
+// no fonts by default — the shape/canvas smokes don't need text, and this
+// keeps them off the network (the default font would otherwise fetch on acquire)
 const run = <A, E>(effect: Effect.Effect<A, E, ThorvgWasm | Scope.Scope>) =>
+	Effect.runPromise(
+		effect.pipe(Effect.scoped, Effect.provide(ThorvgWasmNode.layer("sw", {}))),
+	);
+
+// the text smoke explicitly loads the default font (one network fetch)
+const runWithFont = <A, E>(
+	effect: Effect.Effect<A, E, ThorvgWasm | Scope.Scope>,
+) =>
 	Effect.runPromise(
 		effect.pipe(Effect.scoped, Effect.provide(ThorvgWasmNode.layer("sw"))),
 	);
@@ -135,4 +145,33 @@ describe("thorvg smoke", () => {
 			await rm(file, { force: true });
 		}
 	});
+
+	// network: fetches the default font from the CDN, then renders text. Tagged
+	// so it can be excluded offline; proves the engine-setup font path + the
+	// text wrappers end-to-end.
+	it("loads the default font and renders text glyphs", async () => {
+		const painted = await runWithFont(
+			Effect.gen(function* () {
+				const canvas = yield* Tvg.makeCanvas(200, 80);
+				const text = yield* Tvg.makeText();
+				yield* Tvg.setFont(text, "sans-serif");
+				yield* Tvg.setText(text, "Hello");
+				yield* Tvg.setTextSize(text, 40);
+				yield* Tvg.setTextColor(text, 255, 255, 255);
+				yield* Tvg.translate(text, 10, 55);
+				yield* Tvg.addToCanvas(canvas, text);
+				yield* Tvg.canvasUpdate(canvas);
+				yield* Tvg.draw(canvas);
+				yield* Tvg.sync(canvas);
+				const fb = new Uint8Array(yield* Tvg.render(canvas));
+				let n = 0;
+				for (let i = 0; i < fb.length; i += 4) {
+					if (fb[i]! > 40) n++;
+				}
+				return n;
+			}),
+		);
+		// glyphs painted (probe measured ~11.5k for this string/size)
+		expect(painted).toBeGreaterThan(500);
+	}, 20000);
 });

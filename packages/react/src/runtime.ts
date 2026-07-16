@@ -1,4 +1,5 @@
 import {
+	DEFAULT_FONT_URL,
 	type ThorvgException,
 	type ThorvgWasm,
 	ThorvgWasmBrowser,
@@ -32,12 +33,28 @@ export const DEFAULT_WASM_BASE =
 let runtime: ManagedRuntime.ManagedRuntime<ThorvgWasm, ThorvgException> | null =
 	null;
 
-/** The shared ThorVG runtime, built lazily on first use. */
+/**
+ * The shared ThorVG runtime, built lazily on first use. `fonts` (family→url) is
+ * loaded into the engine on acquire — merged over the default sans. ponytail:
+ * one process-global engine means the FIRST caller's fonts/url win; a later
+ * player declaring a different set for the same page is a no-op on the engine's
+ * font table (design D3). Fine for a single-player page; revisit if a page
+ * mounts players needing disjoint font sets.
+ */
 export const getRuntime = (
 	wasmBaseUrl: string = DEFAULT_WASM_BASE,
+	fonts?: Record<string, string>,
 ): ManagedRuntime.ManagedRuntime<ThorvgWasm, ThorvgException> => {
 	if (runtime === null) {
-		runtime = ManagedRuntime.make(ThorvgWasmBrowser.layer(wasmBaseUrl));
+		// merge declared fonts over the default sans so the default is always
+		// present unless the scene overrides the `sans-serif` family explicitly
+		const merged =
+			fonts === undefined
+				? undefined
+				: { "sans-serif": DEFAULT_FONT_URL, ...fonts };
+		runtime = ManagedRuntime.make(
+			ThorvgWasmBrowser.layer(wasmBaseUrl, "sw", merged),
+		);
 	}
 	return runtime;
 };
