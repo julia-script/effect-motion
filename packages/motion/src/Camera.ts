@@ -32,6 +32,12 @@ const fields = {
 	rotY: Shape2D.defaultedNumber(0),
 	rotZ: Shape2D.defaultedNumber(0),
 	focalLength: Schema.optionalKey(Schema.Number),
+	// depth of field: view-space distance to the sharp plane, and blur
+	// strength. Like z/focalLength, focusDistance's right default is
+	// width-relative (the resting distance, so z=0 is in focus) — the Runner
+	// fills it. aperture 0 = pinhole = DoF off (explicit opt-in).
+	focusDistance: Schema.optionalKey(Schema.Number),
+	aperture: Shape2D.defaultedNumber(0),
 };
 
 type CameraData = Schema.Struct<typeof fields>["Type"];
@@ -68,6 +74,9 @@ export const identity = (width: number): CameraState => {
 		rotY: 0,
 		rotZ: 0,
 		focalLength,
+		// the z=0 plane in focus, no depth of field
+		focusDistance: Projection.defaultCameraZ(focalLength),
+		aperture: 0,
 	};
 };
 

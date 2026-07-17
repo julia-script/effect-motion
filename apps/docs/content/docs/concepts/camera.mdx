@@ -102,6 +102,27 @@ oscillation _is_ the shake — no keyframed wobble:
 
 <Example name="camera-shake" />
 
+## Depth of field
+
+Two more camera fields opt into focus: `aperture` (blur strength, default `0`
+— no depth of field, zero render cost) and `focusDistance` (view-space
+distance to the sharp plane, defaulting to the resting distance so the `z = 0`
+plane is in focus). Content blurs by how far it sits from the focus plane;
+the plane itself stays pixel-sharp.
+
+Both are plain numeric fields, so a **rack focus** — walking the sharp plane
+from one subject to another — is one tween:
+
+<Example name="rack-focus" />
+
+Blur is applied per depth region at render time. Each blurred region costs
+roughly 2 ms per frame at a 500×300 comp (≈7 ms at the default player's
+high-dpi size) on the software renderer — a scene with several distinct
+depths playing at 60fps will feel it; exports are unaffected. Two
+approximations to know about: an entity gets one blur amount from its anchor
+(a particle field spanning depth blurs uniformly), and depth of field is a
+ThorVG-renderer feature like fonts and images.
+
 ## Swapping the camera
 
 `Scene.camera` is the active camera. To drive the view from an instance you

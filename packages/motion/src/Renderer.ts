@@ -11,6 +11,7 @@ import type * as Scope from "effect/Scope";
 import type * as Entity from "./Entity";
 import * as Projection from "./Projection";
 import { parseColor } from "./render/color";
+import { circleOfConfusion, quantizeSigma } from "./render/dof";
 import { builtinPaints } from "./render/shapes";
 import type { EntriesFromEntities, Frame } from "./Scene";
 
@@ -109,6 +110,9 @@ const renderToCanvas = <const Entities extends Entity.AnyEntity>(
 	frame: Frame<Entities>,
 	canvas: Canvas,
 	scene: OwnedPaint,
+	// blur sigmas are canvas-pixel amounts; the scene is authored in logical
+	// units, so depth-of-field scales them by the device-pixel ratio
+	dpr = 1,
 ): Effect.Effect<
 	void,
 	ThorvgException,
@@ -260,6 +264,32 @@ const renderToCanvas = <const Entities extends Entity.AnyEntity>(
 			camera: frame.camera,
 		};
 
+		// Depth of field (camera-depth-of-field D3): with aperture > 0,
+		// contiguous depth-sorted runs sharing a quantized blur sigma paint
+		// into nested scenes that get a gaussian-blur effect; sharp runs paint
+		// into the root as always, so aperture 0 (the default) takes the
+		// unchanged single-scene path. Buckets are added to the root at run
+		// boundaries, preserving painter's order exactly. Sigma is scaled by
+		// dpr because the blur operates in canvas pixels while the scene is
+		// authored in logical units.
+		const aperture = frame.camera.aperture;
+		let bucketScene = scene;
+		let bucketSigma = 0;
+		const closeBucket = Effect.gen(function* () {
+			if (bucketSigma > 0) {
+				// direction 0 = both axes, border 0 = duplicate, quality 75
+				// (upstream default) — verified in the scene-blur spike
+				yield* Tvg.Scene.addGaussianBlur(
+					bucketScene,
+					bucketSigma * dpr,
+					0,
+					0,
+					75,
+				);
+				yield* Tvg.Scene.add(scene, bucketScene);
+			}
+		});
+
 		// paint far→near. A paintable whose anchor is behind the camera
 		// (scale <= 0) is culled here so paint functions never see an invalid
 		// placement — EXCEPT a tilted plane carrying a quad: its polygon is
@@ -268,6 +298,15 @@ const renderToCanvas = <const Entities extends Entity.AnyEntity>(
 		for (const { id, entry, projection } of paintables) {
 			if (projection.scale <= 0 && projection.quad === undefined) {
 				continue;
+			}
+			const sigma =
+				aperture > 0
+					? quantizeSigma(circleOfConfusion(projection.depth, frame.camera))
+					: 0;
+			if (sigma !== bucketSigma) {
+				yield* closeBucket;
+				bucketScene = sigma === 0 ? scene : yield* Tvg.Scene.make();
+				bucketSigma = sigma;
 			}
 			// the concrete paint fn for this entity name; the map is exhaustive
 			// over Entities by construction (PaintFunctions<Entities>). The
@@ -288,10 +327,11 @@ const renderToCanvas = <const Entities extends Entity.AnyEntity>(
 				data: entry.data,
 				projection,
 				canvas,
-				scene,
+				scene: bucketScene,
 				meta,
 			});
 		}
+		yield* closeBucket;
 	});
 
 /** RGBA8888 framebuffer plus its dimensions, straight from the SW canvas. */
@@ -355,7 +395,7 @@ export const render = (
 		yield* Tvg.Shape.setFillColor(bg, r, g, b, a);
 		yield* Tvg.Scene.add(scene, bg);
 
-		yield* renderToCanvas(frame, canvas, scene);
+		yield* renderToCanvas(frame, canvas, scene, dpr);
 
 		// scale the whole subtree to physical pixels; children keep their own
 		// logical affines (parent transforms compose in the scene graph)

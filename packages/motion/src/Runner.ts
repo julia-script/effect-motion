@@ -296,11 +296,21 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 					if (entity.name !== Camera.name) {
 						return undefined;
 					}
-					const p = props as { z?: number; focalLength?: number };
+					const p = props as {
+						z?: number;
+						focalLength?: number;
+						focusDistance?: number;
+					};
 					const focalLength =
 						p.focalLength ??
 						Projection.defaultFocalLength(resolvedSettings.width);
-					return { focalLength, z: p.z ?? focalLength };
+					return {
+						focalLength,
+						z: p.z ?? focalLength,
+						// depth of field: focus at the resting distance by default,
+						// so the z=0 plane is sharp for an untouched camera
+						focusDistance: p.focusDistance ?? focalLength,
+					};
 				})();
 				setDataUnsafe(instance, {
 					...props,

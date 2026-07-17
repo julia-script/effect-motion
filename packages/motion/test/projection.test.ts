@@ -13,6 +13,8 @@ const identity: P.CameraView = {
 	rotY: 0,
 	rotZ: 0,
 	focalLength: F,
+	focusDistance: P.defaultCameraZ(F),
+	aperture: 0,
 };
 const origin: P.Vec2 = { x: 250, y: 150 }; // viewport center of a 500x300 frame
 

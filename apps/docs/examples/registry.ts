@@ -18,6 +18,7 @@ import { scene as images } from "./images.scene";
 import { scene as moonMoth } from "./moon-moth.scene";
 import { scene as particleField } from "./particle-field.scene";
 import { scene as particles } from "./particles.scene";
+import { scene as rackFocus } from "./rack-focus.scene";
 import { scene as repeat } from "./repeat.scene";
 import { scene as seededRandomness } from "./seeded-randomness.scene";
 import { scene as snow } from "./snow.scene";
@@ -39,6 +40,7 @@ export const examples: Record<string, PlayerProps["scene"]> = {
 	"camera-zoom": cameraZoom,
 	"camera-shake": cameraShake,
 	"camera-swap": cameraSwap,
+	"rack-focus": rackFocus,
 	children,
 	"append-child": appendChild,
 	"moon-moth": moonMoth,

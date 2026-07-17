@@ -39,6 +39,13 @@ export interface CameraView {
 	readonly rotY: number;
 	readonly rotZ: number;
 	readonly focalLength: number;
+	/**
+	 * view-space distance to the sharp plane (depth of field). Runner-filled
+	 * to the resting camera distance, so the z=0 plane is in focus untouched.
+	 */
+	readonly focusDistance: number;
+	/** depth-of-field blur strength; 0 (the default) = pinhole, DoF off */
+	readonly aperture: number;
 }
 
 /**
