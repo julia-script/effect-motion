@@ -28,18 +28,18 @@ export const applyStyle = (
 	Effect.gen(function* () {
 		if (data.fill !== undefined) {
 			const { r, g, b, a } = parseColor(data.fill);
-			yield* Tvg.setFillColor(shape, r, g, b, a);
+			yield* Tvg.Shape.setFillColor(shape, r, g, b, a);
 		}
 		if (data.stroke !== undefined) {
 			const { r, g, b, a } = parseColor(data.stroke);
-			yield* Tvg.setStrokeColor(shape, r, g, b, a);
+			yield* Tvg.Shape.setStrokeColor(shape, r, g, b, a);
 		}
 		if (data.strokeWidth !== undefined) {
-			yield* Tvg.setStrokeWidth(shape, data.strokeWidth);
+			yield* Tvg.Shape.setStrokeWidth(shape, data.strokeWidth);
 		}
 		// opacity 1 is the ThorVG default; only set when it changes something
 		if (data.opacity !== 1) {
-			yield* Tvg.setOpacity(shape, Math.round(data.opacity * 255));
+			yield* Tvg.Paint.setOpacity(shape, Math.round(data.opacity * 255));
 		}
 	});
 
@@ -61,7 +61,7 @@ export const finishPaint = (
 ): Effect.Effect<void, ThorvgException, Tvg.ThorvgWasm | Scope.Scope> =>
 	Effect.gen(function* () {
 		if (!isIdentity(projection.screen)) {
-			yield* Tvg.setTransform(shape, projection.screen);
+			yield* Tvg.Paint.setTransform(shape, projection.screen);
 		}
-		yield* Tvg.addToScene(scene, shape);
+		yield* Tvg.Scene.add(scene, shape);
 	});

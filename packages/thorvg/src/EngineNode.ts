@@ -3,16 +3,16 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { RendererType } from "@thorvg/webcanvas";
 import { Effect } from "effect";
-import type { Canvas } from "./api";
-import { render } from "./api";
+import { type Canvas, render } from "./Canvas";
+import * as Engine from "./Engine";
+import { wrapPromise } from "./Interop";
 import { encodePng } from "./png";
-import * as ThorvgWasm from "./ThorvgWasm";
-import { wrapPromise } from "./ThorvgWasm";
 
 /**
  * Node ThorVG layer. Only difference from the browser layer is `locateFile`:
  * here the `.wasm` is resolved next to the installed `@thorvg/webcanvas` package
- * (design D1).
+ * (design D1). Lives outside `Engine.ts` so `node:*` imports never reach a
+ * browser bundle.
  */
 export const layer = (
 	renderer: RendererType = "sw",
@@ -22,9 +22,11 @@ export const layer = (
 		fileURLToPath(import.meta.resolve("@thorvg/webcanvas")),
 		"..",
 	);
-	return ThorvgWasm.layer({
+	return Engine.layer({
 		renderer,
 		locateFile: (file: string) => path.resolve(wasmDir, file),
+		// Node keeps term-on-release for process/test isolation (design D2)
+		termOnRelease: true,
 		...(fonts !== undefined ? { fonts } : {}),
 	});
 };

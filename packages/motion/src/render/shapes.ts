@@ -20,8 +20,14 @@ export const circle: PaintFunction<typeof Shapes.Circle> = ({
 	projection,
 }) =>
 	Effect.gen(function* () {
-		const shape = yield* Tvg.makeShape();
-		yield* Tvg.appendCircle(shape, data.x, data.y, data.radius, data.radius);
+		const shape = yield* Tvg.Shape.make();
+		yield* Tvg.Shape.appendCircle(
+			shape,
+			data.x,
+			data.y,
+			data.radius,
+			data.radius,
+		);
 		yield* applyStyle(shape, data);
 		yield* finishPaint(shape, scene, projection);
 	});
@@ -32,7 +38,7 @@ export const rect: PaintFunction<typeof Shapes.Rect> = ({
 	projection,
 }) =>
 	Effect.gen(function* () {
-		const shape = yield* Tvg.makeShape();
+		const shape = yield* Tvg.Shape.make();
 		const quad = projection.quad;
 		if (quad !== undefined) {
 			// a tilted plane: the vertices are already projected to screen
@@ -41,15 +47,15 @@ export const rect: PaintFunction<typeof Shapes.Rect> = ({
 			// transform
 			for (const [i, p] of quad.entries()) {
 				yield* i === 0
-					? Tvg.moveTo(shape, p.x, p.y)
-					: Tvg.lineTo(shape, p.x, p.y);
+					? Tvg.Shape.moveTo(shape, p.x, p.y)
+					: Tvg.Shape.lineTo(shape, p.x, p.y);
 			}
-			yield* Tvg.close(shape);
+			yield* Tvg.Shape.close(shape);
 			yield* applyStyle(shape, data);
-			yield* Tvg.addToScene(scene, shape);
+			yield* Tvg.Scene.add(scene, shape);
 			return;
 		}
-		yield* Tvg.appendRect(shape, data.x, data.y, data.width, data.height);
+		yield* Tvg.Shape.appendRect(shape, data.x, data.y, data.width, data.height);
 		yield* applyStyle(shape, data);
 		yield* finishPaint(shape, scene, projection);
 	});
@@ -60,8 +66,8 @@ export const square: PaintFunction<typeof Shapes.Square> = ({
 	projection,
 }) =>
 	Effect.gen(function* () {
-		const shape = yield* Tvg.makeShape();
-		yield* Tvg.appendRect(shape, data.x, data.y, data.size, data.size);
+		const shape = yield* Tvg.Shape.make();
+		yield* Tvg.Shape.appendRect(shape, data.x, data.y, data.size, data.size);
 		yield* applyStyle(shape, data);
 		yield* finishPaint(shape, scene, projection);
 	});
@@ -72,8 +78,8 @@ export const ellipse: PaintFunction<typeof Shapes.Ellipse> = ({
 	projection,
 }) =>
 	Effect.gen(function* () {
-		const shape = yield* Tvg.makeShape();
-		yield* Tvg.appendCircle(shape, data.x, data.y, data.rx, data.ry);
+		const shape = yield* Tvg.Shape.make();
+		yield* Tvg.Shape.appendCircle(shape, data.x, data.y, data.rx, data.ry);
 
 		yield* applyStyle(shape, data);
 		yield* finishPaint(shape, scene, projection);
@@ -85,17 +91,17 @@ export const line: PaintFunction<typeof Shapes.Line> = ({
 	projection,
 }) =>
 	Effect.gen(function* () {
-		const shape = yield* Tvg.makeShape();
-		yield* Tvg.moveTo(shape, data.x, data.y);
-		yield* Tvg.lineTo(shape, data.x2, data.y2);
+		const shape = yield* Tvg.Shape.make();
+		yield* Tvg.Shape.moveTo(shape, data.x, data.y);
+		yield* Tvg.Shape.lineTo(shape, data.x2, data.y2);
 		// a line has no fill; stroke defaults come from its schema
 		if (data.stroke !== undefined) {
 			const { r, g, b, a } = parseColor(data.stroke);
-			yield* Tvg.setStrokeColor(shape, r, g, b, a);
+			yield* Tvg.Shape.setStrokeColor(shape, r, g, b, a);
 		}
-		yield* Tvg.setStrokeWidth(shape, data.strokeWidth);
+		yield* Tvg.Shape.setStrokeWidth(shape, data.strokeWidth);
 		if (data.opacity !== 1) {
-			yield* Tvg.setOpacity(shape, Math.round(data.opacity * 255));
+			yield* Tvg.Paint.setOpacity(shape, Math.round(data.opacity * 255));
 		}
 		yield* finishPaint(shape, scene, projection);
 	});
@@ -112,17 +118,17 @@ export const text: PaintFunction<typeof Shapes.Text> = ({
 	projection,
 }) =>
 	Effect.gen(function* () {
-		const glyphs = yield* Tvg.makeText();
+		const glyphs = yield* Tvg.Text.make();
 		// setFont fails ("insufficient condition") when the family isn't loaded
 		// into the engine yet — a missing/not-yet-fetched font. That must NOT
 		// abort the frame (it would blank every other paint too): swallow it so
 		// this one text simply doesn't draw and the rest of the frame renders.
-		yield* Tvg.setFont(glyphs, data.fontFamily).pipe(Effect.ignore);
-		yield* Tvg.setText(glyphs, data.text);
+		yield* Tvg.Text.setFont(glyphs, data.fontFamily).pipe(Effect.ignore);
+		yield* Tvg.Text.setText(glyphs, data.text);
 		const { r, g, b } = parseColor(data.fill);
-		yield* Tvg.setTextColor(glyphs, r, g, b);
+		yield* Tvg.Text.setColor(glyphs, r, g, b);
 		if (data.opacity !== 1) {
-			yield* Tvg.setOpacity(glyphs, Math.round(data.opacity * 255));
+			yield* Tvg.Paint.setOpacity(glyphs, Math.round(data.opacity * 255));
 		}
 		// ThorVG QUIRK (verified against this build): text inside a nested scene
 		// renders ONLY when positioned by a plain `translate` — `set_transform`,
@@ -137,7 +143,7 @@ export const text: PaintFunction<typeof Shapes.Text> = ({
 		// axis-aligned); revisit if a scene tilts text in 3D.
 		const scale = projection.scale > 0 ? projection.scale : 1;
 		const size = data.fontSize * scale;
-		yield* Tvg.setTextSize(glyphs, size);
+		yield* Tvg.Text.setSize(glyphs, size);
 		// estimated text box (proportional font, ~0.6 advance/size; ascent/cap
 		// factors) — used because ThorVG align doesn't work on scene-child text
 		const estWidth = size * data.text.length * AVG_CHAR_WIDTH;
@@ -160,8 +166,8 @@ export const text: PaintFunction<typeof Shapes.Text> = ({
 		const m = projection.screen;
 		const screenX = m.a * data.x + m.c * data.y + m.e;
 		const screenY = m.b * data.x + m.d * data.y + m.f;
-		yield* Tvg.translate(glyphs, screenX + dx, screenY + dy);
-		yield* Tvg.addToScene(scene, glyphs);
+		yield* Tvg.Paint.translate(glyphs, screenX + dx, screenY + dy);
+		yield* Tvg.Scene.add(scene, glyphs);
 	});
 
 // Text-box estimates (see the `text` paint fn): mean advance / cap-center /
@@ -219,12 +225,12 @@ export const particleField: PaintFunction<typeof ParticleField> = ({
 		}
 
 		for (const { color, alpha, circles } of buckets.values()) {
-			const shape = yield* Tvg.makeShape();
+			const shape = yield* Tvg.Shape.make();
 			for (const [cx, cy, r] of circles) {
-				yield* Tvg.appendCircle(shape, cx, cy, r, r);
+				yield* Tvg.Shape.appendCircle(shape, cx, cy, r, r);
 			}
 			const { r, g, b } = parseColor(color);
-			yield* Tvg.setFillColor(shape, r, g, b, alpha);
+			yield* Tvg.Shape.setFillColor(shape, r, g, b, alpha);
 			yield* finishPaint(shape, scene, projection);
 		}
 	});

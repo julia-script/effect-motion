@@ -232,17 +232,20 @@ export interface ThorVGCAPI {
 		blend: number,
 	): number;
 
-	// Picture functions
+	// Picture functions. NOTE: these are raw C exports — string parameters are
+	// POINTERS to NUL-terminated UTF-8 in wasm memory (0 = null). Upstream's
+	// wrapper passes JS strings here, which coerce to a null pointer and fall
+	// back to content sniffing; we marshal properly (see Picture.ts).
 	_tvg_picture_new(): number;
 	_tvg_picture_load_data(
 		picture: number,
 		data: number,
 		size: number,
-		mimetype: string,
-		rpath: string,
+		mimetype: number,
+		rpath: number,
 		copy: number,
 	): number;
-	_tvg_picture_load(picture: number, path: string): number;
+	_tvg_picture_load(picture: number, path: number): number;
 	_tvg_picture_load_raw(
 		picture: number,
 		data: number,

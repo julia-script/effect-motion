@@ -1,10 +1,10 @@
 import type {
-	Canvas,
 	OwnedPaint,
 	ThorvgException,
 	ThorvgWasm,
 } from "@effect-motion/thorvg";
 import * as Tvg from "@effect-motion/thorvg";
+import type { Canvas } from "@effect-motion/thorvg/Canvas";
 import * as Effect from "effect/Effect";
 import type * as Scope from "effect/Scope";
 import type * as Entity from "./Entity";
@@ -302,11 +302,12 @@ export interface Framebuffer {
 /**
  * Render one frame to an RGBA framebuffer, shared by both output adapters.
  *
- * Creates a canvas sized to the frame, clears it to the background color, adds
- * a root scene, folds the frame onto it via `Renderer.render`, then
- * update/draw/sync and reads the SW framebuffer. Everything is scoped: the
- * canvas, root scene, and every painted shape are freed when the scope closes
- * (ThorVG parent-owns-child — freeing the canvas frees the subtree).
+ * Uses the RenderSession's canvas (resized in place to the frame's physical
+ * size, cleared of the previous frame), adds a root scene, folds the frame
+ * onto it via `Renderer.render`, then update/draw/sync and reads the SW
+ * framebuffer. The scene and every painted shape are scoped per frame; the
+ * canvas belongs to the session (a player mount, an export run) and is
+ * deleted when the session closes.
  *
  * The background is painted as a filled rect (not a canvas clear color) so it
  * survives into the buffer the same way the SVG sink emitted a background
@@ -323,42 +324,42 @@ export const render = (
 		 */
 		readonly dpr?: number;
 	},
-): Effect.Effect<Framebuffer, ThorvgException, Tvg.ThorvgWasm | Scope.Scope> =>
+): Effect.Effect<
+	Framebuffer,
+	ThorvgException,
+	Tvg.ThorvgWasm | Tvg.RenderSession | Scope.Scope
+> =>
 	Effect.gen(function* () {
 		const logicalWidth = frame.width;
 		const logicalHeight = frame.height;
 		const dpr = options?.dpr ?? 1;
 		const width = Math.round(logicalWidth * dpr);
 		const height = Math.round(logicalHeight * dpr);
-		// reuse a persistent canvas (cleared each frame) — a per-frame
-		// create+delete would wipe the engine's font table via TvgCanvas.delete()
-		// (see api.getSharedCanvas). The scene + shapes below are still scoped
-		// per frame; clear() drops the prior frame's subtree from the canvas.
-		const canvas = yield* Tvg.getSharedCanvas(width, height);
-		const scene = yield* Tvg.makeScene();
+		const canvas = yield* Tvg.Session.canvasSized(width, height);
+		const scene = yield* Tvg.Scene.make();
 
 		// background as a filled rect covering the viewport (mirrors the SVG
 		// sink's background rect; survives into the raster buffer)
-		const bg = yield* Tvg.makeShape();
-		yield* Tvg.appendRect(bg, 0, 0, logicalWidth, logicalHeight);
+		const bg = yield* Tvg.Shape.make();
+		yield* Tvg.Shape.appendRect(bg, 0, 0, logicalWidth, logicalHeight);
 		const { r, g, b, a } = parseColor(frame.backgroundColor);
-		yield* Tvg.setFillColor(bg, r, g, b, a);
-		yield* Tvg.addToScene(scene, bg);
+		yield* Tvg.Shape.setFillColor(bg, r, g, b, a);
+		yield* Tvg.Scene.add(scene, bg);
 
 		yield* renderToCanvas(frame, canvas, scene);
 
 		// scale the whole subtree to physical pixels; children keep their own
 		// logical affines (parent transforms compose in the scene graph)
 		if (dpr !== 1) {
-			yield* Tvg.scale(scene, dpr);
+			yield* Tvg.Paint.scale(scene, dpr);
 		}
 
-		yield* Tvg.addToCanvas(canvas, scene);
-		yield* Tvg.canvasUpdate(canvas);
-		yield* Tvg.draw(canvas);
-		yield* Tvg.sync(canvas);
+		yield* Tvg.Canvas.add(canvas, scene);
+		yield* Tvg.Canvas.update(canvas);
+		yield* Tvg.Canvas.draw(canvas);
+		yield* Tvg.Canvas.sync(canvas);
 
-		const buffer = yield* Tvg.render(canvas);
+		const buffer = yield* Tvg.Canvas.render(canvas);
 		return {
 			rgba: new Uint8Array(buffer),
 			width,

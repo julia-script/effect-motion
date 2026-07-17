@@ -114,9 +114,7 @@ export class Phaser extends Context.Service<Phaser>()("motion/Phaser", {
 					state = "idle";
 				});
 			},
-		).pipe(
-			semaphore.withPermits(1)
-		);
+		).pipe(semaphore.withPermits(1));
 
 		return {
 			register,
@@ -126,9 +124,7 @@ export class Phaser extends Context.Service<Phaser>()("motion/Phaser", {
 			/** debug/test view of the internal counters */
 			snapshotUnsafe: () => ({ phase, parties, arrived, state }),
 		};
-	}).pipe(
-		Effect.scoped
-	),
+	}).pipe(Effect.scoped),
 }) {}
 
 /**

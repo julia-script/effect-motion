@@ -3,16 +3,20 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Effect, Ref, type Scope } from "effect";
 import { describe, expect, it } from "vitest";
-import * as Tvg from "../src/api";
+import * as Canvas from "../src/Canvas";
+import type { ThorvgWasm } from "../src/Engine";
+import * as EngineNode from "../src/EngineNode";
+import * as Gradient from "../src/Gradient";
+import * as Paint from "../src/Paint";
 import { encodePng } from "../src/png";
-import type { ThorvgWasm } from "../src/ThorvgWasm";
-import * as ThorvgWasmNode from "../src/ThorvgWasmNode";
+import * as Shape from "../src/Shape";
+import * as Text from "../src/Text";
 
 // no fonts by default — the shape/canvas smokes don't need text, and this
 // keeps them off the network (the default font would otherwise fetch on acquire)
 const run = <A, E>(effect: Effect.Effect<A, E, ThorvgWasm | Scope.Scope>) =>
 	Effect.runPromise(
-		effect.pipe(Effect.scoped, Effect.provide(ThorvgWasmNode.layer("sw", {}))),
+		effect.pipe(Effect.scoped, Effect.provide(EngineNode.layer("sw", {}))),
 	);
 
 // the text smoke explicitly loads the default font (one network fetch)
@@ -20,22 +24,22 @@ const runWithFont = <A, E>(
 	effect: Effect.Effect<A, E, ThorvgWasm | Scope.Scope>,
 ) =>
 	Effect.runPromise(
-		effect.pipe(Effect.scoped, Effect.provide(ThorvgWasmNode.layer("sw"))),
+		effect.pipe(Effect.scoped, Effect.provide(EngineNode.layer("sw"))),
 	);
 
 describe("thorvg smoke", () => {
 	it("draws a filled rect to a buffer with correct cleanup", async () => {
 		const buffer = await run(
 			Effect.gen(function* () {
-				const canvas = yield* Tvg.makeCanvas(100, 100);
-				const rect = yield* Tvg.makeShape();
-				yield* Tvg.appendRect(rect, 10, 10, 80, 80);
-				yield* Tvg.setFillColor(rect, 255, 0, 0);
-				yield* Tvg.addToCanvas(canvas, rect);
-				yield* Tvg.canvasUpdate(canvas);
-				yield* Tvg.draw(canvas);
-				yield* Tvg.sync(canvas);
-				return yield* Tvg.render(canvas);
+				const canvas = yield* Canvas.make(100, 100);
+				const rect = yield* Shape.make();
+				yield* Shape.appendRect(rect, 10, 10, 80, 80);
+				yield* Shape.setFillColor(rect, 255, 0, 0);
+				yield* Canvas.add(canvas, rect);
+				yield* Canvas.update(canvas);
+				yield* Canvas.draw(canvas);
+				yield* Canvas.sync(canvas);
+				return yield* Canvas.render(canvas);
 			}),
 		);
 		// SW render() returns the framebuffer (100*100*4 bytes)
@@ -54,10 +58,10 @@ describe("thorvg smoke", () => {
 	it("add transfers ownership: the added child's finalizer is disarmed", async () => {
 		const stillOwned = await run(
 			Effect.gen(function* () {
-				const canvas = yield* Tvg.makeCanvas(50, 50);
-				const rect = yield* Tvg.makeShape();
-				yield* Tvg.appendRect(rect, 0, 0, 10, 10);
-				yield* Tvg.addToCanvas(canvas, rect);
+				const canvas = yield* Canvas.make(50, 50);
+				const rect = yield* Shape.make();
+				yield* Shape.appendRect(rect, 0, 0, 10, 10);
+				yield* Canvas.add(canvas, rect);
 				// after add, the Scope no longer owns the free (parent owns it)
 				return yield* Ref.get(rect.owned);
 			}),
@@ -68,8 +72,8 @@ describe("thorvg smoke", () => {
 	it("a detached paint keeps its finalizer (owned stays true)", async () => {
 		const stillOwned = await run(
 			Effect.gen(function* () {
-				const rect = yield* Tvg.makeShape();
-				yield* Tvg.appendRect(rect, 0, 0, 10, 10);
+				const rect = yield* Shape.make();
+				yield* Shape.appendRect(rect, 0, 0, 10, 10);
 				return yield* Ref.get(rect.owned);
 			}),
 		);
@@ -79,10 +83,10 @@ describe("thorvg smoke", () => {
 	it("get_aabb reads bounds from scratch memory", async () => {
 		const aabb = await run(
 			Effect.gen(function* () {
-				const rect = yield* Tvg.makeShape();
-				yield* Tvg.appendRect(rect, 10, 20, 30, 40);
-				yield* Tvg.getAabb(rect);
-				return yield* Tvg.getAabb(rect);
+				const rect = yield* Shape.make();
+				yield* Shape.appendRect(rect, 10, 20, 30, 40);
+				yield* Paint.getAabb(rect);
+				return yield* Paint.getAabb(rect);
 			}),
 		);
 		expect(aabb.w).toBeCloseTo(30, 1);
@@ -93,8 +97,8 @@ describe("thorvg smoke", () => {
 		// exercises the only non-trivial scratch-write path (writeF32 + writeBytes)
 		await run(
 			Effect.gen(function* () {
-				const grad = yield* Tvg.makeLinearGradient();
-				yield* Tvg.setColorStops(grad, [
+				const grad = yield* Gradient.makeLinear();
+				yield* Gradient.setColorStops(grad, [
 					{ offset: 0, r: 255, g: 0, b: 0, a: 255 },
 					{ offset: 1, r: 0, g: 0, b: 255, a: 255 },
 				]);
@@ -124,15 +128,15 @@ describe("thorvg smoke", () => {
 		try {
 			await run(
 				Effect.gen(function* () {
-					const canvas = yield* Tvg.makeCanvas(64, 48);
-					const rect = yield* Tvg.makeShape();
-					yield* Tvg.appendRect(rect, 8, 8, 48, 32, 6, 6);
-					yield* Tvg.setFillColor(rect, 255, 80, 0);
-					yield* Tvg.addToCanvas(canvas, rect);
-					yield* Tvg.canvasUpdate(canvas);
-					yield* Tvg.draw(canvas);
-					yield* Tvg.sync(canvas);
-					yield* ThorvgWasmNode.savePng(canvas, file);
+					const canvas = yield* Canvas.make(64, 48);
+					const rect = yield* Shape.make();
+					yield* Shape.appendRect(rect, 8, 8, 48, 32, 6, 6);
+					yield* Shape.setFillColor(rect, 255, 80, 0);
+					yield* Canvas.add(canvas, rect);
+					yield* Canvas.update(canvas);
+					yield* Canvas.draw(canvas);
+					yield* Canvas.sync(canvas);
+					yield* EngineNode.savePng(canvas, file);
 				}),
 			);
 			const bytes = await readFile(file);
@@ -152,18 +156,18 @@ describe("thorvg smoke", () => {
 	it("loads the default font and renders text glyphs", async () => {
 		const painted = await runWithFont(
 			Effect.gen(function* () {
-				const canvas = yield* Tvg.makeCanvas(200, 80);
-				const text = yield* Tvg.makeText();
-				yield* Tvg.setFont(text, "sans-serif");
-				yield* Tvg.setText(text, "Hello");
-				yield* Tvg.setTextSize(text, 40);
-				yield* Tvg.setTextColor(text, 255, 255, 255);
-				yield* Tvg.translate(text, 10, 55);
-				yield* Tvg.addToCanvas(canvas, text);
-				yield* Tvg.canvasUpdate(canvas);
-				yield* Tvg.draw(canvas);
-				yield* Tvg.sync(canvas);
-				const fb = new Uint8Array(yield* Tvg.render(canvas));
+				const canvas = yield* Canvas.make(200, 80);
+				const text = yield* Text.make();
+				yield* Text.setFont(text, "sans-serif");
+				yield* Text.setText(text, "Hello");
+				yield* Text.setSize(text, 40);
+				yield* Text.setColor(text, 255, 255, 255);
+				yield* Paint.translate(text, 10, 55);
+				yield* Canvas.add(canvas, text);
+				yield* Canvas.update(canvas);
+				yield* Canvas.draw(canvas);
+				yield* Canvas.sync(canvas);
+				const fb = new Uint8Array(yield* Canvas.render(canvas));
 				let n = 0;
 				for (let i = 0; i < fb.length; i += 4) {
 					if (fb[i]! > 40) n++;

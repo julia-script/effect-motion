@@ -1,5 +1,5 @@
-import { DEFAULT_FONT_URL, type ThorvgException } from "@effect-motion/thorvg";
-import { ThorvgWasmNode } from "@effect-motion/thorvg/node";
+import { Font, type ThorvgException } from "@effect-motion/thorvg";
+import { EngineNode } from "@effect-motion/thorvg/node";
 import * as Effect from "effect/Effect";
 import type * as Scope from "effect/Scope";
 import * as Sink from "effect/Sink";
@@ -132,8 +132,8 @@ export const render = <E, R, Entities extends Entity.AnyEntity>(
 		// the scene's declared url fonts, merged over the default sans, so text
 		// in a declared family renders (design D3); path-only entries skipped
 		Effect.provide(
-			ThorvgWasmNode.layer("sw", {
-				"sans-serif": DEFAULT_FONT_URL,
+			EngineNode.layer("sw", {
+				"sans-serif": Font.DEFAULT_FONT_URL,
 				...Fonts.urlMap(scene),
 			}),
 		),

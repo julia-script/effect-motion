@@ -1,24 +1,6 @@
-# font-loading Specification
+# font-loading (delta)
 
-## Purpose
-Scene-level font declaration and the loading contract. Scenes declare the fonts their text depends on via the `Fonts` annotation; the runtime never reads it (the engine cannot measure text, so fonts cannot affect frame data). Consumers load the declared `url` sources into the ThorVG engine, which rasterizes the text (fetch-by-URL, TrueType; see the `thorvg-text` capability). `path`-only sources are ignored in this model.
-
-## Requirements
-
-### Requirement: Scenes declare fonts via the Fonts annotation
-`@effect-motion/motion` SHALL provide a `Fonts` module with a `FontResource` type — `family` (string, required), `src` (object with optional `url` and `path` strings), optional `weight` (number) and `style` (`"normal"` | `"italic"`) — and an annotation key for `ReadonlyArray<FontResource>` usable with the existing `scene.annotate` mechanism. The module SHALL provide an accessor that reads a scene's declared fonts, returning an empty array when the annotation is absent. The runtime SHALL NOT read the annotation: frame production for an annotated scene is identical to the same scene without the annotation.
-
-#### Scenario: Declaring fonts on a scene
-- **WHEN** a scene is annotated with `[{ family: "Inter", src: { url: "/fonts/Inter.ttf" } }]`
-- **THEN** the accessor returns that array from the annotated scene value
-
-#### Scenario: Undeclared scenes read as empty
-- **WHEN** the accessor is applied to a scene that was never annotated with fonts
-- **THEN** it returns an empty array
-
-#### Scenario: Annotation does not affect frames
-- **WHEN** the same scene is run with and without a fonts annotation
-- **THEN** both runs produce identical frame data
+## MODIFIED Requirements
 
 ### Requirement: Player loads declared fonts before ready
 The player SHALL read the scene's fonts annotation and, for every entry carrying a `src.url`, acquire that family→URL through the ThorVG render session's scoped font registry (per the thorvg-fonts capability) so the engine loads the font (fetched by URL; TrueType or OpenType), concurrently with initial frame buffering. `status` SHALL remain `'loading'` until both the first frame is buffered and every attempted font load has settled. An individual font load failure SHALL NOT fail playback or block readiness. Entries without a `src.url` SHALL be skipped (no filesystem). When the player unmounts, its font acquisitions SHALL be released (refcounted; the registry drops its hold on a family only when no other holder remains — engine unload is best-effort per the thorvg-fonts capability). Rendered output SHALL be unchanged by whether a given font loaded — only which glyphs are drawable changes.

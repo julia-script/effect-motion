@@ -1,11 +1,13 @@
 "use client";
 
-import type { ThorvgWasm } from "@effect-motion/thorvg";
-import * as ThorvgWasmBrowser from "@effect-motion/thorvg/ThorvgWasmBrowser";
+import type { RenderSession, ThorvgWasm } from "@effect-motion/thorvg";
+import * as Engine from "@effect-motion/thorvg/Engine";
+import * as Session from "@effect-motion/thorvg/Session";
 import { Context, Data, Effect, ManagedRuntime, Schedule } from "effect";
 import * as Layer from "effect/Layer";
 import type * as Scope from "effect/Scope";
 import * as CanvasExporter from "effect-motion/CanvasExporter";
+import * as Fonts from "effect-motion/Fonts";
 import * as Renderer from "effect-motion/Renderer";
 import type * as Runner from "effect-motion/Runner";
 import * as Scene from "effect-motion/Scene";
@@ -18,7 +20,7 @@ import {
 	useState,
 } from "react";
 
-const thorLayer = ThorvgWasmBrowser.layer(
+const thorLayer = Engine.browserLayer(
 	"https://unpkg.com/@thorvg/webcanvas@1.0.8/dist/thorvg.wasm",
 );
 
@@ -38,9 +40,7 @@ class PlayerError extends Data.TaggedError("PlayerError")<{
  * window across monitors picks up the new ratio.
  */
 const calculateDpr = () =>
-	typeof window === "undefined"
-		? 1
-		: 1 + (window.devicePixelRatio - 1) * 0.75;
+	typeof window === "undefined" ? 1 : 1 + (window.devicePixelRatio - 1) * 0.75;
 // const layer = Layer.con
 // const runtime = ManagedRuntime.make()
 const PlayerScene = Context.Service<{
@@ -48,11 +48,23 @@ const PlayerScene = Context.Service<{
 	// step: Effect.Effect<void, ThorvgException | EffectMotionError, ThorvgWasm>;
 	render: (
 		frameIndex: number,
-	) => Effect.Effect<void, PlayerError, ThorvgWasm | Scope.Scope>;
+	) => Effect.Effect<
+		void,
+		PlayerError,
+		ThorvgWasm | RenderSession | Scope.Scope
+	>;
 	load: (
 		frameIndex: number,
-	) => Effect.Effect<void, PlayerError, ThorvgWasm | Scope.Scope>;
-	play: Effect.Effect<void, PlayerError, ThorvgWasm | Scope.Scope>;
+	) => Effect.Effect<
+		void,
+		PlayerError,
+		ThorvgWasm | RenderSession | Scope.Scope
+	>;
+	play: Effect.Effect<
+		void,
+		PlayerError,
+		ThorvgWasm | RenderSession | Scope.Scope
+	>;
 	pause: Effect.Effect<void, never, never>;
 
 	readonly frameIndex: Effect.Effect<number>;
@@ -135,7 +147,13 @@ const useScene = (
 	const optsRef = useRef({ ...options, loop });
 	optsRef.current = { ...options, loop };
 
-	const [runtime] = useState(() =>
+	// One runtime per mount, DISPOSED on unmount: disposal closes the session
+	// (canvas deleted, fonts released — refcounted, so siblings keep theirs)
+	// and releases the engine (a browser no-op: the wasm module is a page
+	// singleton, design D2; two players share one module via the idempotent
+	// acquire). Held in a ref, not state, so a strict-mode remount can
+	// recreate it after the first cleanup disposed it.
+	const makeRuntime = () =>
 		ManagedRuntime.make(
 			Layer.effectContext(
 				Effect.gen(function* () {
@@ -204,9 +222,11 @@ const useScene = (
 
 					const render: (
 						frameIndex: number,
-					) => Effect.Effect<void, PlayerError, ThorvgWasm | Scope.Scope> = (
-						frameIndex,
-					) =>
+					) => Effect.Effect<
+						void,
+						PlayerError,
+						ThorvgWasm | RenderSession | Scope.Scope
+					> = (frameIndex) =>
 						Effect.gen(function* () {
 							if (!canvasRef.current) {
 								return;
@@ -315,15 +335,37 @@ const useScene = (
 						load: (frameIndex?: number) => loadFrameBuffer(frameIndex),
 					});
 				}),
-			).pipe(Layer.provideMerge(thorLayer)),
-		),
+			).pipe(
+				// per-mount session: the canvas (sized by the render path) and the
+				// scene's declared fonts, held until the runtime is disposed.
+				// Session.make awaits font settlement, so nothing renders (and the
+				// player can't report ready) before the fonts have settled.
+				Layer.provideMerge(
+					Session.layer({ width: 1, height: 1, fonts: Fonts.urlMap(scene) }),
+				),
+				Layer.provideMerge(thorLayer),
+			),
+		);
+	const runtimeRef = useRef<ReturnType<typeof makeRuntime> | null>(null);
+	const getRuntime = () => {
+		if (runtimeRef.current === null) {
+			runtimeRef.current = makeRuntime();
+		}
+		return runtimeRef.current;
+	};
+	useEffect(
+		() => () => {
+			runtimeRef.current?.dispose();
+			runtimeRef.current = null;
+		},
+		[],
 	);
 
 	const render = useEffectEvent((frameIndex: number) =>
 		Effect.service(PlayerScene).pipe(
 			Effect.flatMap((e) => e.render(frameIndex)),
 			Effect.scoped,
-			runtime.runPromise,
+			getRuntime().runPromise,
 		),
 	);
 
@@ -331,7 +373,7 @@ const useScene = (
 		Effect.service(PlayerScene).pipe(
 			Effect.flatMap((e) => e.load(frameIndex)),
 			Effect.scoped,
-			runtime.runPromise,
+			getRuntime().runPromise,
 		),
 	);
 
@@ -339,7 +381,7 @@ const useScene = (
 		Effect.service(PlayerScene).pipe(
 			Effect.flatMap((e) => e.play),
 			Effect.scoped,
-			runtime.runPromise,
+			getRuntime().runPromise,
 		),
 	);
 
@@ -347,7 +389,7 @@ const useScene = (
 		Effect.service(PlayerScene).pipe(
 			Effect.flatMap((e) => e.pause),
 			Effect.scoped,
-			runtime.runPromise,
+			getRuntime().runPromise,
 		),
 	);
 

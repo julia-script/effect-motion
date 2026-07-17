@@ -1,8 +1,16 @@
-import { ThorvgWasmNode } from "@effect-motion/thorvg/node";
-import { Effect } from "effect";
+import { Session } from "@effect-motion/thorvg";
+import { EngineNode } from "@effect-motion/thorvg/node";
+import { Effect, Layer } from "effect";
 import type * as Entity from "../../src/Entity";
 import * as Renderer from "../../src/Renderer";
 import type { Frame } from "../../src/Scene";
+
+// engine + a per-render session (canvas sized by the render path)
+const testLayer = (frame: Frame) =>
+	Layer.provideMerge(
+		Session.layer({ width: frame.width, height: frame.height }),
+		EngineNode.layer("sw"),
+	);
 
 /**
  * Render a frame through the single ThorVG renderer and return a pixel-query
@@ -25,7 +33,7 @@ export const render = <const Entities extends Entity.AnyEntity>(
 	Effect.runPromise(
 		Renderer.render(frame as Frame).pipe(
 			Effect.scoped,
-			Effect.provide(ThorvgWasmNode.layer("sw")),
+			Effect.provide(testLayer(frame as Frame)),
 			Effect.orDie,
 		),
 	).then(({ rgba, width, height }) => {
@@ -57,6 +65,6 @@ export const renderExit = <const Entities extends Entity.AnyEntity>(
 	Effect.runPromiseExit(
 		Renderer.render(frame as Frame).pipe(
 			Effect.scoped,
-			Effect.provide(ThorvgWasmNode.layer("sw")),
+			Effect.provide(testLayer(frame as Frame)),
 		),
 	);

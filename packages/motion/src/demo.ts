@@ -1,6 +1,7 @@
 import { NodeServices } from "@effect/platform-node";
-import { ThorvgWasmNode } from "@effect-motion/thorvg/node";
-import { Effect, Schedule, Stream } from "effect";
+import { Session } from "@effect-motion/thorvg";
+import { EngineNode } from "@effect-motion/thorvg/node";
+import { Effect, Layer, Schedule, Stream } from "effect";
 import * as Motion from "./Motion";
 import * as Physics from "./Physics";
 import * as PngExporter from "./PngExporter";
@@ -93,7 +94,12 @@ const movie = Effect.gen(function* () {
 Effect.runPromise(
 	movie.pipe(
 		Effect.scoped,
-		Effect.provide(ThorvgWasmNode.layer("sw")),
+		Effect.provide(
+			Layer.provideMerge(
+				Session.layer({ width: 500, height: 300 }),
+				EngineNode.layer("sw"),
+			),
+		),
 		Effect.provide(NodeServices.layer),
 	),
 );
