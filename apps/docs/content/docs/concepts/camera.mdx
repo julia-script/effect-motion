@@ -123,6 +123,26 @@ approximations to know about: an entity gets one blur amount from its anchor
 (a particle field spanning depth blurs uniformly), and depth of field is a
 ThorVG-renderer feature like fonts and images.
 
+## HUD: content the camera can't touch
+
+A `Shapes.Hud` container projects its subtree through the **identity camera**
+instead of the active one: titles, watermarks, and lower thirds stay bolted
+to the glass while the camera dollies, shakes, or racks focus — and HUD
+content is structurally exempt from depth of field (the identity camera is a
+pinhole). HUD always paints on top of world content.
+
+The container's `x`/`y` are screen coordinates and tween like anything else,
+so a lower-third entrance is one tween on the container:
+
+<Example name="hud" />
+
+A Hud must be a top-level child of the scene — nesting it inside world
+content is a loud error (world offsets composing into screen coordinates
+would be incoherent). Children's `z` still works *inside* the HUD (deliberate
+in-HUD parallax against the resting camera); it defaults to 0, which is
+plain-2D placement. Whole sub-scenes mount into a HUD with the usual
+`Scene.play(scene, { parent: hud })`.
+
 ## Swapping the camera
 
 `Scene.camera` is the active camera. To drive the view from an instance you

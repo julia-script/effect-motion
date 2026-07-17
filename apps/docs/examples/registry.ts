@@ -14,6 +14,7 @@ import { scene as floatingField } from "./floating-field.scene";
 import { scene as floatingMotes } from "./floating-motes.scene";
 import { scene as forkBackground } from "./fork-background.scene";
 import { scene as groups } from "./groups.scene";
+import { scene as hud } from "./hud.scene";
 import { scene as images } from "./images.scene";
 import { scene as moonMoth } from "./moon-moth.scene";
 import { scene as particleField } from "./particle-field.scene";
@@ -41,6 +42,7 @@ export const examples: Record<string, PlayerProps["scene"]> = {
 	"camera-shake": cameraShake,
 	"camera-swap": cameraSwap,
 	"rack-focus": rackFocus,
+	hud,
 	children,
 	"append-child": appendChild,
 	"moon-moth": moonMoth,

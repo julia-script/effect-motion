@@ -8,12 +8,14 @@ import * as Tvg from "@effect-motion/thorvg";
 import type { Canvas } from "@effect-motion/thorvg/Canvas";
 import * as Effect from "effect/Effect";
 import type * as Scope from "effect/Scope";
+import * as CameraMod from "./Camera";
 import type * as Entity from "./Entity";
 import * as Projection from "./Projection";
 import { parseColor } from "./render/color";
 import { circleOfConfusion, quantizeSigma } from "./render/dof";
 import { builtinPaints } from "./render/shapes";
 import type { EntriesFromEntities, Frame } from "./Scene";
+import { Hud } from "./shapes/Hud";
 
 /**
  * The projection handed to each paint function — how the camera places a
@@ -123,8 +125,13 @@ const renderToCanvas = <const Entities extends Entity.AnyEntity>(
 			readonly id: string;
 			readonly entry: EntriesFromEntities<Entities>;
 			readonly projection: PaintProjection;
+			/** identity-projected screen-space content — paints in the top tier */
+			readonly hud: boolean;
 		}
 		const camera = frame.camera;
+		// HUD subtrees project through the identity camera: camera-independent
+		// placement, and structurally exempt from depth of field (aperture 0)
+		const identityCamera = CameraMod.identity(frame.width);
 		const origin: Projection.Vec2 = {
 			x: frame.width / 2,
 			y: frame.height / 2,
@@ -136,10 +143,16 @@ const renderToCanvas = <const Entities extends Entity.AnyEntity>(
 		// `children` field) is NOT a paint-order boundary: its position
 		// composes into its children's world coordinates, and each child is
 		// emitted into the same flat list. `offset` is the accumulated world
-		// translation from ancestor containers.
+		// translation from ancestor containers. `hud` marks an ancestor Hud:
+		// the subtree projects through the identity camera and paints in the
+		// top tier. `inWorldContainer` marks any ordinary container above —
+		// a Hud there would compose world offsets into screen coordinates,
+		// which is incoherent and dies loudly.
 		const flatten = (
 			id: string,
 			offset: Projection.Vec3,
+			hud: boolean,
+			inWorldContainer: boolean,
 		): Effect.Effect<void> =>
 			Effect.gen(function* () {
 				if (visited.has(id)) {
@@ -156,6 +169,16 @@ const renderToCanvas = <const Entities extends Entity.AnyEntity>(
 						new Error(`Renderer: unknown instance id "${id}"`),
 					);
 				}
+				const isHud = entry.entity.name === Hud.name;
+				if (isHud && inWorldContainer) {
+					return yield* Effect.die(
+						new Error(
+							`Renderer: Hud "${id}" is nested inside world content — a Hud must be a top-level child of the root (or of another Hud)`,
+						),
+					);
+				}
+				const subtreeHud = hud || isHud;
+				const effectiveCamera = subtreeHud ? identityCamera : camera;
 				const data = entry.data as Partial<Projection.Vec3> & {
 					children?: unknown;
 					width?: number;
@@ -175,10 +198,19 @@ const renderToCanvas = <const Entities extends Entity.AnyEntity>(
 				);
 				if (childIds.length > 0) {
 					// a pure container: contribute position, recurse, paint
-					// nothing itself (the root and Groups). ponytail: only
+					// nothing itself (the root, Groups, Huds). ponytail: only
 					// translation composes down — a Group's 2D affine transform
 					// is not yet threaded into child world coords.
-					yield* Effect.all(childIds.map((childId) => flatten(childId, world)));
+					yield* Effect.all(
+						childIds.map((childId) =>
+							flatten(
+								childId,
+								world,
+								subtreeHud,
+								inWorldContainer || !subtreeHud,
+							),
+						),
+					);
 					return;
 				}
 				// a leaf paintable: project its world anchor for placement +
@@ -186,7 +218,7 @@ const renderToCanvas = <const Entities extends Entity.AnyEntity>(
 				// LOCAL coordinates — the shape paints at local (data.x/y), so
 				// the transform maps local → screen. The composed ancestor
 				// offset lives in the transform's translation.
-				const proj = Projection.project(camera, world, origin);
+				const proj = Projection.project(effectiveCamera, world, origin);
 				// A rectangular plane with any nonzero rotation tilts: project
 				// its four corners so the paint fn can emit an exact path. The
 				// pivot is the plane's world anchor, so rotation spins it in
@@ -200,7 +232,7 @@ const renderToCanvas = <const Entities extends Entity.AnyEntity>(
 					data.height !== undefined;
 				const quad = tilted
 					? Projection.projectPlane(
-							camera,
+							effectiveCamera,
 							Projection.planeCorners(
 								{
 									x: data.x ?? 0,
@@ -230,6 +262,7 @@ const renderToCanvas = <const Entities extends Entity.AnyEntity>(
 						scale: proj.scale,
 						...(quad !== undefined ? { quad } : {}),
 					},
+					hud: subtreeHud,
 				});
 			});
 
@@ -243,15 +276,17 @@ const renderToCanvas = <const Entities extends Entity.AnyEntity>(
 		yield* Effect.all(
 			childIdsOf(rootEntry.data)
 				.filter((childId) => isVisible(frame, childId))
-				.map((childId) => flatten(childId, { x: 0, y: 0, z: 0 })),
+				.map((childId) => flatten(childId, { x: 0, y: 0, z: 0 }, false, false)),
 		);
 
-		// painter's order: farthest first. Stable sort, id tie-break, so
-		// equal-depth paintables paint in a deterministic order across runs.
+		// painter's order: two tiers — world content by depth (farthest
+		// first), then HUD content by depth among itself, each with a stable
+		// id tie-break so equal-depth paintables paint deterministically.
 		// ponytail: naive O(n log n) per frame — swap for a spatial structure
 		// only if a scene with thousands of objects proves it.
 		paintables.sort(
 			(a, b) =>
+				(a.hud ? 1 : 0) - (b.hud ? 1 : 0) ||
 				b.projection.depth - a.projection.depth ||
 				(a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
 		);
@@ -295,12 +330,14 @@ const renderToCanvas = <const Entities extends Entity.AnyEntity>(
 		// placement — EXCEPT a tilted plane carrying a quad: its polygon is
 		// already near-plane-clipped, and it can be visible (near part in
 		// front) while its anchor corner is behind.
-		for (const { id, entry, projection } of paintables) {
+		for (const { id, entry, projection, hud } of paintables) {
 			if (projection.scale <= 0 && projection.quad === undefined) {
 				continue;
 			}
+			// HUD content is structurally sharp: its effective camera is the
+			// identity camera (aperture 0), so it never enters a blur bucket
 			const sigma =
-				aperture > 0
+				aperture > 0 && !hud
 					? quantizeSigma(circleOfConfusion(projection.depth, frame.camera))
 					: 0;
 			if (sigma !== bucketSigma) {

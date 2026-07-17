@@ -112,6 +112,11 @@ export const line: PaintFunction<typeof Shapes.Line> = ({
 // exhaustive.
 export const group: PaintFunction<typeof Shapes.Group> = () => Effect.void;
 
+// A Hud is a container like Group: it paints nothing itself — its meaning
+// (identity-camera projection, top-tier order) lives in the renderer's
+// flatten/sort, not in a paint.
+export const hud: PaintFunction<typeof Shapes.Hud> = () => Effect.void;
+
 export const image: PaintFunction<typeof Shapes.Image> = ({
 	data,
 	scene,
@@ -314,6 +319,7 @@ export const builtinPaints = {
 	[Shapes.Ellipse.name]: ellipse,
 	[Shapes.Line.name]: line,
 	[Shapes.Group.name]: group,
+	[Shapes.Hud.name]: hud,
 	[Shapes.Text.name]: text,
 	[Shapes.Image.name]: image,
 	[ParticleField.name]: particleField,
@@ -324,6 +330,7 @@ export const builtinPaints = {
 	| typeof Shapes.Ellipse
 	| typeof Shapes.Line
 	| typeof Shapes.Group
+	| typeof Shapes.Hud
 	| typeof Shapes.Text
 	| typeof Shapes.Image
 	| typeof ParticleField
