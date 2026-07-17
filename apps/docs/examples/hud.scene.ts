@@ -47,6 +47,7 @@ export const scene = Scene.make(function* () {
 				y: 240,
 				width: 280,
 				height: 40,
+				rx: 12,
 				fill: "#16161d",
 				stroke: "#7f5af0",
 				strokeWidth: 2,

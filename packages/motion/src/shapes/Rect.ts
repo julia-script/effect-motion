@@ -1,3 +1,4 @@
+import * as Schema from "effect/Schema";
 import * as Entity from "../Entity";
 import * as Shape2D from "./Shape2D";
 
@@ -5,6 +6,10 @@ import * as Shape2D from "./Shape2D";
 // tilt in 3D (lie flat as a floor, tilt as a wall). All-zero rotation (the
 // default) keeps it a camera-facing billboard. The renderer projects its
 // four corners when tilted (see Renderer flatten + Projection.planeCorners).
+//
+// `rx`/`ry` round the corners (SVG semantics: a lone radius applies to both
+// axes); numeric, so they tween. A TILTED rect ignores them — the tilt path
+// paints an exact projected polygon, which can't express rounding.
 export const Rect = Entity.make(
 	"shapes/Rect",
 	{
@@ -12,6 +17,8 @@ export const Rect = Entity.make(
 		...Shape2D.orientation,
 		width: Shape2D.defaultedNumber(100),
 		height: Shape2D.defaultedNumber(100),
+		rx: Schema.optionalKey(Schema.Number),
+		ry: Schema.optionalKey(Schema.Number),
 	},
 	{
 		"~position": Shape2D.positionLens(),

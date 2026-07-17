@@ -55,7 +55,16 @@ export const rect: PaintFunction<typeof Shapes.Rect> = ({
 			yield* Tvg.Scene.add(scene, shape);
 			return;
 		}
-		yield* Tvg.Shape.appendRect(shape, data.x, data.y, data.width, data.height);
+		// SVG lone-radius semantics: one set radius applies to both axes
+		yield* Tvg.Shape.appendRect(
+			shape,
+			data.x,
+			data.y,
+			data.width,
+			data.height,
+			data.rx ?? data.ry ?? 0,
+			data.ry ?? data.rx ?? 0,
+		);
 		yield* applyStyle(shape, data);
 		yield* finishPaint(shape, scene, projection);
 	});
