@@ -288,6 +288,115 @@ export const projectPlane = (
 	});
 };
 
+/** A projected segment: exact screen endpoints plus its single sort key. */
+export interface ProjectedSegment {
+	readonly a: Vec2;
+	readonly b: Vec2;
+	/** midpoint view-space depth of the visible (clipped) segment */
+	readonly depth: number;
+	/** perspective scale at that midpoint (focalLength / depth) */
+	readonly scale: number;
+}
+
+/**
+ * Project a world-space segment (a skeletal shape's two endpoints) to
+ * screen. Both endpoints go to view space, are clipped against the near
+ * plane (lerp to z = NEAR — the 1D case of projectPlane's polygon clip),
+ * and are projected individually, so a line spanning depth foreshortens
+ * per endpoint. Returns `undefined` when the segment lies entirely behind
+ * the near plane (cull). `depth`/`scale` come from the visible midpoint.
+ */
+export const projectSegment = (
+	camera: CameraView,
+	a: Vec3,
+	b: Vec3,
+	origin: Vec2,
+): ProjectedSegment | undefined => {
+	let va = toView(camera, a, origin);
+	let vb = toView(camera, b, origin);
+	if (va.z < NEAR && vb.z < NEAR) {
+		return undefined;
+	}
+	const clip = (inside: Vec3, outside: Vec3): Vec3 => {
+		const t = (NEAR - inside.z) / (outside.z - inside.z);
+		return {
+			x: inside.x + (outside.x - inside.x) * t,
+			y: inside.y + (outside.y - inside.y) * t,
+			z: NEAR,
+		};
+	};
+	if (va.z < NEAR) {
+		va = clip(vb, va);
+	} else if (vb.z < NEAR) {
+		vb = clip(va, vb);
+	}
+	const toScreen = (v: Vec3): Vec2 => {
+		const s = camera.focalLength / v.z;
+		return { x: origin.x + v.x * s, y: origin.y + v.y * s };
+	};
+	const depth = (va.z + vb.z) / 2;
+	return {
+		a: toScreen(va),
+		b: toScreen(vb),
+		depth,
+		scale: camera.focalLength / depth,
+	};
+};
+
+/**
+ * Clip a screen-space segment to a rectangle (Liang–Barsky). Returns the
+ * clipped pair, or `undefined` when the segment lies entirely outside.
+ * ThorVG's software rasterizer pays stroke cost proportional to a path's
+ * full extent — offscreen included — so segments are clipped to the
+ * viewport (plus a stroke margin) before painting; a near-camera line can
+ * project tens of thousands of px wide otherwise (measured ~7× the cost
+ * of its visible part).
+ */
+export const clipSegmentToRect = (
+	a: Vec2,
+	b: Vec2,
+	min: Vec2,
+	max: Vec2,
+): readonly [Vec2, Vec2] | undefined => {
+	const dx = b.x - a.x;
+	const dy = b.y - a.y;
+	let t0 = 0;
+	let t1 = 1;
+	const edges: ReadonlyArray<readonly [number, number]> = [
+		[-dx, a.x - min.x],
+		[dx, max.x - a.x],
+		[-dy, a.y - min.y],
+		[dy, max.y - a.y],
+	];
+	for (const [p, q] of edges) {
+		if (p === 0) {
+			// parallel to this edge: outside it means fully outside
+			if (q < 0) {
+				return undefined;
+			}
+			continue;
+		}
+		const r = q / p;
+		if (p < 0) {
+			if (r > t1) {
+				return undefined;
+			}
+			if (r > t0) {
+				t0 = r;
+			}
+		} else {
+			if (r < t0) {
+				return undefined;
+			}
+			if (r < t1) {
+				t1 = r;
+			}
+		}
+	}
+	const at = (t: number): Vec2 => ({ x: a.x + dx * t, y: a.y + dy * t });
+	return [t0 === 0 ? a : at(t0), t1 === 1 ? b : at(t1)];
+};
+
 /**
  * The view-space depth of a world point — the painter's-sort key alone.
  * With no camera rotation this is `camera.z - p.z`; rotation tilts the

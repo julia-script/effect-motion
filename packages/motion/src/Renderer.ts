@@ -22,16 +22,21 @@ import { Hud } from "./shapes/Hud";
  * paintable this frame. `screen` is the projected billboard placement (an
  * affine the paint fn applies via `setTransform`); `depth` is the view-space
  * sort key; `scale` is the perspective scale (<= 0 means the anchor is behind
- * the camera — cull, unless a `quad` is present). `quad`, when present, is
- * the projected, near-plane-clipped screen polygon of a tilted plane (3–5
- * vertices — see Projection.projectPlane); a shape that can tilt paints an
- * exact path from these instead of applying the billboard affine.
+ * the camera — cull, unless a `quad` or `segment` is present). `quad`, when
+ * present, is the projected, near-plane-clipped screen polygon of a tilted
+ * plane (3–5 vertices — see Projection.projectPlane); a shape that can tilt
+ * paints an exact path from these instead of applying the billboard affine.
+ * `segment`, when present, is the exact projected screen endpoints of a
+ * skeletal shape (Line) — each endpoint carries its own world depth, so the
+ * pair is projected per point (see Projection.projectSegment) and the paint
+ * fn draws it directly, skipping the billboard affine.
  */
 export interface PaintProjection {
 	readonly screen: Projection.Affine;
 	readonly depth: number;
 	readonly scale: number;
 	readonly quad?: ReadonlyArray<Projection.Vec2>;
+	readonly segment?: readonly [Projection.Vec2, Projection.Vec2];
 }
 
 /** The frame's render metadata, handed to paint functions. */
@@ -186,6 +191,9 @@ const renderToCanvas = <const Entities extends Entity.AnyEntity>(
 					rotX?: number;
 					rotY?: number;
 					rotZ?: number;
+					x2?: number;
+					y2?: number;
+					z2?: number;
 				};
 				// world anchor = ancestor offset + this node's own position
 				const world: Projection.Vec3 = {
@@ -211,6 +219,69 @@ const renderToCanvas = <const Entities extends Entity.AnyEntity>(
 							),
 						),
 					);
+					return;
+				}
+				// a skeletal leaf (Line): both endpoints are independent world
+				// points — project the pair per point (near-plane-clipped) and
+				// hand the exact screen segment to the paint fn. Unconditional
+				// for any x2/y2 leaf: the identity invariant makes the flat
+				// case pixel-identical to the old billboard path.
+				if (typeof data.x2 === "number" && typeof data.y2 === "number") {
+					const seg = Projection.projectSegment(
+						effectiveCamera,
+						world,
+						{
+							x: offset.x + data.x2,
+							y: offset.y + data.y2,
+							z: offset.z + (data.z2 ?? 0),
+						},
+						origin,
+					);
+					if (seg === undefined) {
+						// entirely behind the near plane — cull
+						return;
+					}
+					// clip to the viewport before painting: ThorVG stroke cost
+					// scales with the path's full extent, offscreen included.
+					// The margin covers the scaled stroke (caps/joins) so the
+					// visible pixels are untouched by the clip.
+					const strokeMargin =
+						((entry.data as { strokeWidth?: number }).strokeWidth ?? 1) *
+							seg.scale +
+						1;
+					const clipped = Projection.clipSegmentToRect(
+						seg.a,
+						seg.b,
+						{ x: -strokeMargin, y: -strokeMargin },
+						{
+							x: frame.width + strokeMargin,
+							y: frame.height + strokeMargin,
+						},
+					);
+					if (clipped === undefined) {
+						// entirely offscreen — cull
+						return;
+					}
+					// ponytail: one depth/scale for the whole segment (its
+					// visible midpoint) — a depth-spanning line blurs and sorts
+					// as one unit, the same ceiling as a tilted plane's quad.
+					// Upgrade: split the segment where its (linear) view depth
+					// crosses DoF bucket boundaries → gradient blur along the
+					// line plus per-piece sort keys.
+					paintables.push({
+						id,
+						entry,
+						projection: {
+							screen: Projection.billboardAffine(
+								{ x: seg.a.x, y: seg.a.y, depth: seg.depth, scale: seg.scale },
+								{ x: data.x ?? 0, y: data.y ?? 0 },
+							),
+							depth: seg.depth,
+							scale: seg.scale,
+							segment: clipped,
+						},
+						hud: subtreeHud,
+					});
 					return;
 				}
 				// a leaf paintable: project its world anchor for placement +

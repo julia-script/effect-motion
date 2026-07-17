@@ -168,3 +168,148 @@ describe("billboard affine", () => {
 		expect(m.f).toBeCloseTo(0, 10);
 	});
 });
+
+describe("projectSegment (skeletal shapes)", () => {
+	it("flat segment under the resting camera is identity", () => {
+		const s = P.projectSegment(
+			identity,
+			{ x: 10, y: 20, z: 0 },
+			{ x: 200, y: 80, z: 0 },
+			origin,
+		)!;
+		expect(s.a.x).toBeCloseTo(10, 10);
+		expect(s.a.y).toBeCloseTo(20, 10);
+		expect(s.b.x).toBeCloseTo(200, 10);
+		expect(s.b.y).toBeCloseTo(80, 10);
+		expect(s.scale).toBeCloseTo(1, 10);
+	});
+
+	it("endpoints foreshorten independently", () => {
+		// a rail receding from z=0 toward the horizon: the far end pulls
+		// toward the viewport center, the near end stays put
+		const s = P.projectSegment(
+			identity,
+			{ x: 100, y: 100, z: 0 },
+			{ x: 100, y: 100, z: -4000 },
+			origin,
+		)!;
+		expect(s.a.x).toBeCloseTo(100, 10);
+		expect(s.a.y).toBeCloseTo(100, 10);
+		// far end: same world x/y but deeper — projected strictly between
+		// the near end and the viewport center
+		expect(s.b.x).toBeGreaterThan(100);
+		expect(s.b.x).toBeLessThan(origin.x);
+		expect(s.b.y).toBeGreaterThan(100);
+		expect(s.b.y).toBeLessThan(origin.y);
+	});
+
+	it("midpoint depth and scale are the segment's keys", () => {
+		const s = P.projectSegment(
+			identity,
+			{ x: 0, y: 0, z: 0 },
+			{ x: 0, y: 0, z: -1000 },
+			origin,
+		)!;
+		// view depths: F (z=0) and F+1000 (z=-1000) → midpoint F+500
+		expect(s.depth).toBeCloseTo(F + 500, 10);
+		expect(s.scale).toBeCloseTo(F / (F + 500), 10);
+	});
+
+	it("a segment straddling the camera clips to the near plane", () => {
+		// start in front of the camera plane, end behind it
+		const s = P.projectSegment(
+			identity,
+			{ x: 0, y: 0, z: 0 },
+			{ x: 0, y: 0, z: identity.z + 500 },
+			origin,
+		)!;
+		expect(s).toBeDefined();
+		// the visible part runs from the front endpoint toward the camera;
+		// both screen points are finite (no folded/mirrored projection)
+		expect(Number.isFinite(s.b.x)).toBe(true);
+		expect(Number.isFinite(s.b.y)).toBe(true);
+		expect(s.depth).toBeGreaterThan(0);
+	});
+
+	it("a segment fully behind the camera culls", () => {
+		const s = P.projectSegment(
+			identity,
+			{ x: 0, y: 0, z: identity.z + 100 },
+			{ x: 0, y: 0, z: identity.z + 500 },
+			origin,
+		);
+		expect(s).toBeUndefined();
+	});
+
+	it("is deterministic", () => {
+		const args = [
+			{ x: 3, y: 7, z: -50 },
+			{ x: -40, y: 12, z: 900 },
+		] as const;
+		const a = P.projectSegment(identity, args[0], args[1], origin);
+		const b = P.projectSegment(identity, args[0], args[1], origin);
+		expect(a).toEqual(b);
+	});
+});
+
+describe("clipSegmentToRect (viewport clipping)", () => {
+	const min = { x: 0, y: 0 };
+	const max = { x: 500, y: 300 };
+
+	it("a fully-inside segment is returned untouched (same references)", () => {
+		const a = { x: 10, y: 10 };
+		const b = { x: 400, y: 200 };
+		const r = P.clipSegmentToRect(a, b, min, max)!;
+		expect(r[0]).toBe(a);
+		expect(r[1]).toBe(b);
+	});
+
+	it("a segment crossing one edge clips to the boundary", () => {
+		const r = P.clipSegmentToRect(
+			{ x: 250, y: 150 },
+			{ x: 1000, y: 150 },
+			min,
+			max,
+		)!;
+		expect(r[0]).toEqual({ x: 250, y: 150 });
+		expect(r[1].x).toBeCloseTo(500, 10);
+		expect(r[1].y).toBeCloseTo(150, 10);
+	});
+
+	it("a segment spanning the rect clips both endpoints", () => {
+		const r = P.clipSegmentToRect(
+			{ x: -10000, y: 150 },
+			{ x: 10000, y: 150 },
+			min,
+			max,
+		)!;
+		expect(r[0].x).toBeCloseTo(0, 10);
+		expect(r[1].x).toBeCloseTo(500, 10);
+	});
+
+	it("a diagonal through a corner region keeps only the inside run", () => {
+		const r = P.clipSegmentToRect(
+			{ x: -100, y: -100 },
+			{ x: 700, y: 700 },
+			min,
+			max,
+		)!;
+		expect(r[0].x).toBeCloseTo(0, 10);
+		expect(r[0].y).toBeCloseTo(0, 10);
+		expect(r[1].x).toBeCloseTo(300, 10);
+		expect(r[1].y).toBeCloseTo(300, 10);
+	});
+
+	it("fully-outside segments cull, including axis-parallel ones", () => {
+		expect(
+			P.clipSegmentToRect({ x: -50, y: 150 }, { x: -10, y: 150 }, min, max),
+		).toBeUndefined();
+		expect(
+			P.clipSegmentToRect({ x: 0, y: 400 }, { x: 500, y: 400 }, min, max),
+		).toBeUndefined();
+		// outside on a shared side but diagonal
+		expect(
+			P.clipSegmentToRect({ x: 600, y: -50 }, { x: 900, y: 350 }, min, max),
+		).toBeUndefined();
+	});
+});

@@ -29,6 +29,21 @@ describe("lens laws on built-ins", () => {
 		expect(moved).toMatchObject({ x: 100, y: 100, x2: 150, y2: 120 });
 		expect(position.get(moved)).toEqual({ x: 100, y: 100, z: 0 });
 	});
+
+	it("Line's position keeps the depth span rigid", () => {
+		const position = Shapes.Line.traits["~position"];
+		const data = Shapes.Line.data.make({
+			x: 0,
+			y: 0,
+			z: 0,
+			x2: 50,
+			y2: 20,
+			z2: 300,
+		});
+		const moved = position.set(data, { x: 0, y: 0, z: 100 });
+		expect(moved).toMatchObject({ z: 100, z2: 400 });
+		expect(moved.z2 - moved.z).toBe(data.z2 - data.z);
+	});
 });
 
 const runScene = async <A>(
@@ -54,17 +69,26 @@ describe("trait-based helpers", () => {
 			const line = yield* Scene.instantiate(Shapes.Line, {
 				x: 0,
 				y: 0,
+				z: 0,
 				x2: 50,
 				y2: 20,
+				z2: 300,
 			});
-			yield* line.pipe(Motion.moveTo({ x: 100, y: 100 }, "500 millis"));
+			yield* line.pipe(Motion.moveTo({ x: 100, y: 100, z: 100 }, "500 millis"));
 		}, firstNonRoot);
 		const last = track.at(-1)!;
-		expect(last).toMatchObject({ x: 100, y: 100, x2: 150, y2: 120 });
-		// mid-flight too: the span stays (50, 20) every frame
+		// targeted trait fields land exactly (determinism invariant); the
+		// derived endpoints accumulate per-frame deltas, so they're close-to
+		// (the drift is itself deterministic — identical across runs)
+		expect(last).toMatchObject({ x: 100, y: 100, z: 100 });
+		expect(last.x2).toBeCloseTo(150, 10);
+		expect(last.y2).toBeCloseTo(120, 10);
+		expect(last.z2).toBeCloseTo(400, 10);
+		// mid-flight too: the span stays (50, 20, 300) every frame
 		for (const frame of track) {
 			expect(frame.x2 - frame.x).toBeCloseTo(50, 10);
 			expect(frame.y2 - frame.y).toBeCloseTo(20, 10);
+			expect(frame.z2 - frame.z).toBeCloseTo(300, 10);
 		}
 	});
 

@@ -86,6 +86,20 @@ yield* Scene.instantiate(Shapes.Rect, {
 Tilt is scoped to `Rect` for now; other shapes keep their orientation fields but
 render as billboards.
 
+## Lines in depth
+
+A `Line` is skeletal rather than planar: each endpoint is its own 3D point
+(`x`/`y`/`z` and `x2`/`y2`/`z2`), projected independently — no orientation
+fields, no angle math. A rail receding to the horizon, or a connector between
+two objects at different depths, is just endpoint data; `move`/`moveTo` still
+translate the whole line rigidly.
+
+<Example name="depth-grid" />
+
+The rails span depth through `z2` while each cross line sits at a single `z`.
+One approximation to know: like a tilted plane, a depth-spanning line gets one
+blur amount and one paint-order key (from its midpoint).
+
 ## Movements
 
 Because the camera is just an instance, every animator composes. A few common

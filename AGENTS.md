@@ -59,6 +59,22 @@ Entity.make("shapes/Thing", fields, {
   calling `moveTo` on an untraited entity fails compilation) with a
   runtime defect naming the entity and trait key as backstop.
 
+## Two-tier 3D positioning (planar vs skeletal)
+
+Shapes occupy 3D space in one of two ways — never both on one shape:
+
+- **Planar** (Rect, Image, Text — content on a flat extent): anchor
+  `x/y/z` plus Euler orientation `rotX/rotY/rotZ`; the renderer projects
+  the plane's corners (the AE layer model).
+- **Skeletal** (Line; Path when it goes 3D): every defining point is an
+  independent world point (`x/y/z`, `x2/y2/z2`), each projected with its
+  own depth. Skeletal shapes never get orientation fields — a segment is
+  parametrized by its endpoints, and tweening a point moves it in a
+  straight line (deriving an orientation instead would make tweens sweep
+  arcs).
+- The trait layer hides the split: `~position` moves ANY entity rigidly
+  as one unit. Only raw field vocabulary differs per tier.
+
 ## Call forms
 
 Every animator is a dual: data-first `verb(instance, ...)` or pipeable

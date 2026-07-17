@@ -101,16 +101,35 @@ export const line: PaintFunction<typeof Shapes.Line> = ({
 }) =>
 	Effect.gen(function* () {
 		const shape = yield* Tvg.Shape.make();
-		yield* Tvg.Shape.moveTo(shape, data.x, data.y);
-		yield* Tvg.Shape.lineTo(shape, data.x2, data.y2);
+		const segment = projection.segment;
+		if (segment !== undefined) {
+			// skeletal path: the endpoints are already projected to screen
+			// (near-plane-clipped, per-endpoint perspective), so draw the
+			// exact segment and skip the billboard transform — stroke width
+			// scales by the segment's midpoint perspective scale instead
+			yield* Tvg.Shape.moveTo(shape, segment[0].x, segment[0].y);
+			yield* Tvg.Shape.lineTo(shape, segment[1].x, segment[1].y);
+		} else {
+			yield* Tvg.Shape.moveTo(shape, data.x, data.y);
+			yield* Tvg.Shape.lineTo(shape, data.x2, data.y2);
+		}
 		// a line has no fill; stroke defaults come from its schema
 		if (data.stroke !== undefined) {
 			const { r, g, b, a } = parseColor(data.stroke);
 			yield* Tvg.Shape.setStrokeColor(shape, r, g, b, a);
 		}
-		yield* Tvg.Shape.setStrokeWidth(shape, data.strokeWidth);
+		yield* Tvg.Shape.setStrokeWidth(
+			shape,
+			segment !== undefined
+				? data.strokeWidth * projection.scale
+				: data.strokeWidth,
+		);
 		if (data.opacity !== 1) {
 			yield* Tvg.Paint.setOpacity(shape, Math.round(data.opacity * 255));
+		}
+		if (segment !== undefined) {
+			yield* Tvg.Scene.add(scene, shape);
+			return;
 		}
 		yield* finishPaint(shape, scene, projection);
 	});
