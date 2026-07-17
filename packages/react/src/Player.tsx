@@ -353,50 +353,78 @@ const useScene = (
 			),
 		);
 	const runtimeRef = useRef<ReturnType<typeof makeRuntime> | null>(null);
+	// set before dispose so in-flight runPromise rejections can tell expected
+	// teardown apart from real failures; cleared when a runtime is (re)created
+	const disposedRef = useRef(false);
 	const getRuntime = () => {
 		if (runtimeRef.current === null) {
 			runtimeRef.current = makeRuntime();
+			disposedRef.current = false;
 		}
 		return runtimeRef.current;
 	};
 	useEffect(
 		() => () => {
-			runtimeRef.current?.dispose();
+			disposedRef.current = true;
+			// dispose interrupts our own in-flight fibers (play loop, prebuffer);
+			// its promise then rejects with that interruption — expected teardown,
+			// never actionable from a cleanup callback
+			runtimeRef.current?.dispose().catch(() => undefined);
 			runtimeRef.current = null;
 		},
 		[],
 	);
 
+	// Disposing the runtime on unmount INTERRUPTS in-flight fibers (the play
+	// loop, prebuffering). These handlers are fire-and-forget, so a rejecting
+	// runPromise would surface as an unhandled rejection on every navigation
+	// away from a playing scene. runPromiseExit never rejects — failures come
+	// back as Exit values, reported unless they arrived during teardown
+	// (interruption at dispose is the expected path, not a player error).
+	const reportExit = (exit: { _tag: string; cause?: unknown }): void => {
+		if (exit._tag === "Failure" && !disposedRef.current) {
+			console.error("effect-motion player:", exit.cause);
+		}
+	};
+
 	const render = useEffectEvent((frameIndex: number) =>
-		Effect.service(PlayerScene).pipe(
-			Effect.flatMap((e) => e.render(frameIndex)),
-			Effect.scoped,
-			getRuntime().runPromise,
-		),
+		Effect.service(PlayerScene)
+			.pipe(
+				Effect.flatMap((e) => e.render(frameIndex)),
+				Effect.scoped,
+				getRuntime().runPromiseExit,
+			)
+			.then(reportExit),
 	);
 
 	const load = useEffectEvent((frameIndex: number) =>
-		Effect.service(PlayerScene).pipe(
-			Effect.flatMap((e) => e.load(frameIndex)),
-			Effect.scoped,
-			getRuntime().runPromise,
-		),
+		Effect.service(PlayerScene)
+			.pipe(
+				Effect.flatMap((e) => e.load(frameIndex)),
+				Effect.scoped,
+				getRuntime().runPromiseExit,
+			)
+			.then(reportExit),
 	);
 
 	const play = useEffectEvent(() =>
-		Effect.service(PlayerScene).pipe(
-			Effect.flatMap((e) => e.play),
-			Effect.scoped,
-			getRuntime().runPromise,
-		),
+		Effect.service(PlayerScene)
+			.pipe(
+				Effect.flatMap((e) => e.play),
+				Effect.scoped,
+				getRuntime().runPromiseExit,
+			)
+			.then(reportExit),
 	);
 
 	const pause = useEffectEvent(() =>
-		Effect.service(PlayerScene).pipe(
-			Effect.flatMap((e) => e.pause),
-			Effect.scoped,
-			getRuntime().runPromise,
-		),
+		Effect.service(PlayerScene)
+			.pipe(
+				Effect.flatMap((e) => e.pause),
+				Effect.scoped,
+				getRuntime().runPromiseExit,
+			)
+			.then(reportExit),
 	);
 
 	// prebuffer + autoplay once the runtime exists. For an infinite scene we
