@@ -1,4 +1,11 @@
 {
 	"title": "Going Further",
-	"pages": ["custom-entities", "rendering", "react-player", "export", "fonts"]
+	"pages": [
+		"custom-entities",
+		"rendering",
+		"react-player",
+		"export",
+		"fonts",
+		"images"
+	]
 }

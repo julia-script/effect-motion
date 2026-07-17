@@ -1,0 +1,46 @@
+---
+title: Images
+description: Declaring the images a scene depends on, and placing them with Shapes.Image
+---
+
+An `Image` entity only ever *names* an asset — turning that name into decoded
+pixels is the job of whatever displays the frames, exactly like fonts. A scene
+declares the images it depends on with the `Images` annotation and references
+them by name:
+
+<Example name="images" />
+
+The runtime never reads the annotation — decoded pixels cannot affect frame
+data — so frames stay deterministic whether or not an asset loads.
+
+## In the player
+
+The player fetches and decodes every entry with a `src.url` once per mount,
+while it buffers the first frames, and reports ready only once the loads
+settle — the first visible frame already has its images. Supported formats are
+what the engine decodes: PNG, JPEG, WebP, and SVG. An asset that fails to
+fetch or decode logs a warning and its `Image` entities simply draw nothing;
+everything else renders normally.
+
+## Sizing
+
+`width` and `height` are optional:
+
+- **Both set** — the image is drawn at exactly that size. They're plain
+  numeric fields, so scaling an image over time is just `Motion.tweenTo` with
+  `width`/`height` targets.
+- **Both absent** — the image draws at its source's natural size.
+- **Only one set** — it's ignored (natural size is used). Aspect-preserving
+  single-dimension scaling would need the natural size, which frame data
+  never sees.
+
+`x`/`y` place the image's top-left corner, like `Rect`. Images are
+billboards: they follow the camera's pan, zoom, and depth scaling, but unlike
+`Rect` they can't tilt in 3D.
+
+## Choosing sources
+
+Loading is fetch-by-URL, so assets must be reachable from the page
+(CORS-open for cross-origin URLs). Pin versions in CDN URLs the same way you
+would for fonts — a moved asset degrades gracefully (that image stops
+drawing) but silently.

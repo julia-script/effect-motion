@@ -112,6 +112,69 @@ export const line: PaintFunction<typeof Shapes.Line> = ({
 // exhaustive.
 export const group: PaintFunction<typeof Shapes.Group> = () => Effect.void;
 
+export const image: PaintFunction<typeof Shapes.Image> = ({
+	data,
+	scene,
+	projection,
+}) =>
+	Effect.gen(function* () {
+		// the session decoded the asset once at open; a missing name (never
+		// declared, or its fetch/decode failed) is a soft skip — this instance
+		// paints nothing and the rest of the frame renders
+		const { pictures } = yield* Tvg.RenderSession;
+		const source = pictures.get(data.image);
+		if (source === undefined) {
+			return;
+		}
+		// duplicates share the decoded surface (spike-verified ~42µs each), so
+		// per-frame cost is a handle copy, not a decode
+		const picture = yield* Tvg.Paint.duplicate(source);
+		// declared size scales per axis via the transform — NOT Picture.setSize,
+		// which preserves the source aspect (uniform min-factor scale, probe-
+		// verified: 8×8 sized to 40×20 renders 20×20). A lone dimension is
+		// ignored (aspect math would need the natural size, which frame data
+		// never sees).
+		let sx = 1;
+		let sy = 1;
+		if (data.width !== undefined && data.height !== undefined) {
+			const natural = yield* Tvg.Picture.getSize(picture);
+			if (natural.width > 0 && natural.height > 0) {
+				sx = data.width / natural.width;
+				sy = data.height / natural.height;
+			}
+		}
+		if (data.opacity !== 1) {
+			yield* Tvg.Paint.setOpacity(picture, Math.round(data.opacity * 255));
+		}
+		// a picture draws from its own origin, unlike shapes which bake
+		// data.x/y into geometry — compose scale-to-declared-size and the local
+		// anchor translate into the projection affine so (data.x, data.y) is
+		// the top-left, like Rect: screen ∘ translate(x, y) ∘ scale(sx, sy)
+		const m = projection.screen;
+		const composed = {
+			a: m.a * sx,
+			b: m.b * sx,
+			c: m.c * sy,
+			d: m.d * sy,
+			e: m.a * data.x + m.c * data.y + m.e,
+			f: m.b * data.x + m.d * data.y + m.f,
+		};
+		const isIdentity =
+			composed.a === 1 &&
+			composed.b === 0 &&
+			composed.c === 0 &&
+			composed.d === 1 &&
+			composed.e === 0 &&
+			composed.f === 0;
+		if (!isIdentity) {
+			yield* Tvg.Paint.setTransform(picture, composed);
+		}
+		yield* Tvg.Scene.add(scene, picture);
+		// ponytail: billboard only — a tilted image needs a projective
+		// setTransform (full 3×3 bottom row) mapping the projected quad; add
+		// when a scene needs a tilted image.
+	});
+
 export const text: PaintFunction<typeof Shapes.Text> = ({
 	data,
 	scene,
@@ -252,6 +315,7 @@ export const builtinPaints = {
 	[Shapes.Line.name]: line,
 	[Shapes.Group.name]: group,
 	[Shapes.Text.name]: text,
+	[Shapes.Image.name]: image,
 	[ParticleField.name]: particleField,
 } as PaintFunctions<
 	| typeof Shapes.Circle
@@ -261,5 +325,6 @@ export const builtinPaints = {
 	| typeof Shapes.Line
 	| typeof Shapes.Group
 	| typeof Shapes.Text
+	| typeof Shapes.Image
 	| typeof ParticleField
 >;

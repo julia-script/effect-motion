@@ -8,6 +8,7 @@ import * as Layer from "effect/Layer";
 import type * as Scope from "effect/Scope";
 import * as CanvasExporter from "effect-motion/CanvasExporter";
 import * as Fonts from "effect-motion/Fonts";
+import * as Images from "effect-motion/Images";
 import * as Renderer from "effect-motion/Renderer";
 import type * as Runner from "effect-motion/Runner";
 import * as Scene from "effect-motion/Scene";
@@ -336,12 +337,17 @@ const useScene = (
 					});
 				}),
 			).pipe(
-				// per-mount session: the canvas (sized by the render path) and the
-				// scene's declared fonts, held until the runtime is disposed.
-				// Session.make awaits font settlement, so nothing renders (and the
-				// player can't report ready) before the fonts have settled.
+				// per-mount session: the canvas (sized by the render path) plus the
+				// scene's declared fonts and images, held until the runtime is
+				// disposed. Session.make awaits font/image settlement, so nothing
+				// renders (and the player can't report ready) before assets settle.
 				Layer.provideMerge(
-					Session.layer({ width: 1, height: 1, fonts: Fonts.urlMap(scene) }),
+					Session.layer({
+						width: 1,
+						height: 1,
+						fonts: Fonts.urlMap(scene),
+						images: Images.urlMap(scene),
+					}),
 				),
 				Layer.provideMerge(thorLayer),
 			),

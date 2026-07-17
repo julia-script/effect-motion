@@ -96,6 +96,7 @@ Effect.runPromise(
 		Effect.scoped,
 		Effect.provide(
 			Layer.provideMerge(
+				// a demo scene with declared assets would add fonts/images maps here
 				Session.layer({ width: 500, height: 300 }),
 				EngineNode.layer("sw"),
 			),

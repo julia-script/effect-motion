@@ -2,6 +2,8 @@ import { Context, Effect, Layer, type Scope } from "effect";
 import * as Canvas from "./Canvas";
 import type { ThorvgWasm } from "./Engine";
 import * as Font from "./Font";
+import type { OwnedPaint } from "./Interop";
+import * as Picture from "./Picture";
 import type { ThorvgException } from "./ThorvgException";
 
 /**
@@ -15,6 +17,14 @@ import type { ThorvgException } from "./ThorvgException";
 
 export interface RenderSessionShape {
 	readonly canvas: Canvas.Canvas;
+	/**
+	 * Decoded source pictures by declared name, loaded once at session open
+	 * and freed by the session scope. The per-frame render path duplicates
+	 * these (duplicates share the decoded surface — spike-verified) and hands
+	 * the duplicates to the frame subtree. A name whose fetch/decode failed is
+	 * simply absent.
+	 */
+	readonly pictures: ReadonlyMap<string, OwnedPaint>;
 }
 
 export class RenderSession extends Context.Service<
@@ -34,7 +44,61 @@ export interface SessionOptions {
 	 * already-held family fail loudly.
 	 */
 	readonly fonts?: Record<string, string>;
+	/**
+	 * images this session's scene needs, `name -> url` (e.g.
+	 * `Images.urlMap(scene)` from effect-motion). Fetched and decoded once at
+	 * open into session-owned pictures, freed on close. A failed fetch/decode
+	 * is a logged skip naming the asset and source — the session still opens.
+	 * Unlike fonts, pictures are not engine-global: sessions never interact.
+	 */
+	readonly images?: Record<string, string>;
 }
+
+// fetch one image's bytes and decode into a session-owned picture; any
+// failure is a logged skip (design D4 — fonts semantics, verbatim)
+const loadPicture = (
+	name: string,
+	url: string,
+): Effect.Effect<OwnedPaint | undefined, never, ThorvgWasm | Scope.Scope> =>
+	Effect.gen(function* () {
+		const bytes = yield* Effect.promise(() =>
+			fetch(url)
+				.then((r) => {
+					if (!r.ok) {
+						throw new Error(`HTTP ${r.status}`);
+					}
+					return r.arrayBuffer();
+				})
+				.then((buf) => new Uint8Array(buf))
+				.catch((err) => {
+					console.warn(
+						`@effect-motion/thorvg: image "${name}" failed to fetch from ${url}`,
+						err,
+					);
+					return undefined;
+				}),
+		);
+		if (bytes === undefined) {
+			return undefined;
+		}
+		// a picture whose decode failed stays detached and is freed by the
+		// session scope like any owned paint
+		const made = yield* Effect.result(
+			Effect.gen(function* () {
+				const picture = yield* Picture.make();
+				yield* Picture.load(picture, bytes);
+				return picture;
+			}),
+		);
+		if (made._tag === "Failure") {
+			console.warn(
+				`@effect-motion/thorvg: image "${name}" from ${url} failed to decode`,
+				made.failure,
+			);
+			return undefined;
+		}
+		return made.success;
+	});
 
 export const make = (
 	options: SessionOptions,
@@ -48,7 +112,22 @@ export const make = (
 		if (options.fonts !== undefined) {
 			yield* Font.scopedMany(options.fonts);
 		}
-		return RenderSession.of({ canvas });
+		const pictures = new Map<string, OwnedPaint>();
+		if (options.images !== undefined) {
+			yield* Effect.forEach(
+				Object.entries(options.images),
+				([name, url]) =>
+					loadPicture(name, url).pipe(
+						Effect.map((picture) => {
+							if (picture !== undefined) {
+								pictures.set(name, picture);
+							}
+						}),
+					),
+				{ concurrency: "unbounded", discard: true },
+			);
+		}
+		return RenderSession.of({ canvas, pictures });
 	});
 
 export const layer = (options: SessionOptions) =>

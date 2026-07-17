@@ -1,6 +1,7 @@
 export * as Camera from "./Camera";
 export * as Entity from "./Entity";
 export * as Fonts from "./Fonts";
+export * as Images from "./Images";
 export * as Instance from "./Instance";
 export * as Motion from "./Motion";
 export * as Phaser from "./Phaser";

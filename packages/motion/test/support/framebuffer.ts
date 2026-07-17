@@ -5,10 +5,19 @@ import type * as Entity from "../../src/Entity";
 import * as Renderer from "../../src/Renderer";
 import type { Frame } from "../../src/Scene";
 
+/** extra session inputs a test can provide (e.g. images for Shapes.Image) */
+export interface RenderOptions {
+	readonly images?: Record<string, string>;
+}
+
 // engine + a per-render session (canvas sized by the render path)
-const testLayer = (frame: Frame) =>
+const testLayer = (frame: Frame, options?: RenderOptions) =>
 	Layer.provideMerge(
-		Session.layer({ width: frame.width, height: frame.height }),
+		Session.layer({
+			width: frame.width,
+			height: frame.height,
+			...(options?.images !== undefined ? { images: options.images } : {}),
+		}),
 		EngineNode.layer("sw"),
 	);
 
@@ -29,11 +38,12 @@ export interface Rendered {
 
 export const render = <const Entities extends Entity.AnyEntity>(
 	frame: Frame<Entities>,
+	options?: RenderOptions,
 ): Promise<Rendered> =>
 	Effect.runPromise(
 		Renderer.render(frame as Frame).pipe(
 			Effect.scoped,
-			Effect.provide(testLayer(frame as Frame)),
+			Effect.provide(testLayer(frame as Frame, options)),
 			Effect.orDie,
 		),
 	).then(({ rgba, width, height }) => {

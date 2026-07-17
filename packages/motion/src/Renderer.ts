@@ -1,5 +1,6 @@
 import type {
 	OwnedPaint,
+	RenderSession,
 	ThorvgException,
 	ThorvgWasm,
 } from "@effect-motion/thorvg";
@@ -68,7 +69,11 @@ export type PaintFunction<Ent extends Entity.AnyEntity> = (payload: {
 	readonly canvas: Canvas;
 	readonly scene: OwnedPaint;
 	readonly meta: FrameMeta;
-}) => Effect.Effect<void, ThorvgException, ThorvgWasm | Scope.Scope>;
+}) => Effect.Effect<
+	void,
+	ThorvgException,
+	ThorvgWasm | RenderSession | Scope.Scope
+>;
 
 /**
  * A registry of paint functions keyed by entity name. `PaintFunctions<E>` is
@@ -104,7 +109,11 @@ const renderToCanvas = <const Entities extends Entity.AnyEntity>(
 	frame: Frame<Entities>,
 	canvas: Canvas,
 	scene: OwnedPaint,
-): Effect.Effect<void, ThorvgException, ThorvgWasm | Scope.Scope> =>
+): Effect.Effect<
+	void,
+	ThorvgException,
+	ThorvgWasm | RenderSession | Scope.Scope
+> =>
 	Effect.gen(function* () {
 		interface Paintable {
 			readonly id: string;
