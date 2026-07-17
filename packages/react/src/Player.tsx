@@ -3,7 +3,7 @@
 import type { RenderSession, ThorvgWasm } from "@effect-motion/thorvg";
 import * as Engine from "@effect-motion/thorvg/Engine";
 import * as Session from "@effect-motion/thorvg/Session";
-import { Context, Data, Effect, ManagedRuntime, Schedule } from "effect";
+import { Cause, Context, Data, Effect, ManagedRuntime, Schedule } from "effect";
 import * as Layer from "effect/Layer";
 import type * as Scope from "effect/Scope";
 import * as CanvasExporter from "effect-motion/CanvasExporter";
@@ -353,19 +353,14 @@ const useScene = (
 			),
 		);
 	const runtimeRef = useRef<ReturnType<typeof makeRuntime> | null>(null);
-	// set before dispose so in-flight runPromise rejections can tell expected
-	// teardown apart from real failures; cleared when a runtime is (re)created
-	const disposedRef = useRef(false);
 	const getRuntime = () => {
 		if (runtimeRef.current === null) {
 			runtimeRef.current = makeRuntime();
-			disposedRef.current = false;
 		}
 		return runtimeRef.current;
 	};
 	useEffect(
 		() => () => {
-			disposedRef.current = true;
 			// dispose interrupts our own in-flight fibers (play loop, prebuffer);
 			// its promise then rejects with that interruption — expected teardown,
 			// never actionable from a cleanup callback
@@ -379,52 +374,64 @@ const useScene = (
 	// loop, prebuffering). These handlers are fire-and-forget, so a rejecting
 	// runPromise would surface as an unhandled rejection on every navigation
 	// away from a playing scene. runPromiseExit never rejects — failures come
-	// back as Exit values, reported unless they arrived during teardown
-	// (interruption at dispose is the expected path, not a player error).
-	const reportExit = (exit: { _tag: string; cause?: unknown }): void => {
-		if (exit._tag === "Failure" && !disposedRef.current) {
-			console.error("effect-motion player:", exit.cause);
-		}
+	// back as Exit values. Two teardown shapes are silenced: interruption-only
+	// causes (dispose cancelling our own fibers — under strict mode this
+	// happens on EVERY mount, whose first-generation runtime is disposed with
+	// render/prebuffer still in flight), and failures from a runtime that is
+	// no longer current (a stale generation's teardown noise). Everything else
+	// is a real player error and is reported.
+	const runReported = (
+		effect: Parameters<ReturnType<typeof makeRuntime>["runPromiseExit"]>[0],
+	): Promise<void> => {
+		const runtime = getRuntime();
+		return runtime.runPromiseExit(effect).then((exit) => {
+			if (exit._tag !== "Failure") {
+				return;
+			}
+			if (Cause.hasInterruptsOnly(exit.cause)) {
+				return;
+			}
+			if (runtimeRef.current !== runtime) {
+				return;
+			}
+			console.error("effect-motion player:", String(exit.cause), exit.cause);
+		});
 	};
 
 	const render = useEffectEvent((frameIndex: number) =>
-		Effect.service(PlayerScene)
-			.pipe(
+		runReported(
+			Effect.service(PlayerScene).pipe(
 				Effect.flatMap((e) => e.render(frameIndex)),
 				Effect.scoped,
-				getRuntime().runPromiseExit,
-			)
-			.then(reportExit),
+			),
+		),
 	);
 
 	const load = useEffectEvent((frameIndex: number) =>
-		Effect.service(PlayerScene)
-			.pipe(
+		runReported(
+			Effect.service(PlayerScene).pipe(
 				Effect.flatMap((e) => e.load(frameIndex)),
 				Effect.scoped,
-				getRuntime().runPromiseExit,
-			)
-			.then(reportExit),
+			),
+		),
 	);
 
 	const play = useEffectEvent(() =>
-		Effect.service(PlayerScene)
-			.pipe(
+		runReported(
+			Effect.service(PlayerScene).pipe(
 				Effect.flatMap((e) => e.play),
 				Effect.scoped,
-				getRuntime().runPromiseExit,
-			)
-			.then(reportExit),
+			),
+		),
 	);
 
 	const pause = useEffectEvent(() =>
-		Effect.service(PlayerScene)
-			.pipe(
+		runReported(
+			Effect.service(PlayerScene).pipe(
 				Effect.flatMap((e) => e.pause),
 				Effect.scoped,
-				getRuntime().runPromiseExit,
-			)
-			.then(reportExit),
+			),
+		),
 	);
 
 	// prebuffer + autoplay once the runtime exists. For an infinite scene we
