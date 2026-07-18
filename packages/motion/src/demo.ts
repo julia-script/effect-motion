@@ -2,6 +2,7 @@ import { NodeServices } from "@effect/platform-node";
 import { Session } from "@effect-motion/thorvg";
 import { EngineNode } from "@effect-motion/thorvg/node";
 import { Effect, Layer, Schedule, Stream } from "effect";
+import * as Color from "./Color";
 import * as Motion from "./Motion";
 import * as Physics from "./Physics";
 import * as PngExporter from "./PngExporter";
@@ -19,13 +20,13 @@ export const scene = Scene.make(function* () {
 				x: 0,
 				y: 0,
 				radius: 14,
-				fill: "#e53170",
+				fill: Color.hex("#e53170"),
 			}),
 			Scene.instantiate(Shapes.Square, {
 				x: 20,
 				y: -16,
 				size: 28,
-				fill: "#a786df",
+				fill: Color.hex("#a786df"),
 			}),
 		],
 	});
@@ -59,7 +60,7 @@ export const staggered = Scene.make(function* () {
 				x,
 				y: 0,
 				radius: 10,
-				fill: "#e53170",
+				fill: Color.hex("#e53170"),
 			});
 			// reparent the freshly-born dot from root into the stage group
 			yield* Scene.appendChild(stage, circle);

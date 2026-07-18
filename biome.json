@@ -27,6 +27,9 @@
 		"enabled": true,
 		"rules": {
 			"preset": "recommended",
+			"suspicious": {
+				"noShadowRestrictedNames": "off"
+			},
 			"correctness": {
 				"useYield": "off"
 			}

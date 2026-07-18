@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as Camera from "../src/Camera";
+import * as Color from "../src/Color";
 import type * as Scene from "../src/Scene";
 import * as Shapes from "../src/shapes";
 import { render } from "./support/framebuffer";
@@ -10,7 +11,7 @@ describe("visible defaults", () => {
 		expect(data).toMatchObject({
 			x: 0,
 			y: 0,
-			fill: "white",
+			fill: Color.white,
 			opacity: 1,
 			radius: 10,
 		});
@@ -24,7 +25,7 @@ describe("visible defaults", () => {
 			x: 0,
 			y: 0,
 			d: "M 0 0 L 10 10 Z",
-			fill: "white",
+			fill: Color.white,
 			opacity: 1,
 		});
 		expect("stroke" in data).toBe(false);
@@ -37,7 +38,7 @@ describe("visible defaults", () => {
 			y: 0,
 			x2: 50,
 			y2: 20,
-			stroke: "white",
+			stroke: Color.white,
 			strokeWidth: 1,
 			opacity: 1,
 		});
@@ -112,7 +113,7 @@ const allShapesFrame: Scene.Frame<Builtin> = {
 	frameRate: 60,
 	width: 500,
 	height: 300,
-	backgroundColor: "#16161d",
+	backgroundColor: Color.hex("#16161d"),
 	camera: Camera.identity(500),
 };
 

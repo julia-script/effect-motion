@@ -19,7 +19,7 @@ const dot = yield* Scene.instantiate(Shapes.Circle, {
 	x: 60,
 	y: 150,
 	radius: 14,
-	fill: "#7f5af0",
+	fill: Color.hex("#7f5af0"),
 });
 ```
 
@@ -64,7 +64,7 @@ yield* Scene.instantiate(Shapes.Text, {
 	x: 40,
 	y: 80,
 	fontSize: 24,
-	fill: "#7f5af0",
+	fill: Color.hex("#7f5af0"),
 	textAnchor: "middle",
 });
 ```
@@ -81,7 +81,7 @@ you need a discrete change rather than an interpolation.
 
 ```ts
 // discrete: snap the fill on the next frame
-yield* Scene.update(dot, (d) => ({ ...d, fill: "#2cb67d" }));
+yield* Scene.update(dot, (d) => ({ ...d, fill: Color.hex("#2cb67d") }));
 
 // read the current data
 const current = yield* Scene.data(dot);

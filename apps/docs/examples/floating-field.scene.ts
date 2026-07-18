@@ -1,4 +1,4 @@
-import { Particles, Scene } from "effect-motion";
+import { Color, Particles, Scene } from "effect-motion";
 
 // A floating field: particles spread EVENLY across the frame from the
 // start, each given a tiny random drift, wrapping at the edges forever.
@@ -12,7 +12,7 @@ export const scene = Scene.make(function* () {
 		// a random per-particle opacity makes some stars faint, some bright
 		opacityRange: [0.2, 1],
 		drift: [4, 12], // gentle wander, px/sec, in a random direction
-		palette: ["#a7a9be", "#d4d4e0", "#fffffe"],
+		palette: [Color.hex("#a7a9be"), Color.hex("#d4d4e0"), Color.hex("#fffffe")],
 		capacity: 160,
 	});
 

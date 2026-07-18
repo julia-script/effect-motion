@@ -1,5 +1,6 @@
 import { Effect, Schedule } from "effect";
-import { Motion, Scene, Shapes, type Timing } from "effect-motion";
+import { Color, Motion, Shapes, type Timing } from "effect-motion";
+import * as Scene from "effect-motion/Scene";
 
 // ─── The Box ────────────────────────────────────────────────────────────
 // A small fable in four acts: a ball, a ledge, a star it cannot reach,
@@ -17,33 +18,33 @@ export const scene = Scene.make(function* () {
 		y: GROUND,
 		width: 500,
 		height: 40,
-		fill: "#efeeea",
+		fill: Color.hex("#efeeea"),
 	});
 	yield* Scene.instantiate(Shapes.Rect, {
 		x: LEDGE_X,
 		y: LEDGE_TOP,
 		width: 160,
 		height: GROUND - LEDGE_TOP,
-		fill: "#c9d1e5",
+		fill: Color.hex("#c9d1e5"),
 	});
 	const star = yield* Scene.instantiate(Shapes.Circle, {
 		x: 430,
 		y: LEDGE_TOP - 12,
 		radius: 8,
-		fill: "#ff8906",
+		fill: Color.hex("#ff8906"),
 	});
 	const box = yield* Scene.instantiate(Shapes.Square, {
 		x: -90, // waiting in the wings
 		y: GROUND - 56,
 		size: 56,
-		fill: "#2cb67d",
+		fill: Color.hex("#2cb67d"),
 	});
 	const ball = yield* Scene.instantiate(Shapes.Ellipse, {
 		x: -30,
 		y: GROUND - R,
 		rx: R,
 		ry: R,
-		fill: "#7f5af0",
+		fill: Color.hex("#7f5af0"),
 	});
 
 	// squash & stretch, sole planted on a surface: y follows ry
@@ -123,7 +124,7 @@ export const scene = Scene.make(function* () {
 		x: LEDGE_X - R,
 		y: 205,
 		fontSize: 22,
-		fill: "#9490a6",
+		fill: Color.hex("#9490a6"),
 		opacity: 0,
 		textAnchor: "middle",
 	});
@@ -137,7 +138,7 @@ export const scene = Scene.make(function* () {
 		x: LEDGE_X - R,
 		y: 200,
 		fontSize: 6,
-		fill: "#ff8906",
+		fill: Color.hex("#ff8906"),
 		opacity: 0,
 		textAnchor: "middle",
 	});
@@ -186,7 +187,7 @@ export const scene = Scene.make(function* () {
 				x: 430,
 				y: LEDGE_TOP - 12,
 				radius: 3,
-				fill: "#ff8906",
+				fill: Color.hex("#ff8906"),
 			});
 			yield* Scene.all([
 				Motion.moveTo(
@@ -208,7 +209,7 @@ export const scene = Scene.make(function* () {
 				[0, 1, 2, 3, 4, 5].map((i) => sparkle((i / 6) * Math.PI * 2)),
 				Schedule.spaced("40 millis"),
 			);
-		}) as never,
+		}),
 	);
 	// two happy bounces while the sparkles fly
 	yield* arc(414, LEDGE_TOP - R - 18, LEDGE_TOP - R, 280);
@@ -220,7 +221,7 @@ export const scene = Scene.make(function* () {
 		x: 250,
 		y: 70,
 		fontSize: 6,
-		fill: "#232946",
+		fill: Color.hex("#232946"),
 		opacity: 0,
 		textAnchor: "middle",
 		baseline: "middle",

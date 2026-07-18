@@ -1,0 +1,17 @@
+---
+title: The Effect Logo
+description: The layered mark rebuilt as a real 3D scene — flat plates, a pitched camera, and a HUD wordmark
+---
+
+Instead of tracing the logo's SVG paths, this scene rebuilds what the mark
+actually depicts: three square plates stacked in space. Each plate is a
+`Rect` laid flat (`rotX: π/2`) and turned 45° in the ground plane
+(`rotY: π/4`); a camera panned up and pitched down supplies the isometric
+foreshortening, so the diamonds come from the projection rather than drawn
+geometry.
+
+The plates spring into the stack bottom-up with `Scene.stagger`, and the
+wordmark lives on a `Hud` layer — screen-space text that ignores the camera
+entirely.
+
+<Example name="effect-logo" />

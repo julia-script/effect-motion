@@ -52,7 +52,7 @@ Settings are passed to `run`/`stream` and default to sensible values:
 | --- | --- | --- |
 | `frameRate` | `60` | frames per second |
 | `width` / `height` | `500` / `300` | output resolution (stamped on every frame) |
-| `backgroundColor` | `"#16161d"` | canvas background (a near-black, not pure `#000`) |
+| `backgroundColor` | `Color.hex("#16161d")` | canvas background (a near-black, not pure `#000`); a `Color` from the `Color` API |
 | `seed` | `"effect-motion"` | seeds the scene's pseudo-random stream |
 | `maxFrames` | `36_000` | hard cap (10 min at 60fps); a scene that exceeds it fails loudly. Set `Infinity` for an intentionally infinite scene |
 

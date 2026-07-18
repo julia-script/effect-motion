@@ -3,6 +3,7 @@ import * as Effect from "effect/Effect";
 import * as Effectable from "effect/Effectable";
 import { dual } from "effect/Function";
 import type * as Schema from "effect/Schema";
+import * as Color from "./Color";
 import * as Entity from "./Entity";
 import * as Instance from "./Instance";
 import * as Runner from "./Runner";
@@ -10,7 +11,11 @@ import * as Scene from "./Scene";
 import * as Time from "./Time";
 import * as Timing from "./Timing";
 
-export type InterpolableValue = number;
+export const color = (to: Color.Color, mode: Color.InterpolationMode) => {
+	return (from: Color.Color, t: number) => Color.mix(from, to, t, mode);
+};
+type ColorInterpolator = (from: Color.Color, t: number) => Color.Color;
+export type InterpolableValue = number | Color.Color;
 
 // optional numeric fields (schema optionalKey, e.g. the camera's
 // z/focalLength) are tweenable too — strip undefined before matching
@@ -19,10 +24,26 @@ type InterpolableKeys<T> = {
 }[keyof T];
 
 export type InterpolableOnly<T> = Pick<T, InterpolableKeys<T>>;
+type InterpolableOrInterpolator<T> = {
+	[K in keyof T]-?: NonNullable<T[K]> extends number
+		? number
+		: NonNullable<T[K]> extends Color.Color
+			? Color.Color | ColorInterpolator
+			: never;
+};
 
 // extrapolating on purpose: eased t goes outside [0, 1] for back/elastic
 const lerpNumber = (from: number, to: number, t: number) =>
 	from + (to - from) * t;
+
+const lerpColor = (
+	from: Color.Color,
+	to: Color.Color,
+	t: number,
+	mode: Color.InterpolationMode,
+) => {
+	return Color.mix(from, to, t, mode);
+};
 
 /**
  * The interpolation engine: from `from` to `to` over `duration`, calling
@@ -52,9 +73,23 @@ const interpolate = Effect.fnUntraced(function* <
 	);
 	for (let i = 1; i <= frames; i++) {
 		const t = timingFn(i / frames);
-		const value: Record<string, number> = {};
+		const value: Record<string, InterpolableValue | ColorInterpolator> = {};
 		for (const key of keys) {
-			value[key] = lerpNumber(from[key] as number, to[key] as number, t);
+			const fromValue = from[key];
+			const toValue = to[key];
+			if (typeof toValue === "number") {
+				value[key] = lerpNumber(from[key] as number, to[key] as number, t);
+			} else if (typeof toValue === "function") {
+				const interpolator = toValue as ColorInterpolator;
+				value[key] = interpolator(fromValue as Color.Color, t);
+			} else {
+				value[key] = lerpColor(
+					fromValue as Color.Color,
+					toValue as Color.Color,
+					t,
+					"lab",
+				);
+			}
 		}
 		yield* fn(value as T);
 		yield* Scene.tick;
@@ -63,8 +98,8 @@ const interpolate = Effect.fnUntraced(function* <
 
 /** target props, or an updater computing them from the current data */
 export type Target<Data extends Schema.Top> =
-	| Partial<InterpolableOnly<Data["Type"]>>
-	| ((data: Data["Type"]) => Partial<InterpolableOnly<Data["Type"]>>);
+	| Partial<InterpolableOrInterpolator<Data["Type"]>>
+	| ((data: Data["Type"]) => Partial<InterpolableOrInterpolator<Data["Type"]>>);
 
 // InterpolableOnly of an opaque Data["Type"] can't be proven
 // index-compatible with Record<string, number>; the runtime shape is

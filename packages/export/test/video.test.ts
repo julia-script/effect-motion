@@ -5,7 +5,7 @@ import {
 	type ChildProcess,
 	ChildProcessSpawner,
 } from "effect/unstable/process";
-import { Scene, Shapes } from "effect-motion";
+import { Color, Scene, Shapes } from "effect-motion";
 import { expect, it } from "vitest";
 import { Ffmpeg, Video } from "../src";
 
@@ -75,7 +75,7 @@ const threeFrameScene = Scene.make(function* () {
 		x: 40,
 		y: 40,
 		radius: 20,
-		fill: "#fde68a",
+		fill: Color.hex("#fde68a"),
 	});
 	yield* Scene.tick;
 	yield* Scene.tick;
@@ -95,7 +95,7 @@ it("streams a scene to N PNG frames at the scene's framerate", async () => {
 	expect(record).toHaveLength(1);
 	expect(record[0]?.pngFrames).toBe(EXPECTED_FRAMES);
 	// framerate is read from metadata, not repeated by the caller
-	const args = record[0]?.args;
+	const args = record[0]?.args ?? [];
 	expect(args[args.indexOf("-framerate") + 1]).toBe("30");
 });
 
@@ -121,7 +121,7 @@ it("caps an infinite scene with options.frames", async () => {
 			x: 10,
 			y: 10,
 			radius: 5,
-			fill: "#fff",
+			fill: Color.hex("#fff"),
 		});
 		while (true) {
 			yield* Scene.tick;

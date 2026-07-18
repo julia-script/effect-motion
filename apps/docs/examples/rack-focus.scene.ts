@@ -1,4 +1,4 @@
-import { Camera, Motion, Scene, Shapes } from "effect-motion";
+import { Camera, Color, Motion, Scene, Shapes } from "effect-motion";
 
 // Depth of field: aperture > 0 opts in, focusDistance picks the sharp
 // plane. Both are plain camera fields, so a rack focus — the classic
@@ -10,21 +10,21 @@ export const scene = Scene.make(function* () {
 		y: 150,
 		z: 300, // near (in front of the z=0 plane)
 		radius: 40,
-		fill: "#7f5af0",
+		fill: Color.hex("#7f5af0"),
 	});
 	yield* Scene.instantiate(Shapes.Circle, {
 		x: 250,
 		y: 150,
 		z: 0, // the resting focus plane
 		radius: 40,
-		fill: "#2cb67d",
+		fill: Color.hex("#2cb67d"),
 	});
 	yield* Scene.instantiate(Shapes.Circle, {
 		x: 400,
 		y: 150,
 		z: -600, // far
 		radius: 40,
-		fill: "#ff8906",
+		fill: Color.hex("#ff8906"),
 	});
 
 	const camera = yield* Scene.instantiate(Camera.Camera, {

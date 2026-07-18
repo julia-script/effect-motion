@@ -1,4 +1,4 @@
-import { Motion, Particles, Scene, Shapes } from "effect-motion";
+import { Color, Motion, Particles, Scene, Shapes } from "effect-motion";
 
 // Parallax falls out of perspective for free: give objects a world `z` and a
 // panning camera separates them by depth automatically — far things drift
@@ -12,7 +12,7 @@ export const scene = Scene.make(function* () {
 		drift: [1, 4],
 		size: [0.6, 1.8],
 		opacityRange: [0.3, 0.9],
-		palette: ["#fffffe", "#b8c1ec", "#8087b3"],
+		palette: [Color.hex("#fffffe"), Color.hex("#b8c1ec"), Color.hex("#8087b3")],
 		capacity: 90,
 	});
 	yield* Scene.instantiate(Shapes.Group, { z: -1600, children: [stars] });
@@ -28,13 +28,13 @@ export const scene = Scene.make(function* () {
 				x: 120,
 				y: 150,
 				size: 40,
-				fill: "#a786df",
+				fill: Color.hex("#a786df"),
 			}),
 			Scene.instantiate(Shapes.Square, {
 				x: 300,
 				y: 130,
 				size: 32,
-				fill: "#a786df",
+				fill: Color.hex("#a786df"),
 			}),
 		],
 	});
@@ -44,13 +44,13 @@ export const scene = Scene.make(function* () {
 		x: 100,
 		y: 240,
 		radius: 22,
-		fill: "#e53170",
+		fill: Color.hex("#e53170"),
 	});
 	yield* Scene.instantiate(Shapes.Circle, {
 		x: 280,
 		y: 250,
 		radius: 18,
-		fill: "#ff8906",
+		fill: Color.hex("#ff8906"),
 	});
 
 	// pan the camera right and back; depth separates the layers

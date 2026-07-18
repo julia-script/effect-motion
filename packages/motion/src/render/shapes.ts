@@ -1,11 +1,11 @@
 import * as Tvg from "@effect-motion/thorvg";
 import * as Effect from "effect/Effect";
+import * as Color from "../Color";
 import { renderOpacity, renderSize } from "../particles/overLife";
 import type { OverLife, Particle } from "../particles/Particle";
 import { ParticleField } from "../particles/ParticleField";
 import type { PaintFunction, PaintFunctions } from "../Renderer";
 import * as Shapes from "../shapes";
-import { parseColor } from "./color";
 import { applyStyle, finishPaint } from "./paint";
 
 /**
@@ -115,7 +115,7 @@ export const line: PaintFunction<typeof Shapes.Line> = ({
 		}
 		// a line has no fill; stroke defaults come from its schema
 		if (data.stroke !== undefined) {
-			const { r, g, b, a } = parseColor(data.stroke);
+			const { r, g, b, a } = Color.bytes(data.stroke);
 			yield* Tvg.Shape.setStrokeColor(shape, r, g, b, a);
 		}
 		yield* Tvg.Shape.setStrokeWidth(
@@ -221,7 +221,7 @@ export const text: PaintFunction<typeof Shapes.Text> = ({
 		// this one text simply doesn't draw and the rest of the frame renders.
 		yield* Tvg.Text.setFont(glyphs, data.fontFamily).pipe(Effect.ignore);
 		yield* Tvg.Text.setText(glyphs, data.text);
-		const { r, g, b } = parseColor(data.fill);
+		const { r, g, b } = Color.bytes(data.fill);
 		yield* Tvg.Text.setColor(glyphs, r, g, b);
 		if (data.opacity !== 1) {
 			yield* Tvg.Paint.setOpacity(glyphs, Math.round(data.opacity * 255));
@@ -292,7 +292,11 @@ export const particleField: PaintFunction<typeof ParticleField> = ({
 		// field's local coords (data.x/y offsets the whole field).
 		const buckets = new Map<
 			string,
-			{ color: string; alpha: number; circles: Array<[number, number, number]> }
+			{
+				color: Color.Color;
+				alpha: number;
+				circles: Array<[number, number, number]>;
+			}
 		>();
 		for (const p of data.buffer as ReadonlyArray<Particle>) {
 			if (!p.alive) {
@@ -311,7 +315,7 @@ export const particleField: PaintFunction<typeof ParticleField> = ({
 			}
 			// quantize alpha to keep the bucket count bounded (~24 steps)
 			const qAlpha = Math.round(alpha / 11) * 11;
-			const key = `${p.color}\0${qAlpha}`;
+			const key = `${Color.toHex(p.color)}\0${qAlpha}`;
 			let bucket = buckets.get(key);
 			if (bucket === undefined) {
 				bucket = { color: p.color, alpha: qAlpha, circles: [] };
@@ -325,7 +329,7 @@ export const particleField: PaintFunction<typeof ParticleField> = ({
 			for (const [cx, cy, r] of circles) {
 				yield* Tvg.Shape.appendCircle(shape, cx, cy, r, r);
 			}
-			const { r, g, b } = parseColor(color);
+			const { r, g, b } = Color.bytes(color);
 			yield* Tvg.Shape.setFillColor(shape, r, g, b, alpha);
 			yield* finishPaint(shape, scene, projection);
 		}

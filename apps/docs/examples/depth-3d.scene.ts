@@ -1,4 +1,4 @@
-import { Camera, Motion, Scene, Shapes } from "effect-motion";
+import { Camera, Color, Motion, Scene, Shapes } from "effect-motion";
 
 // The 2.5D showcase: objects live at real depths, a tilted Rect lies back as
 // a floor, and the free camera dollies forward while orbiting. Render order
@@ -13,12 +13,18 @@ export const scene = Scene.make(function* () {
 		width: 900,
 		height: 900,
 		rotX: Math.PI / 2.3,
-		fill: "#232946",
+		fill: Color.hex("#232946"),
 	});
 
 	// a scatter of cards at varied depths and colours. Same size in world
 	// units — perspective makes the near ones large and the far ones small.
-	const palette = ["#e53170", "#ff8906", "#2cb67d", "#7f5af0", "#b8c1ec"];
+	const palette = [
+		Color.hex("#e53170"),
+		Color.hex("#ff8906"),
+		Color.hex("#2cb67d"),
+		Color.hex("#7f5af0"),
+		Color.hex("#b8c1ec"),
+	];
 	for (let i = 0; i < 18; i++) {
 		const col = i % 6;
 		const row = Math.floor(i / 6);

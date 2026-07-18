@@ -61,7 +61,7 @@ const runScene = async <A>(
 		// skip the root group — the first non-root instance is the subject
 		const entry = Object.entries(frame.instances).find(
 			([id]) => id !== frame.root,
-		)?.[1];
+		)![1];
 		return extract(entry.data as Record<string, any>);
 	});
 };

@@ -2,6 +2,7 @@ import { Effect } from "effect";
 import * as Stream from "effect/Stream";
 import { describe, expect, it } from "vitest";
 import * as CameraMod from "../src/Camera";
+import * as Color from "../src/Color";
 import * as Motion from "../src/Motion";
 import type * as Projection from "../src/Projection";
 import type * as Runner from "../src/Runner";
@@ -26,7 +27,7 @@ const baseFrame = (
 		frameRate: 60,
 		width: 500,
 		height: 300,
-		backgroundColor: "#000000",
+		backgroundColor: Color.hex("#000000"),
 		camera,
 	}) as Frame;
 
@@ -52,7 +53,7 @@ describe("HUD rendering", () => {
 						x: 400,
 						y: 50,
 						radius: 20,
-						fill: "#7f5af0",
+						fill: Color.hex("#7f5af0"),
 					}),
 					entity: Shapes.Circle,
 				},
@@ -85,7 +86,7 @@ describe("HUD rendering", () => {
 						z: near.z - 100, // 100 units from the lens
 						width: 2000,
 						height: 2000,
-						fill: "#ff0000",
+						fill: Color.hex("#ff0000"),
 					}),
 					entity: Shapes.Rect,
 				},
@@ -98,7 +99,7 @@ describe("HUD rendering", () => {
 						x: 250,
 						y: 150,
 						radius: 30,
-						fill: "#00ff00",
+						fill: Color.hex("#00ff00"),
 					}),
 					entity: Shapes.Circle,
 				},
@@ -135,7 +136,7 @@ describe("HUD rendering", () => {
 					x: 380,
 					y: 150,
 					radius: 30,
-					fill: "#00ff00",
+					fill: Color.hex("#00ff00"),
 				}),
 				entity: Shapes.Circle,
 			},
@@ -248,7 +249,7 @@ describe("HUD scene authoring", () => {
 			([, e]) => (e as any).entity.name === "shapes/Hud",
 		);
 		expect(hudEntry).toBeDefined();
-		const children = (hudEntry?.[1] as any).data.children as string[];
+		const children = (hudEntry![1] as any).data.children as string[];
 		expect(children.length).toBe(1);
 		// the mounted circle is a child of the Hud, not of the root
 		const rootChildren = (last.instances[last.root] as any).data

@@ -1,4 +1,4 @@
-import { Camera, Motion, Scene, Shapes } from "effect-motion";
+import { Camera, Color, Motion, Scene, Shapes } from "effect-motion";
 
 // Two cameras, one cut. We OPEN on the wide two-shot so the viewer sees both
 // subjects and where they are — that's the reference frame that makes the cut
@@ -10,13 +10,13 @@ export const scene = Scene.make(function* () {
 		x: 130,
 		y: 150,
 		radius: 24,
-		fill: "#e53170",
+		fill: Color.hex("#e53170"),
 	});
 	const right = yield* Scene.instantiate(Shapes.Circle, {
 		x: 370,
 		y: 150,
 		radius: 24,
-		fill: "#2cb67d",
+		fill: Color.hex("#2cb67d"),
 	});
 
 	const camA = yield* Scene.camera;

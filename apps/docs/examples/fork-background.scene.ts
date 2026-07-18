@@ -1,5 +1,5 @@
 import { Effect, Schedule } from "effect";
-import { Motion, Scene, Shapes } from "effect-motion";
+import { Color, Motion, Scene, Shapes } from "effect-motion";
 
 // background: loops for the scene's duration and is interrupted at the
 // end. fork: overlapping spawns whose last survivor defines the end.
@@ -8,7 +8,7 @@ export const scene = Scene.make(function* () {
 		x: 250,
 		y: 70,
 		radius: 10,
-		fill: "#2cb67d",
+		fill: Color.hex("#2cb67d"),
 	});
 	yield* Scene.background(
 		Scene.repeat(
@@ -29,7 +29,7 @@ export const scene = Scene.make(function* () {
 					x: 60,
 					y: 210,
 					radius: 8,
-					fill: "#e53170",
+					fill: Color.hex("#e53170"),
 				});
 				yield* dot.pipe(
 					Motion.tweenTo({ x: 440 }, "1.2 seconds", "easeInOutCubic"),

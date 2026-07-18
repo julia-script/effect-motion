@@ -1,4 +1,4 @@
-import { Particles, Scene } from "effect-motion";
+import { Color, Particles, Scene } from "effect-motion";
 
 // Snow: a downward stream with gentle gravity and a wide, slow launch so
 // flakes fan out and sink. Same emitter as the confetti burst, just aimed
@@ -15,7 +15,7 @@ export const scene = Scene.make(function* () {
 		size: [1.5, 4],
 		opacityRange: [0.5, 1],
 		gravity: 30, // slow sink
-		palette: ["#fffffe", "#e8f0ff", "#cfe0ff"],
+		palette: [Color.hex("#fffffe"), Color.hex("#e8f0ff"), Color.hex("#cfe0ff")],
 		opacityOverLife: { from: 1, to: 0.2, ease: "linear" },
 		capacity: 350,
 	});

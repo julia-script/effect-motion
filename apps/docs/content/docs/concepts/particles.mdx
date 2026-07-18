@@ -21,7 +21,7 @@ constructor accepts only the props that make sense for it, and `simulate` only
 accepts the matching emission.
 
 ```ts
-import { Particles, Scene } from "effect-motion";
+import { Color, Particles, Scene } from "effect-motion";
 
 const sparks = yield* Particles.emitter({
   x: 250,
@@ -32,7 +32,7 @@ const sparks = yield* Particles.emitter({
   size: [2, 5], // px radius
   opacityRange: [0.6, 1], // per-particle opacity, drawn at birth
   gravity: 400, // shared force, not a range
-  palette: ["#ffcc44", "#ff8906"],
+  palette: [Color.hex("#ffcc44"), Color.hex("#ff8906")],
 });
 
 yield* Particles.simulate(sparks, "2 seconds", { burst: 200 });
@@ -110,7 +110,7 @@ const stars = yield* Particles.field({
   size: [1, 2.5],
   opacityRange: [0.2, 1], // faint stars and bright ones
   drift: [4, 12], // gentle wander, px/sec, in a random direction
-  palette: ["#a7a9be", "#d4d4e0", "#fffffe"],
+  palette: [Color.hex("#a7a9be"), Color.hex("#d4d4e0"), Color.hex("#fffffe")],
 });
 
 yield* Particles.simulate(stars, "6 seconds", { fill: 140 });

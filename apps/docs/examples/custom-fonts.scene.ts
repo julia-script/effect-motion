@@ -1,4 +1,4 @@
-import { Fonts, Motion, Scene, Shapes } from "effect-motion";
+import { Color, Fonts, Motion, Scene, Shapes } from "effect-motion";
 
 // The player reads the Fonts annotation and loads the declared face while
 // it buffers frames, so the first visible frame is already in Pacifico —
@@ -10,7 +10,7 @@ export const scene = Scene.make(function* () {
 		y: 120,
 		fontSize: 48,
 		fontFamily: "Pacifico",
-		fill: "#7f5af0",
+		fill: Color.hex("#7f5af0"),
 		textAnchor: "middle",
 		baseline: "middle",
 		opacity: 0,
@@ -20,7 +20,7 @@ export const scene = Scene.make(function* () {
 		x: 250,
 		y: 190,
 		fontSize: 20,
-		fill: "#94a3b8",
+		fill: Color.hex("#94a3b8"),
 		textAnchor: "middle",
 		baseline: "middle",
 		opacity: 0,

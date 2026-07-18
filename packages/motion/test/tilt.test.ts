@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as Camera from "../src/Camera";
+import * as Color from "../src/Color";
 import type * as Scene from "../src/Scene";
 import * as Shapes from "../src/shapes";
 import { type Rendered, render } from "./support/framebuffer";
@@ -22,7 +23,7 @@ const frameOf = (
 	frameRate: 60,
 	width: 500,
 	height: 300,
-	backgroundColor: "#000",
+	backgroundColor: Color.hex("#000"),
 	camera,
 });
 
@@ -38,7 +39,7 @@ const tiltedRectFrame = (rotX: number) =>
 					width: 200,
 					height: 200,
 					rotX,
-					fill: "tomato",
+					fill: Color.hex("tomato"),
 				}),
 				entity: Shapes.Rect,
 			},
@@ -103,7 +104,7 @@ describe("a plane crossing the camera is near-plane clipped, not folded", () => 
 						width: 900,
 						height: 900,
 						rotX: Math.PI / 2.3,
-						fill: "tomato",
+						fill: Color.hex("tomato"),
 					}),
 					entity: Shapes.Rect,
 				},

@@ -1,10 +1,15 @@
 import { Schedule } from "effect";
-import { Motion, Scene, Shapes } from "effect-motion";
+import { Color, Motion, Scene, Shapes } from "effect-motion";
 
 // Scene.stagger is the explicit overlap opt-in: starts are staggered by
 // the schedule and the released animations run concurrently
 export const scene = Scene.make(function* () {
-	const colors = ["#e53170", "#ff8906", "#7f5af0", "#2cb67d"];
+	const colors = [
+		Color.hex("#e53170"),
+		Color.hex("#ff8906"),
+		Color.hex("#7f5af0"),
+		Color.hex("#2cb67d"),
+	];
 	const dots = [];
 	for (const [i, fill] of colors.entries()) {
 		dots.push(

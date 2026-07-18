@@ -2,6 +2,7 @@ import { Effect } from "effect";
 import * as Stream from "effect/Stream";
 import { describe, expect, it } from "vitest";
 import * as CameraMod from "../src/Camera";
+import * as Color from "../src/Color";
 import * as Motion from "../src/Motion";
 import * as Projection from "../src/Projection";
 import type * as Runner from "../src/Runner";
@@ -149,7 +150,7 @@ describe("depth-of-field rendering", () => {
 			frameRate: 60,
 			width: 500,
 			height: 300,
-			backgroundColor: "#000000",
+			backgroundColor: Color.hex("#000000"),
 			camera,
 		}) as Scene.Frame<Entities>;
 

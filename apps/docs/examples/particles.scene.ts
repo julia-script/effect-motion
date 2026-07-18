@@ -1,11 +1,17 @@
-import { Particles, Scene } from "effect-motion";
+import { Color, Particles, Scene } from "effect-motion";
 
 // A fountain built with the real particle system: one `Particles.emitter`
 // streaming particles up in a narrow cone, pulled back down by gravity,
 // fading as they age. This is ONE instance and ONE animator fiber backing
 // the whole spray — not one fiber per particle. Same seeded Random, so the
 // spray is byte-identical every replay.
-const palette = ["#e53170", "#ff8906", "#7f5af0", "#2cb67d", "#3da9fc"];
+const palette = [
+	Color.hex("#e53170"),
+	Color.hex("#ff8906"),
+	Color.hex("#7f5af0"),
+	Color.hex("#2cb67d"),
+	Color.hex("#3da9fc"),
+];
 
 export const scene = Scene.make(function* () {
 	const fountain = yield* Particles.emitter({
