@@ -29,7 +29,11 @@ import { Hud } from "./shapes/Hud.js";
  * `segment`, when present, is the exact projected screen endpoints of a
  * skeletal shape (Line) — each endpoint carries its own world depth, so the
  * pair is projected per point (see Projection.projectSegment) and the paint
- * fn draws it directly, skipping the billboard affine.
+ * fn draws it directly, skipping the billboard affine. `subpaths`, when
+ * present, is the projected screen geometry of a skeletal path (Path): every
+ * command point projected individually and near-plane-clipped per subpath
+ * (see Projection.projectPath) — the paint fn emits it directly at screen
+ * coordinates.
  */
 export interface PaintProjection {
 	readonly screen: Projection.Affine;
@@ -37,6 +41,7 @@ export interface PaintProjection {
 	readonly scale: number;
 	readonly quad?: ReadonlyArray<Projection.Vec2>;
 	readonly segment?: readonly [Projection.Vec2, Projection.Vec2];
+	readonly subpaths?: Projection.ProjectedPath["subpaths"];
 }
 
 /** The frame's render metadata, handed to paint functions. */
@@ -97,6 +102,69 @@ export type PaintFunctions<Entities extends Entity.AnyEntity> = {
 const childIdsOf = (data: unknown): ReadonlyArray<string> => {
 	const children = (data as { children?: unknown } | null)?.children;
 	return Array.isArray(children) ? children : [];
+};
+
+// the structural shape of a Path command in frame data (see shapes/Path.ts)
+type PathCommandData =
+	| {
+			readonly _tag: "M" | "L";
+			readonly x: number;
+			readonly y: number;
+			readonly z?: number;
+	  }
+	| { readonly _tag: "Z" };
+
+/**
+ * Split a Path's command list into world-space subpaths: `M` starts one,
+ * `L` extends it, `Z` closes it. Command points are LOCAL to the path's
+ * anchor; `z` absent means 0. An `L` directly after a `Z` starts a new open
+ * subpath from the closed subpath's start point (SVG semantics).
+ */
+const pathSubpaths = (
+	commands: ReadonlyArray<PathCommandData>,
+	anchor: Projection.Vec3,
+): Array<Projection.Subpath3> => {
+	const subpaths: Array<Projection.Subpath3> = [];
+	let current: Array<Projection.Vec3> = [];
+	let lastMove: Projection.Vec3 = anchor;
+	const world = (p: {
+		readonly x: number;
+		readonly y: number;
+		readonly z?: number;
+	}): Projection.Vec3 => ({
+		x: anchor.x + p.x,
+		y: anchor.y + p.y,
+		z: anchor.z + (p.z ?? 0),
+	});
+	const flush = (closed: boolean) => {
+		if (current.length >= 2) {
+			subpaths.push({ points: current, closed });
+		}
+		current = [];
+	};
+	for (const command of commands) {
+		switch (command._tag) {
+			case "M": {
+				flush(false);
+				lastMove = world(command);
+				current = [lastMove];
+				break;
+			}
+			case "L": {
+				if (current.length === 0) {
+					current.push(lastMove);
+				}
+				current.push(world(command));
+				break;
+			}
+			case "Z": {
+				flush(true);
+				break;
+			}
+		}
+	}
+	flush(false);
+	return subpaths;
 };
 
 // a hidden instance ($visible false) and its subtree are skipped entirely
@@ -194,6 +262,7 @@ const renderToCanvas = <const Entities extends Entity.AnyEntity>(
 					x2?: number;
 					y2?: number;
 					z2?: number;
+					commands?: unknown;
 				};
 				// world anchor = ancestor offset + this node's own position
 				const world: Projection.Vec3 = {
@@ -219,6 +288,51 @@ const renderToCanvas = <const Entities extends Entity.AnyEntity>(
 							),
 						),
 					);
+					return;
+				}
+				// a skeletal path leaf (Path): every command point is an
+				// independent world point (anchor + local), projected per point
+				// with per-subpath near-plane clipping — the paint fn emits the
+				// exact screen subpaths. ponytail: no viewport clip yet — ThorVG
+				// stroke cost scales with the path's full extent, offscreen
+				// included; upgrade is per-span clipSegmentToRect with the same
+				// splitting the near clip uses.
+				if (Array.isArray(data.commands)) {
+					const projected = Projection.projectPath(
+						effectiveCamera,
+						pathSubpaths(
+							data.commands as ReadonlyArray<PathCommandData>,
+							world,
+						),
+						origin,
+					);
+					if (projected === undefined) {
+						// entirely behind the near plane — cull
+						return;
+					}
+					// anchor the billboard affine on the first visible point, as
+					// the segment branch does — path paints ignore it (their
+					// geometry is already screen-space) but the field stays coherent
+					const first = projected.subpaths[0]?.points[0] ?? origin;
+					paintables.push({
+						id,
+						entry,
+						projection: {
+							screen: Projection.billboardAffine(
+								{
+									x: first.x,
+									y: first.y,
+									depth: projected.depth,
+									scale: projected.scale,
+								},
+								{ x: data.x ?? 0, y: data.y ?? 0 },
+							),
+							depth: projected.depth,
+							scale: projected.scale,
+							subpaths: projected.subpaths,
+						},
+						hud: subtreeHud,
+					});
 					return;
 				}
 				// a skeletal leaf (Line): both endpoints are independent world

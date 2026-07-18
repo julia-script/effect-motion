@@ -19,16 +19,35 @@ describe("visible defaults", () => {
 		expect("strokeWidth" in data).toBe(false);
 	});
 
-	it("path: d required, fill white, translate only when offset", () => {
-		const data = Shapes.Path.data.make({ d: "M 0 0 L 10 10 Z" });
+	it("path: commands required, fill white, per-point z optional", () => {
+		const data = Shapes.Path.data.make({
+			commands: [
+				{ _tag: "M", x: 0, y: 0 },
+				{ _tag: "L", x: 10, y: 10, z: -50 },
+				{ _tag: "Z" },
+			],
+		});
 		expect(data).toMatchObject({
 			x: 0,
 			y: 0,
-			d: "M 0 0 L 10 10 Z",
 			fill: Color.white,
 			opacity: 1,
 		});
+		expect(data.commands).toHaveLength(3);
 		expect("stroke" in data).toBe(false);
+		// the d string is gone — commands is the only geometry input
+		expect("d" in data).toBe(false);
+	});
+
+	it("path: first command must be M", () => {
+		expect(() =>
+			Shapes.Path.data.make({
+				commands: [{ _tag: "L", x: 10, y: 10 }],
+			}),
+		).toThrow();
+		expect(() =>
+			Shapes.Path.data.make({ commands: [{ _tag: "Z" }] }),
+		).toThrow();
 	});
 
 	it("default line: stroke white, strokeWidth 1, no fill", () => {
@@ -46,16 +65,16 @@ describe("visible defaults", () => {
 	});
 });
 
-// Path and Text are deferred (ThorVG needs an SVG-`d` parser / engine font
-// loading — a separate change), so the manifest covers the geometric built-ins
-// the single renderer paints today. Each is placed at a distinct, in-frame
-// point so a pixel check confirms it painted.
+// Text is deferred (engine font loading — a separate change), so the manifest
+// covers the geometric built-ins the single renderer paints today. Each is
+// placed at a distinct, in-frame point so a pixel check confirms it painted.
 type Builtin =
 	| typeof Shapes.Circle
 	| typeof Shapes.Rect
 	| typeof Shapes.Square
 	| typeof Shapes.Ellipse
 	| typeof Shapes.Line
+	| typeof Shapes.Path
 	| typeof Shapes.Group;
 
 // each entry: a shape and a point where its fill/stroke should land
@@ -91,6 +110,21 @@ const cases = {
 			strokeWidth: 8,
 		}),
 		point: [300, 220] as const,
+	},
+	p: {
+		entity: Shapes.Path,
+		// a filled closed triangle; probe an interior point
+		data: Shapes.Path.data.make({
+			x: 400,
+			y: 180,
+			commands: [
+				{ _tag: "M", x: 0, y: 0 },
+				{ _tag: "L", x: 60, y: 0 },
+				{ _tag: "L", x: 30, y: 60 },
+				{ _tag: "Z" },
+			],
+		}),
+		point: [430, 200] as const,
 	},
 };
 

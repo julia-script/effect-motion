@@ -1,4 +1,12 @@
 {
 	"title": "Examples",
-	"pages": ["groups", "particles", "moon-moth", "the-box", "effect-logo"]
+	"pages": [
+		"groups",
+		"path-3d",
+		"bezier-3d",
+		"particles",
+		"moon-moth",
+		"the-box",
+		"effect-logo"
+	]
 }

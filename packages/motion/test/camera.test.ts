@@ -102,7 +102,7 @@ describe("camera animated by the existing primitives", () => {
 			id.startsWith("shapes/Circle"),
 		)!;
 		for (const frame of frames) {
-			expect((frame.instances[circleId]!.data as { x: number }).x).toBe(100);
+			expect((frame.instances[circleId]?.data as { x: number }).x).toBe(100);
 		}
 		expect(frames.at(-1)?.camera.x).toBe(300);
 	});

@@ -11,6 +11,7 @@ import * as Group from "../shapes/Group.js";
 import * as Hud from "../shapes/Hud.js";
 import * as Image from "../shapes/Image.js";
 import * as Line from "../shapes/Line.js";
+import * as Path from "../shapes/Path.js";
 import * as Rect from "../shapes/Rect.js";
 import * as Square from "../shapes/Square.js";
 import * as Text from "../shapes/Text.js";
@@ -140,6 +141,45 @@ export const line: PaintFunction<typeof Line.Line> = ({
 			return;
 		}
 		yield* finishPaint(shape, scene, projection);
+	});
+
+export const path: PaintFunction<typeof Path.Path> = ({
+	data,
+	scene,
+	projection,
+}) =>
+	Effect.gen(function* () {
+		// the flatten step already split, projected, and near-plane-clipped the
+		// command points (see Projection.projectPath) — geometry arrives in
+		// screen space, so emit it directly and apply no transform. A path with
+		// nothing visible was culled before paint, so subpaths is present here.
+		const subpaths = projection.subpaths;
+		if (subpaths === undefined) {
+			return;
+		}
+		const shape = yield* Tvg.Shape.make();
+		for (const subpath of subpaths) {
+			for (const [i, p] of subpath.points.entries()) {
+				yield* i === 0
+					? Tvg.Shape.moveTo(shape, p.x, p.y)
+					: Tvg.Shape.lineTo(shape, p.x, p.y);
+			}
+			// ponytail: a near-clipped closed subpath strokes along the synthetic
+			// clip edge too — accepted; split stroke/fill geometry if it matters
+			if (subpath.closed) {
+				yield* Tvg.Shape.close(shape);
+			}
+		}
+		yield* applyStyle(shape, data);
+		// stroke width scales by the path's perspective scale (its mean visible
+		// depth), overriding the unscaled width applyStyle set
+		if (data.strokeWidth !== undefined) {
+			yield* Tvg.Shape.setStrokeWidth(
+				shape,
+				data.strokeWidth * projection.scale,
+			);
+		}
+		yield* Tvg.Scene.add(scene, shape);
 	});
 
 // A group paints nothing itself: its position has already composed into its
@@ -347,10 +387,6 @@ export const particleField: PaintFunction<typeof ParticleField> = ({
  * The exhaustive paint-function map for every built-in entity. Typed
  * `PaintFunctions<...>` so a missing built-in fails to type-check (the old
  * "coverage manifest" guarantee, without a Context registry).
- *
- * Path is omitted deliberately — ThorVG has no SVG-`d`-string append, so it
- * needs a path parser (its own follow-up). Text renders (fonts load at engine
- * setup); consumers using Path provide their own paint function until then.
  */
 export const builtinPaints = {
 	[Circle.Circle.name]: circle,
@@ -358,6 +394,7 @@ export const builtinPaints = {
 	[Square.Square.name]: square,
 	[Ellipse.Ellipse.name]: ellipse,
 	[Line.Line.name]: line,
+	[Path.Path.name]: path,
 	[Group.Group.name]: group,
 	[Hud.Hud.name]: hud,
 	[Text.Text.name]: text,
@@ -369,6 +406,7 @@ export const builtinPaints = {
 	| typeof Square.Square
 	| typeof Ellipse.Ellipse
 	| typeof Line.Line
+	| typeof Path.Path
 	| typeof Group.Group
 	| typeof Hud.Hud
 	| typeof Text.Text

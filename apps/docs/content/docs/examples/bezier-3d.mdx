@@ -1,0 +1,16 @@
+---
+title: 3D Bézier curve
+description: A cubic Bézier flattened into a depth-aware Path
+---
+
+`Path` speaks straight `M`/`L`/`Z` commands today — curve commands are a
+planned follow-up, and their chosen implementation is flattening: sampling
+the curve into line spans. This example does that flattening in scene code,
+sampling a cubic Bézier whose control points live at different depths. Every
+sample carries its own `z`, so the projected curve foreshortens point by
+point; the straight control polygon `P0→P1→P2→P3` is drawn beside it, inside
+a wireframe axes box built from 12 depth-aware `Line` edges. The camera
+orbits the box center like a turntable — its position circles a pivot while
+`rotY` tracks it, one `Scene.update` per frame.
+
+<Example name="bezier-3d" />

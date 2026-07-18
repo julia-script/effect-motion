@@ -263,6 +263,17 @@ export const projectPlane = (
 	origin: Vec2,
 ): Array<Vec2> => {
 	const view = corners.map((c) => toView(camera, c, origin));
+	return clipPolygonNear(view).map((v) => {
+		const scale = camera.focalLength / v.z;
+		return { x: origin.x + v.x * scale, y: origin.y + v.y * scale };
+	});
+};
+
+/**
+ * Sutherland–Hodgman clip of a view-space polygon against the near plane,
+ * winding preserved. Shared by tilted planes and closed path subpaths.
+ */
+const clipPolygonNear = (view: ReadonlyArray<Vec3>): Array<Vec3> => {
 	const clipped: Vec3[] = [];
 	for (let i = 0; i < view.length; i++) {
 		// biome-ignore lint/style/noNonNullAssertion: i and (i+1)%length are in bounds
@@ -282,10 +293,7 @@ export const projectPlane = (
 			});
 		}
 	}
-	return clipped.map((v) => {
-		const scale = camera.focalLength / v.z;
-		return { x: origin.x + v.x * scale, y: origin.y + v.y * scale };
-	});
+	return clipped;
 };
 
 /** A projected segment: exact screen endpoints plus its single sort key. */
@@ -338,6 +346,116 @@ export const projectSegment = (
 	return {
 		a: toScreen(va),
 		b: toScreen(vb),
+		depth,
+		scale: camera.focalLength / depth,
+	};
+};
+
+/** A subpath of a skeletal path: world-space points, closed or open. */
+export interface Subpath3 {
+	readonly points: ReadonlyArray<Vec3>;
+	readonly closed: boolean;
+}
+
+/** A projected path: screen subpaths plus the path's single sort key. */
+export interface ProjectedPath {
+	readonly subpaths: ReadonlyArray<{
+		readonly points: ReadonlyArray<Vec2>;
+		readonly closed: boolean;
+	}>;
+	/** mean view-space depth of the near-visible points */
+	readonly depth: number;
+	/** perspective scale at that depth (focalLength / depth) */
+	readonly scale: number;
+}
+
+/**
+ * Project a skeletal path's world-space subpaths to screen — the N-point
+ * generalization of `projectSegment`. Every point goes to view space and is
+ * projected individually, so a path spanning depth foreshortens per point.
+ * Near-plane clipping is per subpath: a closed subpath clips as a polygon
+ * (Sutherland–Hodgman, winding preserved — the tilted-plane treatment); an
+ * open subpath clips per span (lerp to z = NEAR) and SPLITS into separate
+ * visible pieces when interior points fall behind the plane. Returns
+ * `undefined` when nothing survives (cull). `depth`/`scale` come from the
+ * mean view depth of all emitted points — one key per path, the same
+ * ceiling as a segment's midpoint.
+ */
+export const projectPath = (
+	camera: CameraView,
+	subpaths: ReadonlyArray<Subpath3>,
+	origin: Vec2,
+): ProjectedPath | undefined => {
+	const pieces: Array<{ points: Array<Vec3>; closed: boolean }> = [];
+	for (const subpath of subpaths) {
+		const view = subpath.points.map((p) => toView(camera, p, origin));
+		if (subpath.closed) {
+			const clipped = clipPolygonNear(view);
+			if (clipped.length >= 2) {
+				pieces.push({ points: clipped, closed: true });
+			}
+			continue;
+		}
+		// open: walk the spans, clipping and splitting at the near plane
+		let current: Array<Vec3> = [];
+		const clip = (a: Vec3, b: Vec3): Vec3 => {
+			const t = (NEAR - a.z) / (b.z - a.z);
+			return {
+				x: a.x + (b.x - a.x) * t,
+				y: a.y + (b.y - a.y) * t,
+				z: NEAR,
+			};
+		};
+		const flush = () => {
+			if (current.length >= 2) {
+				pieces.push({ points: current, closed: false });
+			}
+			current = [];
+		};
+		for (let i = 0; i + 1 < view.length; i++) {
+			// biome-ignore lint/style/noNonNullAssertion: i and i+1 are in bounds
+			const a = view[i]!;
+			// biome-ignore lint/style/noNonNullAssertion: see above
+			const b = view[i + 1]!;
+			const aIn = a.z >= NEAR;
+			const bIn = b.z >= NEAR;
+			if (aIn) {
+				if (current.length === 0) {
+					current.push(a);
+				}
+				if (bIn) {
+					current.push(b);
+				} else {
+					current.push(clip(a, b));
+					flush();
+				}
+			} else if (bIn) {
+				current = [clip(b, a), b];
+			}
+		}
+		flush();
+	}
+	if (pieces.length === 0) {
+		return undefined;
+	}
+	let depthSum = 0;
+	let depthCount = 0;
+	for (const piece of pieces) {
+		for (const v of piece.points) {
+			depthSum += v.z;
+			depthCount++;
+		}
+	}
+	const depth = depthSum / depthCount;
+	const toScreen = (v: Vec3): Vec2 => {
+		const s = camera.focalLength / v.z;
+		return { x: origin.x + v.x * s, y: origin.y + v.y * s };
+	};
+	return {
+		subpaths: pieces.map((piece) => ({
+			points: piece.points.map(toScreen),
+			closed: piece.closed,
+		})),
 		depth,
 		scale: camera.focalLength / depth,
 	};

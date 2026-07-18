@@ -1,0 +1,12 @@
+---
+title: Path in 3D
+description: One path, every point at its own depth
+---
+
+A `Path` is built from `M`/`L`/`Z` commands whose points are local to the
+path's anchor — and every point can carry its own `z`. The renderer projects
+each point with its own perspective, so a single path can zig-zag through
+depth: far spans foreshorten toward the vanishing point while near ones stay
+full size. Moving the path moves only its anchor; the commands never change.
+
+<Example name="path-3d" />

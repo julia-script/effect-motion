@@ -249,7 +249,7 @@ describe("HUD scene authoring", () => {
 			([, e]) => (e as any).entity.name === "shapes/Hud",
 		);
 		expect(hudEntry).toBeDefined();
-		const children = (hudEntry![1] as any).data.children as string[];
+		const children = (hudEntry?.[1] as any).data.children as string[];
 		expect(children.length).toBe(1);
 		// the mounted circle is a child of the Hud, not of the root
 		const rootChildren = (last.instances[last.root] as any).data

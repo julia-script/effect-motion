@@ -1,5 +1,6 @@
 import type { PlayerProps } from "@effect-motion/react";
 import { scene as appendChild } from "./append-child.scene";
+import { scene as bezier3d } from "./bezier-3d.scene";
 import { scene as cameraParallax } from "./camera-parallax.scene";
 import { scene as cameraShake } from "./camera-shake.scene";
 import { scene as cameraSwap } from "./camera-swap.scene";
@@ -21,6 +22,7 @@ import { scene as images } from "./images.scene";
 import { scene as moonMoth } from "./moon-moth.scene";
 import { scene as particleField } from "./particle-field.scene";
 import { scene as particles } from "./particles.scene";
+import { scene as path3d } from "./path-3d.scene";
 import { scene as rackFocus } from "./rack-focus.scene";
 import { scene as repeat } from "./repeat.scene";
 import { scene as seededRandomness } from "./seeded-randomness.scene";
@@ -41,6 +43,8 @@ export const examples: Record<string, PlayerProps["scene"]> = {
 	"camera-parallax": cameraParallax,
 	"depth-3d": depth3d,
 	"depth-grid": depthGrid,
+	"path-3d": path3d,
+	"bezier-3d": bezier3d,
 	"camera-zoom": cameraZoom,
 	"camera-shake": cameraShake,
 	"camera-swap": cameraSwap,
