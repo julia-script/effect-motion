@@ -1,5 +1,5 @@
-import * as Entity from "../Entity";
-import * as Shape2D from "./Shape2D";
+import * as Entity from "../Entity.js";
+import * as Shape2D from "./Shape2D.js";
 
 // its own entity, not Rect sugar: the schema IS the width === height
 // constraint, which a Rect can't enforce through updates

@@ -1,7 +1,7 @@
 /** biome-ignore-all lint/style/useConst: let declaration is necessary for destructuring assignment */
-import * as Color from "../Color";
-import type { EmitterConfig, Particle } from "./Particle";
-import * as Prng from "./Prng";
+import * as Color from "../Color.js";
+import type { EmitterConfig, Particle } from "./Particle.js";
+import * as Prng from "./Prng.js";
 
 /**
  * The per-frame simulation as a PURE fold: `(buffer, dt, births) → buffer`.

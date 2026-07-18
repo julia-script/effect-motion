@@ -9,13 +9,13 @@ import type * as Schedule from "effect/Schedule";
 import type * as Schema from "effect/Schema";
 import type * as Scope from "effect/Scope";
 import * as Stream from "effect/Stream";
-import type * as Camera from "./Camera";
-import type * as Color from "./Color";
-import type * as Entity from "./Entity";
-import type * as Instance from "./Instance";
-import * as Phaser from "./Phaser";
-import * as Runner from "./Runner";
-import * as Time from "./Time";
+import type * as Camera from "./Camera.js";
+import type * as Color from "./Color.js";
+import type * as Entity from "./Entity.js";
+import type * as Instance from "./Instance.js";
+import * as Phaser from "./Phaser.js";
+import * as Runner from "./Runner.js";
+import * as Time from "./Time.js";
 
 export const TypeId = "~motion/Scene" as const;
 export interface Scene<E = never, R = never> {

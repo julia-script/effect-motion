@@ -1,20 +1,20 @@
 import * as Tvg from "@effect-motion/thorvg";
 import * as Effect from "effect/Effect";
-import * as Color from "../Color";
-import { renderOpacity, renderSize } from "../particles/overLife";
-import type { OverLife, Particle } from "../particles/Particle";
-import { ParticleField } from "../particles/ParticleField";
-import type { PaintFunction, PaintFunctions } from "../Renderer";
-import * as Circle from "../shapes/Circle";
-import * as Ellipse from "../shapes/Ellipse";
-import * as Group from "../shapes/Group";
-import * as Hud from "../shapes/Hud";
-import * as Image from "../shapes/Image";
-import * as Line from "../shapes/Line";
-import * as Rect from "../shapes/Rect";
-import * as Square from "../shapes/Square";
-import * as Text from "../shapes/Text";
-import { applyStyle, finishPaint } from "./paint";
+import * as Color from "../Color.js";
+import { renderOpacity, renderSize } from "../particles/overLife.js";
+import type { OverLife, Particle } from "../particles/Particle.js";
+import { ParticleField } from "../particles/ParticleField.js";
+import type { PaintFunction, PaintFunctions } from "../Renderer.js";
+import * as Circle from "../shapes/Circle.js";
+import * as Ellipse from "../shapes/Ellipse.js";
+import * as Group from "../shapes/Group.js";
+import * as Hud from "../shapes/Hud.js";
+import * as Image from "../shapes/Image.js";
+import * as Line from "../shapes/Line.js";
+import * as Rect from "../shapes/Rect.js";
+import * as Square from "../shapes/Square.js";
+import * as Text from "../shapes/Text.js";
+import { applyStyle, finishPaint } from "./paint.js";
 
 /**
  * ThorVG paint functions for the built-in shapes — this file is the coverage

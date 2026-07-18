@@ -1,5 +1,5 @@
-import * as Timing from "../Timing";
-import type { OverLife, Particle } from "./Particle";
+import * as Timing from "../Timing.js";
+import type { OverLife, Particle } from "./Particle.js";
 
 /**
  * Evaluate an over-life curve at a particle's current age. Purely a

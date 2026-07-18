@@ -2,13 +2,13 @@ import { NodeServices } from "@effect/platform-node";
 import { Session } from "@effect-motion/thorvg";
 import { EngineNode } from "@effect-motion/thorvg/node";
 import { Effect, Layer, Schedule, Stream } from "effect";
-import * as Color from "./Color";
-import * as Motion from "./Motion";
-import * as Physics from "./Physics";
-import * as PngExporter from "./PngExporter";
-import * as Renderer from "./Renderer";
-import * as Scene from "./Scene";
-import * as Shapes from "./Shapes";
+import * as Color from "./Color.js";
+import * as Motion from "./Motion.js";
+import * as Physics from "./Physics.js";
+import * as PngExporter from "./PngExporter.js";
+import * as Renderer from "./Renderer.js";
+import * as Scene from "./Scene.js";
+import * as Shapes from "./Shapes.js";
 
 // children live in the group's local coordinates: one motion moves them all
 export const scene = Scene.make(function* () {

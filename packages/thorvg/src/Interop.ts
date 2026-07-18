@@ -1,7 +1,7 @@
 import { Brand, Effect, Ref, type Scope } from "effect";
-import { ThorvgWasm } from "./Engine";
-import { messageForCode, ThorvgException } from "./ThorvgException";
-import type { ThorVGModule } from "./thorvgemscripten";
+import { ThorvgWasm } from "./Engine.js";
+import { messageForCode, ThorvgException } from "./ThorvgException.js";
+import type { ThorVGModule } from "./thorvgemscripten.js";
 
 /**
  * Wasm interop primitives: branded pointers, error-checked call wrappers,

@@ -1,5 +1,5 @@
 import { Effect } from "effect";
-import { ThorvgWasm } from "./Engine";
+import { ThorvgWasm } from "./Engine.js";
 import {
 	acquirePaint,
 	checked,
@@ -8,8 +8,8 @@ import {
 	type Scratch,
 	withScratch,
 	wrap,
-} from "./Interop";
-import type { ThorvgException } from "./ThorvgException";
+} from "./Interop.js";
+import type { ThorvgException } from "./ThorvgException.js";
 
 /** Operations common to every paint (shape, scene, text, picture) — design D2/D4. */
 

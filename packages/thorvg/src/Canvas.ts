@@ -1,8 +1,8 @@
 import { Effect, Ref, type Scope } from "effect";
-import { ThorvgWasm } from "./Engine";
-import { checked, type OwnedPaint, Ptr, wrap } from "./Interop";
-import type { ThorvgException } from "./ThorvgException";
-import type { TvgCanvasInstance } from "./thorvgemscripten";
+import { ThorvgWasm } from "./Engine.js";
+import { checked, type OwnedPaint, Ptr, wrap } from "./Interop.js";
+import type { ThorvgException } from "./ThorvgException.js";
+import type { TvgCanvasInstance } from "./thorvgemscripten.js";
 
 // The canvas is the Embind TvgCanvas (design finding): it exposes render()/the
 // SW framebuffer and a .ptr() that the raw _tvg_canvas_* functions accept.

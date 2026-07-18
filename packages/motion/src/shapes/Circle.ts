@@ -1,5 +1,5 @@
-import * as Entity from "../Entity";
-import * as Shape2D from "./Shape2D";
+import * as Entity from "../Entity.js";
+import * as Shape2D from "./Shape2D.js";
 
 export const Circle = Entity.make(
 	"shapes/Circle",

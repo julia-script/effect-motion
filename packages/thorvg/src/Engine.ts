@@ -1,9 +1,9 @@
 import TVG, { type InitOptions, type RendererType } from "@thorvg/webcanvas";
 import { Context, Effect, Layer, Option, Record } from "effect";
 import { get } from "effect/Record";
-import { clearLoaded, DEFAULT_FONT_URL, loadFonts } from "./Font";
-import { wrap, wrapPromise } from "./Interop";
-import type { ThorVGModule, TvgCanvasInstance } from "./thorvgemscripten";
+import { clearLoaded, DEFAULT_FONT_URL, loadFonts } from "./Font.js";
+import { wrap, wrapPromise } from "./Interop.js";
+import type { ThorVGModule, TvgCanvasInstance } from "./thorvgemscripten.js";
 
 /**
  * The engine tier: the ThorVG wasm module as an Effect service, its

@@ -2,15 +2,15 @@ import type * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import { dual } from "effect/Function";
 import * as Random from "effect/Random";
-import * as Instance from "../Instance";
-import * as Runner from "../Runner";
-import * as Scene from "../Scene";
-import * as Time from "../Time";
-import type { EmitterField, FloatField } from "./constructors";
-import type { EmitterConfig, Particle } from "./Particle";
-import type { ParticleField } from "./ParticleField";
-import * as Prng from "./Prng";
-import { step } from "./step";
+import * as Instance from "../Instance.js";
+import * as Runner from "../Runner.js";
+import * as Scene from "../Scene.js";
+import * as Time from "../Time.js";
+import type { EmitterField, FloatField } from "./constructors.js";
+import type { EmitterConfig, Particle } from "./Particle.js";
+import type { ParticleField } from "./ParticleField.js";
+import * as Prng from "./Prng.js";
+import { step } from "./step.js";
 
 type Field = Instance.Of<typeof ParticleField>;
 

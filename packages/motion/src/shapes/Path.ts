@@ -1,6 +1,6 @@
 import * as Schema from "effect/Schema";
-import * as Entity from "../Entity";
-import * as Shape2D from "./Shape2D";
+import * as Entity from "../Entity.js";
+import * as Shape2D from "./Shape2D.js";
 
 // `d` is required — an empty path can never be visible, so there is no
 // sensible default. x/y offset the whole path (targets translate it),

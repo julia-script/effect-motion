@@ -2,8 +2,8 @@ import type { OwnedPaint, ThorvgException } from "@effect-motion/thorvg";
 import * as Tvg from "@effect-motion/thorvg";
 import * as Effect from "effect/Effect";
 import type * as Scope from "effect/Scope";
-import * as Color from "../Color";
-import type { PaintProjection } from "../Renderer";
+import * as Color from "../Color.js";
+import type { PaintProjection } from "../Renderer.js";
 
 /**
  * Shared paint helpers: style application, projection, and the attach step

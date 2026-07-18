@@ -3,19 +3,19 @@
 // pointer/paint types). Deliberately does NOT re-export the Node entry
 // (EngineNode / savePng) or encodePng — those pull in node:fs / node:zlib and
 // would poison a browser bundle. Import them from "@effect-motion/thorvg/node".
-export * as Animation from "./Animation";
-export * as Canvas from "./Canvas";
-export * as Engine from "./Engine";
-export { type ThorvgOptions, ThorvgWasm } from "./Engine";
-export * as Font from "./Font";
-export * as Gradient from "./Gradient";
-export * as Interop from "./Interop";
-export { type OwnedPaint, Ptr, Scratch } from "./Interop";
-export * as Paint from "./Paint";
-export * as Picture from "./Picture";
-export * as Scene from "./Scene";
-export * as Session from "./Session";
-export { RenderSession } from "./Session";
-export * as Shape from "./Shape";
-export * as Text from "./Text";
-export { ThorvgException } from "./ThorvgException";
+export * as Animation from "./Animation.js";
+export * as Canvas from "./Canvas.js";
+export * as Engine from "./Engine.js";
+export { type ThorvgOptions, ThorvgWasm } from "./Engine.js";
+export * as Font from "./Font.js";
+export * as Gradient from "./Gradient.js";
+export * as Interop from "./Interop.js";
+export { type OwnedPaint, Ptr, Scratch } from "./Interop.js";
+export * as Paint from "./Paint.js";
+export * as Picture from "./Picture.js";
+export * as Scene from "./Scene.js";
+export * as Session from "./Session.js";
+export { RenderSession } from "./Session.js";
+export * as Shape from "./Shape.js";
+export * as Text from "./Text.js";
+export { ThorvgException } from "./ThorvgException.js";

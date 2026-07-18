@@ -1,7 +1,7 @@
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
-import * as Entity from "../Entity";
-import * as Shape2D from "./Shape2D";
+import * as Entity from "../Entity.js";
+import * as Shape2D from "./Shape2D.js";
 
 /**
  * A plain-string text leaf. `text` is required. The engine cannot measure

@@ -1,12 +1,12 @@
 import { Effect } from "effect";
-import { ThorvgWasm } from "./Engine";
+import { ThorvgWasm } from "./Engine.js";
 import {
 	acquirePaint,
 	checked,
 	freePaint,
 	type OwnedPaint,
 	withCstr,
-} from "./Interop";
+} from "./Interop.js";
 
 // Text mutators (design D1/D4). Strings (text content, font names) are
 // marshalled to NUL-terminated UTF-8 in scratch. ThorVG copies what it needs

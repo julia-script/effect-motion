@@ -1,1 +1,1 @@
-export { Player, type PlayerProps } from "./Player";
+export { Player, type PlayerProps } from "./Player.js";

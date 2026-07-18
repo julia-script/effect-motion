@@ -1,6 +1,6 @@
 import * as Schema from "effect/Schema";
-import * as Entity from "../Entity";
-import * as Shape2D from "./Shape2D";
+import * as Entity from "../Entity.js";
+import * as Shape2D from "./Shape2D.js";
 
 // A Rect is the canonical 2.5D plane: give it Euler orientation so it can
 // tilt in 3D (lie flat as a floor, tilt as a wall). All-zero rotation (the

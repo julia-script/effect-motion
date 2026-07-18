@@ -1,10 +1,10 @@
 import * as Effect from "effect/Effect";
 import { dual } from "effect/Function";
 import type * as Schema from "effect/Schema";
-import * as Entity from "./Entity";
-import * as Instance from "./Instance";
-import * as Runner from "./Runner";
-import * as Scene from "./Scene";
+import * as Entity from "./Entity.js";
+import * as Instance from "./Instance.js";
+import * as Runner from "./Runner.js";
+import * as Scene from "./Scene.js";
 
 /**
  * Physics-based motion: durationless animations that carry momentum and

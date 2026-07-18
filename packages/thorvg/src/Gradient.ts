@@ -1,13 +1,13 @@
 import { Effect } from "effect";
-import { ThorvgWasm } from "./Engine";
+import { ThorvgWasm } from "./Engine.js";
 import {
 	acquirePaint,
 	checked,
 	type OwnedPaint,
 	type Scratch,
 	withScratch,
-} from "./Interop";
-import type { ThorVGModule } from "./thorvgemscripten";
+} from "./Interop.js";
+import type { ThorVGModule } from "./thorvgemscripten.js";
 
 /** A gradient is a Fill, not a Paint — freed by `_tvg_gradient_del`, not unref. */
 const acquireGradient = (

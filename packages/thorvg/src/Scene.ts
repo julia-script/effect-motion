@@ -1,6 +1,11 @@
 import { Effect, Ref } from "effect";
-import { ThorvgWasm } from "./Engine";
-import { acquirePaint, checked, freePaint, type OwnedPaint } from "./Interop";
+import { ThorvgWasm } from "./Engine.js";
+import {
+	acquirePaint,
+	checked,
+	freePaint,
+	type OwnedPaint,
+} from "./Interop.js";
 
 export const make = () =>
 	acquirePaint("_tvg_scene_new", (m) => m._tvg_scene_new(), freePaint);

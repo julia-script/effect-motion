@@ -9,7 +9,7 @@ import * as Stream from "effect/Stream";
 import type { ChildProcessSpawner } from "effect/unstable/process";
 import { Fonts, Renderer, Scene } from "effect-motion";
 import * as PngExporter from "effect-motion/PngExporter";
-import * as Ffmpeg from "./Ffmpeg";
+import * as Ffmpeg from "./Ffmpeg.js";
 
 // Scene.instantiate/tick leak the runner requirement into a scene's static R,
 // and Scene.make adds Scope; both are provided at runtime (by Scene.stream and

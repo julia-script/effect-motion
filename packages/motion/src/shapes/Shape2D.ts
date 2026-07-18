@@ -1,7 +1,7 @@
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
-import * as Color from "../Color";
-import type * as Entity from "../Entity";
+import * as Color from "../Color.js";
+import type * as Entity from "../Entity.js";
 
 /**
  * The portable styling prop set shared by built-in shapes — deliberately

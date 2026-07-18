@@ -1,4 +1,4 @@
-import type * as Projection from "../Projection";
+import type * as Projection from "../Projection.js";
 
 /**
  * Depth-of-field circle of confusion (design D2 of camera-depth-of-field):

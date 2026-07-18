@@ -1,5 +1,5 @@
-import type * as Color from "../Color";
-import type * as Prng from "./Prng";
+import type * as Color from "../Color.js";
+import type * as Prng from "./Prng.js";
 
 /**
  * A single particle's live state. Held in a flat buffer on the

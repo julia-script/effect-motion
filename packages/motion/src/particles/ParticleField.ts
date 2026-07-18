@@ -1,8 +1,8 @@
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
-import * as Color from "../Color";
-import * as Entity from "../Entity";
-import * as Shape2D from "../shapes/Shape2D";
+import * as Color from "../Color.js";
+import * as Entity from "../Entity.js";
+import * as Shape2D from "../shapes/Shape2D.js";
 
 /**
  * A ParticleField is ONE entity/instance backing many particles. Its data

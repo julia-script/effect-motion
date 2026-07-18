@@ -3,13 +3,13 @@ import * as Effect from "effect/Effect";
 import * as Effectable from "effect/Effectable";
 import { dual } from "effect/Function";
 import type * as Schema from "effect/Schema";
-import * as Color from "./Color";
-import * as Entity from "./Entity";
-import * as Instance from "./Instance";
-import * as Runner from "./Runner";
-import * as Scene from "./Scene";
-import * as Time from "./Time";
-import * as Timing from "./Timing";
+import * as Color from "./Color.js";
+import * as Entity from "./Entity.js";
+import * as Instance from "./Instance.js";
+import * as Runner from "./Runner.js";
+import * as Scene from "./Scene.js";
+import * as Time from "./Time.js";
+import * as Timing from "./Timing.js";
 
 export const color = (to: Color.Color, mode: Color.InterpolationMode) => {
 	return (from: Color.Color, t: number) => Color.mix(from, to, t, mode);

@@ -1,5 +1,5 @@
 import { Effect } from "effect";
-import { ThorvgWasm } from "./Engine";
+import { ThorvgWasm } from "./Engine.js";
 import {
 	acquirePaint,
 	checked,
@@ -8,8 +8,8 @@ import {
 	type OwnedPaint,
 	type Scratch,
 	withScratch,
-} from "./Interop";
-import type { ThorvgException } from "./ThorvgException";
+} from "./Interop.js";
+import type { ThorvgException } from "./ThorvgException.js";
 
 /**
  * Pictures: encoded images (png/jpg/webp), vectors (svg), and Lottie data

@@ -1,8 +1,8 @@
 import { Effect } from "effect";
 import * as Schema from "effect/Schema";
-import * as Entity from "./Entity";
-import * as Projection from "./Projection";
-import * as Shape2D from "./shapes/Shape2D";
+import * as Entity from "./Entity.js";
+import * as Projection from "./Projection.js";
+import * as Shape2D from "./shapes/Shape2D.js";
 
 /**
  * The camera is view state, not a shape — it is never registered with a sink

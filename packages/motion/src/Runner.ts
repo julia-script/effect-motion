@@ -4,14 +4,14 @@ import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import type * as Fiber from "effect/Fiber";
 import type * as Schema from "effect/Schema";
-import { Camera, type CameraState, identity } from "./Camera";
-import * as Color from "./Color";
-import type * as Entity from "./Entity";
-import * as Instance from "./Instance";
-import * as Phaser from "./Phaser";
-import * as Projection from "./Projection";
-import { Group } from "./shapes/Group";
-import { Text } from "./shapes/Text";
+import { Camera, type CameraState, identity } from "./Camera.js";
+import * as Color from "./Color.js";
+import type * as Entity from "./Entity.js";
+import * as Instance from "./Instance.js";
+import * as Phaser from "./Phaser.js";
+import * as Projection from "./Projection.js";
+import { Group } from "./shapes/Group.js";
+import { Text } from "./shapes/Text.js";
 
 export const TypeId = "~motion/SceneRunner" as const;
 

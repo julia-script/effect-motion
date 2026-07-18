@@ -1,7 +1,7 @@
 import * as Effect from "effect/Effect";
 import * as Pipeable from "effect/Pipeable";
 import type * as Schema from "effect/Schema";
-import type * as Entity from "./Entity";
+import type * as Entity from "./Entity.js";
 export const TypeId = "~motion/Instance" as const;
 
 export interface Instance<

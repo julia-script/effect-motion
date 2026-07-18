@@ -8,14 +8,14 @@ import * as Tvg from "@effect-motion/thorvg";
 import type { Canvas } from "@effect-motion/thorvg/Canvas";
 import * as Effect from "effect/Effect";
 import type * as Scope from "effect/Scope";
-import * as CameraMod from "./Camera";
-import * as Color from "./Color";
-import type * as Entity from "./Entity";
-import * as Projection from "./Projection";
-import { circleOfConfusion, quantizeSigma } from "./render/dof";
-import { builtinPaints } from "./render/shapes";
-import type { EntriesFromEntities, Frame } from "./Scene";
-import { Hud } from "./shapes/Hud";
+import * as CameraMod from "./Camera.js";
+import * as Color from "./Color.js";
+import type * as Entity from "./Entity.js";
+import * as Projection from "./Projection.js";
+import { circleOfConfusion, quantizeSigma } from "./render/dof.js";
+import { builtinPaints } from "./render/shapes.js";
+import type { EntriesFromEntities, Frame } from "./Scene.js";
+import { Hud } from "./shapes/Hud.js";
 
 /**
  * The projection handed to each paint function — how the camera places a

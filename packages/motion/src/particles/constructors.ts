@@ -1,10 +1,10 @@
 import type * as Effect from "effect/Effect";
-import type * as Color from "../Color";
-import type * as Instance from "../Instance";
-import type * as Runner from "../Runner";
-import * as Scene from "../Scene";
-import type { Range } from "./Particle";
-import { ParticleField } from "./ParticleField";
+import type * as Color from "../Color.js";
+import type * as Instance from "../Instance.js";
+import type * as Runner from "../Runner.js";
+import * as Scene from "../Scene.js";
+import type { Range } from "./Particle.js";
+import { ParticleField } from "./ParticleField.js";
 
 /**
  * Two typed front doors onto the SAME `ParticleField` entity. The field's

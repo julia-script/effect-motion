@@ -3,10 +3,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { RendererType } from "@thorvg/webcanvas";
 import { Effect } from "effect";
-import { type Canvas, render } from "./Canvas";
-import * as Engine from "./Engine";
-import { wrapPromise } from "./Interop";
-import { encodePng } from "./png";
+import { type Canvas, render } from "./Canvas.js";
+import * as Engine from "./Engine.js";
+import { wrapPromise } from "./Interop.js";
+import { encodePng } from "./png.js";
 
 /**
  * Node ThorVG layer. Only difference from the browser layer is `locateFile`:

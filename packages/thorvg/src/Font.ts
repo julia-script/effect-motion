@@ -1,8 +1,8 @@
 import { Effect, type Scope } from "effect";
-import { ThorvgWasm } from "./Engine";
-import { checked, cstr, withCstr, withScratch } from "./Interop";
-import { ThorvgException } from "./ThorvgException";
-import type { ThorVGModule } from "./thorvgemscripten";
+import { ThorvgWasm } from "./Engine.js";
+import { checked, cstr, withCstr, withScratch } from "./Interop.js";
+import { ThorvgException } from "./ThorvgException.js";
+import type { ThorVGModule } from "./thorvgemscripten.js";
 
 /**
  * Engine-level font loading. Fonts are engine-global (not paints): text

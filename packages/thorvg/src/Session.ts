@@ -1,10 +1,10 @@
 import { Context, Effect, Layer, type Scope } from "effect";
-import * as Canvas from "./Canvas";
-import type { ThorvgWasm } from "./Engine";
-import * as Font from "./Font";
-import type { OwnedPaint } from "./Interop";
-import * as Picture from "./Picture";
-import type { ThorvgException } from "./ThorvgException";
+import * as Canvas from "./Canvas.js";
+import type { ThorvgWasm } from "./Engine.js";
+import * as Font from "./Font.js";
+import type { OwnedPaint } from "./Interop.js";
+import * as Picture from "./Picture.js";
+import type { ThorvgException } from "./ThorvgException.js";
 
 /**
  * The session tier (design D3): everything a consumer holds for the lifetime

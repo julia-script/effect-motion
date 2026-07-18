@@ -1,8 +1,8 @@
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
-import * as Color from "../Color";
-import * as Entity from "../Entity";
-import * as Shape2D from "./Shape2D";
+import * as Color from "../Color.js";
+import * as Entity from "../Entity.js";
+import * as Shape2D from "./Shape2D.js";
 
 // No fill — a line is unfillable, so unlike the filled shapes it defaults
 // stroke white / strokeWidth 1: the visible default (see Shape2D.ts).
