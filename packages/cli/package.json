@@ -1,6 +1,6 @@
 {
 	"name": "@effect-motion/cli",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"description": "Command line for effect-motion: scaffold projects (init), preview scenes with hot reload (studio), and render videos from motion.config.ts (render)",
 	"type": "module",
 	"license": "MIT",

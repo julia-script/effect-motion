@@ -1,6 +1,6 @@
 {
 	"name": "effect-motion",
-	"version": "0.2.0",
+	"version": "0.3.0",
 	"description": "Deterministic, frame-exact motion graphics in code, composed with Effect",
 	"type": "module",
 	"license": "MIT",
