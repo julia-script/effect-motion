@@ -1,5 +1,6 @@
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
+import * as Color from "../Color";
 import * as Entity from "../Entity";
 import * as Shape2D from "../shapes/Shape2D";
 
@@ -41,7 +42,7 @@ const ParticleSchema = Schema.Struct({
 	life: Schema.Number,
 	size: Schema.Number,
 	opacity: Schema.Number,
-	color: Schema.String,
+	color: Color.Color,
 	rng: Schema.Number,
 	alive: Schema.Boolean,
 	wrap: Schema.Boolean,
@@ -66,8 +67,8 @@ export const ParticleField = Entity.make(
 		// `opacity` (the ~opacity trait above, which fades the whole field).
 		opacityRange: defaultedRange([1, 1]),
 		gravity: Shape2D.defaultedNumber(0),
-		palette: Schema.Array(Schema.String).pipe(
-			Schema.withConstructorDefault(Effect.sync(() => ["white"])),
+		palette: Schema.Array(Color.Color).pipe(
+			Schema.withConstructorDefault(Effect.sync(() => [Color.white])),
 		),
 		// fill mode: the region particles spread across and wrap within
 		// (defaults to the frame in `simulate`) and their drift speed range

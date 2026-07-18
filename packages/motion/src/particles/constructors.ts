@@ -1,4 +1,7 @@
+import type * as Effect from "effect/Effect";
+import type * as Color from "../Color";
 import type * as Instance from "../Instance";
+import type * as Runner from "../Runner";
 import * as Scene from "../Scene";
 import type { Range } from "./Particle";
 import { ParticleField } from "./ParticleField";
@@ -39,7 +42,7 @@ interface CommonInput {
 	/** per-particle birth opacity range (0..1); over-life curve multiplies it */
 	readonly opacityRange?: Range;
 	/** colors drawn from uniformly at birth */
-	readonly palette?: ReadonlyArray<string>;
+	readonly palette?: ReadonlyArray<Color.Color>;
 	/** shared downward acceleration (px/sec²) */
 	readonly gravity?: number;
 	readonly sizeOverLife?: OverLifeInput;
@@ -70,14 +73,26 @@ export interface FieldInput extends CommonInput {
  * Create a source emitter field. Simulate it with `{ burst: n }` (all at
  * once) or `{ rate: n }` (a continuous stream).
  */
-export const emitter = (props: EmitterInput) =>
+export const emitter = (
+	props: EmitterInput,
+): Effect.Effect<EmitterField, never, Runner.Runner> =>
 	// the entity schema is one struct with defaults; the branded return type
 	// is a compile-time cast, runtime data is a plain ParticleField
-	Scene.instantiate(ParticleField, props);
+	Scene.instantiate(ParticleField, props) as Effect.Effect<
+		EmitterField,
+		never,
+		Runner.Runner
+	>;
 
 /**
  * Create a floating field: particles spread evenly across the region,
  * drifting and wrapping at the edges. Simulate it with `{ fill: n }`.
  */
-export const field = (props: FieldInput) =>
-	Scene.instantiate(ParticleField, props);
+export const field = (
+	props: FieldInput,
+): Effect.Effect<FloatField, never, Runner.Runner> =>
+	Scene.instantiate(ParticleField, props) as Effect.Effect<
+		FloatField,
+		never,
+		Runner.Runner
+	>;

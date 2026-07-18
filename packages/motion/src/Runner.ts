@@ -5,6 +5,7 @@ import * as Effect from "effect/Effect";
 import type * as Fiber from "effect/Fiber";
 import type * as Schema from "effect/Schema";
 import { Camera, type CameraState, identity } from "./Camera";
+import * as Color from "./Color";
 import type * as Entity from "./Entity";
 import * as Instance from "./Instance";
 import * as Phaser from "./Phaser";
@@ -28,7 +29,7 @@ export type Settings = {
 	width: number;
 	height: number;
 	/** canvas background — carried on every frame so renderers can paint it (default a near-black, not pure #000) */
-	backgroundColor: string;
+	backgroundColor: Color.Color;
 	/**
 	 * seeds the scene's pseudo-random service (effect's Random via
 	 * withSeed); the fixed default keeps default-constructed scenes
@@ -160,7 +161,7 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 			frameRate: settings.frameRate ?? 60,
 			width: settings.width ?? 500,
 			height: settings.height ?? 300,
-			backgroundColor: settings.backgroundColor ?? "#16161d",
+			backgroundColor: settings.backgroundColor ?? Color.rgba(22, 22, 29),
 			seed: settings.seed ?? defaultSeed,
 			maxFrames: settings.maxFrames ?? 36_000,
 		} satisfies Settings;
@@ -282,8 +283,6 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 					"children" in props && props.children
 						? yield* normalizeChildren(props.children)
 						: undefined;
-				// const dataInput =
-				// 	childIds === undefined ? rest : { ...rest, children: childIds };
 
 				const id = generateId(entity.name);
 				const instance = Instance.make(entity, id);

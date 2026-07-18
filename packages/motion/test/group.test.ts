@@ -2,6 +2,7 @@ import { Effect, Exit } from "effect";
 import * as Stream from "effect/Stream";
 import { describe, expect, it } from "vitest";
 import * as Camera from "../src/Camera";
+import * as Color from "../src/Color";
 import * as Runner from "../src/Runner";
 import * as Scene from "../src/Scene";
 import * as Shapes from "../src/shapes";
@@ -24,7 +25,7 @@ const frameOf = (
 	frameRate: 60,
 	width: 500,
 	height: 300,
-	backgroundColor: "#16161d",
+	backgroundColor: Color.hex("#16161d"),
 	camera: Camera.identity(500),
 });
 
@@ -185,6 +186,9 @@ describe("scene attachment", () => {
 		const frames = await collectFrames(function* () {
 			yield* Scene.instantiate(Shapes.Group, {
 				x: 100,
+				// @ts-expect-error ops-list transform (transform/scale) is not a
+				// valid Group.transform — the ops→affine normalization this test
+				// exercises was never implemented (see skip note above)
 				transform: [{ _tag: "transform/scale", x: 2, y: 3 }],
 				children: [Scene.instantiate(Shapes.Circle, { x: 5 })],
 			});
@@ -251,7 +255,7 @@ describe("scene attachment", () => {
 				x: 250,
 				y: 150,
 				radius: 20,
-				fill: "#ff0000",
+				fill: Color.hex("#ff0000"),
 			}),
 			entity: Shapes.Circle,
 		};
@@ -262,7 +266,7 @@ describe("scene attachment", () => {
 				y: 150,
 				z: -400,
 				radius: 20,
-				fill: "#00ff00",
+				fill: Color.hex("#00ff00"),
 			}),
 			entity: Shapes.Circle,
 		};
@@ -283,7 +287,7 @@ describe("scene attachment", () => {
 				x: 250,
 				y: 150,
 				radius: 20,
-				fill: "#ff0000",
+				fill: Color.hex("#ff0000"),
 			}),
 			entity: Shapes.Circle,
 		};
@@ -292,7 +296,7 @@ describe("scene attachment", () => {
 				x: 250,
 				y: 150,
 				radius: 20,
-				fill: "#00ff00",
+				fill: Color.hex("#00ff00"),
 			}),
 			entity: Shapes.Circle,
 		};

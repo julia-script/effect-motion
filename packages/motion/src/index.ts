@@ -1,4 +1,5 @@
 export * as Camera from "./Camera";
+export * as Color from "./Color";
 export * as Entity from "./Entity";
 export * as Fonts from "./Fonts";
 export * as Images from "./Images";
@@ -9,5 +10,5 @@ export * as Physics from "./Physics";
 export * as Particles from "./particles";
 export * as Renderer from "./Renderer";
 export * as Scene from "./Scene";
-export * as Shapes from "./shapes";
+export * as Shapes from "./Shapes";
 export * as Timing from "./Timing";

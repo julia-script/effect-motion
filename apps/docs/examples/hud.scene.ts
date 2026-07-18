@@ -1,4 +1,4 @@
-import { Motion, Physics, Scene, Shapes } from "effect-motion";
+import { Color, Motion, Physics, Scene, Shapes } from "effect-motion";
 
 // A Hud's subtree is projected through the IDENTITY camera: while the real
 // camera dollies and shakes through the world, HUD content stays bolted to
@@ -11,20 +11,20 @@ export const scene = Scene.make(function* () {
 		z: -400,
 		width: 120,
 		height: 120,
-		fill: "#3b3a5a",
+		fill: Color.hex("#3b3a5a"),
 	});
 	yield* Scene.instantiate(Shapes.Circle, {
 		x: 250,
 		y: 160,
 		radius: 45,
-		fill: "#2cb67d",
+		fill: Color.hex("#2cb67d"),
 	});
 	yield* Scene.instantiate(Shapes.Circle, {
 		x: 380,
 		y: 120,
 		z: 200,
 		radius: 30,
-		fill: "#7f5af0",
+		fill: Color.hex("#7f5af0"),
 	});
 
 	// HUD: a fixed title, and a lower-third parked off-screen below
@@ -35,7 +35,7 @@ export const scene = Scene.make(function* () {
 				x: 460,
 				y: 30,
 				fontSize: 18,
-				fill: "#ff5470",
+				fill: Color.hex("#ff5470"),
 			}),
 		],
 	});
@@ -48,8 +48,8 @@ export const scene = Scene.make(function* () {
 				width: 280,
 				height: 40,
 				rx: 12,
-				fill: "#16161d",
-				stroke: "#7f5af0",
+				fill: Color.hex("#16161d"),
+				stroke: Color.hex("#7f5af0"),
 				strokeWidth: 2,
 			}),
 			Scene.instantiate(Shapes.Text, {
@@ -57,7 +57,7 @@ export const scene = Scene.make(function* () {
 				x: 34,
 				y: 265,
 				fontSize: 14,
-				fill: "#fffffe",
+				fill: Color.hex("#fffffe"),
 			}),
 		],
 	});

@@ -1,5 +1,5 @@
 import { Random } from "effect";
-import { Motion, Scene, Shapes } from "effect-motion";
+import { Color, Motion, Scene, Shapes } from "effect-motion";
 
 // effect's Random is seeded per scene: every run of this scene —
 // including every replay in this player — is byte-identical
@@ -8,7 +8,7 @@ export const scene = Scene.make(function* () {
 		x: 250,
 		y: 150,
 		radius: 12,
-		fill: "#7f5af0",
+		fill: Color.hex("#7f5af0"),
 	});
 
 	for (let i = 0; i < 6; i++) {

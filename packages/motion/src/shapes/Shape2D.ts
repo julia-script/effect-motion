@@ -1,5 +1,6 @@
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
+import * as Color from "../Color";
 import type * as Entity from "../Entity";
 
 /**
@@ -41,10 +42,10 @@ export const opacity = {
 /** Common fields for fillable shapes. */
 export const filled = {
 	...position,
-	fill: Schema.String.pipe(
-		Schema.withConstructorDefault(Effect.succeed("white")),
+	fill: Color.Color.pipe(
+		Schema.withConstructorDefault(Effect.succeed(Color.white)),
 	),
-	stroke: Schema.optionalKey(Schema.String),
+	stroke: Schema.optionalKey(Color.Color),
 	strokeWidth: Schema.optionalKey(Schema.Number),
 	...opacity,
 };

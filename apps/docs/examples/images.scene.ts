@@ -1,4 +1,4 @@
-import { Images, Motion, Scene, Shapes } from "effect-motion";
+import { Color, Images, Motion, Scene, Shapes } from "effect-motion";
 
 // Images are declared like fonts: the player decodes each asset once per
 // mount and Image entities reference it by name. width/height are plain
@@ -17,7 +17,7 @@ export const scene = Scene.make(function* () {
 		x: 250,
 		y: 260,
 		fontSize: 20,
-		fill: "#94a3b8",
+		fill: Color.hex("#94a3b8"),
 		textAnchor: "middle",
 		baseline: "middle",
 		opacity: 0,

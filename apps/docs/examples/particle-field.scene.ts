@@ -1,4 +1,4 @@
-import { Particles, Scene } from "effect-motion";
+import { Color, Particles, Scene } from "effect-motion";
 
 // A ParticleField is ONE instance backing many particles: you author the
 // DISTRIBUTION (ranges drawn per particle at birth) and the field's single
@@ -8,7 +8,13 @@ import { Particles, Scene } from "effect-motion";
 // Two emitters, two emission models: a one-shot confetti BURST up top, and
 // a continuous ambient STREAM drifting up from below. Same engine, same
 // seed → byte-identical every replay.
-const palette = ["#e53170", "#ff8906", "#7f5af0", "#2cb67d", "#3da9fc"];
+const palette = [
+	Color.hex("#e53170"),
+	Color.hex("#ff8906"),
+	Color.hex("#7f5af0"),
+	Color.hex("#2cb67d"),
+	Color.hex("#3da9fc"),
+];
 
 export const scene = Scene.make(function* () {
 	// confetti: 120 particles born at once, launched in a wide cone, pulled
@@ -38,7 +44,7 @@ export const scene = Scene.make(function* () {
 		size: [2, 4],
 		opacityRange: [0.4, 1],
 		gravity: -40,
-		palette: ["#ff8906", "#f25f4c", "#ffd803"],
+		palette: [Color.hex("#ff8906"), Color.hex("#f25f4c"), Color.hex("#ffd803")],
 		opacityOverLife: { from: 0.9, to: 0, ease: "easeOutCubic" },
 		capacity: 300,
 	});

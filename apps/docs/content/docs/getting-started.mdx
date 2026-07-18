@@ -15,14 +15,14 @@ A scene is a generator program: instantiate shapes, then move them.
 Every `yield*` composes another effect into the scene.
 
 ```ts title="my-scene.ts"
-import { Motion, Scene, Shapes } from "effect-motion";
+import { Color, Motion, Scene, Shapes } from "effect-motion";
 
 export const scene = Scene.make(function* () {
 	const circle = yield* Scene.instantiate(Shapes.Circle, {
 		x: 60,
 		y: 150,
 		radius: 16,
-		fill: "#7f5af0",
+		fill: Color.hex("#7f5af0"),
 	});
 
 	yield* circle.pipe(

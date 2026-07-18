@@ -1,4 +1,4 @@
-import { Motion, Scene, Shapes } from "effect-motion";
+import { Color, Motion, Scene, Shapes } from "effect-motion";
 
 // scene A finishes when its crossing is done — the fade-out afterwards
 // is a TAIL: it keeps playing, but nothing waits for it
@@ -7,7 +7,7 @@ const sceneA = Scene.make(function* () {
 		x: 60,
 		y: 110,
 		radius: 16,
-		fill: "#e53170",
+		fill: Color.hex("#e53170"),
 	});
 	yield* Motion.tweenTo(c, { x: 440 }, "1 second", "easeInOutCubic");
 	yield* Scene.finish;
@@ -19,7 +19,7 @@ const sceneB = Scene.make(function* () {
 		x: 60,
 		y: 190,
 		radius: 16,
-		fill: "#2cb67d",
+		fill: Color.hex("#2cb67d"),
 	});
 	yield* Motion.fade(c, 0, 1, "600 millis");
 	yield* Motion.tweenTo(c, { x: 440 }, "1 second", "easeInOutCubic");

@@ -11,6 +11,7 @@ import { scene as customFonts } from "./custom-fonts.scene";
 import { scene as depth3d } from "./depth-3d.scene";
 import { scene as depthGrid } from "./depth-grid.scene";
 import { scene as easingRace } from "./easing-race.scene";
+import { scene as effectLogo } from "./effect-logo.scene";
 import { scene as floatingField } from "./floating-field.scene";
 import { scene as floatingMotes } from "./floating-motes.scene";
 import { scene as forkBackground } from "./fork-background.scene";
@@ -63,4 +64,5 @@ export const examples: Record<string, PlayerProps["scene"]> = {
 	images,
 	text,
 	"the-box": theBox,
+	"effect-logo": effectLogo,
 };

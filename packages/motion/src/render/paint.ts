@@ -2,8 +2,8 @@ import type { OwnedPaint, ThorvgException } from "@effect-motion/thorvg";
 import * as Tvg from "@effect-motion/thorvg";
 import * as Effect from "effect/Effect";
 import type * as Scope from "effect/Scope";
+import * as Color from "../Color";
 import type { PaintProjection } from "../Renderer";
-import { parseColor } from "./color";
 
 /**
  * Shared paint helpers: style application, projection, and the attach step
@@ -14,8 +14,8 @@ import { parseColor } from "./color";
 
 /** The style fields a filled/stroked shape carries in its data. */
 export interface StyleData {
-	readonly fill?: string;
-	readonly stroke?: string;
+	readonly fill?: Color.Color;
+	readonly stroke?: Color.Color;
 	readonly strokeWidth?: number;
 	readonly opacity: number;
 }
@@ -27,11 +27,11 @@ export const applyStyle = (
 ): Effect.Effect<void, ThorvgException, Tvg.ThorvgWasm> =>
 	Effect.gen(function* () {
 		if (data.fill !== undefined) {
-			const { r, g, b, a } = parseColor(data.fill);
+			const { r, g, b, a } = Color.bytes(data.fill);
 			yield* Tvg.Shape.setFillColor(shape, r, g, b, a);
 		}
 		if (data.stroke !== undefined) {
-			const { r, g, b, a } = parseColor(data.stroke);
+			const { r, g, b, a } = Color.bytes(data.stroke);
 			yield* Tvg.Shape.setStrokeColor(shape, r, g, b, a);
 		}
 		if (data.strokeWidth !== undefined) {

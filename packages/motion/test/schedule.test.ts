@@ -5,6 +5,7 @@ import * as Motion from "../src/Motion";
 import * as Scene from "../src/Scene";
 import * as Shapes from "../src/shapes";
 import * as Time from "../src/Time";
+import { whileInputBelow } from "./support/schedule";
 
 const run = <A>(eff: Effect.Effect<A, any, never>): Promise<A> =>
 	Effect.runPromise(eff);
@@ -134,7 +135,7 @@ describe("Scene.repeat", () => {
 			// 30-frame animation, repeated once, 1 second after it completes
 			yield* Scene.repeat(
 				Motion.tween(circle, { x: 0 }, { x: 100 }, "0.5 seconds"),
-				Schedule.both(Schedule.spaced("1 second"), Schedule.recurs(1)),
+				Schedule.spaced("1 second").pipe(Schedule.upTo({ times: 1 })),
 			);
 		});
 		// run 1: 0..29 — gap: 30..89 — run 2: 90..119 — settle frame: 120
@@ -155,7 +156,7 @@ describe("Scene.repeat", () => {
 			// from then on the schedule is behind and runs are back-to-back
 			yield* Scene.repeat(
 				Motion.tween(circle, { x: 0 }, { x: 100 }, "0.5 seconds"),
-				Schedule.both(Schedule.fixed("0.25 seconds"), Schedule.recurs(2)),
+				Schedule.fixed("0.25 seconds").pipe(Schedule.upTo({ times: 2 })),
 			);
 		});
 		// run 1: 0..29 — gap: 30..44 — run 2: 45..74 — run 3: 75..104 — settle: 105
@@ -191,9 +192,7 @@ describe("Scene.repeat", () => {
 					yield* Scene.tick;
 					return ++n;
 				}),
-				Schedule.collectWhile(Schedule.forever, (meta) =>
-					Effect.succeed((meta.input as number) < 3),
-				),
+				whileInputBelow(3),
 			);
 		});
 		// recurs while result < 3: runs produce 1, 2, 3 — stops after 3

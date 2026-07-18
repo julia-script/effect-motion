@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import * as Camera from "../src/Camera";
+import * as Color from "../src/Color";
 import type * as Scene from "../src/Scene";
 import * as Shapes from "../src/shapes";
 import { render } from "./support/framebuffer";
@@ -53,7 +54,7 @@ const frameWith = (
 		frameRate: 60,
 		width: 200,
 		height: 100,
-		backgroundColor: "#16161d",
+		backgroundColor: Color.hex("#16161d"),
 		camera: Camera.identity(200),
 	}) as Scene.Frame<Used>;
 

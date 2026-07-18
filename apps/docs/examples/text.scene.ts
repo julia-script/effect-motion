@@ -1,4 +1,4 @@
-import { Motion, Scene, Shapes } from "effect-motion";
+import { Color, Motion, Scene, Shapes } from "effect-motion";
 
 // Text is a plain-string leaf; alignment and styling stay entity-level.
 export const scene = Scene.make(function* () {
@@ -8,7 +8,7 @@ export const scene = Scene.make(function* () {
 		y: 150,
 		fontSize: 8,
 		opacity: 0,
-		fill: "#7f5af0",
+		fill: Color.hex("#7f5af0"),
 		textAnchor: "middle",
 		baseline: "middle",
 	});

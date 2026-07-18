@@ -27,8 +27,15 @@
 		"enabled": true,
 		"rules": {
 			"preset": "recommended",
+			"suspicious": {
+				"noShadowRestrictedNames": "off",
+				"noExplicitAny": "off"
+			},
 			"correctness": {
 				"useYield": "off"
+			},
+			"complexity": {
+				"noBannedTypes": "off"
 			}
 		}
 	},

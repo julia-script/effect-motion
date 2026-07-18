@@ -9,9 +9,9 @@ import type { Canvas } from "@effect-motion/thorvg/Canvas";
 import * as Effect from "effect/Effect";
 import type * as Scope from "effect/Scope";
 import * as CameraMod from "./Camera";
+import * as Color from "./Color";
 import type * as Entity from "./Entity";
 import * as Projection from "./Projection";
-import { parseColor } from "./render/color";
 import { circleOfConfusion, quantizeSigma } from "./render/dof";
 import { builtinPaints } from "./render/shapes";
 import type { EntriesFromEntities, Frame } from "./Scene";
@@ -44,7 +44,7 @@ export interface FrameMeta {
 	readonly frameRate: number;
 	readonly width: number;
 	readonly height: number;
-	readonly backgroundColor: string;
+	readonly backgroundColor: Color.Color;
 	/**
 	 * the active camera's view — world position `{x, y, z}`, Euler
 	 * orientation `{rotX, rotY, rotZ}`, and `focalLength` (FOV). The renderer
@@ -499,7 +499,7 @@ export const render = (
 		// sink's background rect; survives into the raster buffer)
 		const bg = yield* Tvg.Shape.make();
 		yield* Tvg.Shape.appendRect(bg, 0, 0, logicalWidth, logicalHeight);
-		const { r, g, b, a } = parseColor(frame.backgroundColor);
+		const { r, g, b, a } = Color.bytes(frame.backgroundColor);
 		yield* Tvg.Shape.setFillColor(bg, r, g, b, a);
 		yield* Tvg.Scene.add(scene, bg);
 

@@ -1,4 +1,4 @@
-import { Motion, Physics, Scene, Shapes } from "effect-motion";
+import { Color, Motion, Physics, Scene, Shapes } from "effect-motion";
 
 // An impact shake. The block falls and hits the ground on an exact frame
 // (a fixed-duration accelerating drop, so there's no spring settle-tail
@@ -10,7 +10,7 @@ export const scene = Scene.make(function* () {
 		x: 234,
 		y: -70,
 		size: 64,
-		fill: "#e53170",
+		fill: Color.hex("#e53170"),
 	});
 	// ground line so the impact reads
 	yield* Scene.instantiate(Shapes.Line, {
@@ -18,7 +18,7 @@ export const scene = Scene.make(function* () {
 		y: 210,
 		x2: 460,
 		y2: 210,
-		stroke: "#544f80",
+		stroke: Color.hex("#544f80"),
 	});
 
 	// fall and land on the ground on an exact frame — easeInQuad reads as

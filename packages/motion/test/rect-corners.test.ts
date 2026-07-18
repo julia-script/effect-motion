@@ -2,6 +2,7 @@ import { Effect } from "effect";
 import * as Stream from "effect/Stream";
 import { describe, expect, it } from "vitest";
 import * as Camera from "../src/Camera";
+import * as Color from "../src/Color";
 import * as Motion from "../src/Motion";
 import type * as Scene from "../src/Scene";
 import * as SceneMod from "../src/Scene";
@@ -23,13 +24,19 @@ const frameWith = (rect: Record<string, unknown>): Scene.Frame<Entities> =>
 		frameRate: 60,
 		width: 200,
 		height: 200,
-		backgroundColor: "#000000",
+		backgroundColor: Color.hex("#000000"),
 		camera: Camera.identity(200),
 	}) as Scene.Frame<Entities>;
 
 // a 100×100 rect at (50,50); with radius 30 the corner pixel (54,54) is
 // outside the arc while edge midpoints and the center stay filled
-const base = { x: 50, y: 50, width: 100, height: 100, fill: "#00ff00" };
+const base = {
+	x: 50,
+	y: 50,
+	width: 100,
+	height: 100,
+	fill: Color.hex("#00ff00"),
+};
 
 describe("Rect corner radii", () => {
 	it("rounded corners: corner pixels background, edges and center filled", async () => {

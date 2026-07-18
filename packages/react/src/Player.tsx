@@ -3,7 +3,15 @@
 import type { RenderSession, ThorvgWasm } from "@effect-motion/thorvg";
 import * as Engine from "@effect-motion/thorvg/Engine";
 import * as Session from "@effect-motion/thorvg/Session";
-import { Cause, Context, Data, Effect, ManagedRuntime, Schedule } from "effect";
+import {
+	Cause,
+	Context,
+	Data,
+	Effect,
+	ManagedRuntime,
+	Schedule,
+	Semaphore,
+} from "effect";
 import * as Layer from "effect/Layer";
 import type * as Scope from "effect/Scope";
 import * as CanvasExporter from "effect-motion/CanvasExporter";
@@ -221,6 +229,8 @@ const useScene = (
 							Effect.mapError(PlayerError.of("Error getting frame buffer")),
 						);
 
+					const renderSemaphore = yield* Semaphore.make(1);
+
 					const render: (
 						frameIndex: number,
 					) => Effect.Effect<
@@ -228,26 +238,29 @@ const useScene = (
 						PlayerError,
 						ThorvgWasm | RenderSession | Scope.Scope
 					> = (frameIndex) =>
-						Effect.gen(function* () {
-							if (!canvasRef.current) {
-								return;
-							}
+						renderSemaphore.withPermitsIfAvailable(1)(
+							Effect.gen(function* () {
+								if (!canvasRef.current) {
+									return;
+								}
 
-							// const frameToRender = frameIndex ?? currentFrame + 1;
-							const framebuffer = yield* loadFrameBuffer(frameIndex);
-							if (!framebuffer) {
-								return;
-							}
-							// use the resolved index, not the requested one: a seek/advance
-							// past the buffered edge resolves to the edge (clamped in
-							// loadFrameBuffer), and the playhead must reflect what's shown
-							updateCurrentFrame(framebuffer.index);
+								const framebuffer = yield* loadFrameBuffer(frameIndex);
+								if (!framebuffer) {
+									return;
+								}
+								// use the resolved index, not the requested one: a seek/advance
+								// past the buffered edge resolves to the edge (clamped in
+								// loadFrameBuffer), and the playhead must reflect what's shown
+								updateCurrentFrame(framebuffer.index);
 
-							const renderBuffer = yield* Renderer.render(framebuffer.frame, {
-								dpr: calculateDpr(),
-							});
-							yield* CanvasExporter.toCanvas(renderBuffer, canvasRef.current);
-						}).pipe(Effect.mapError(PlayerError.of("Error exporting canvas")));
+								const renderBuffer = yield* Renderer.render(framebuffer.frame, {
+									dpr: calculateDpr(),
+								});
+								yield* CanvasExporter.toCanvas(renderBuffer, canvasRef.current);
+							}).pipe(
+								Effect.mapError(PlayerError.of("Error exporting canvas")),
+							),
+						);
 
 					const play = Effect.suspend(() => {
 						if (isPlaying) return Effect.void;

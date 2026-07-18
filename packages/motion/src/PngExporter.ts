@@ -1,8 +1,8 @@
 import { deflateSync } from "node:zlib";
 import * as Effect from "effect/Effect";
 import { FileSystem } from "effect/FileSystem";
-import type { Renderer } from ".";
 import { EffectMotionError } from "./EffectMotionError";
+import type * as Renderer from "./Renderer";
 
 const SIGNATURE = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
 
