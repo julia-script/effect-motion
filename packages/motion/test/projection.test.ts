@@ -313,3 +313,114 @@ describe("clipSegmentToRect (viewport clipping)", () => {
 		).toBeUndefined();
 	});
 });
+
+describe("projectPath: skeletal n-point projection", () => {
+	it("flat points under the resting camera project to authored coords", () => {
+		const points: P.Vec3[] = [
+			{ x: 60, y: 40, z: 0 },
+			{ x: 160, y: 40, z: 0 },
+			{ x: 110, y: 140, z: 0 },
+		];
+		const r = P.projectPath(identity, points, true, origin)!;
+		expect(r.clipped).toBe(false);
+		expect(r.scale).toBeCloseTo(1, 10);
+		expect(r.depth).toBeCloseTo(F, 10);
+		expect(r.runs).toHaveLength(1);
+		for (const [i, p] of points.entries()) {
+			expect(r.runs[0]?.[i]?.x).toBeCloseTo(p.x, 10);
+			expect(r.runs[0]?.[i]?.y).toBeCloseTo(p.y, 10);
+			expect(r.contour[i]?.x).toBeCloseTo(p.x, 10);
+			expect(r.contour[i]?.y).toBeCloseTo(p.y, 10);
+		}
+	});
+
+	it("a deeper vertex pulls toward the viewport center", () => {
+		const r = P.projectPath(
+			identity,
+			[
+				{ x: 300, y: 200, z: 0 },
+				{ x: 300, y: 200, z: -4000 },
+			],
+			false,
+			origin,
+		)!;
+		const near = r.runs[0]?.[0];
+		const far = r.runs[0]?.[1];
+		expect(near?.x).toBeCloseTo(300, 10);
+		expect(near?.y).toBeCloseTo(200, 10);
+		const farScale = F / (F + 4000);
+		expect(far?.x).toBeCloseTo(origin.x + (300 - origin.x) * farScale, 10);
+		expect(far?.y).toBeCloseTo(origin.y + (200 - origin.y) * farScale, 10);
+	});
+
+	it("a path entirely behind the near plane culls", () => {
+		const behind = identity.z + 100;
+		expect(
+			P.projectPath(
+				identity,
+				[
+					{ x: 0, y: 0, z: behind },
+					{ x: 100, y: 0, z: behind + 50 },
+				],
+				false,
+				origin,
+			),
+		).toBeUndefined();
+		expect(P.projectPath(identity, [], false, origin)).toBeUndefined();
+	});
+
+	it("a behind-camera middle vertex splits an open path into two runs", () => {
+		const behind = identity.z + 200;
+		const r = P.projectPath(
+			identity,
+			[
+				{ x: 0, y: 0, z: 0 },
+				{ x: 100, y: 0, z: behind },
+				{ x: 200, y: 0, z: 0 },
+			],
+			false,
+			origin,
+		)!;
+		expect(r.clipped).toBe(true);
+		expect(r.runs).toHaveLength(2);
+		// each run starts/ends at a clip point on the near plane, never at the
+		// invalid behind-camera projection
+		expect(r.runs[0]).toHaveLength(2);
+		expect(r.runs[1]).toHaveLength(2);
+		expect(r.runs[0]?.[0]?.x).toBeCloseTo(0, 10);
+		expect(r.runs[1]?.[1]?.x).toBeCloseTo(200, 10);
+	});
+
+	it("a clipped ring's visible stretch wrapping vertex 0 stays one run", () => {
+		const behind = identity.z + 200;
+		const r = P.projectPath(
+			identity,
+			[
+				{ x: 0, y: 0, z: 0 },
+				{ x: 100, y: 0, z: 0 },
+				{ x: 100, y: 100, z: 0 },
+				{ x: 0, y: 100, z: behind },
+			],
+			true,
+			origin,
+		)!;
+		expect(r.clipped).toBe(true);
+		// edges 0-1, 1-2 visible; 2-3 exit-clips; 3-0 enter-clips — the seam at
+		// vertex 0 is stitched, leaving a single polyline through all of them
+		expect(r.runs).toHaveLength(1);
+		const run = r.runs[0]!;
+		expect(run).toHaveLength(5);
+		expect(run[1]?.x).toBeCloseTo(0, 10); // vertex 0 mid-run, not a cap
+		expect(run[1]?.y).toBeCloseTo(0, 10);
+	});
+
+	it("same camera + points project bit-for-bit equal", () => {
+		const pts: P.Vec3[] = [
+			{ x: 13, y: 7, z: -211 },
+			{ x: 90, y: -40, z: 35 },
+		];
+		expect(P.projectPath(identity, pts, false, origin)).toEqual(
+			P.projectPath(identity, pts, false, origin),
+		);
+	});
+});

@@ -11,6 +11,7 @@ import * as Group from "../shapes/Group";
 import * as Hud from "../shapes/Hud";
 import * as Image from "../shapes/Image";
 import * as Line from "../shapes/Line";
+import * as PathShape from "../shapes/Path";
 import * as Rect from "../shapes/Rect";
 import * as Square from "../shapes/Square";
 import * as Text from "../shapes/Text";
@@ -140,6 +141,90 @@ export const line: PaintFunction<typeof Line.Line> = ({
 			return;
 		}
 		yield* finishPaint(shape, scene, projection);
+	});
+
+export const path: PaintFunction<typeof PathShape.Path> = ({
+	data,
+	scene,
+	projection,
+}) =>
+	Effect.gen(function* () {
+		const projected = projection.path;
+		if (projected === undefined) {
+			// no skeletal projection (a caller outside the renderer's flatten):
+			// draw the points at local anchor-relative coords as a billboard
+			const shape = yield* Tvg.Shape.make();
+			for (const [i, p] of data.points.entries()) {
+				yield* i === 0
+					? Tvg.Shape.moveTo(shape, data.x + p.x, data.y + p.y)
+					: Tvg.Shape.lineTo(shape, data.x + p.x, data.y + p.y);
+			}
+			if (data.closed) {
+				yield* Tvg.Shape.close(shape);
+			}
+			yield* applyStyle(shape, data);
+			yield* finishPaint(shape, scene, projection);
+			return;
+		}
+		// skeletal path: vertices are already projected to screen (per-point
+		// perspective, near-plane-clipped), so draw exact screen geometry and
+		// skip the billboard transform — stroke width scales by the path's
+		// perspective scale instead
+		const strokeWidth =
+			data.strokeWidth !== undefined
+				? data.strokeWidth * projection.scale
+				: undefined;
+		if (!projected.clipped) {
+			// nothing clipped: one shape carries both fill and stroke, closed
+			// as authored — the exact plain-2D drawing under a resting camera
+			// biome-ignore lint/style/noNonNullAssertion: unclipped paths have one run
+			const run = projected.runs[0]!;
+			const shape = yield* Tvg.Shape.make();
+			for (const [i, p] of run.entries()) {
+				yield* i === 0
+					? Tvg.Shape.moveTo(shape, p.x, p.y)
+					: Tvg.Shape.lineTo(shape, p.x, p.y);
+			}
+			if (data.closed) {
+				yield* Tvg.Shape.close(shape);
+			}
+			yield* applyStyle(shape, {
+				...data,
+				...(strokeWidth !== undefined ? { strokeWidth } : {}),
+			});
+			yield* Tvg.Scene.add(scene, shape);
+			return;
+		}
+		// the near plane cut the path open: fill the clipped contour and
+		// stroke the visible runs as separate shapes (the clip edge closing
+		// the fill region must not be stroked)
+		if (data.fill !== undefined && projected.contour.length >= 3) {
+			const fillShape = yield* Tvg.Shape.make();
+			for (const [i, p] of projected.contour.entries()) {
+				yield* i === 0
+					? Tvg.Shape.moveTo(fillShape, p.x, p.y)
+					: Tvg.Shape.lineTo(fillShape, p.x, p.y);
+			}
+			yield* Tvg.Shape.close(fillShape);
+			yield* applyStyle(fillShape, { fill: data.fill, opacity: data.opacity });
+			yield* Tvg.Scene.add(scene, fillShape);
+		}
+		if (data.stroke !== undefined && projected.runs.length > 0) {
+			const strokeShape = yield* Tvg.Shape.make();
+			for (const run of projected.runs) {
+				for (const [i, p] of run.entries()) {
+					yield* i === 0
+						? Tvg.Shape.moveTo(strokeShape, p.x, p.y)
+						: Tvg.Shape.lineTo(strokeShape, p.x, p.y);
+				}
+			}
+			yield* applyStyle(strokeShape, {
+				stroke: data.stroke,
+				opacity: data.opacity,
+				...(strokeWidth !== undefined ? { strokeWidth } : {}),
+			});
+			yield* Tvg.Scene.add(scene, strokeShape);
+		}
 	});
 
 // A group paints nothing itself: its position has already composed into its
@@ -347,10 +432,6 @@ export const particleField: PaintFunction<typeof ParticleField> = ({
  * The exhaustive paint-function map for every built-in entity. Typed
  * `PaintFunctions<...>` so a missing built-in fails to type-check (the old
  * "coverage manifest" guarantee, without a Context registry).
- *
- * Path is omitted deliberately — ThorVG has no SVG-`d`-string append, so it
- * needs a path parser (its own follow-up). Text renders (fonts load at engine
- * setup); consumers using Path provide their own paint function until then.
  */
 export const builtinPaints = {
 	[Circle.Circle.name]: circle,
@@ -358,6 +439,7 @@ export const builtinPaints = {
 	[Square.Square.name]: square,
 	[Ellipse.Ellipse.name]: ellipse,
 	[Line.Line.name]: line,
+	[PathShape.Path.name]: path,
 	[Group.Group.name]: group,
 	[Hud.Hud.name]: hud,
 	[Text.Text.name]: text,
@@ -369,6 +451,7 @@ export const builtinPaints = {
 	| typeof Square.Square
 	| typeof Ellipse.Ellipse
 	| typeof Line.Line
+	| typeof PathShape.Path
 	| typeof Group.Group
 	| typeof Hud.Hud
 	| typeof Text.Text

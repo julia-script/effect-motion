@@ -29,7 +29,10 @@ import { Hud } from "./shapes/Hud";
  * `segment`, when present, is the exact projected screen endpoints of a
  * skeletal shape (Line) — each endpoint carries its own world depth, so the
  * pair is projected per point (see Projection.projectSegment) and the paint
- * fn draws it directly, skipping the billboard affine.
+ * fn draws it directly, skipping the billboard affine. `path`, when present,
+ * is the n-point generalization for skeletal Paths (see
+ * Projection.projectPath): near-clipped stroke runs plus the fill contour,
+ * again drawn directly in screen space.
  */
 export interface PaintProjection {
 	readonly screen: Projection.Affine;
@@ -37,6 +40,7 @@ export interface PaintProjection {
 	readonly scale: number;
 	readonly quad?: ReadonlyArray<Projection.Vec2>;
 	readonly segment?: readonly [Projection.Vec2, Projection.Vec2];
+	readonly path?: Projection.ProjectedPath;
 }
 
 /** The frame's render metadata, handed to paint functions. */
@@ -194,6 +198,8 @@ const renderToCanvas = <const Entities extends Entity.AnyEntity>(
 					x2?: number;
 					y2?: number;
 					z2?: number;
+					points?: unknown;
+					closed?: boolean;
 				};
 				// world anchor = ancestor offset + this node's own position
 				const world: Projection.Vec3 = {
@@ -219,6 +225,82 @@ const renderToCanvas = <const Entities extends Entity.AnyEntity>(
 							),
 						),
 					);
+					return;
+				}
+				// a skeletal leaf (Path): every vertex is an independent 3D
+				// point, local to the path's anchor — compose the world anchor
+				// into each and project per point (near-plane-clipped runs +
+				// fill contour). Unconditional for any `points` leaf: the
+				// identity invariant makes the flat case render exactly as a
+				// plain-2D path would.
+				if (Array.isArray(data.points)) {
+					const pts = data.points as ReadonlyArray<{
+						x: number;
+						y: number;
+						z?: number;
+					}>;
+					const projected = Projection.projectPath(
+						effectiveCamera,
+						pts.map((p) => ({
+							x: world.x + p.x,
+							y: world.y + p.y,
+							z: world.z + (p.z ?? 0),
+						})),
+						data.closed === true,
+						origin,
+					);
+					if (projected === undefined) {
+						// empty, or entirely behind the near plane — cull
+						return;
+					}
+					// clip to the viewport before painting (Line's precedent:
+					// ThorVG stroke cost scales with a path's full extent,
+					// offscreen included — and near-clipped geometry projects
+					// enormous). The margin covers the scaled stroke
+					// (caps/joins) so visible pixels are untouched; fill has no
+					// bleed, so the margin is merely harmless there.
+					const strokeMargin =
+						((entry.data as { strokeWidth?: number }).strokeWidth ?? 1) *
+							projected.scale +
+						1;
+					const clippedPath = Projection.clipPathToRect(
+						projected,
+						data.closed === true,
+						{ x: -strokeMargin, y: -strokeMargin },
+						{
+							x: frame.width + strokeMargin,
+							y: frame.height + strokeMargin,
+						},
+					);
+					if (clippedPath === undefined) {
+						// entirely offscreen — cull
+						return;
+					}
+					// ponytail: one depth/scale for the whole path (mean of the
+					// visible contour) — a depth-spanning path blurs and sorts
+					// as one unit, the same ceiling as segments and tilted
+					// quads; subdivision at DoF bucket boundaries is the
+					// recorded upgrade.
+					const anchor = clippedPath.contour[0] ?? { x: 0, y: 0 };
+					paintables.push({
+						id,
+						entry,
+						projection: {
+							screen: Projection.billboardAffine(
+								{
+									x: anchor.x,
+									y: anchor.y,
+									depth: clippedPath.depth,
+									scale: clippedPath.scale,
+								},
+								{ x: data.x ?? 0, y: data.y ?? 0 },
+							),
+							depth: clippedPath.depth,
+							scale: clippedPath.scale,
+							path: clippedPath,
+						},
+						hud: subtreeHud,
+					});
 					return;
 				}
 				// a skeletal leaf (Line): both endpoints are independent world

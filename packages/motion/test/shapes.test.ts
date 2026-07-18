@@ -19,16 +19,27 @@ describe("visible defaults", () => {
 		expect("strokeWidth" in data).toBe(false);
 	});
 
-	it("path: d required, fill white, translate only when offset", () => {
-		const data = Shapes.Path.data.make({ d: "M 0 0 L 10 10 Z" });
+	it("path: points required (z omittable), open, fill white", () => {
+		const data = Shapes.Path.data.make({
+			points: [
+				{ x: 0, y: 0 },
+				{ x: 10, y: 10 },
+			],
+		});
 		expect(data).toMatchObject({
 			x: 0,
 			y: 0,
-			d: "M 0 0 L 10 10 Z",
+			points: [
+				{ x: 0, y: 0 },
+				{ x: 10, y: 10 },
+			],
+			closed: false,
 			fill: Color.white,
 			opacity: 1,
 		});
 		expect("stroke" in data).toBe(false);
+		// 2D authoring never types z; depth is read as 0 at render
+		expect("z" in data.points[0]!).toBe(false);
 	});
 
 	it("default line: stroke white, strokeWidth 1, no fill", () => {
@@ -46,16 +57,16 @@ describe("visible defaults", () => {
 	});
 });
 
-// Path and Text are deferred (ThorVG needs an SVG-`d` parser / engine font
-// loading — a separate change), so the manifest covers the geometric built-ins
-// the single renderer paints today. Each is placed at a distinct, in-frame
-// point so a pixel check confirms it painted.
+// Text is exercised separately (glyph painting needs engine font loading),
+// so the manifest here covers the geometric built-ins. Each is placed at a
+// distinct, in-frame point so a pixel check confirms it painted.
 type Builtin =
 	| typeof Shapes.Circle
 	| typeof Shapes.Rect
 	| typeof Shapes.Square
 	| typeof Shapes.Ellipse
 	| typeof Shapes.Line
+	| typeof Shapes.Path
 	| typeof Shapes.Group;
 
 // each entry: a shape and a point where its fill/stroke should land
@@ -91,6 +102,21 @@ const cases = {
 			strokeWidth: 8,
 		}),
 		point: [300, 220] as const,
+	},
+	p: {
+		entity: Shapes.Path,
+		// a filled triangle; the anchor offsets its local points
+		data: Shapes.Path.data.make({
+			x: 400,
+			y: 60,
+			points: [
+				{ x: 0, y: 0 },
+				{ x: 60, y: 0 },
+				{ x: 30, y: 50 },
+			],
+			closed: true,
+		}),
+		point: [430, 80] as const,
 	},
 };
 

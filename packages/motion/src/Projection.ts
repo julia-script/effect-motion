@@ -344,6 +344,284 @@ export const projectSegment = (
 };
 
 /**
+ * A projected path (a skeletal n-point polyline/polygon): near-plane-clipped
+ * screen geometry plus the single sort key. `runs` are the contiguous visible
+ * polylines for STROKING — the near plane splits a path that dips behind the
+ * camera into pieces, and closure edges appear as ordinary edges when clipped.
+ * `contour` is the Sutherland–Hodgman-clipped screen polygon of the
+ * implicitly-closed region, for FILLING. When nothing was clipped the two
+ * agree (`runs` is one run equal to `contour`) and `clipped` is false, so a
+ * paint fn can take the exact single-shape path.
+ */
+export interface ProjectedPath {
+	readonly runs: ReadonlyArray<ReadonlyArray<Vec2>>;
+	readonly contour: ReadonlyArray<Vec2>;
+	/** true when the near plane actually removed or split geometry */
+	readonly clipped: boolean;
+	/** mean view-space depth of the visible (clipped) contour vertices */
+	readonly depth: number;
+	/** perspective scale at that depth (focalLength / depth) */
+	readonly scale: number;
+}
+
+/**
+ * Project a world-space point list (a skeletal Path's vertices) to screen.
+ * Every vertex goes to view space and is projected individually, so a path
+ * spanning depth foreshortens per point — the n-point generalization of
+ * `projectSegment`. Near-plane handling matches the existing primitives:
+ * stroke edges clip like segments (lerp to z = NEAR, splitting into runs),
+ * the fill region clips like a plane (Sutherland–Hodgman). Returns
+ * `undefined` when every vertex lies behind the near plane (cull).
+ * `depth`/`scale` come from the mean depth of the clipped contour — one key
+ * per paintable, the same accepted ceiling as segments and tilted quads.
+ */
+export const projectPath = (
+	camera: CameraView,
+	points: ReadonlyArray<Vec3>,
+	closed: boolean,
+	origin: Vec2,
+): ProjectedPath | undefined => {
+	if (points.length === 0) {
+		return undefined;
+	}
+	const view = points.map((p) => toView(camera, p, origin));
+	if (view.every((v) => v.z < NEAR)) {
+		return undefined;
+	}
+	const toScreen = (v: Vec3): Vec2 => {
+		const s = camera.focalLength / v.z;
+		return { x: origin.x + v.x * s, y: origin.y + v.y * s };
+	};
+	const lerpToNear = (inside: Vec3, outside: Vec3): Vec3 => {
+		const t = (NEAR - inside.z) / (outside.z - inside.z);
+		return {
+			x: inside.x + (outside.x - inside.x) * t,
+			y: inside.y + (outside.y - inside.y) * t,
+			z: NEAR,
+		};
+	};
+	// fill contour: Sutherland–Hodgman against the near plane over the
+	// implicitly closed polygon (identical loop to projectPlane)
+	const contourView: Vec3[] = [];
+	for (let i = 0; i < view.length; i++) {
+		// biome-ignore lint/style/noNonNullAssertion: i and (i+1)%length are in bounds
+		const a = view[i]!;
+		// biome-ignore lint/style/noNonNullAssertion: see above
+		const b = view[(i + 1) % view.length]!;
+		const aIn = a.z >= NEAR;
+		if (aIn) {
+			contourView.push(a);
+		}
+		if (aIn !== b.z >= NEAR) {
+			contourView.push(lerpToNear(aIn ? a : b, aIn ? b : a));
+		}
+	}
+	const clipped = view.some((v) => v.z < NEAR);
+	// stroke runs: clip each edge like a segment, merging contiguous visible
+	// edges into one polyline; a culled or exit-clipped edge ends the run
+	const runs: Array<Array<Vec2>> = [];
+	if (clipped) {
+		let current: Array<Vec2> = [];
+		const flush = () => {
+			if (current.length >= 2) {
+				runs.push(current);
+			}
+			current = [];
+		};
+		const edgeCount = closed ? view.length : view.length - 1;
+		for (let i = 0; i < edgeCount; i++) {
+			// biome-ignore lint/style/noNonNullAssertion: i and (i+1)%length are in bounds
+			const a = view[i]!;
+			// biome-ignore lint/style/noNonNullAssertion: see above
+			const b = view[(i + 1) % view.length]!;
+			const aIn = a.z >= NEAR;
+			const bIn = b.z >= NEAR;
+			if (!aIn && !bIn) {
+				flush();
+				continue;
+			}
+			const va = aIn ? a : lerpToNear(b, a);
+			const vb = bIn ? b : lerpToNear(a, b);
+			if (current.length === 0) {
+				current.push(toScreen(va));
+			}
+			current.push(toScreen(vb));
+			if (!bIn) {
+				flush();
+			}
+		}
+		flush();
+		// a clipped ring's edge list starts at vertex 0, so a visible stretch
+		// wrapping past it lands as two runs meeting there — stitch them back
+		// into one polyline (bit-identical endpoints: same projection of the
+		// same vertex) so the stroke gets a join, not two caps
+		if (closed && runs.length >= 2) {
+			// biome-ignore lint/style/noNonNullAssertion: length checked above
+			const first = runs[0]!;
+			// biome-ignore lint/style/noNonNullAssertion: length checked above
+			const last = runs[runs.length - 1]!;
+			// biome-ignore lint/style/noNonNullAssertion: runs are never empty
+			const seam = last[last.length - 1]!;
+			// biome-ignore lint/style/noNonNullAssertion: runs are never empty
+			if (seam.x === first[0]!.x && seam.y === first[0]!.y) {
+				runs.shift();
+				runs[runs.length - 1] = [...last, ...first.slice(1)];
+			}
+		}
+	} else {
+		runs.push(view.map(toScreen));
+	}
+	const depth =
+		contourView.reduce((sum, v) => sum + v.z, 0) / contourView.length;
+	return {
+		runs,
+		contour: contourView.map(toScreen),
+		clipped,
+		depth,
+		scale: camera.focalLength / depth,
+	};
+};
+
+/**
+ * Clip a screen-space polygon to a rectangle (Sutherland–Hodgman against the
+ * four rect half-planes). Returns the clipped polygon — possibly empty when
+ * the input lies entirely outside. Used to bound a projected fill region to
+ * the viewport before rasterizing (see `clipPathToRect`).
+ */
+export const clipPolygonToRect = (
+	poly: ReadonlyArray<Vec2>,
+	min: Vec2,
+	max: Vec2,
+): Array<Vec2> => {
+	const atX = (a: Vec2, b: Vec2, x: number): Vec2 => ({
+		x,
+		y: a.y + ((b.y - a.y) * (x - a.x)) / (b.x - a.x),
+	});
+	const atY = (a: Vec2, b: Vec2, y: number): Vec2 => ({
+		x: a.x + ((b.x - a.x) * (y - a.y)) / (b.y - a.y),
+		y,
+	});
+	const planes: ReadonlyArray<
+		readonly [(p: Vec2) => boolean, (a: Vec2, b: Vec2) => Vec2]
+	> = [
+		[(p) => p.x >= min.x, (a, b) => atX(a, b, min.x)],
+		[(p) => p.x <= max.x, (a, b) => atX(a, b, max.x)],
+		[(p) => p.y >= min.y, (a, b) => atY(a, b, min.y)],
+		[(p) => p.y <= max.y, (a, b) => atY(a, b, max.y)],
+	];
+	let out: Array<Vec2> = [...poly];
+	for (const [inside, intersect] of planes) {
+		const input = out;
+		out = [];
+		for (let i = 0; i < input.length; i++) {
+			// biome-ignore lint/style/noNonNullAssertion: i and (i+1)%length are in bounds
+			const a = input[i]!;
+			// biome-ignore lint/style/noNonNullAssertion: see above
+			const b = input[(i + 1) % input.length]!;
+			const aIn = inside(a);
+			if (aIn) {
+				out.push(a);
+			}
+			if (aIn !== inside(b)) {
+				out.push(intersect(a, b));
+			}
+		}
+		if (out.length === 0) {
+			return out;
+		}
+	}
+	return out;
+};
+
+/**
+ * Clip a projected path's screen geometry to a rectangle: the fill contour
+ * via `clipPolygonToRect`, the stroke runs via per-edge `clipSegmentToRect`
+ * (splitting a run where it exits). A fully-inside path is returned as-is —
+ * the common case stays the exact single-shape drawing. A closed unclipped
+ * ring's implicit closing edge is made explicit before clipping so it is not
+ * lost, and a visible stretch wrapping the ring's seam is stitched back into
+ * one run. Returns `undefined` when nothing remains (cull).
+ */
+export const clipPathToRect = (
+	path: ProjectedPath,
+	closed: boolean,
+	min: Vec2,
+	max: Vec2,
+): ProjectedPath | undefined => {
+	const inside = (p: Vec2): boolean =>
+		p.x >= min.x && p.x <= max.x && p.y >= min.y && p.y <= max.y;
+	if (
+		path.contour.every(inside) &&
+		path.runs.every((run) => run.every(inside))
+	) {
+		return path;
+	}
+	const contour = clipPolygonToRect(path.contour, min, max);
+	// a closed ring that survived the near plane carries its closing edge
+	// implicitly (the paint fn closes it); clipping draws runs verbatim, so
+	// wrap the ring into an explicit polyline first
+	const sourceRuns =
+		closed && !path.clipped && path.runs.length === 1
+			? // biome-ignore lint/style/noNonNullAssertion: length checked above
+				[[...path.runs[0]!, path.runs[0]![0]!]]
+			: path.runs;
+	const runs: Array<Array<Vec2>> = [];
+	let current: Array<Vec2> = [];
+	const flush = () => {
+		if (current.length >= 2) {
+			runs.push(current);
+		}
+		current = [];
+	};
+	for (const run of sourceRuns) {
+		for (let i = 0; i < run.length - 1; i++) {
+			// biome-ignore lint/style/noNonNullAssertion: i and i+1 are in bounds
+			const a = run[i]!;
+			// biome-ignore lint/style/noNonNullAssertion: see above
+			const b = run[i + 1]!;
+			const seg = clipSegmentToRect(a, b, min, max);
+			if (seg === undefined) {
+				flush();
+				continue;
+			}
+			if (current.length === 0) {
+				current.push(seg[0]);
+			}
+			current.push(seg[1]);
+			if (seg[1] !== b) {
+				// exit-clipped: the polyline leaves the rect here
+				flush();
+			}
+		}
+		flush();
+	}
+	// stitch a ring's wrap seam (same move as projectPath's near-plane stitch)
+	if (closed && runs.length >= 2) {
+		// biome-ignore lint/style/noNonNullAssertion: length checked above
+		const first = runs[0]!;
+		// biome-ignore lint/style/noNonNullAssertion: length checked above
+		const last = runs[runs.length - 1]!;
+		// biome-ignore lint/style/noNonNullAssertion: runs are never empty
+		const seam = last[last.length - 1]!;
+		// biome-ignore lint/style/noNonNullAssertion: runs are never empty
+		if (seam.x === first[0]!.x && seam.y === first[0]!.y) {
+			runs.shift();
+			runs[runs.length - 1] = [...last, ...first.slice(1)];
+		}
+	}
+	if (contour.length < 3 && runs.length === 0) {
+		return undefined;
+	}
+	return {
+		runs,
+		contour,
+		clipped: true,
+		depth: path.depth,
+		scale: path.scale,
+	};
+};
+
+/**
  * Clip a screen-space segment to a rectangle (Liang–Barsky). Returns the
  * clipped pair, or `undefined` when the segment lies entirely outside.
  * ThorVG's software rasterizer pays stroke cost proportional to a path's
