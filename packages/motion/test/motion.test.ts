@@ -22,6 +22,9 @@ const runScene = async <A>(
 		const entry = Object.entries(frame.instances).find(
 			([id]) => id !== frame.root,
 		)?.[1];
+		if (entry === undefined) {
+			throw new Error("frame has no non-root instance");
+		}
 		return extract(entry.data as Record<string, any>);
 	});
 };

@@ -98,9 +98,12 @@ describe("camera animated by the existing primitives", () => {
 			},
 			{ frameRate: 30 },
 		);
-		const circleId = Object.keys(frames[0]?.instances).find((id) =>
+		const circleId = Object.keys(frames[0]?.instances ?? {}).find((id) =>
 			id.startsWith("shapes/Circle"),
-		)!;
+		);
+		if (circleId === undefined) {
+			throw new Error("no circle instance in the first frame");
+		}
 		for (const frame of frames) {
 			expect((frame.instances[circleId]?.data as { x: number }).x).toBe(100);
 		}
