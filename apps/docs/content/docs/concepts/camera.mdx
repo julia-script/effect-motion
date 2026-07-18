@@ -116,6 +116,38 @@ oscillation _is_ the shake — no keyframed wobble:
 
 <Example name="camera-shake" />
 
+## Directing the camera
+
+Set a **point of interest** and the camera auto-orients toward it — the After
+Effects two-node model. `Camera.lookAt(target)` engages it instantly;
+`Camera.lookAt(target, "1 second")` re-aims with easing, converging exactly
+onto a moving target. Targets can be an instance, an effect resolving to one,
+or a plain `{ x, y, z }` point, and an optional offset shifts the aim
+("slightly above their head"). Explicit rotation composes *after* the aim, so
+a `rotZ` dutch angle rolls about the view axis while the camera stays locked
+on.
+
+With the aim pinned by the POI, whole camera moves become one-liners:
+`Camera.follow(hero, "3 seconds")` tracks a moving target frame by frame,
+`Camera.orbitTo(azimuth, duration)` turntables around the point of interest,
+and `Camera.dollyTo(distance, duration)` moves along the view axis. They
+chain like any animator — here the camera tracks one subject, hands off to
+another mid-flight, and keeps tracking:
+
+<Example name="camera-follow" />
+
+One ordering practice: inside `Scene.all`, branches run in array order each
+frame — put the camera's `follow` *after* the target's animator so it reads
+the same frame's position. Putting it first isn't a race (output is identical
+on every run); it just gives the camera a deterministic one-frame trail,
+which can even read as pleasing lag.
+
+**Dolly** — a move along the *view axis*, which only coincides with a `z`
+tween when the camera is unrotated. With the point of interest pinning the
+framing, a push-in through a colonnade and back out is two calls:
+
+<Example name="camera-dolly" />
+
 ## Depth of field
 
 Two more camera fields opt into focus: `aperture` (blur strength, default `0`

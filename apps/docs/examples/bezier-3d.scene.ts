@@ -1,13 +1,13 @@
-import { Camera, Color, Scene, Shapes, Timing } from "effect-motion";
+import { Camera, Color, Scene, Shapes } from "effect-motion";
 
 // A 3D cubic Bézier drawn with Path. Native curve commands are a planned
 // follow-up, and their chosen implementation is flattening — sampling the
 // curve into straight spans. This example does that flattening in scene
 // code today: every sample carries its own z, so the projected curve
 // foreshortens point by point. A wireframe box (12 Line edges) frames the
-// volume, and the camera ORBITS the box center — position travels a circle
-// around the pivot while rotY tracks it — so the depth reads like a
-// turntable plot.
+// volume; the camera aims at its center with Camera.lookAt and turntables
+// around it with Camera.orbitTo — the point of interest pins the aim, so
+// there is no orientation math in the scene at all.
 
 // control points, local to the path anchor — z spreads them through depth
 const P0 = { x: 40, y: 210, z: 100 };
@@ -132,34 +132,17 @@ export const scene = Scene.make(function* () {
 		});
 	}
 
-	// ── turntable orbit ────────────────────────────────────────────────
-	// The camera circles a pivot at the box center: its position moves on
-	// an arc of radius R while rotY tracks the pivot. A camera at
-	// pivot + R·(sinθ, 0, cosθ) faces the pivot with rotY = -θ — the view
-	// transform flips z before rotating (in-front is +z), which inverts
-	// the rotation handedness vs. world space. At θ=0 this reproduces the
-	// resting camera exactly, because the pivot sits on the optical axis.
-	const settings = yield* Scene.settings();
-	const origin = { x: settings.width / 2, y: settings.height / 2 };
-	const pivot = { x: origin.x, z: (BOX.z0 + BOX.z1) / 2 };
-	const restZ = Camera.identity(settings.width).z;
-	const radius = restZ - pivot.z;
+	// aim at the box center, then turntable around it — the point of
+	// interest keeps the camera locked on while only its position moves
 	const cam = yield* Scene.camera;
-	const ease = Timing.timingFunctions.easeInOutCubic;
-	const orbitTo = function* (from: number, to: number, seconds: number) {
-		const frames = Math.round(seconds * settings.frameRate);
-		for (let f = 1; f <= frames; f++) {
-			const angle = from + (to - from) * ease(f / frames);
-			yield* Scene.update(cam, (d) => ({
-				...d,
-				x: pivot.x - origin.x + radius * Math.sin(angle),
-				z: pivot.z + radius * Math.cos(angle),
-				rotY: -angle,
-			}));
-			yield* Scene.tick;
-		}
-	};
-	yield* orbitTo(0, 0.45, 2.5);
-	yield* orbitTo(0.45, -0.35, 3);
-	yield* orbitTo(-0.35, 0, 2);
+	yield* cam.pipe(
+		Camera.lookAt({
+			x: (BOX.x0 + BOX.x1) / 2,
+			y: (BOX.y0 + BOX.y1) / 2,
+			z: (BOX.z0 + BOX.z1) / 2,
+		}),
+		Camera.orbitTo(0.45, "2.5 seconds", "easeInOutCubic"),
+		Camera.orbitTo(-0.35, "3 seconds", "easeInOutCubic"),
+		Camera.orbitTo(0, "2 seconds", "easeInOutCubic"),
+	);
 });

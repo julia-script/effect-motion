@@ -1,4 +1,4 @@
-export * as Camera from "./Camera.js";
+export * as Camera from "./CameraHelpers.js";
 export * as Color from "./Color.js";
 export * as Entity from "./Entity.js";
 export * as Fonts from "./Fonts.js";

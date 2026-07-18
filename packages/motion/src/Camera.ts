@@ -43,6 +43,14 @@ const fields = {
 		Schema.withConstructorDefault(Effect.succeed(0)),
 	),
 	aperture: Shape2D.defaultedNumber(0),
+	// Optional point of interest (world coordinates): when present the camera
+	// auto-orients toward it and explicit Euler composes AFTER the aim (the
+	// AE two-node model — see Projection.resolveCamera). Flat numeric fields
+	// so tween/spring drive the aim like any other field. NOT Runner-filled:
+	// absent = today's one-node camera, byte-identical (explicit opt-in).
+	poiX: Schema.optionalKey(Schema.Number),
+	poiY: Schema.optionalKey(Schema.Number),
+	poiZ: Schema.optionalKey(Schema.Number),
 };
 
 type CameraData = Schema.Struct<typeof fields>["Type"];
@@ -85,5 +93,5 @@ export const identity = (width: number): CameraState => {
 	};
 };
 
-/** The camera view carried on each frame. */
-export type CameraState = Projection.CameraView;
+/** The camera view carried on each frame (POI rides along when set). */
+export type CameraState = Projection.CameraView & Projection.PointOfInterest;

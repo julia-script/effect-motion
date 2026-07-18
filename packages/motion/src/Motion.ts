@@ -219,6 +219,67 @@ export const tweenTo = dual<
 );
 
 /**
+ * Parametric animator: each frame applies `fn` with the eased parameter
+ * and the current data, then ticks. The final frame receives exactly
+ * `t = 1` for any timing with f(1) = 1; a zero-length duration still
+ * takes one frame. This is the primitive under coordinated multi-field
+ * motion — arcs, orbits, counters — where independent per-field tweens
+ * cannot express the coupling. Determinism: `fn` sees only `(t, data)`.
+ * Dual: `drive(instance, duration, timing, fn)` or
+ * `instance.pipe(drive(duration, timing, fn))`.
+ */
+export const drive = dual<
+	<
+		Name extends string,
+		Data extends Schema.Top,
+		Traits extends Partial<Entity.EntityTraits<Data["Type"]>>,
+	>(
+		duration: Duration.Input,
+		timing: Timing.TimingInput,
+		fn: (t: number, data: Data["Type"]) => Data["Type"],
+	) => <E = never, R = never>(
+		instance: Instance.InstanceOrEffect<Name, Data, Traits, E, R>,
+	) => Effect.Effect<
+		Instance.Instance<Name, Data, Traits>,
+		E,
+		R | Runner.Runner
+	>,
+	<
+		Name extends string,
+		Data extends Schema.Top,
+		Traits extends Partial<Entity.EntityTraits<Data["Type"]>>,
+		E = never,
+		R = never,
+	>(
+		instance: Instance.InstanceOrEffect<Name, Data, Traits, E, R>,
+		duration: Duration.Input,
+		timing: Timing.TimingInput,
+		fn: (t: number, data: Data["Type"]) => Data["Type"],
+	) => Effect.Effect<
+		Instance.Instance<Name, Data, Traits>,
+		E,
+		R | Runner.Runner
+	>
+>(
+	firstArgIsInstance,
+	Effect.fnUntraced(function* (instanceOrEffect, duration, timing, fn) {
+		const instance = yield* Instance.flatten(instanceOrEffect);
+		const runner = yield* Runner.Runner;
+		const timingFn = Timing.resolve(timing);
+		const frames = Math.max(
+			1,
+			Time.toFrames(duration, runner.settings.frameRate),
+		);
+		for (let i = 1; i <= frames; i++) {
+			const t = timingFn(i / frames);
+			yield* Scene.update(instance, (data) => fn(t, data));
+			yield* Scene.tick;
+		}
+		return instance;
+	}),
+);
+
+/**
  * Like `tweenTo`, but with an explicit start: interpolates the keys of
  * `to` from `from` (keys missing in `from` start at the current data).
  * Dual: `tween(instance, from, to, duration, timing?)` or

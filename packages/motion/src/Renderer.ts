@@ -201,14 +201,17 @@ const renderToCanvas = <const Entities extends Entity.AnyEntity>(
 			/** identity-projected screen-space content — paints in the top tier */
 			readonly hud: boolean;
 		}
-		const camera = frame.camera;
-		// HUD subtrees project through the identity camera: camera-independent
-		// placement, and structurally exempt from depth of field (aperture 0)
-		const identityCamera = CameraMod.identity(frame.width);
 		const origin: Projection.Vec2 = {
 			x: frame.width / 2,
 			y: frame.height / 2,
 		};
+		// the effective view: a camera with a point of interest auto-orients
+		// toward it here (explicit Euler composes after — see resolveCamera);
+		// the frame's camera data is never mutated
+		const camera = Projection.resolveCamera(frame.camera, origin);
+		// HUD subtrees project through the identity camera: camera-independent
+		// placement, and structurally exempt from depth of field (aperture 0)
+		const identityCamera = CameraMod.identity(frame.width);
 		const visited = new Set<string>();
 		const paintables: Paintable[] = [];
 

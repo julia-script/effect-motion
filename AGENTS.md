@@ -20,6 +20,15 @@ This holds across both engines: `tween`/`tweenTo` and `move`/`moveTo`,
 (physics, no duration — length emerges from the simulation). When adding
 a new animator, ship the pair, never a lone form.
 
+**Exception — target-naming verbs** (recorded in the camera-poi-helpers
+change): an animator whose verb phrase already names its target
+(`Camera.lookAt`, `Camera.follow`) has no base/To pair — the base variant
+("ease your gaze from a place you aren't looking") is useless, and the To
+suffix double-stacks prepositions. An optional duration selects instant
+vs eased instead. Value-animating helpers (`Camera.orbit`/`orbitTo`,
+`Camera.dolly`/`dollyTo`) keep the full pair — they animate a field-like
+value exactly as `moveTo` does.
+
 ## The two layers
 
 | layer | functions | operates on | value types |

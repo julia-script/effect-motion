@@ -9,8 +9,9 @@ the curve into line spans. This example does that flattening in scene code,
 sampling a cubic Bézier whose control points live at different depths. Every
 sample carries its own `z`, so the projected curve foreshortens point by
 point; the straight control polygon `P0→P1→P2→P3` is drawn beside it, inside
-a wireframe axes box built from 12 depth-aware `Line` edges. The camera
-orbits the box center like a turntable — its position circles a pivot while
-`rotY` tracks it, one `Scene.update` per frame.
+a wireframe axes box built from 12 depth-aware `Line` edges. The camera aims
+at the box center with `Camera.lookAt` (a point of interest — the camera
+auto-orients toward it) and turntables around it with `Camera.orbitTo`, so
+the scene contains no orientation math at all.
 
 <Example name="bezier-3d" />

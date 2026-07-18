@@ -147,6 +147,101 @@ const rotate = (v: Vec3, rx: number, ry: number, rz: number): Vec3 => {
 	return { x, y, z };
 };
 
+/** Optional point of interest carried beside a camera view (world coords). */
+export interface PointOfInterest {
+	readonly poiX?: number;
+	readonly poiY?: number;
+	readonly poiZ?: number;
+}
+
+/**
+ * The auto-orient Euler angles (yaw + pitch, no roll) aiming a camera at
+ * `poi` from its WORLD position (viewport-center pan already composed in —
+ * see `resolveCamera`). The view transform flips z before rotating
+ * (in-front is +z), which inverts rotation handedness vs. world space;
+ * that subtlety is handled here, exactly once, pinned by tests that
+ * project the POI and assert it lands on the viewport center.
+ */
+export const lookAtOrientation = (
+	position: Vec3,
+	poi: Vec3,
+): { rotX: number; rotY: number } => {
+	const dx = poi.x - position.x;
+	const dy = poi.y - position.y;
+	const dz = position.z - poi.z; // flipped: in-front is +z
+	const len = Math.sqrt(dx * dx + dy * dy + dz * dz);
+	if (len === 0) {
+		return { rotX: 0, rotY: 0 };
+	}
+	return { rotY: Math.atan2(dx, dz), rotX: -Math.asin(dy / len) };
+};
+
+/**
+ * The effective camera view: when a point of interest is set, auto-orient
+ * toward it with the explicit Euler composing AFTER the aim — the After
+ * Effects two-node rule. "After" means the user's rotation applies in the
+ * camera's own frame (so a lone `rotZ` rolls about the view axis and the
+ * POI stays centered); the exact composed rotation is extracted back to
+ * the fixed Rz·Ry·Rx Euler convention the view transform consumes.
+ * Camera `x`/`y` are pan-from-viewport-center, so the world position
+ * composes `origin` in before aiming. Absent POI is a pass-through
+ * (one-node camera, unchanged); a partial POI is a loud defect. The
+ * user's rotation fields are never written back — derivation happens
+ * here, at view-assembly time.
+ */
+export const resolveCamera = (
+	camera: CameraView & PointOfInterest,
+	origin: Vec2,
+): CameraView => {
+	const { poiX, poiY, poiZ } = camera;
+	const present = [poiX, poiY, poiZ].filter((v) => v !== undefined).length;
+	if (present === 0) {
+		return camera;
+	}
+	if (present !== 3) {
+		throw new Error(
+			"Camera: a point of interest requires all of poiX, poiY, poiZ — got a partial POI",
+		);
+	}
+	const world: Vec3 = {
+		x: origin.x + camera.x,
+		y: origin.y + camera.y,
+		z: camera.z,
+	};
+	const aim = lookAtOrientation(world, {
+		x: poiX as number,
+		y: poiY as number,
+		z: poiZ as number,
+	});
+	// aim only: return the derived angles exactly (no fp noise from the
+	// compose/extract round-trip in the common case)
+	if (camera.rotX === 0 && camera.rotY === 0 && camera.rotZ === 0) {
+		return { ...camera, rotX: aim.rotX, rotY: aim.rotY };
+	}
+	// exact composition M = Aim · UserEuler: the user rotation applied in
+	// camera-local space, then aimed — additive angles would roll about the
+	// WORLD axis and drag the POI off-center. Build M's columns with the
+	// same rotate() the pipeline uses, then extract ZYX Euler angles
+	// (rotate ≡ Rz·Ry·Rx, canonical right-handed forms).
+	const compose = (v: Vec3): Vec3 =>
+		rotate(
+			rotate(v, camera.rotX, camera.rotY, camera.rotZ),
+			aim.rotX,
+			aim.rotY,
+			0,
+		);
+	const c0 = compose({ x: 1, y: 0, z: 0 });
+	const c1 = compose({ x: 0, y: 1, z: 0 });
+	const c2 = compose({ x: 0, y: 0, z: 1 });
+	const rotY = -Math.asin(Math.max(-1, Math.min(1, c0.z)));
+	// gimbal (camera pitched straight up/down): yaw and roll degenerate —
+	// pick roll = 0 and fold everything into pitch
+	const gimbal = Math.abs(c0.z) > 0.999999;
+	const rotX = gimbal ? Math.atan2(-c1.x, c1.y) : Math.atan2(c1.z, c2.z);
+	const rotZ = gimbal ? 0 : Math.atan2(c0.y, c0.x);
+	return { ...camera, rotX, rotY, rotZ };
+};
+
 /**
  * The four world-space corners of a flat rectangular plane. The rect spans
  * local `[x, x+width] × [y, y+height]` on the z=0 plane; each corner is
