@@ -9,7 +9,7 @@ any shape's data changing. It is an **ordinary instance**, so the same animators
 drive it as drive everything else.
 
 ```ts
-import { Motion, Scene } from "effect-motion";
+import { Color, Motion, Scene } from "effect-motion";
 
 const cam = yield* Scene.camera;
 // dolly forward and orbit — the primitives you already know
@@ -79,7 +79,7 @@ yield* Scene.instantiate(Shapes.Rect, {
 	x: -300, y: 180, z: -200,
 	width: 900, height: 900,
 	rotX: Math.PI / 2.3,
-	fill: "#232946",
+	fill: Color.hex("#232946"),
 });
 ```
 

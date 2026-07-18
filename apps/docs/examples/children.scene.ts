@@ -1,4 +1,4 @@
-import { Motion, Scene, Shapes } from "effect-motion";
+import { Color, Motion, Scene, Shapes } from "effect-motion";
 
 // A Group's `children` list is polymorphic: a bare string becomes a Text, a
 // not-yet-yielded `instantiate` is resolved internally, and an already-created
@@ -10,7 +10,7 @@ export const scene = Scene.make(function* () {
 		x: 0,
 		y: -34,
 		radius: 10,
-		fill: "#2cb67d",
+		fill: Color.hex("#2cb67d"),
 	});
 
 	const card = yield* Scene.instantiate(Shapes.Group, {
@@ -24,7 +24,7 @@ export const scene = Scene.make(function* () {
 				text: "composed from children",
 				y: 22,
 				fontSize: 11,
-				fill: "#a1a1aa",
+				fill: Color.hex("#a1a1aa"),
 			}),
 			// an instance passed by value → reparented into this group
 			badge,

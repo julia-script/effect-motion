@@ -1,6 +1,7 @@
 import { Effect } from "effect";
 import * as Stream from "effect/Stream";
 import { describe, expect, it } from "vitest";
+import * as Color from "../src/Color";
 import type * as Runner from "../src/Runner";
 import * as Scene from "../src/Scene";
 import * as Shapes from "../src/shapes";
@@ -25,12 +26,12 @@ describe("frame render metadata", () => {
 			frameRate: 30,
 			width: 800,
 			height: 600,
-			backgroundColor: "#222244",
+			backgroundColor: Color.hex("#222244"),
 		});
 		expect(frame.frameRate).toBe(30);
 		expect(frame.width).toBe(800);
 		expect(frame.height).toBe(600);
-		expect(frame.backgroundColor).toBe("#222244");
+		expect(Color.toHex(frame.backgroundColor)).toBe("#222244");
 	});
 
 	it("defaults apply when settings are unset", async () => {
@@ -38,7 +39,7 @@ describe("frame render metadata", () => {
 		expect(frame.frameRate).toBe(60);
 		expect(frame.width).toBe(500);
 		expect(frame.height).toBe(300);
-		expect(frame.backgroundColor).toBe("#16161d");
+		expect(Color.toHex(frame.backgroundColor)).toBe("#16161d");
 	});
 });
 
@@ -57,7 +58,7 @@ describe("renderer sizes and backgrounds the framebuffer from frame metadata", (
 		const frame = await firstFrame({
 			width: 320,
 			height: 200,
-			backgroundColor: "#224466",
+			backgroundColor: Color.hex("#224466"),
 		});
 		const r = await render(
 			frame as Scene.Frame<typeof Shapes.Circle | typeof Shapes.Group>,

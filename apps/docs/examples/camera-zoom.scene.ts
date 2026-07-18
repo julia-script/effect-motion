@@ -1,4 +1,4 @@
-import { Camera, Motion, Scene, Shapes } from "effect-motion";
+import { Camera, Color, Motion, Scene, Shapes } from "effect-motion";
 
 // A punch-in, the 3D-camera way: there is no `zoom` scalar any more. Grow the
 // camera's `focalLength` to narrow the field of view (an optical zoom) while
@@ -8,10 +8,10 @@ import { Camera, Motion, Scene, Shapes } from "effect-motion";
 export const scene = Scene.make(function* () {
 	// a field of dots; we punch in on the red one at (350, 90)
 	for (const [x, y, fill] of [
-		[120, 210, "#7f5af0"],
-		[250, 150, "#2cb67d"],
-		[350, 90, "#e53170"],
-		[410, 220, "#ff8906"],
+		[120, 210, Color.hex("#7f5af0")],
+		[250, 150, Color.hex("#2cb67d")],
+		[350, 90, Color.hex("#e53170")],
+		[410, 220, Color.hex("#ff8906")],
 	] as const) {
 		yield* Scene.instantiate(Shapes.Circle, { x, y, radius: 16, fill });
 	}

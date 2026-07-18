@@ -1,3 +1,5 @@
+/** biome-ignore-all lint/style/useConst: let declaration is necessary for destructuring assignment */
+import * as Color from "../Color";
 import type { EmitterConfig, Particle } from "./Particle";
 import * as Prng from "./Prng";
 
@@ -61,7 +63,7 @@ export const birth = (
 	const color =
 		config.palette[
 			Math.min(config.palette.length - 1, Math.floor(colorPick))
-		] ?? "white";
+		] ?? Color.white;
 	return {
 		x: config.x,
 		y: config.y,
@@ -112,7 +114,7 @@ export const birthFill = (
 	const color =
 		config.palette[
 			Math.min(config.palette.length - 1, Math.floor(colorPick))
-		] ?? "white";
+		] ?? Color.white;
 	return {
 		// scattered across the region, offset by the field's own origin
 		x: config.x + px,

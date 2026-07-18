@@ -2,6 +2,7 @@ import { Effect } from "effect";
 import type * as Duration from "effect/Duration";
 import * as Stream from "effect/Stream";
 import { describe, expect, it } from "vitest";
+import * as Color from "../src/Color";
 import { emitter, field } from "../src/particles/constructors";
 import { renderOpacity, renderSize } from "../src/particles/overLife";
 import type { EmitterConfig, Particle } from "../src/particles/Particle";
@@ -19,7 +20,7 @@ const baseConfig: EmitterConfig = {
 	life: [1, 2],
 	size: [2, 5],
 	gravity: 400,
-	palette: ["#a", "#b", "#c"],
+	palette: [Color.hex("#aa0000"), Color.hex("#00bb00"), Color.hex("#0000cc")],
 };
 
 // run a ParticleField scene and return the per-frame live-particle buffers
@@ -134,7 +135,7 @@ describe("over-life curves", () => {
 		life,
 		size: 5,
 		opacity: 1,
-		color: "white",
+		color: Color.white,
 		rng: 0,
 		alive: true,
 		wrap: false,
@@ -314,7 +315,7 @@ describe("simulate (scene integration)", () => {
 			const f = yield* field({
 				size: [1, 2],
 				drift: [4, 12],
-				palette: ["#fff"],
+				palette: [Color.white],
 				capacity: 200,
 			});
 			yield* simulate(f, "500 millis", { fill: 120 });

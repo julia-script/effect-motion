@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import * as Motion from "../src/Motion";
 import * as Scene from "../src/Scene";
 import * as Shapes from "../src/shapes";
+import { whileInputBelow } from "./support/schedule";
 
 // runs a scene and returns, per frame, the non-root instances' data in
 // instantiation order
@@ -87,7 +88,7 @@ describe("Scene.chain", () => {
 		const frames = await collectFrames(function* () {
 			const result = yield* Scene.chain(
 				[spawn(), spawn(), spawn(), spawn(), spawn()],
-				Schedule.both(Schedule.spaced("50 millis"), Schedule.recurs(2)),
+				Schedule.spaced("50 millis").pipe(Schedule.upTo({ times: 2 })),
 			);
 			completed = result.completed;
 		});
@@ -107,9 +108,7 @@ describe("Scene.chain", () => {
 			yield* Scene.instantiate(Shapes.Circle, { x: 0 });
 			const result = yield* Scene.chain(
 				[item(), item(), item(), item(), item()],
-				Schedule.collectWhile(Schedule.forever, (meta) =>
-					Effect.succeed((meta.input as number) < 3),
-				),
+				whileInputBelow(3),
 			);
 			completed = result.completed;
 		});
@@ -159,7 +158,7 @@ describe("Scene.stagger", () => {
 		const frames = await collectFrames(function* () {
 			const result = yield* Scene.stagger(
 				[spawn(), spawn(), spawn(), spawn(), spawn()],
-				Schedule.both(Schedule.spaced("50 millis"), Schedule.recurs(2)),
+				Schedule.spaced("50 millis").pipe(Schedule.upTo({ times: 2 })),
 			);
 			released = result.released;
 		});

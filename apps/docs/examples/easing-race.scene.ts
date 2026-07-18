@@ -1,4 +1,4 @@
-import { Motion, Scene, Shapes } from "effect-motion";
+import { Color, Motion, Scene, Shapes } from "effect-motion";
 
 // same distance, same duration — only the pacing differs
 export const scene = Scene.make(function* () {
@@ -6,19 +6,19 @@ export const scene = Scene.make(function* () {
 		x: 40,
 		y: 70,
 		radius: 14,
-		fill: "#7f5af0",
+		fill: Color.hex("#7f5af0"),
 	});
 	const cubic = yield* Scene.instantiate(Shapes.Circle, {
 		x: 40,
 		y: 150,
 		radius: 14,
-		fill: "#2cb67d",
+		fill: Color.hex("#2cb67d"),
 	});
 	const expo = yield* Scene.instantiate(Shapes.Circle, {
 		x: 40,
 		y: 230,
 		radius: 14,
-		fill: "tomato",
+		fill: Color.hex("tomato"),
 	});
 
 	yield* Scene.all([

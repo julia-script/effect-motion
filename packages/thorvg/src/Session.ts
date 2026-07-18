@@ -122,6 +122,7 @@ export const make = (
 							if (picture !== undefined) {
 								pictures.set(name, picture);
 							}
+							return picture;
 						}),
 					),
 				{ concurrency: "unbounded", discard: true },

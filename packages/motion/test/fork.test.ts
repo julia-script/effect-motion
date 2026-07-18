@@ -63,7 +63,7 @@ describe("Scene.fork", () => {
 						yield* Motion.tween(c, { x: 0 }, { x: 100 }, "333 millis");
 					}) as never,
 				),
-				Schedule.both(Schedule.spaced("50 millis"), Schedule.recurs(2)),
+				Schedule.spaced("50 millis").pipe(Schedule.upTo({ times: 2 })),
 			);
 			// spawns at frames 0, 3, 6 — each particle lives 20 frames
 		});

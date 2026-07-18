@@ -1,4 +1,4 @@
-import { Particles, Scene } from "effect-motion";
+import { Color, Particles, Scene } from "effect-motion";
 
 // Floating motes: slow ambient dust rising from below. Unlike the evenly
 // spread `field`, this is a source `emitter` with a slow wide cone, long
@@ -16,7 +16,7 @@ export const scene = Scene.make(function* () {
 		size: [1.5, 3.5],
 		opacityRange: [0.3, 0.8],
 		gravity: -6, // a faint upward buoyancy
-		palette: ["#a7a9be", "#d4d4e0", "#fffffe"],
+		palette: [Color.hex("#a7a9be"), Color.hex("#d4d4e0"), Color.hex("#fffffe")],
 		// born soft, fade to nothing as they drift up — no hard pop-out
 		opacityOverLife: { from: 0.9, to: 0, ease: "easeInQuad" },
 		sizeOverLife: { from: 0.6, to: 1, ease: "easeOutCubic" },

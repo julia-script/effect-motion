@@ -1,12 +1,14 @@
-import { Font, type ThorvgException } from "@effect-motion/thorvg";
+import { Font, Session, type ThorvgException } from "@effect-motion/thorvg";
 import { EngineNode } from "@effect-motion/thorvg/node";
+import type * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
+import * as Layer from "effect/Layer";
 import type * as Scope from "effect/Scope";
 import * as Sink from "effect/Sink";
 import * as Stream from "effect/Stream";
 import type { ChildProcessSpawner } from "effect/unstable/process";
-import { type Entity, Fonts, Render, Scene } from "effect-motion";
-import { renderToPng } from "effect-motion/render-node";
+import { Fonts, Renderer, Scene } from "effect-motion";
+import * as PngExporter from "effect-motion/PngExporter";
 import * as Ffmpeg from "./Ffmpeg";
 
 // Scene.instantiate/tick leak the runner requirement into a scene's static R,
@@ -54,11 +56,37 @@ export interface VideoOptions {
 	readonly binary?: string;
 	/** Extra ffmpeg arguments, appended before the output path. */
 	readonly extraArgs?: ReadonlyArray<string>;
-	/** How many frames to rasterize concurrently (order preserved). Default 4. */
-	readonly concurrency?: number;
+	/**
+	 * Supersampling factor: frames are rasterized at scene dimensions × dpr
+	 * (the video's pixel size) while the scene keeps its authored logical
+	 * coordinates and framing. Defaults to 1.
+	 */
+	readonly dpr?: number;
 	/** Scene framerate/dimensions/maxFrames for this export. */
 	readonly settings?: VideoSceneSettings;
 }
+
+// The ThorVG engine (global font registry) plus a render session (the canvas
+// Renderer.render draws each frame onto). The session canvas is resized per
+// frame, so the seed size only has to be valid — the settings dimensions when
+// given, else a 1×1 placeholder the first frame's resize corrects.
+const fontedLayer = (
+	scene: { readonly annotations: Context.Context<never> },
+	settings: VideoSceneSettings | undefined,
+) => {
+	const fonts = {
+		"sans-serif": Font.DEFAULT_FONT_URL,
+		...Fonts.urlMap(scene),
+	};
+	return Layer.provideMerge(
+		Session.layer({
+			width: settings?.width ?? 1,
+			height: settings?.height ?? 1,
+			fonts,
+		}),
+		EngineNode.layer("sw", fonts),
+	);
+};
 
 /**
  * Render a scene to a video file at `outPath`.
@@ -67,8 +95,8 @@ export interface VideoOptions {
  * `yuv420p`) — before any ffmpeg process is spawned — or on an ffmpeg failure;
  * a ThorVG render failure surfaces as `ThorvgException`.
  */
-export const render = <E, R, Entities extends Entity.AnyEntity>(
-	scene: Scene.Scene<E, R, Entities>,
+export const render = <E = never>(
+	scene: Scene.Scene<E, SceneInternalR>,
 	outPath: string,
 	options: VideoOptions = {},
 ): Effect.Effect<
@@ -76,17 +104,11 @@ export const render = <E, R, Entities extends Entity.AnyEntity>(
 	E | Ffmpeg.EncodeError | ThorvgException,
 	// the scene is run to completion internally, so its Scope is discharged
 	// here; the ThorVG engine is provided internally too
-	| Exclude<R, Scope.Scope | SceneInternalR>
-	| ChildProcessSpawner.ChildProcessSpawner
+	ChildProcessSpawner.ChildProcessSpawner
 > =>
 	Effect.scoped(
 		Effect.gen(function* () {
-			const concurrency = options.concurrency ?? 4;
-
-			let frames = Scene.stream(
-				scene as never,
-				options.settings ?? {},
-			) as Stream.Stream<Scene.Frame<Entities>, E>;
+			let frames = Scene.stream(scene, options.settings ?? {});
 			if (options.frames !== undefined) {
 				frames = Stream.take(frames, options.frames);
 			}
@@ -99,27 +121,32 @@ export const render = <E, R, Entities extends Entity.AnyEntity>(
 			}
 			const meta = first.value;
 
-			if (meta.width % 2 !== 0 || meta.height % 2 !== 0) {
+			// the encoded pixel size is the logical scene size × dpr; that is
+			// what yuv420p needs even, not the logical size
+			const dpr = options.dpr ?? 1;
+			const outWidth = Math.round(meta.width * dpr);
+			const outHeight = Math.round(meta.height * dpr);
+			if (outWidth % 2 !== 0 || outHeight % 2 !== 0) {
 				const odd =
-					meta.width % 2 !== 0
-						? `width ${meta.width}`
-						: `height ${meta.height}`;
+					outWidth % 2 !== 0 ? `width ${outWidth}` : `height ${outHeight}`;
 				return yield* new Ffmpeg.EncodeError({
 					message:
 						`Video dimensions must be even for yuv420p, got ${odd}. ` +
-						`Use even scene dimensions, or pass extraArgs with a scale filter.`,
+						`Use even scene dimensions (× dpr), or pass extraArgs with a scale filter.`,
 					stderr: "",
 					cause: meta,
 				});
 			}
 
 			const allFrames = Stream.concat(Stream.make(meta), rest);
-			// each frame is rasterized to PNG by the ThorVG renderer; the engine
-			// (provided below) is shared across the whole stream.
-			const pngStream = Stream.mapEffect(
-				allFrames,
-				(frame) => renderToPng(frame as never, Render.builtinPaints),
-				{ concurrency },
+			// each frame is rasterized to a framebuffer by the ThorVG renderer
+			// then PNG-encoded. Rasterization is serial: Renderer.render mutates
+			// one shared RenderSession canvas per frame (resize/clear/draw/read),
+			// so concurrent renders would clobber each other's pixels.
+			const pngStream = Stream.mapEffect(allFrames, (frame) =>
+				Renderer.render(frame, { dpr }).pipe(
+					Effect.flatMap(PngExporter.toBuffer),
+				),
 			);
 
 			yield* Ffmpeg.encode(pngStream as Stream.Stream<Uint8Array>, outPath, {
@@ -130,16 +157,7 @@ export const render = <E, R, Entities extends Entity.AnyEntity>(
 		}),
 	).pipe(
 		// the scene's declared url fonts, merged over the default sans, so text
-		// in a declared family renders (design D3); path-only entries skipped
-		Effect.provide(
-			EngineNode.layer("sw", {
-				"sans-serif": Font.DEFAULT_FONT_URL,
-				...Fonts.urlMap(scene),
-			}),
-		),
-	) as unknown as Effect.Effect<
-		void,
-		E | Ffmpeg.EncodeError | ThorvgException,
-		| Exclude<R, Scope.Scope | SceneInternalR>
-		| ChildProcessSpawner.ChildProcessSpawner
-	>;
+		// in a declared family renders (design D3); path-only entries skipped.
+		// Fonts go to both the engine (global registry) and the render session.
+		Effect.provide(fontedLayer(scene, options.settings)),
+	);

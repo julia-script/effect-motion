@@ -10,6 +10,7 @@ import type * as Schema from "effect/Schema";
 import type * as Scope from "effect/Scope";
 import * as Stream from "effect/Stream";
 import type * as Camera from "./Camera";
+import type * as Color from "./Color";
 import type * as Entity from "./Entity";
 import type * as Instance from "./Instance";
 import * as Phaser from "./Phaser";
@@ -17,7 +18,7 @@ import * as Runner from "./Runner";
 import * as Time from "./Time";
 
 export const TypeId = "~motion/Scene" as const;
-export interface Scene<E, R> {
+export interface Scene<E = never, R = never> {
 	readonly [TypeId]: typeof TypeId;
 	readonly runner: Effect.Effect<void, E, R | Scope.Scope>;
 	/** tooling-facing metadata; never read by the runtime */
@@ -27,8 +28,12 @@ export interface Scene<E, R> {
 }
 export type AnyScene = Scene<never, never>;
 
-type MakeEffect<Eff extends Effect.Effect<any, any, any>, AEff> = Effect.Effect<
-	AEff,
+export const make = <
+	const Eff extends Effect.Effect<any, any, any>,
+	const AEff,
+>(
+	f: () => Generator<Eff, AEff, never>,
+): Scene<
 	[Eff] extends [never]
 		? never
 		: [Eff] extends [Effect.Effect<infer _A, infer E, infer _R>]
@@ -39,28 +44,20 @@ type MakeEffect<Eff extends Effect.Effect<any, any, any>, AEff> = Effect.Effect<
 		: [Eff] extends [Effect.Effect<infer _A, infer _E, infer R>]
 			? R
 			: never
->;
-export const make = <const Eff extends Effect.Effect<any, any, any>, AEff>(
-	f: () => Generator<Eff, void, never>,
-): MakeEffect<Eff, AEff> extends Effect.Effect<AEff, infer E, infer R>
-	? Scene<E, R | Scope.Scope>
-	: never => {
-	return makeScene(Effect.scoped(Effect.gen(f)), Context.empty()) as never;
+> => {
+	return makeScene(Effect.scoped(Effect.gen(f)), Context.empty());
 };
 
 // annotate/annotateMerge return new scene values sharing the same body
-const makeScene = (
-	runnerEffect: Effect.Effect<void, unknown, unknown>,
+const makeScene = <E = never, R = never>(
+	runnerEffect: Effect.Effect<void, E, R>,
 	annotations: Context.Context<never>,
-): object => ({
+): Scene<E, R> => ({
 	[TypeId]: TypeId,
 	runner: runnerEffect,
 	annotations,
-	annotate: (key: Context.Key<never, unknown>, value: unknown) =>
-		makeScene(
-			runnerEffect,
-			Context.add(annotations, key, value) as Context.Context<never>,
-		),
+	annotate: <I, S>(key: Context.Key<I, S>, value: S) =>
+		makeScene(runnerEffect, Context.add(annotations, key, value)),
 	annotateMerge: (context: Context.Context<never>) =>
 		makeScene(runnerEffect, Context.merge(annotations, context)),
 });
@@ -123,7 +120,7 @@ export interface Frame<Entities extends Entity.AnyEntity = Entity.AnyEntity> {
 	frameRate: number;
 	width: number;
 	height: number;
-	backgroundColor: string;
+	backgroundColor: Color.Color;
 	/** the active camera's view; Camera.IDENTITY when unused */
 	camera: Camera.CameraState;
 }
@@ -257,7 +254,7 @@ export const run = <E, R>(
 					),
 				).pipe(
 					Effect.ensuring(releaseRoot),
-					Effect.provideService(CurrentBranch, rootBranch),
+					Effect.provideService(currentBranch<void, never>(), rootBranch),
 					// success, failure, or interrupt: the scene is over either way
 					Effect.ensuring(
 						Effect.sync(() => {
@@ -285,7 +282,7 @@ export const run = <E, R>(
 		return runningScene;
 	});
 
-export const stream = <E, R>(
+export const stream = <E = never, R = never>(
 	scene: Scene<E, R>,
 	settings: Partial<Runner.Settings> = {},
 ) =>
@@ -398,14 +395,14 @@ export const setCamera = (instance: Instance.Instance) =>
  * the rest of the scene stays live while you wait. `fiber` is the
  * branch's physical execution — interrupt it to bound a tail.
  */
-export interface BranchHandle<A = unknown, E = unknown> {
+export interface BranchHandle<A = unknown, E = never> {
 	readonly finished: Effect.Effect<void, never, Runner.Runner>;
 	readonly fiber: Fiber.Fiber<A, E>;
 }
 
-interface BranchInternal {
+interface BranchInternal<A, E = never> {
 	readonly entry: {
-		fiber: Fiber.Fiber<unknown, unknown>;
+		fiber: Fiber.Fiber<A, E>;
 		readonly finished: Effect.Effect<void>;
 	};
 	readonly finishUnsafe: () => void;
@@ -413,20 +410,20 @@ interface BranchInternal {
 }
 
 /** the innermost enclosing branch; null = outside any running scene */
-const CurrentBranch = Context.Reference<BranchInternal | null>(
-	"motion/Scene/CurrentBranch",
-	{ defaultValue: () => null },
-);
+const currentBranch = <A, E = never>() =>
+	Context.Reference<BranchInternal<A, E> | null>("motion/Scene/CurrentBranch", {
+		defaultValue: () => null,
+	});
 
-const makeBranch = (
+const makeBranch = <A, E = never>(
 	runner: Runner.Runner["Service"],
 	kind: "fork" | "background" | "root",
-): BranchInternal => {
+): BranchInternal<A, E> => {
 	const latch = Latch.makeUnsafe();
 	let finished = false;
 	const entry = {
 		// assigned immediately after forking, before anyone can observe it
-		fiber: null as unknown as Fiber.Fiber<unknown, unknown>,
+		fiber: null as unknown as Fiber.Fiber<A, E>,
 		finished: latch.await,
 	};
 	const finishUnsafe = () => {
@@ -461,7 +458,7 @@ const makeBranch = (
  * reported — by then nothing is listening.
  */
 export const finish = Effect.gen(function* () {
-	const branch = yield* CurrentBranch;
+	const branch = yield* currentBranch<void, never>();
 	if (branch === null) {
 		return yield* Effect.die(
 			new Error("Scene.finish called outside a running scene"),
@@ -472,13 +469,13 @@ export const finish = Effect.gen(function* () {
 
 // shared by fork/background/play: register the party synchronously,
 // fork, record un-finished failures, finish implicitly on completion
-const forkBranch = <A, E, R>(
+const forkBranch = <A, E = never, R = never>(
 	runner: Runner.Runner["Service"],
 	effect: Effect.Effect<A, E, R>,
 	kind: "fork" | "background",
 ) =>
 	Effect.gen(function* () {
-		const branch = makeBranch(runner, kind);
+		const branch = makeBranch<A, E>(runner, kind);
 		if (kind === "fork") {
 			// counted before the fork (no gap); undone exactly once by the
 			// branch's finish/completion — synchronous with its party release
@@ -500,7 +497,7 @@ const forkBranch = <A, E, R>(
 						branch.finishUnsafe();
 					}),
 				),
-				Effect.provideService(CurrentBranch, branch),
+				Effect.provideService(currentBranch<A, E>(), branch),
 			),
 		);
 		branch.entry.fiber = fiber;
@@ -573,7 +570,7 @@ export const repeat = <A, E, R, Output, ScheduleE, ScheduleR>(
  * instead. Forks are supervised by the fiber that spawned them: a fork
  * made inside another fork is interrupted when its spawner completes.
  */
-export const fork = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+export const fork = <A, E = never, R = never>(effect: Effect.Effect<A, E, R>) =>
 	Effect.gen(function* () {
 		const runner = yield* Runner.Runner;
 		return yield* forkBranch(runner, effect, "fork");
@@ -586,7 +583,9 @@ export const fork = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
  * alive. "Scene end" includes the fork drain: backgrounds keep animating
  * while awaited forks finish, and are stopped after the last one.
  */
-export const background = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+export const background = <A, E = never, R = never>(
+	effect: Effect.Effect<A, E, R>,
+) =>
 	Effect.gen(function* () {
 		const runner = yield* Runner.Runner;
 		return yield* forkBranch(runner, effect, "background");
@@ -733,7 +732,6 @@ export const stagger = <
 	{ released: number },
 	(Eff extends Effect.Effect<any, infer E, any> ? E : never) | ScheduleE,
 	| (Eff extends Effect.Effect<any, any, infer R> ? R : never)
-	| Phaser.Phaser
 	| Runner.Runner
 	| ScheduleR
 > =>
@@ -770,6 +768,8 @@ export const stagger = <
 				yield* list[i]!;
 			}),
 		);
-		yield* Phaser.all(branches);
+		yield* Phaser.all(branches).pipe(
+			Effect.provideService(Phaser.Phaser, runner.phaser),
+		);
 		return { released: releaseFrames.length };
 	});

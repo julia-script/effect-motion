@@ -1,6 +1,6 @@
 import * as Effect from "effect/Effect";
-import type { Renderer } from ".";
 import { EffectMotionError } from "./EffectMotionError";
+import type * as Renderer from "./Renderer";
 
 const resolveCanvas = Effect.fnUntraced(function* (
 	target: HTMLCanvasElement | "string",

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as Camera from "../src/Camera";
+import * as Color from "../src/Color";
 import * as P from "../src/Projection";
 import type * as Scene from "../src/Scene";
 import * as Shapes from "../src/shapes";
@@ -23,7 +24,7 @@ const frameWith = (line: Record<string, unknown>): Scene.Frame<Entities> =>
 		frameRate: 60,
 		width: 200,
 		height: 200,
-		backgroundColor: "#000000",
+		backgroundColor: Color.hex("#000000"),
 		camera: Camera.identity(200),
 	}) as Scene.Frame<Entities>;
 
@@ -35,7 +36,7 @@ describe("Line endpoint depth (z2)", () => {
 				y: 100,
 				x2: 180,
 				y2: 100,
-				stroke: "#00ff00",
+				stroke: Color.hex("#00ff00"),
 				strokeWidth: 4,
 			}),
 		);
@@ -56,7 +57,7 @@ describe("Line endpoint depth (z2)", () => {
 				x2: 150,
 				y2: 180,
 				z2: -4000,
-				stroke: "#00ff00",
+				stroke: Color.hex("#00ff00"),
 				strokeWidth: 4,
 			}),
 		);
@@ -84,7 +85,7 @@ describe("Line endpoint depth (z2)", () => {
 				x2: 150,
 				y2: 150,
 				z2: behind + 400,
-				stroke: "#00ff00",
+				stroke: Color.hex("#00ff00"),
 				strokeWidth: 6,
 			}),
 		);
@@ -108,7 +109,7 @@ describe("segment viewport clipping", () => {
 				y: 150,
 				x2: 10000,
 				y2: 150,
-				stroke: "#00ff00",
+				stroke: Color.hex("#00ff00"),
 				strokeWidth: 4,
 			}),
 		);
@@ -125,7 +126,7 @@ describe("segment viewport clipping", () => {
 				y: 500,
 				x2: 10000,
 				y2: 500,
-				stroke: "#00ff00",
+				stroke: Color.hex("#00ff00"),
 				strokeWidth: 6,
 			}),
 		);

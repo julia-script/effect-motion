@@ -1,5 +1,6 @@
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
+import * as Color from "../Color";
 import * as Entity from "../Entity";
 import * as Shape2D from "./Shape2D";
 
@@ -12,8 +13,8 @@ const fields = {
 	x2: Shape2D.defaultedNumber(0),
 	y2: Shape2D.defaultedNumber(0),
 	z2: Shape2D.defaultedNumber(0),
-	stroke: Schema.String.pipe(
-		Schema.withConstructorDefault(Effect.succeed("white")),
+	stroke: Color.Color.pipe(
+		Schema.withConstructorDefault(Effect.succeed(Color.white)),
 	),
 	strokeWidth: Shape2D.defaultedNumber(1),
 	...Shape2D.opacity,

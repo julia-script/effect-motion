@@ -1,3 +1,4 @@
+import type * as Color from "../Color";
 import type * as Prng from "./Prng";
 
 /**
@@ -26,7 +27,7 @@ export interface Particle {
 	size: number;
 	/** baseline opacity drawn at birth; the over-life curve multiplies it */
 	opacity: number;
-	color: string;
+	color: Color.Color;
 	rng: Prng.PrngState;
 	/** false = dead slot, reusable by the next emission */
 	alive: boolean;
@@ -72,7 +73,7 @@ export interface EmitterConfig {
 	/** shared downward acceleration (px/sec²); not ranged */
 	readonly gravity: number;
 	/** colors drawn from uniformly at birth */
-	readonly palette: ReadonlyArray<string>;
+	readonly palette: ReadonlyArray<Color.Color>;
 	/**
 	 * fill mode only — the rectangular region particles scatter across and
 	 * wrap around, in the field's local coordinates. The animator defaults

@@ -5,7 +5,7 @@ import {
 	type ChildProcess,
 	ChildProcessSpawner,
 } from "effect/unstable/process";
-import { Scene, Shapes } from "effect-motion";
+import { Color, Scene, Shapes } from "effect-motion";
 import { expect, it } from "vitest";
 import { Ffmpeg, Video } from "../src";
 
@@ -28,7 +28,7 @@ const countPngs = (bytes: Uint8Array): number => {
 	return count;
 };
 
-const mockSpawner = (record: SpawnRecord[]) => {
+const mockSpawner = (record: SpawnRecord[], bytesOut?: number[]) => {
 	const spawn = (command: ChildProcess.Command) =>
 		Effect.gen(function* () {
 			const std = command as ChildProcess.StandardCommand;
@@ -45,6 +45,7 @@ const mockSpawner = (record: SpawnRecord[]) => {
 				args: std.args,
 				pngFrames: countPngs(new Uint8Array(chunks)),
 			});
+			bytesOut?.push(...chunks);
 			return ChildProcessSpawner.makeHandle({
 				pid: ChildProcessSpawner.ProcessId(1),
 				exitCode: Effect.succeed(ChildProcessSpawner.ExitCode(0)),
@@ -75,7 +76,7 @@ const threeFrameScene = Scene.make(function* () {
 		x: 40,
 		y: 40,
 		radius: 20,
-		fill: "#fde68a",
+		fill: Color.hex("#fde68a"),
 	});
 	yield* Scene.tick;
 	yield* Scene.tick;
@@ -95,8 +96,28 @@ it("streams a scene to N PNG frames at the scene's framerate", async () => {
 	expect(record).toHaveLength(1);
 	expect(record[0]?.pngFrames).toBe(EXPECTED_FRAMES);
 	// framerate is read from metadata, not repeated by the caller
-	const args = record[0]?.args;
+	const args = record[0]?.args ?? [];
 	expect(args[args.indexOf("-framerate") + 1]).toBe("30");
+});
+
+// PNG IHDR: width/height are big-endian u32 at byte offsets 16 and 20
+const pngDims = (bytes: Uint8Array): [number, number] => {
+	const view = new DataView(bytes.buffer, bytes.byteOffset);
+	return [view.getUint32(16), view.getUint32(20)];
+};
+
+it("supersamples frames by options.dpr without changing framing", async () => {
+	const record: SpawnRecord[] = [];
+	const stdin: number[] = [];
+	await Effect.runPromise(
+		Video.render(threeFrameScene, "out.mp4", {
+			settings: evenSettings,
+			dpr: 2,
+		}).pipe(Effect.provide(mockSpawner(record, stdin))),
+	);
+
+	expect(record[0]?.pngFrames).toBe(EXPECTED_FRAMES);
+	expect(pngDims(new Uint8Array(stdin))).toEqual([400, 240]);
 });
 
 it("rejects odd output dimensions before spawning ffmpeg", async () => {
@@ -121,7 +142,7 @@ it("caps an infinite scene with options.frames", async () => {
 			x: 10,
 			y: 10,
 			radius: 5,
-			fill: "#fff",
+			fill: Color.hex("#fff"),
 		});
 		while (true) {
 			yield* Scene.tick;

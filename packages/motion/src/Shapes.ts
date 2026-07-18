@@ -1,0 +1,11 @@
+export { Circle } from "./shapes/Circle";
+export { Ellipse } from "./shapes/Ellipse";
+export * from "./shapes/Group";
+export { Hud } from "./shapes/Hud";
+export { Image } from "./shapes/Image";
+export { Line } from "./shapes/Line";
+export { Path } from "./shapes/Path";
+export { Rect } from "./shapes/Rect";
+export * as Shape2D from "./shapes/Shape2D";
+export { Square } from "./shapes/Square";
+export { Text } from "./shapes/Text";

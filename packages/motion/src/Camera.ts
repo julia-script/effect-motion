@@ -1,3 +1,4 @@
+import { Effect } from "effect";
 import * as Schema from "effect/Schema";
 import * as Entity from "./Entity";
 import * as Projection from "./Projection";
@@ -27,16 +28,20 @@ import * as Shape2D from "./shapes/Shape2D";
 const fields = {
 	x: Shape2D.defaultedNumber(0),
 	y: Shape2D.defaultedNumber(0),
-	z: Schema.optionalKey(Schema.Number),
+	z: Schema.Number.pipe(Schema.withConstructorDefault(Effect.succeed(0))),
 	rotX: Shape2D.defaultedNumber(0),
 	rotY: Shape2D.defaultedNumber(0),
 	rotZ: Shape2D.defaultedNumber(0),
-	focalLength: Schema.optionalKey(Schema.Number),
+	focalLength: Schema.Number.pipe(
+		Schema.withConstructorDefault(Effect.succeed(0)),
+	),
 	// depth of field: view-space distance to the sharp plane, and blur
 	// strength. Like z/focalLength, focusDistance's right default is
 	// width-relative (the resting distance, so z=0 is in focus) — the Runner
 	// fills it. aperture 0 = pinhole = DoF off (explicit opt-in).
-	focusDistance: Schema.optionalKey(Schema.Number),
+	focusDistance: Schema.Number.pipe(
+		Schema.withConstructorDefault(Effect.succeed(0)),
+	),
 	aperture: Shape2D.defaultedNumber(0),
 };
 

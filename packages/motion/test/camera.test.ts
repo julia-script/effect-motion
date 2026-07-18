@@ -2,6 +2,7 @@ import { Effect } from "effect";
 import * as Stream from "effect/Stream";
 import { describe, expect, it } from "vitest";
 import * as CameraMod from "../src/Camera";
+import * as Color from "../src/Color";
 import * as Motion from "../src/Motion";
 import type * as Runner from "../src/Runner";
 import * as Scene from "../src/Scene";
@@ -101,7 +102,7 @@ describe("camera animated by the existing primitives", () => {
 			id.startsWith("shapes/Circle"),
 		)!;
 		for (const frame of frames) {
-			expect((frame.instances[circleId]?.data as { x: number }).x).toBe(100);
+			expect((frame.instances[circleId]!.data as { x: number }).x).toBe(100);
 		}
 		expect(frames.at(-1)?.camera.x).toBe(300);
 	});
@@ -165,14 +166,14 @@ describe("depth-sorted render order", () => {
 				x: 250,
 				y: 150,
 				radius: 20,
-				fill: "#ff0000",
+				fill: Color.hex("#ff0000"),
 			}); // near, z=0
 			yield* Scene.instantiate(Shapes.Circle, {
 				x: 250,
 				y: 150,
 				z: -400,
 				radius: 20,
-				fill: "#00ff00",
+				fill: Color.hex("#00ff00"),
 			}); // far
 			yield* Scene.tick;
 		});

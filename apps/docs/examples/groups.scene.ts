@@ -1,4 +1,4 @@
-import { Motion, Physics, Scene, Shapes } from "effect-motion";
+import { Color, Motion, Physics, Scene, Shapes } from "effect-motion";
 
 // children live in the group's local coordinates: one motion moves them all.
 // structure is defined by the children list, not a parent argument.
@@ -11,13 +11,13 @@ export const scene = Scene.make(function* () {
 				x: 0,
 				y: 0,
 				radius: 14,
-				fill: "#e53170",
+				fill: Color.hex("#e53170"),
 			}),
 			Scene.instantiate(Shapes.Square, {
 				x: 20,
 				y: -16,
 				size: 28,
-				fill: "#a786df",
+				fill: Color.hex("#a786df"),
 			}),
 		],
 	});

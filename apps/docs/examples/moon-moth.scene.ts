@@ -1,5 +1,5 @@
 import { Schedule } from "effect";
-import { Motion, Physics, Scene, Shapes } from "effect-motion";
+import { Color, Motion, Physics, Scene, Shapes } from "effect-motion";
 
 const finalCaption = "Some lights meet you halfway.";
 
@@ -10,15 +10,15 @@ export const scene = Scene.make(function* () {
 		y: 0,
 		width: 500,
 		height: 300,
-		fill: "#101522",
+		fill: Color.hex("#101522"),
 	});
 	yield* Scene.instantiate(Shapes.Rect, {
 		x: 350,
 		y: 22,
 		width: 130,
 		height: 190,
-		fill: "#17213a",
-		stroke: "#64748b",
+		fill: Color.hex("#17213a"),
+		stroke: Color.hex("#64748b"),
 		strokeWidth: 2,
 	});
 	for (const [x, y, radius] of [
@@ -31,7 +31,7 @@ export const scene = Scene.make(function* () {
 			x,
 			y,
 			radius,
-			fill: "#dbeafe",
+			fill: Color.hex("#dbeafe"),
 			opacity: 0.75,
 		});
 	}
@@ -40,7 +40,7 @@ export const scene = Scene.make(function* () {
 		y: 22,
 		x2: 350,
 		y2: 212,
-		stroke: "#94a3b8",
+		stroke: Color.hex("#94a3b8"),
 		strokeWidth: 3,
 	});
 	yield* Scene.instantiate(Shapes.Rect, {
@@ -48,7 +48,7 @@ export const scene = Scene.make(function* () {
 		y: 255,
 		width: 500,
 		height: 45,
-		fill: "#252d3a",
+		fill: Color.hex("#252d3a"),
 	});
 
 	// instantiate children that need handles first, then group them via the
@@ -57,7 +57,7 @@ export const scene = Scene.make(function* () {
 		x: 0,
 		y: 0,
 		radius: 42,
-		fill: "#fde68a",
+		fill: Color.hex("#fde68a"),
 		opacity: 0.14,
 	});
 	const moon = yield* Scene.instantiate(Shapes.Group, {
@@ -69,13 +69,13 @@ export const scene = Scene.make(function* () {
 				x: 0,
 				y: 0,
 				radius: 29,
-				fill: "#fef3c7",
+				fill: Color.hex("#fef3c7"),
 			}),
 			Scene.instantiate(Shapes.Circle, {
 				x: -9,
 				y: -7,
 				radius: 4,
-				fill: "#e7d7a5",
+				fill: Color.hex("#e7d7a5"),
 				opacity: 0.55,
 			}),
 		],
@@ -86,7 +86,7 @@ export const scene = Scene.make(function* () {
 		y: -1,
 		rx: 11,
 		ry: 7,
-		fill: "#f9a8d4",
+		fill: Color.hex("#f9a8d4"),
 		opacity: 0.85,
 	});
 	const rightWing = yield* Scene.instantiate(Shapes.Ellipse, {
@@ -94,7 +94,7 @@ export const scene = Scene.make(function* () {
 		y: -1,
 		rx: 11,
 		ry: 7,
-		fill: "#c4b5fd",
+		fill: Color.hex("#c4b5fd"),
 		opacity: 0.85,
 	});
 	const moth = yield* Scene.instantiate(Shapes.Group, {
@@ -109,7 +109,7 @@ export const scene = Scene.make(function* () {
 				y: 1,
 				rx: 7,
 				ry: 4,
-				fill: "#fbbf24",
+				fill: Color.hex("#fbbf24"),
 			}),
 		],
 	});
@@ -119,7 +119,7 @@ export const scene = Scene.make(function* () {
 		x: 250,
 		y: 32,
 		fontSize: 14,
-		fill: "#f8fafc",
+		fill: Color.hex("#f8fafc"),
 		opacity: 0,
 		textAnchor: "middle",
 	});

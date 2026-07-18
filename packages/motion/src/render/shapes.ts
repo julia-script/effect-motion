@@ -1,11 +1,19 @@
 import * as Tvg from "@effect-motion/thorvg";
 import * as Effect from "effect/Effect";
+import * as Color from "../Color";
 import { renderOpacity, renderSize } from "../particles/overLife";
 import type { OverLife, Particle } from "../particles/Particle";
 import { ParticleField } from "../particles/ParticleField";
 import type { PaintFunction, PaintFunctions } from "../Renderer";
-import * as Shapes from "../shapes";
-import { parseColor } from "./color";
+import * as Circle from "../shapes/Circle";
+import * as Ellipse from "../shapes/Ellipse";
+import * as Group from "../shapes/Group";
+import * as Hud from "../shapes/Hud";
+import * as Image from "../shapes/Image";
+import * as Line from "../shapes/Line";
+import * as Rect from "../shapes/Rect";
+import * as Square from "../shapes/Square";
+import * as Text from "../shapes/Text";
 import { applyStyle, finishPaint } from "./paint";
 
 /**
@@ -14,7 +22,7 @@ import { applyStyle, finishPaint } from "./paint";
  * paint function is a type error, not a runtime surprise.
  */
 
-export const circle: PaintFunction<typeof Shapes.Circle> = ({
+export const circle: PaintFunction<typeof Circle.Circle> = ({
 	data,
 	scene,
 	projection,
@@ -32,7 +40,7 @@ export const circle: PaintFunction<typeof Shapes.Circle> = ({
 		yield* finishPaint(shape, scene, projection);
 	});
 
-export const rect: PaintFunction<typeof Shapes.Rect> = ({
+export const rect: PaintFunction<typeof Rect.Rect> = ({
 	data,
 	scene,
 	projection,
@@ -69,7 +77,7 @@ export const rect: PaintFunction<typeof Shapes.Rect> = ({
 		yield* finishPaint(shape, scene, projection);
 	});
 
-export const square: PaintFunction<typeof Shapes.Square> = ({
+export const square: PaintFunction<typeof Square.Square> = ({
 	data,
 	scene,
 	projection,
@@ -81,7 +89,7 @@ export const square: PaintFunction<typeof Shapes.Square> = ({
 		yield* finishPaint(shape, scene, projection);
 	});
 
-export const ellipse: PaintFunction<typeof Shapes.Ellipse> = ({
+export const ellipse: PaintFunction<typeof Ellipse.Ellipse> = ({
 	data,
 	scene,
 	projection,
@@ -94,7 +102,7 @@ export const ellipse: PaintFunction<typeof Shapes.Ellipse> = ({
 		yield* finishPaint(shape, scene, projection);
 	});
 
-export const line: PaintFunction<typeof Shapes.Line> = ({
+export const line: PaintFunction<typeof Line.Line> = ({
 	data,
 	scene,
 	projection,
@@ -115,7 +123,7 @@ export const line: PaintFunction<typeof Shapes.Line> = ({
 		}
 		// a line has no fill; stroke defaults come from its schema
 		if (data.stroke !== undefined) {
-			const { r, g, b, a } = parseColor(data.stroke);
+			const { r, g, b, a } = Color.bytes(data.stroke);
 			yield* Tvg.Shape.setStrokeColor(shape, r, g, b, a);
 		}
 		yield* Tvg.Shape.setStrokeWidth(
@@ -138,14 +146,14 @@ export const line: PaintFunction<typeof Shapes.Line> = ({
 // children's world coordinates during flatten, and each child was emitted as
 // its own paintable. This is a no-op, present only so the coverage map is
 // exhaustive.
-export const group: PaintFunction<typeof Shapes.Group> = () => Effect.void;
+export const group: PaintFunction<typeof Group.Group> = () => Effect.void;
 
 // A Hud is a container like Group: it paints nothing itself — its meaning
 // (identity-camera projection, top-tier order) lives in the renderer's
 // flatten/sort, not in a paint.
-export const hud: PaintFunction<typeof Shapes.Hud> = () => Effect.void;
+export const hud: PaintFunction<typeof Hud.Hud> = () => Effect.void;
 
-export const image: PaintFunction<typeof Shapes.Image> = ({
+export const image: PaintFunction<typeof Image.Image> = ({
 	data,
 	scene,
 	projection,
@@ -208,7 +216,7 @@ export const image: PaintFunction<typeof Shapes.Image> = ({
 		// when a scene needs a tilted image.
 	});
 
-export const text: PaintFunction<typeof Shapes.Text> = ({
+export const text: PaintFunction<typeof Text.Text> = ({
 	data,
 	scene,
 	projection,
@@ -221,7 +229,7 @@ export const text: PaintFunction<typeof Shapes.Text> = ({
 		// this one text simply doesn't draw and the rest of the frame renders.
 		yield* Tvg.Text.setFont(glyphs, data.fontFamily).pipe(Effect.ignore);
 		yield* Tvg.Text.setText(glyphs, data.text);
-		const { r, g, b } = parseColor(data.fill);
+		const { r, g, b } = Color.bytes(data.fill);
 		yield* Tvg.Text.setColor(glyphs, r, g, b);
 		if (data.opacity !== 1) {
 			yield* Tvg.Paint.setOpacity(glyphs, Math.round(data.opacity * 255));
@@ -292,7 +300,11 @@ export const particleField: PaintFunction<typeof ParticleField> = ({
 		// field's local coords (data.x/y offsets the whole field).
 		const buckets = new Map<
 			string,
-			{ color: string; alpha: number; circles: Array<[number, number, number]> }
+			{
+				color: Color.Color;
+				alpha: number;
+				circles: Array<[number, number, number]>;
+			}
 		>();
 		for (const p of data.buffer as ReadonlyArray<Particle>) {
 			if (!p.alive) {
@@ -311,7 +323,7 @@ export const particleField: PaintFunction<typeof ParticleField> = ({
 			}
 			// quantize alpha to keep the bucket count bounded (~24 steps)
 			const qAlpha = Math.round(alpha / 11) * 11;
-			const key = `${p.color}\0${qAlpha}`;
+			const key = `${Color.toHex(p.color)}\0${qAlpha}`;
 			let bucket = buckets.get(key);
 			if (bucket === undefined) {
 				bucket = { color: p.color, alpha: qAlpha, circles: [] };
@@ -325,7 +337,7 @@ export const particleField: PaintFunction<typeof ParticleField> = ({
 			for (const [cx, cy, r] of circles) {
 				yield* Tvg.Shape.appendCircle(shape, cx, cy, r, r);
 			}
-			const { r, g, b } = parseColor(color);
+			const { r, g, b } = Color.bytes(color);
 			yield* Tvg.Shape.setFillColor(shape, r, g, b, alpha);
 			yield* finishPaint(shape, scene, projection);
 		}
@@ -341,25 +353,25 @@ export const particleField: PaintFunction<typeof ParticleField> = ({
  * setup); consumers using Path provide their own paint function until then.
  */
 export const builtinPaints = {
-	[Shapes.Circle.name]: circle,
-	[Shapes.Rect.name]: rect,
-	[Shapes.Square.name]: square,
-	[Shapes.Ellipse.name]: ellipse,
-	[Shapes.Line.name]: line,
-	[Shapes.Group.name]: group,
-	[Shapes.Hud.name]: hud,
-	[Shapes.Text.name]: text,
-	[Shapes.Image.name]: image,
+	[Circle.Circle.name]: circle,
+	[Rect.Rect.name]: rect,
+	[Square.Square.name]: square,
+	[Ellipse.Ellipse.name]: ellipse,
+	[Line.Line.name]: line,
+	[Group.Group.name]: group,
+	[Hud.Hud.name]: hud,
+	[Text.Text.name]: text,
+	[Image.Image.name]: image,
 	[ParticleField.name]: particleField,
 } as PaintFunctions<
-	| typeof Shapes.Circle
-	| typeof Shapes.Rect
-	| typeof Shapes.Square
-	| typeof Shapes.Ellipse
-	| typeof Shapes.Line
-	| typeof Shapes.Group
-	| typeof Shapes.Hud
-	| typeof Shapes.Text
-	| typeof Shapes.Image
+	| typeof Circle.Circle
+	| typeof Rect.Rect
+	| typeof Square.Square
+	| typeof Ellipse.Ellipse
+	| typeof Line.Line
+	| typeof Group.Group
+	| typeof Hud.Hud
+	| typeof Text.Text
+	| typeof Image.Image
 	| typeof ParticleField
 >;

@@ -1,4 +1,4 @@
-import { Camera, Motion, Scene, Shapes } from "effect-motion";
+import { Camera, Color, Motion, Scene, Shapes } from "effect-motion";
 
 // The synthwave floor: cross lines sit at one depth each (constant z),
 // while the rails receding to the horizon span depth — start and end
@@ -19,7 +19,7 @@ export const scene = Scene.make(function* () {
 			x2: x,
 			y2: floorY,
 			z2: horizon,
-			stroke: "#ff2975",
+			stroke: Color.hex("#ff2975"),
 			strokeWidth: 5,
 		});
 	}
@@ -32,7 +32,7 @@ export const scene = Scene.make(function* () {
 			x2: 1750,
 			y2: floorY,
 			z2: z,
-			stroke: "#f9c80e",
+			stroke: Color.hex("#f9c80e"),
 			strokeWidth: 2,
 			opacity: 0.8,
 		});

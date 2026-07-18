@@ -1,5 +1,5 @@
 import { Schedule } from "effect";
-import { Motion, Scene, Shapes } from "effect-motion";
+import { Color, Motion, Scene, Shapes } from "effect-motion";
 
 // Scene.repeat re-runs a motion on a schedule, in scene time: the first
 // run is immediate, the schedule paces the gaps after each run
@@ -8,7 +8,7 @@ export const scene = Scene.make(function* () {
 		x: 70,
 		y: 150,
 		radius: 16,
-		fill: "#7f5af0",
+		fill: Color.hex("#7f5af0"),
 	});
 
 	// three round-trips, resting 400ms between them

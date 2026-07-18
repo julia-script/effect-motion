@@ -1,4 +1,4 @@
-import { Motion, Physics, Scene, Shapes } from "effect-motion";
+import { Color, Motion, Physics, Scene, Shapes } from "effect-motion";
 
 // no durations — springs run until they physically settle
 export const scene = Scene.make(function* () {
@@ -6,7 +6,7 @@ export const scene = Scene.make(function* () {
 		x: 250,
 		y: 150,
 		radius: 1,
-		fill: "#ff8906",
+		fill: Color.hex("#ff8906"),
 	});
 
 	// elastic entrance, then springy travel — one chained motion

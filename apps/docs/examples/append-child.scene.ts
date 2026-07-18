@@ -1,4 +1,4 @@
-import { Motion, Scene, Shapes } from "effect-motion";
+import { Color, Motion, Scene, Shapes } from "effect-motion";
 
 // Instances are born under the ambient parent (the root). `Scene.appendChild`
 // moves one into a group after the fact — detaching it from its current parent
@@ -13,7 +13,7 @@ export const scene = Scene.make(function* () {
 		x: 0,
 		y: 0,
 		radius: 14,
-		fill: "#7f5af0",
+		fill: Color.hex("#7f5af0"),
 	});
 
 	// slide it in on its own, at the root level

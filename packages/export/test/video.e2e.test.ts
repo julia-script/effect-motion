@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { NodeServices } from "@effect/platform-node";
 import { Effect } from "effect";
-import { Scene, Shapes } from "effect-motion";
+import { Color, Scene, Shapes } from "effect-motion";
 import { afterAll, expect, it } from "vitest";
 
 // Encoding uses the bundled ffmpeg-static binary, so no system ffmpeg is
@@ -31,14 +31,14 @@ const scene = Scene.make(function* () {
 		x: 100,
 		y: 60,
 		radius: 30,
-		fill: "#fde68a",
+		fill: Color.hex("#fde68a"),
 	});
 	yield* Scene.instantiate(Shapes.Rect, {
 		x: 20,
 		y: 20,
 		width: 40,
 		height: 40,
-		fill: "#7c3aed",
+		fill: Color.hex("#7c3aed"),
 	});
 	for (let i = 0; i < 9; i++) yield* Scene.tick;
 });
