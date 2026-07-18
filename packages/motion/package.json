@@ -36,6 +36,7 @@
 		"build": "tsc -p tsconfig.build.json",
 		"dev": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
 		"test": "vitest run",
+		"bench": "tsx bench/render-bench.ts",
 		"check": "tsc --noEmit"
 	},
 	"publishConfig": {

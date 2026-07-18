@@ -503,7 +503,21 @@ export const render = (
 		yield* Tvg.Shape.setFillColor(bg, r, g, b, a);
 		yield* Tvg.Scene.add(scene, bg);
 
-		yield* renderToCanvas(frame, canvas, scene, dpr);
+		// Two timing spans split the per-frame cost along its real seam: the
+		// JS "compose" phase (flatten → project → depth-sort → issue ThorVG
+		// paint calls), which scales with object count; and the "raster" phase
+		// (ThorVG's software rasterizer filling pixels), which scales with
+		// covered pixels × dpr² and with depth-of-field blur buckets. Spans are
+		// no-ops unless a tracer is installed (see bench/render-bench.ts), so
+		// this is free in normal playback while giving a phase breakdown on
+		// demand. `object_count` rides along as a span attribute.
+		yield* renderToCanvas(frame, canvas, scene, dpr).pipe(
+			Effect.withSpan("Renderer.compose", {
+				attributes: {
+					object_count: Object.keys(frame.instances).length,
+				},
+			}),
+		);
 
 		// scale the whole subtree to physical pixels; children keep their own
 		// logical affines (parent transforms compose in the scene graph)
@@ -512,9 +526,15 @@ export const render = (
 		}
 
 		yield* Tvg.Canvas.add(canvas, scene);
-		yield* Tvg.Canvas.update(canvas);
-		yield* Tvg.Canvas.draw(canvas);
-		yield* Tvg.Canvas.sync(canvas);
+		yield* Effect.gen(function* () {
+			yield* Tvg.Canvas.update(canvas);
+			yield* Tvg.Canvas.draw(canvas);
+			yield* Tvg.Canvas.sync(canvas);
+		}).pipe(
+			Effect.withSpan("Renderer.raster", {
+				attributes: { width, height, dpr },
+			}),
+		);
 
 		const buffer = yield* Tvg.Canvas.render(canvas);
 		return {
@@ -524,4 +544,4 @@ export const render = (
 			logicalWidth,
 			logicalHeight,
 		};
-	});
+	}).pipe(Effect.withSpan("Renderer.render"));

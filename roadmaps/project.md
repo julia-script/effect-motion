@@ -81,6 +81,17 @@ Post-release, one line each:
   coordinates; why: composition scales past toy scenes · revisit-if: requires
   text measurement, currently a non-goal.
 
+## Performance
+
+- Render cost is now instrumented: `Renderer.render` emits `Renderer.compose`
+  (JS: flatten/project/sort/paint-calls, scales with object count) and
+  `Renderer.raster` (SW rasterizer, scales with pixels × dpr² and DoF) tracing
+  spans, and `pnpm bench` (`packages/motion/bench/render-bench.ts`) reports the
+  split across a scene matrix. **Finding:** camera rotation is ~free; the real
+  levers are raster resolution (player renders at device dpr — raster is dpr²),
+  per-frame scene-graph rebuild, and offscreen overdraw. Ranked backlog and
+  numbers live in the `render-perf-instrumentation` change (design D3/D4).
+
 ## Maintenance budget
 
 - Track Effect `4.0.0-beta.*` releases (currently pinned to beta.94) —
