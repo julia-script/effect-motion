@@ -1,0 +1,84 @@
+---
+title: The CLI
+description: Scaffold a project, preview scenes, and render videos with @effect-motion/cli
+---
+
+The fastest way to a rendered video is the CLI — one command each for
+scaffolding, previewing, and rendering, all driven by a single
+`motion.config.ts`:
+
+```bash
+npx @effect-motion/cli init
+```
+
+The wizard asks where to create the project (`.` uses the current directory
+and names the project after it) and which package manager to use, then
+installs a ready-to-run project:
+
+```
+my-project/
+├─ src/
+│  ├─ scenes/hello-world.ts   # a scene: a module exporting `scene`
+│  ├─ assets/                 # static files
+│  └─ main.ts                 # the movie — a scene composing the others
+├─ motion.config.ts           # render targets
+├─ AGENTS.md                  # authoring rules for AI coding agents
+├─ package.json               # exact pins of effect-motion + effect
+└─ tsconfig.json
+```
+
+Versions are pinned exactly on purpose: the `effect` pin is a determinism
+invariant (upgrading effect can change seeded random sequences), so a
+scaffolded project upgrades both together, deliberately.
+
+## Targets
+
+`motion.config.ts` declares **targets** — one rendered video each:
+
+```ts title="motion.config.ts"
+import { defineConfig } from "@effect-motion/cli";
+
+export default defineConfig({
+	targets: [
+		{
+			name: "hello-world", // unique — doubles as the output basename
+			scene: "./src/scenes/hello-world.ts",
+			settings: { width: 1920, height: 1080, frameRate: 60, dpr: 1 },
+			output: "./output", // a directory — the file name is derived
+		},
+	],
+});
+```
+
+The output file is always `<output>/<name>.mp4`. `settings` takes the
+runner's settings plus `dpr` (supersampling: output pixels = scene
+dimensions × dpr while authored coordinates stay put).
+
+There is nothing special about `src/main.ts` — it is an ordinary scene that
+`Scene.play`s the others in sequence, registered as one more target.
+
+## Preview
+
+```bash
+motion studio
+```
+
+serves the [Player](/docs/getting-started) over your scenes with hot
+reload. The picker lists every config target plus any unregistered
+`src/scenes/*.ts` file — previewing never requires registration, and
+registered scenes preview with their target settings so the aspect matches
+the export.
+
+## Render
+
+```bash
+motion render                 # every target
+motion render hello-world     # one target
+motion render ./src/scenes/hello-world.ts   # no config needed
+motion render --fps 30 --dpr 2              # flags beat config beat defaults
+```
+
+Rendering runs scene → ThorVG raster → bundled ffmpeg → H.264 MP4, no
+system ffmpeg required. A failing target doesn't stop the rest; the command
+exits non-zero with a per-target summary, and `--verbose` prints full error
+cause chains.

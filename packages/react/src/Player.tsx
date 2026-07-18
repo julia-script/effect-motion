@@ -137,10 +137,12 @@ const useScene = (
 		loop: boolean;
 		/** max frames retained in memory; Infinity keeps everything */
 		bufferCapacity: number;
+		/** extra runner settings for Scene.run (frameRate comes from fps) */
+		settings?: Partial<Runner.Settings> | undefined;
 	},
 ) => {
 	// loop is read live from optsRef inside the play loop, not destructured here
-	const { fps, prebufferedFrames, autoPlay, isInfinite } = options;
+	const { fps, prebufferedFrames, autoPlay, isInfinite, settings } = options;
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const [currentFrame, setCurrentFrame] = useState(0);
 	const [bufferedFrames, setBufferedFrames] = useState(0);
@@ -167,6 +169,7 @@ const useScene = (
 			Layer.effectContext(
 				Effect.gen(function* () {
 					const runningScene = yield* Scene.run(scene, {
+						...settings,
 						frameRate: fps,
 					});
 					let currentFrame = 0;
@@ -517,6 +520,11 @@ export type PlayerProps = {
 	// grow forever. Seeking before the retained window clamps to its start.
 	bufferCapacity?: number;
 
+	// extra runner settings for the scene run (width/height/seed/…). A
+	// settings.frameRate takes precedence over the fps prop so the playback
+	// clock and the scene always agree on one rate.
+	settings?: Partial<Runner.Settings>;
+
 	scene: Scene.Scene<never, Runner.Runner | Scope.Scope>;
 };
 
@@ -526,7 +534,7 @@ const INFINITE_BUFFER_CAP = 1800;
 
 export const Player = ({
 	scene,
-	fps = 60,
+	fps: fpsProp = 60,
 	// default: prebuffer everything (Infinity) so the total time / progress bar
 	// are known up front; an infinite scene falls back to a finite window below.
 	prebufferedFrames = Number.POSITIVE_INFINITY,
@@ -535,7 +543,10 @@ export const Player = ({
 	// initial repeat mode; the player owns it after mount (toggle button)
 	defaultRepeatMode = false,
 	bufferCapacity,
+	settings,
 }: PlayerProps) => {
+	// one effective rate for both the scene run and the playback clock
+	const fps = settings?.frameRate ?? fpsProp;
 	const {
 		ref,
 		currentFrame,
@@ -551,6 +562,7 @@ export const Player = ({
 		setLoop,
 	} = useScene(scene, {
 		fps,
+		settings,
 		// an infinite scene can never buffer to the end — window it (60 frames
 		// if the caller left prebufferedFrames unbounded)
 		prebufferedFrames:

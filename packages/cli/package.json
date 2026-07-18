@@ -1,0 +1,63 @@
+{
+	"name": "@effect-motion/cli",
+	"version": "0.1.0",
+	"description": "Command line for effect-motion: scaffold projects (init), preview scenes with hot reload (studio), and render videos from motion.config.ts (render)",
+	"type": "module",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/julia-script/effect-motion.git",
+		"directory": "packages/cli"
+	},
+	"homepage": "https://github.com/julia-script/effect-motion#readme",
+	"bugs": "https://github.com/julia-script/effect-motion/issues",
+	"keywords": [
+		"effect",
+		"motion",
+		"cli",
+		"scaffold",
+		"studio",
+		"render",
+		"video"
+	],
+	"bin": {
+		"motion": "./dist/bin.js"
+	},
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		}
+	},
+	"files": [
+		"dist",
+		"templates",
+		"studio-app"
+	],
+	"scripts": {
+		"build": "tsc -p tsconfig.build.json",
+		"dev": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
+		"test": "vitest run",
+		"check": "tsc --noEmit"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"dependencies": {
+		"@effect-motion/export": "workspace:^",
+		"@effect/platform-node": "4.0.0-beta.98",
+		"effect": "4.0.0-beta.98",
+		"effect-motion": "workspace:^",
+		"vite": "^7.0.0"
+	},
+	"devDependencies": {
+		"@effect-motion/react": "workspace:^",
+		"@types/node": "^26.1.1",
+		"@types/react": "^19.2.0",
+		"@types/react-dom": "^19.2.0",
+		"react": "^19.2.0",
+		"react-dom": "^19.2.0",
+		"typescript": "^7.0.2",
+		"vitest": "^4.1.10"
+	}
+}
