@@ -404,7 +404,7 @@ describe("polymorphic children", () => {
 	});
 });
 
-describe("builtin $visible", () => {
+describe("builtin ~visible", () => {
 	const collectFrames = async (
 		make: () => Generator<Effect.Effect<any, any, any>, void, never>,
 	) => {
@@ -429,7 +429,7 @@ describe("builtin $visible", () => {
 					children: string[];
 				}
 			).children[0] ?? unreachable();
-		expect(frame.instances[id]?.$visible).toBe(true);
+		expect(frame.instances[id]?.data["~visible"]).toBe(true);
 	});
 
 	it("a hidden instance is skipped by the renderer", async () => {
@@ -439,7 +439,7 @@ describe("builtin $visible", () => {
 				x: 120,
 				y: 120,
 				radius: 15,
-				$visible: false,
+				"~visible": false,
 			});
 			yield* Scene.instantiate(Shapes.Circle, { x: 300, y: 150, radius: 15 });
 			yield* Scene.tick;

@@ -1,6 +1,7 @@
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import * as Entity from "../Entity.js";
+import * as Font from "../Font.js";
 import * as Shape2D from "./Shape2D.js";
 
 /**
@@ -16,10 +17,15 @@ export const Text = Entity.make(
 		text: Schema.String,
 		// numeric, therefore tweenable: tweenTo({ fontSize }) just works
 		fontSize: Shape2D.defaultedNumber(16),
-		// the generic family resolves to a sane system sans on every
-		// platform — no bet on a named font existing
-		fontFamily: Schema.String.pipe(
-			Schema.withConstructorDefault(Effect.succeed("sans-serif")),
+		// a Font resource reference ({_tag, id}), never a bare string.
+		// Defaults to the built-in default font (reserved id "sans-serif",
+		// auto-provided by the render path) — bare Text and string children
+		// stay zero-ceremony, and no yield* happens so the default never
+		// enters the scene's loader requirements.
+		fontFamily: Font.schema.pipe(
+			Schema.withConstructorDefault(
+				Effect.sync(() => Font.schema.make({ id: Font.defaultFont.id })),
+			),
 		),
 		textAnchor: Schema.optionalKey(Schema.Literals(["start", "middle", "end"])),
 		baseline: Schema.optionalKey(

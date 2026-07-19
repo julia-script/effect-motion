@@ -1,3 +1,4 @@
+import { Predicate } from "effect";
 import * as Effect from "effect/Effect";
 import * as Pipeable from "effect/Pipeable";
 import type * as Schema from "effect/Schema";
@@ -6,8 +7,8 @@ export const TypeId = "~motion/Instance" as const;
 
 export interface Instance<
 	Name extends string = string,
-	Data extends Schema.Top = Schema.Top,
-	Traits extends Partial<Entity.EntityTraits<Data["Type"]>> = {},
+	Data extends Schema.Struct.Fields = {},
+	Traits extends Entity.PartialTraits<Data> = {},
 > extends Pipeable.Pipeable {
 	readonly [TypeId]: typeof TypeId;
 	readonly id: string;
@@ -17,12 +18,12 @@ export interface Instance<
 export type AnyInstance = Instance<any, any, any>;
 
 /** the Instance type of a given entity, traits included */
-export type Of<E extends Entity.AnyEntity> =
+export type Of<E> =
 	E extends Entity.Entity<infer Name, infer Data, infer Traits>
 		? Instance<Name, Data, Traits>
 		: never;
 
-export const isInstance = (u: unknown): u is Instance =>
+export const isInstance = (u: unknown): u is { [TypeId]: typeof TypeId } =>
 	typeof u === "object" && u !== null && TypeId in u;
 
 const Proto = {
@@ -35,8 +36,8 @@ const Proto = {
 
 export const make = <
 	Name extends string,
-	Data extends Schema.Top,
-	Traits extends Partial<Entity.EntityTraits<Data["Type"]>>,
+	Data extends Schema.Struct.Fields,
+	Traits extends Entity.PartialTraits<Data>,
 >(
 	entity: Entity.Entity<Name, Data, Traits>,
 	id: string,
@@ -45,8 +46,8 @@ export const make = <
 
 export type InstanceOrEffect<
 	Name extends string = string,
-	Data extends Schema.Top = Schema.Top,
-	Traits extends Partial<Entity.EntityTraits<Data["Type"]>> = {},
+	Data extends Schema.Struct.Fields = {},
+	Traits extends Entity.PartialTraits<Data> = {},
 	E = never,
 	R = never,
 > =
@@ -55,8 +56,8 @@ export type InstanceOrEffect<
 
 export const flatten = <
 	Name extends string,
-	Data extends Schema.Top,
-	Traits extends Partial<Entity.EntityTraits<Data["Type"]>>,
+	Data extends Schema.Struct.Fields,
+	Traits extends Entity.PartialTraits<Data>,
 	E = never,
 	R = never,
 >(
@@ -66,4 +67,25 @@ export const flatten = <
 		return Effect.succeed(instance);
 	}
 	return instance;
+};
+
+export const is = (u: unknown): u is Instance<string, {}, {}> => {
+	if (!Predicate.hasProperty(u, TypeId)) {
+		return false;
+	}
+	return true;
+};
+
+export const isInstanceOf = <
+	Name extends string = string,
+	Data extends Schema.Struct.Fields = {},
+	Traits extends Entity.PartialTraits<Data> = {},
+>(
+	entity: Entity.Entity<Name, Data, Traits>,
+	instance: unknown,
+): instance is Instance<Name, Data, Traits> => {
+	if (!is(instance)) {
+		return false;
+	}
+	return instance.entity.name === entity.name;
 };

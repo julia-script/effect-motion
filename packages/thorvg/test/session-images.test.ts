@@ -1,12 +1,18 @@
 import { Effect, type Scope } from "effect";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { ThorvgWasm } from "../src/Engine";
 import * as EngineNode from "../src/EngineNode";
+import type { OwnedPaint } from "../src/Interop";
 import * as Paint from "../src/Paint";
 import { encodePng } from "../src/png";
 import * as Session from "../src/Session";
 
-/** Session-owned pictures (image-assets D2 / thorvg-runtime session delta). */
+/**
+ * Session-owned pictures (image-assets delta): the render path registers
+ * loader-provided bytes lazily via `registerPicture` — decode-once per
+ * session, session-scoped ownership, sessions never interact. No URL
+ * fetching exists in this path.
+ */
 
 const run = <A, E>(effect: Effect.Effect<A, E, ThorvgWasm | Scope.Scope>) =>
 	Effect.runPromise(
@@ -22,7 +28,7 @@ const greenPng = (() => {
 	return encodePng(rgba, 8, 8);
 })();
 
-// 4×4 red PNG — a distinct "other source" for the same-name test
+// 4×4 red PNG — a distinct source for the same-id-across-sessions test
 const redPng = (() => {
 	const rgba = new Uint8Array(4 * 4 * 4);
 	for (let i = 0; i < rgba.length; i += 4) {
@@ -32,49 +38,20 @@ const redPng = (() => {
 	return encodePng(rgba, 4, 4);
 })();
 
-const GREEN_URL = "https://images.test/green.png";
-const RED_URL = "https://images.test/red.png";
-const realFetch = globalThis.fetch;
-let fetches: string[] = [];
-
-beforeAll(() => {
-	globalThis.fetch = ((input: RequestInfo | URL) => {
-		const url = String(input);
-		fetches.push(url);
-		if (url === GREEN_URL) {
-			return Promise.resolve(new Response(greenPng.slice(), { status: 200 }));
-		}
-		if (url === RED_URL) {
-			return Promise.resolve(new Response(redPng.slice(), { status: 200 }));
-		}
-		return Promise.resolve(new Response("nope", { status: 404 }));
-	}) as typeof fetch;
-});
-
-afterAll(() => {
-	globalThis.fetch = realFetch;
-});
-
 describe("session images", () => {
-	it("decodes each declared image once at open; frames reuse it", async () => {
-		fetches = [];
-		const { held, sizes } = await run(
+	it("registerPicture decodes once; repeat registrations and frames reuse it", async () => {
+		const { same, sizes } = await run(
 			Effect.gen(function* () {
-				const session = yield* Session.make({
-					width: 16,
-					height: 16,
-					images: { logo: GREEN_URL },
-				});
-				const source = session.pictures.get("logo");
-				if (source === undefined) {
-					return { held: false, sizes: [] as number[] };
-				}
-				// "many frames": duplicate repeatedly, never re-fetch/decode
+				const session = yield* Session.make({ width: 16, height: 16 });
+				const first = yield* session.registerPicture("logo", greenPng);
+				// decode-once: a second registration returns the same picture
+				const second = yield* session.registerPicture("logo", greenPng.slice());
+				// "many frames": duplicate repeatedly, never re-decode
 				const sizes: number[] = [];
 				for (let i = 0; i < 5; i++) {
 					yield* Effect.scoped(
 						Effect.gen(function* () {
-							const dup = yield* Paint.duplicate(source);
+							const dup = yield* Paint.duplicate(first);
 							// first aabb query on a fresh paint returns garbage
 							// (same engine quirk the smoke test works around)
 							yield* Paint.getAabb(dup);
@@ -83,69 +60,28 @@ describe("session images", () => {
 						}),
 					);
 				}
-				return { held: true, sizes };
+				return { same: first === second, sizes };
 			}),
 		);
-		expect(held).toBe(true);
+		expect(same).toBe(true);
 		expect(sizes).toEqual([8, 8, 8, 8, 8]);
-		expect(fetches.filter((u) => u === GREEN_URL)).toHaveLength(1);
 	}, 30000);
 
-	it("a 404 entry is a logged skip; the session opens and others load", async () => {
-		const { opened, loaded, missing } = await run(
+	it("undecodable bytes fail loudly with a typed exception", async () => {
+		const result = await run(
 			Effect.gen(function* () {
-				const session = yield* Session.make({
-					width: 16,
-					height: 16,
-					images: {
-						good: GREEN_URL,
-						broken: "https://images.test/missing.png",
-					},
-				});
+				const session = yield* Session.make({ width: 16, height: 16 });
+				const attempt = yield* Effect.result(
+					session.registerPicture("junk", new Uint8Array([9, 9, 9, 9])),
+				);
 				return {
-					opened: true,
-					loaded: session.pictures.has("good"),
-					missing: session.pictures.has("broken"),
+					tag: attempt._tag,
+					cached: session.pictures.has("junk"),
 				};
 			}),
 		);
-		expect(opened).toBe(true);
-		expect(loaded).toBe(true);
-		expect(missing).toBe(false);
-	}, 30000);
-
-	it("undecodable bytes are a logged skip, not a failure", async () => {
-		globalThis.fetch = (() =>
-			Promise.resolve(
-				new Response(new Uint8Array([9, 9, 9, 9]), { status: 200 }),
-			)) as typeof fetch;
-		try {
-			const has = await run(
-				Effect.gen(function* () {
-					const session = yield* Session.make({
-						width: 16,
-						height: 16,
-						images: { junk: "https://images.test/junk.bin" },
-					});
-					return session.pictures.has("junk");
-				}),
-			);
-			expect(has).toBe(false);
-		} finally {
-			globalThis.fetch = ((input: RequestInfo | URL) => {
-				const url = String(input);
-				fetches.push(url);
-				if (url === GREEN_URL) {
-					return Promise.resolve(
-						new Response(greenPng.slice(), { status: 200 }),
-					);
-				}
-				if (url === RED_URL) {
-					return Promise.resolve(new Response(redPng.slice(), { status: 200 }));
-				}
-				return Promise.resolve(new Response("nope", { status: 404 }));
-			}) as typeof fetch;
-		}
+		expect(result.tag).toBe("Failure");
+		expect(result.cached).toBe(false);
 	}, 30000);
 
 	it("pictures are freed when the session closes", async () => {
@@ -153,19 +89,12 @@ describe("session images", () => {
 			Effect.gen(function* () {
 				const source = yield* Effect.scoped(
 					Effect.gen(function* () {
-						const session = yield* Session.make({
-							width: 16,
-							height: 16,
-							images: { logo: GREEN_URL },
-						});
-						return session.pictures.get("logo");
+						const session = yield* Session.make({ width: 16, height: 16 });
+						return yield* session.registerPicture("logo", greenPng);
 					}),
 				);
 				// session closed -> source freed. Duplicating a freed paint must
 				// fail (checkedPtr/exception), never succeed silently.
-				if (source === undefined) {
-					return "missing";
-				}
 				const result = yield* Effect.result(
 					Effect.scoped(Paint.duplicate(source)),
 				);
@@ -175,36 +104,25 @@ describe("session images", () => {
 		expect(probe).toBe("Failure");
 	}, 30000);
 
-	it("two sessions with the same name from different sources don't interact", async () => {
+	it("two sessions with the same id from different bytes don't interact", async () => {
 		const { a, b } = await run(
 			Effect.gen(function* () {
-				const sessionA = yield* Session.make({
-					width: 16,
-					height: 16,
-					images: { logo: GREEN_URL },
-				});
-				const sessionB = yield* Session.make({
-					width: 16,
-					height: 16,
-					images: { logo: RED_URL },
-				});
+				const sessionA = yield* Session.make({ width: 16, height: 16 });
+				const sessionB = yield* Session.make({ width: 16, height: 16 });
+				const pictureA = yield* sessionA.registerPicture("logo", greenPng);
+				const pictureB = yield* sessionB.registerPicture("logo", redPng);
 				// distinguish by natural size: green is 8×8, red is 4×4
-				const sizeOf = (
-					source?: NonNullable<ReturnType<typeof sessionA.pictures.get>>,
-				) =>
+				const sizeOf = (source: OwnedPaint) =>
 					Effect.scoped(
 						Effect.gen(function* () {
-							if (!source) {
-								return 0;
-							}
 							const dup = yield* Paint.duplicate(source);
 							// prime: first aabb query on a fresh paint is garbage
 							yield* Paint.getAabb(dup);
 							return (yield* Paint.getAabb(dup)).w;
 						}),
 					);
-				const a = yield* sizeOf(sessionA.pictures.get("logo"));
-				const b = yield* sizeOf(sessionB.pictures.get("logo"));
+				const a = yield* sizeOf(pictureA);
+				const b = yield* sizeOf(pictureB);
 				return { a, b };
 			}),
 		);

@@ -6,15 +6,18 @@ import type {
 } from "@effect-motion/thorvg";
 import * as Tvg from "@effect-motion/thorvg";
 import type { Canvas } from "@effect-motion/thorvg/Canvas";
+import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import type * as Scope from "effect/Scope";
 import * as CameraMod from "./Camera.js";
 import * as Color from "./Color.js";
 import type * as Entity from "./Entity.js";
+import * as FontMod from "./Font.js";
+import * as ImageMod from "./Image.js";
 import * as Projection from "./Projection.js";
 import { circleOfConfusion, quantizeSigma } from "./render/dof.js";
 import { builtinPaints } from "./render/shapes.js";
-import type { EntriesFromEntities, Frame } from "./Scene.js";
+import type * as Scene from "./Scene.js";
 import * as Group from "./shapes/Group.js";
 import { Hud } from "./shapes/Hud.js";
 
@@ -168,11 +171,11 @@ const pathSubpaths = (
 	return subpaths;
 };
 
-// a hidden instance ($visible false) and its subtree are skipped entirely
-const isVisible = <Entities extends Entity.AnyEntity>(
-	frame: Frame<Entities>,
+// a hidden instance (~visible false) and its subtree are skipped entirely
+const isVisible = <Resources>(
+	frame: Scene.Frame<Resources>,
 	id: string,
-): boolean => frame.instances[id]?.$visible !== false;
+): boolean => frame.instances[id]?.data["~visible"] !== false;
 
 /**
  * Fold a frame onto the shared ThorVG canvas + scene: flatten the instance
@@ -182,8 +185,8 @@ const isVisible = <Entities extends Entity.AnyEntity>(
  * cycle/duplicate defects) is target-agnostic; only the per-entity paint is
  * ThorVG-specific.
  */
-const renderToCanvas = <const Entities extends Entity.AnyEntity>(
-	frame: Frame<Entities>,
+const renderToCanvas = <Resources>(
+	frame: Scene.Frame<Resources>,
 	canvas: Canvas,
 	scene: OwnedPaint,
 	// blur sigmas are canvas-pixel amounts; the scene is authored in logical
@@ -197,7 +200,7 @@ const renderToCanvas = <const Entities extends Entity.AnyEntity>(
 	Effect.gen(function* () {
 		interface Paintable {
 			readonly id: string;
-			readonly entry: EntriesFromEntities<Entities>;
+			readonly entry: Scene.FrameEntry;
 			readonly projection: PaintProjection;
 			/** identity-projected screen-space content — paints in the top tier */
 			readonly hud: boolean;
@@ -607,9 +610,12 @@ const renderToCanvas = <const Entities extends Entity.AnyEntity>(
 				// the concrete paint fn for this entity name; the map is exhaustive
 				// over Entities by construction (PaintFunctions<Entities>). The
 				// specific member depends on the instance's entity, known only at
-				// runtime — hence the cast to the erased paint-fn type.
-				const paint: PaintFunction<Entity.AnyEntity> =
-					builtinPaints[p.entry.entity.name as keyof typeof builtinPaints];
+				// runtime — hence the unknown-cast to the erased paint-fn type
+				// (concrete PaintFunctions are contravariant in their entity, so
+				// the union is not directly assignable).
+				const paint = builtinPaints[
+					p.entry.entity.name as keyof typeof builtinPaints
+				] as unknown as PaintFunction<Entity.AnyEntity> | undefined;
 				if (paint === undefined) {
 					return yield* Effect.die(
 						new Error(
@@ -740,6 +746,104 @@ const renderToCanvas = <const Entities extends Entity.AnyEntity>(
 		yield* closeBucket;
 	});
 
+// resource references in frame data: any top-level field holding a tagged
+// {_tag, id} matching a resource schema — entity-agnostic, so custom
+// entities carrying Font.schema/Image.schema fields resolve like built-ins
+const collectResourceIds = (
+	frame: Scene.Frame<unknown>,
+): { fonts: Set<string>; images: Set<string> } => {
+	const fonts = new Set<string>();
+	const images = new Set<string>();
+	for (const entry of Object.values(frame.instances)) {
+		for (const value of Object.values(entry.data as Record<string, unknown>)) {
+			if (
+				typeof value !== "object" ||
+				value === null ||
+				!("_tag" in value) ||
+				!("id" in value)
+			) {
+				continue;
+			}
+			const ref = value as { _tag: unknown; id: unknown };
+			if (typeof ref.id !== "string") {
+				continue;
+			}
+			if (ref._tag === FontMod.tag) {
+				fonts.add(ref.id);
+			} else if (ref._tag === ImageMod.tag) {
+				images.add(ref.id);
+			}
+		}
+	}
+	return { fonts, images };
+};
+
+const missingLoader = (kind: "font" | "image", id: string) =>
+	Effect.die(
+		new Error(
+			`Renderer: no ${kind} loader provided for "${id}" — provide it via ` +
+				`${kind === "font" ? "Font" : "Image"}.layer(${JSON.stringify(id)}, ...)`,
+		),
+	);
+
+/**
+ * Resolve and register the frame's resources before painting (design D5).
+ * Loaders are resolved from context by REBUILDING the string-derived tag
+ * from frame-data ids — the runtime bridge over literal erasure. Bytes were
+ * loaded eagerly at layer construction; registration here is a memcpy into
+ * the engine (fonts, deduped by the refcounted registry) or a decode into a
+ * session-owned picture (images, decode-once per session). A missing loader
+ * is a loud defect naming the resource; the built-in default font is
+ * auto-provided BENEATH caller context (a caller loader under the reserved
+ * "sans-serif" id wins).
+ */
+const prepareResources = (
+	frame: Scene.Frame<unknown>,
+): Effect.Effect<
+	void,
+	ThorvgException,
+	Tvg.ThorvgWasm | Tvg.RenderSession | Scope.Scope
+> =>
+	Effect.gen(function* () {
+		const { fonts, images } = collectResourceIds(frame);
+		if (fonts.size === 0 && images.size === 0) {
+			return;
+		}
+		// the caller's live context — loaders resolve from it by rebuilt tag
+		const ctx = (yield* Effect.context<never>()) as Context.Context<unknown>;
+		for (const family of fonts) {
+			const provided = Context.getOption(ctx, FontMod.Loader(family));
+			let bytes: Uint8Array;
+			let format: "ttf" | "otf" | undefined;
+			if (provided._tag === "Some") {
+				bytes = provided.value.bytes;
+				format = provided.value.format;
+			} else if (family === FontMod.defaultFont.id) {
+				bytes = yield* FontMod.loadDefaultBytes;
+				format = undefined;
+			} else {
+				return yield* missingLoader("font", family);
+			}
+			yield* Tvg.Font.scoped(family, {
+				bytes,
+				...(format !== undefined ? { format } : {}),
+			});
+		}
+		if (images.size > 0) {
+			const session = yield* Tvg.RenderSession;
+			for (const id of images) {
+				if (session.pictures.has(id)) {
+					continue;
+				}
+				const provided = Context.getOption(ctx, ImageMod.Loader(id));
+				if (provided._tag === "None") {
+					return yield* missingLoader("image", id);
+				}
+				yield* session.registerPicture(id, provided.value.bytes);
+			}
+		}
+	});
+
 /** RGBA8888 framebuffer plus its dimensions, straight from the SW canvas. */
 export interface Framebuffer {
 	readonly rgba: Uint8Array;
@@ -768,8 +872,8 @@ export interface Framebuffer {
  * survives into the buffer the same way the SVG sink emitted a background
  * rect.
  */
-export const render = (
-	frame: Frame,
+export const render = <Resources>(
+	frame: Scene.Frame<Resources>,
 	options?: {
 		/**
 		 * device-pixel-ratio multiplier for high-dpi displays. The buffer is
@@ -782,7 +886,7 @@ export const render = (
 ): Effect.Effect<
 	Framebuffer,
 	ThorvgException,
-	Tvg.ThorvgWasm | Tvg.RenderSession | Scope.Scope
+	Tvg.ThorvgWasm | Tvg.RenderSession | Scope.Scope | Resources
 > =>
 	Effect.gen(function* () {
 		const logicalWidth = frame.width;
@@ -790,6 +894,10 @@ export const render = (
 		const dpr = options?.dpr ?? 1;
 		const width = Math.round(logicalWidth * dpr);
 		const height = Math.round(logicalHeight * dpr);
+		// resolve loaders and register fonts/pictures BEFORE any paint runs:
+		// paints may then assume every referenced resource is engine-available
+		yield* prepareResources(frame);
+
 		const canvas = yield* Tvg.Session.canvasSized(width, height);
 		const scene = yield* Tvg.Scene.make();
 

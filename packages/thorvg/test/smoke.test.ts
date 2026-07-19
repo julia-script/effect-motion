@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import * as Canvas from "../src/Canvas";
 import type { ThorvgWasm } from "../src/Engine";
 import * as EngineNode from "../src/EngineNode";
+import * as Font from "../src/Font";
 import * as Gradient from "../src/Gradient";
 import * as Paint from "../src/Paint";
 import { encodePng } from "../src/png";
@@ -20,12 +21,18 @@ const run = <A, E>(effect: Effect.Effect<A, E, ThorvgWasm | Scope.Scope>) =>
 		effect.pipe(Effect.scoped, Effect.provide(EngineNode.layer("sw", {}))),
 	);
 
-// the text smoke explicitly loads the default font (one network fetch)
+// the text smoke passes an explicit font map (one network fetch) — there is
+// no implicit engine default font anymore
 const runWithFont = <A, E>(
 	effect: Effect.Effect<A, E, ThorvgWasm | Scope.Scope>,
 ) =>
 	Effect.runPromise(
-		effect.pipe(Effect.scoped, Effect.provide(EngineNode.layer("sw"))),
+		effect.pipe(
+			Effect.scoped,
+			Effect.provide(
+				EngineNode.layer("sw", { "sans-serif": Font.DEFAULT_FONT_URL }),
+			),
+		),
 	);
 
 describe("thorvg smoke", () => {
@@ -151,10 +158,10 @@ describe("thorvg smoke", () => {
 		}
 	});
 
-	// network: fetches the default font from the CDN, then renders text. Tagged
-	// so it can be excluded offline; proves the engine-setup font path + the
-	// text wrappers end-to-end.
-	it("loads the default font and renders text glyphs", async () => {
+	// network: fetches a real font from the CDN via the explicit fonts map,
+	// then renders text — proves the engine-setup font path + the text
+	// wrappers end-to-end.
+	it("loads an explicitly mapped font and renders text glyphs", async () => {
 		const painted = await runWithFont(
 			Effect.gen(function* () {
 				const canvas = yield* Canvas.make(200, 80);

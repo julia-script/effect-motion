@@ -1,24 +1,23 @@
 import { Session } from "@effect-motion/thorvg";
 import { EngineNode } from "@effect-motion/thorvg/node";
 import { Effect, Layer } from "effect";
-import type * as Entity from "../../src/Entity";
 import * as Renderer from "../../src/Renderer";
 import type { Frame } from "../../src/Scene";
 import { unreachable } from "./raise";
 
-/** extra session inputs a test can provide (e.g. images for Shapes.Image) */
+/**
+ * Loader layers for the frame's resources (Font.layer / Image.layer merges).
+ * The `any` outputs let tests merge arbitrary loader unions; the engine and
+ * session are provided by the harness beneath them.
+ */
 export interface RenderOptions {
-	readonly images?: Record<string, string>;
+	readonly resources?: Layer.Layer<any, any, never>;
 }
 
 // engine + a per-render session (canvas sized by the render path)
-const testLayer = (frame: Frame, options?: RenderOptions) =>
+const testLayer = (frame: Frame<unknown>) =>
 	Layer.provideMerge(
-		Session.layer({
-			width: frame.width,
-			height: frame.height,
-			...(options?.images !== undefined ? { images: options.images } : {}),
-		}),
+		Session.layer({ width: frame.width, height: frame.height }),
 		EngineNode.layer("sw"),
 	);
 
@@ -37,50 +36,61 @@ export interface Rendered {
 	readonly isPainted: (x: number, y: number) => boolean;
 }
 
-export const render = <const Entities extends Entity.AnyEntity>(
-	frame: Frame<Entities>,
+const provided = (
+	frame: Frame<unknown>,
+	options?: RenderOptions,
+): Effect.Effect<Renderer.Framebuffer, unknown, never> => {
+	const base = Renderer.render(frame as Frame<never>).pipe(Effect.scoped);
+	const withResources =
+		options?.resources !== undefined
+			? base.pipe(Effect.provide(options.resources))
+			: base;
+	return withResources.pipe(Effect.provide(testLayer(frame))) as Effect.Effect<
+		Renderer.Framebuffer,
+		unknown,
+		never
+	>;
+};
+
+export const render = (
+	frame: Frame<unknown>,
 	options?: RenderOptions,
 ): Promise<Rendered> =>
-	Effect.runPromise(
-		Renderer.render(frame as Frame).pipe(
-			Effect.scoped,
-			Effect.provide(testLayer(frame as Frame, options)),
-			Effect.orDie,
-		),
-	).then(({ rgba, width, height }) => {
-		const at = (x: number, y: number): [number, number, number, number] => {
-			if (x < 0 || y < 0 || x >= width || y >= height) {
-				return [0, 0, 0, 0];
-			}
-			const o = (Math.round(y) * width + Math.round(x)) * 4;
-			return [
-				rgba[o] ?? unreachable(),
-				rgba[o + 1] ?? unreachable(),
-				rgba[o + 2] ?? unreachable(),
-				rgba[o + 3] ?? unreachable(),
-			];
-		};
-		// background is pixel (0,0) — the corner is never covered by a
-		// centered shape in these tests
-		const bg = at(0, 0);
-		const isPainted = (x: number, y: number): boolean => {
-			const [r, g, b] = at(x, y);
-			return r !== bg[0] || g !== bg[1] || b !== bg[2];
-		};
-		return { width, height, at, isPainted };
-	});
+	Effect.runPromise(provided(frame, options).pipe(Effect.orDie)).then(
+		({ rgba, width, height }) => {
+			const at = (x: number, y: number): [number, number, number, number] => {
+				if (x < 0 || y < 0 || x >= width || y >= height) {
+					return [0, 0, 0, 0];
+				}
+				const o = (Math.round(y) * width + Math.round(x)) * 4;
+				return [
+					rgba[o] ?? unreachable(),
+					rgba[o + 1] ?? unreachable(),
+					rgba[o + 2] ?? unreachable(),
+					rgba[o + 3] ?? unreachable(),
+				];
+			};
+			// background is pixel (0,0) — the corner is never covered by a
+			// centered shape in these tests
+			const bg = at(0, 0);
+			const isPainted = (x: number, y: number): boolean => {
+				const [r, g, b] = at(x, y);
+				return r !== bg[0] || g !== bg[1] || b !== bg[2];
+			};
+			return { width, height, at, isPainted };
+		},
+	);
 
 /**
  * Run a frame render for its Exit only — used by the defect tests, which
  * assert the render dies with a specific message (unknown id, duplicate
- * reference / cycle). The paint path never runs for those frames.
+ * reference / cycle, missing resource loader).
  */
-export const renderExit = <const Entities extends Entity.AnyEntity>(
-	frame: Frame<Entities>,
-) =>
+export const renderExit = (frame: Frame<unknown>, options?: RenderOptions) =>
 	Effect.runPromiseExit(
-		Renderer.render(frame as Frame).pipe(
-			Effect.scoped,
-			Effect.provide(testLayer(frame as Frame)),
-		),
+		provided(frame, options) as Effect.Effect<
+			Renderer.Framebuffer,
+			unknown,
+			never
+		>,
 	);

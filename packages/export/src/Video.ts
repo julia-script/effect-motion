@@ -1,13 +1,12 @@
-import { Font, Session, type ThorvgException } from "@effect-motion/thorvg";
+import { Session, type ThorvgException } from "@effect-motion/thorvg";
 import { EngineNode } from "@effect-motion/thorvg/node";
-import type * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import type * as Scope from "effect/Scope";
 import * as Sink from "effect/Sink";
 import * as Stream from "effect/Stream";
 import type { ChildProcessSpawner } from "effect/unstable/process";
-import { Fonts, Renderer, Scene } from "effect-motion";
+import { Renderer, type Resource, Scene } from "effect-motion";
 import * as PngExporter from "effect-motion/PngExporter";
 import * as Ffmpeg from "./Ffmpeg.js";
 
@@ -65,28 +64,20 @@ export interface VideoOptions {
 	readonly settings?: VideoSceneSettings;
 }
 
-// The ThorVG engine (global font registry) plus a render session (the canvas
-// Renderer.render draws each frame onto). The session canvas is resized per
-// frame, so the seed size only has to be valid — the scene's own comp
-// dimensions (the canvas is resized to each frame's size regardless).
-const fontedLayer = (scene: {
-	readonly annotations: Context.Context<never>;
+// The ThorVG engine plus a render session (the canvas Renderer.render draws
+// each frame onto). The session canvas is resized per frame, so the seed
+// size only has to be valid — the scene's own comp dimensions (the canvas is
+// resized to each frame's size regardless). Fonts/images register from the
+// caller's loader services during rendering (the default font is
+// auto-provided by the render path).
+const baseLayer = (scene: {
 	readonly width: number;
 	readonly height: number;
-}) => {
-	const fonts = {
-		"sans-serif": Font.DEFAULT_FONT_URL,
-		...Fonts.urlMap(scene),
-	};
-	return Layer.provideMerge(
-		Session.layer({
-			width: scene.width,
-			height: scene.height,
-			fonts,
-		}),
-		EngineNode.layer("sw", fonts),
+}) =>
+	Layer.provideMerge(
+		Session.layer({ width: scene.width, height: scene.height }),
+		EngineNode.layer("sw"),
 	);
-};
 
 /**
  * Render a scene to a video file at `outPath`.
@@ -95,16 +86,19 @@ const fontedLayer = (scene: {
  * `yuv420p`) — before any ffmpeg process is spawned — or on an ffmpeg failure;
  * a ThorVG render failure surfaces as `ThorvgException`.
  */
-export const render = <E = never>(
-	scene: Scene.Scene<E, SceneInternalR>,
+export const render = <E = never, LoaderR = never>(
+	scene: Scene.Scene<E, SceneInternalR | LoaderR>,
 	outPath: string,
 	options: VideoOptions = {},
 ): Effect.Effect<
 	void,
 	E | Ffmpeg.EncodeError | ThorvgException,
 	// the scene is run to completion internally, so its Scope is discharged
-	// here; the ThorVG engine is provided internally too
-	ChildProcessSpawner.ChildProcessSpawner
+	// here; the ThorVG engine is provided internally too. The scene's
+	// resource loaders stay the CALLER's requirement — provide them via
+	// Font.layer/Image.layer (Node fs loaders work here: no URLs needed)
+	| ChildProcessSpawner.ChildProcessSpawner
+	| Resource.ExtractLoaders<LoaderR>
 > =>
 	Effect.scoped(
 		Effect.gen(function* () {
@@ -155,9 +149,12 @@ export const render = <E = never>(
 				extraArgs: options.extraArgs,
 			});
 		}),
-	).pipe(
-		// the scene's declared url fonts, merged over the default sans, so text
-		// in a declared family renders (design D3); path-only entries skipped.
-		// Fonts go to both the engine (global registry) and the render session.
-		Effect.provide(fontedLayer(scene)),
-	);
+		// the Exclude-chain the pipeline infers over the unresolved LoaderR
+		// can't be proven equal to the declared surface; the runtime shape is
+		// exactly it (loaders in, loaders out — everything else provided here)
+	).pipe(Effect.provide(baseLayer(scene))) as Effect.Effect<
+		void,
+		E | Ffmpeg.EncodeError | ThorvgException,
+		| ChildProcessSpawner.ChildProcessSpawner
+		| Resource.ExtractLoaders<LoaderR>
+	>;

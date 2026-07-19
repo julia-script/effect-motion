@@ -1,12 +1,17 @@
-import { Color, Images, Motion, Scene, Shapes } from "effect-motion";
+import { Color, Image, Motion, Resource, Scene, Shapes } from "effect-motion";
 
-// Images are declared like fonts: the player decodes each asset once per
-// mount and Image entities reference it by name. width/height are plain
-// numeric fields, so scaling an image is just a tween.
+// Images are typed scene dependencies like fonts: yielding the constant
+// puts `ImageLoader<"rocket">` into the scene's requirements, the layer
+// loads the bytes once at mount, and the render session decodes them once —
+// every frame reuses the decoded picture. width/height are plain numeric
+// fields, so scaling an image is just a tween.
+const Rocket = Image.Image("rocket");
+
 export const scene = Scene.make(
 	function* () {
+		const rocketImage = yield* Rocket;
 		const rocket = yield* Scene.instantiate(Shapes.Image, {
-			image: "rocket",
+			image: rocketImage,
 			x: 214,
 			y: 150,
 			width: 72,
@@ -36,13 +41,12 @@ export const scene = Scene.make(
 		yield* Motion.wait("800 millis");
 	},
 	{ width: 500, height: 300, backgroundColor: Color.rgba(22, 22, 29) },
-).annotate(Images.Images, [
-	{
-		name: "rocket",
-		// a CORS-open, version-pinned PNG (72×72) — the renderer fetches
-		// image assets by URL, like fonts
-		src: {
-			url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f680.png",
-		},
-	},
-]);
+);
+
+// a CORS-open, version-pinned PNG (72×72)
+export const renderLayers = Image.layer(
+	Rocket,
+	Resource.fetchBytes(
+		"https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f680.png",
+	),
+);

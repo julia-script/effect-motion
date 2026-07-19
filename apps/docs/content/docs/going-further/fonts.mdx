@@ -1,43 +1,68 @@
 ---
 title: Fonts
-description: Declaring the fonts a scene depends on, for player and export
+description: Typed font dependencies — declaring, providing, and the default font
 ---
 
-`Text` only ever *names* a font family — making that name resolve to actual
-glyphs is the job of whatever displays the frames. A scene declares the fonts it
-depends on with the `Fonts` annotation, one entry per face (declare bold or
-italic faces as separate entries with `weight` / `style`).
+Fonts are **typed scene dependencies**. Declaring one mints a constant you
+yield inside the scene; the yield returns the value entity props store, and
+adds a `FontLoader` requirement to the scene's type:
+
+```ts
+import { Font, Scene, Shapes } from "effect-motion";
+
+const Pacifico = Font.Font("Pacifico");
+
+const scene = Scene.make(function* () {
+	const pacifico = yield* Pacifico;
+	yield* Scene.instantiate(Shapes.Text, {
+		text: "hello",
+		fontFamily: pacifico,
+	});
+});
+// typeof scene: Scene<never, FontLoader<"Pacifico"> | Runner>
+```
+
+Running the scene never needs the font — frames are pure of resource bytes
+(the engine cannot measure text). Only **rendering** does: the frames carry
+the requirement as `Frame<FontLoader<"Pacifico">>`, and `Renderer.render`
+(and therefore the player) will not compile until a covering layer is
+provided:
+
+```ts
+import { Font, Resource } from "effect-motion";
+
+const layers = Font.layer(
+	Pacifico,
+	Resource.fetchBytes("https://…/Pacifico_400Regular.ttf"),
+);
+
+<Player scene={scene} renderLayers={layers} />;
+```
+
+The load effect runs **once, at mount** — before anything renders — so the
+first visible frame is already in the declared font. Compose retries or
+timeouts directly on the load effect. Every provided font loads whether or
+not the scene ends up using it. A font referenced at render with no loader
+in context is a defect naming the font — there is no silent glyph fallback.
 
 <Example name="custom-fonts" />
 
-The runtime never reads the annotation — fonts cannot affect frame data — but
-each consumer honors it its own way.
+The renderer rasterizes TrueType/OpenType bytes (`.ttf` / `.otf`, sniffed
+from the magic bytes) — point load effects at a `.ttf` asset, not woff2. In
+Node (export paths), a load effect can read from disk:
+`Effect.promise(() => readFile(path).then((b) => new Uint8Array(b)))`.
 
-## In the player
+## The default font
 
-The player loads every entry with a `src.url` through the browser's `FontFace`
-API while it buffers the first frames, and reports `ready` only once the loads
-settle — so the first visible frame is drawn with the declared fonts. A font that
-fails to load logs a warning and playback proceeds with the browser's normal
-fallback.
+`Text.fontFamily` defaults to the built-in `Font.default` under the
+**reserved id `"sans-serif"`**. It never appears in a scene's requirements
+(no yield happens for a schema default), and the render path auto-provides
+its loader — bare `Text` and string children work with zero ceremony.
 
-## In export
-
-Export maps every entry with a `src.path` to resvg's font files via
-`Fonts.resvgOptions` from `@effect-motion/export`:
+Providing your own loader under the `"sans-serif"` id **overrides** the
+built-in bytes — that collision is the override mechanism, not an error:
 
 ```ts
-import { Fonts, Resvg } from "@effect-motion/export";
-
-yield* Resvg.rasterize(svg, Fonts.resvgOptions(scene));
+// every default-font text now renders in your bytes
+Font.layer(Font.Font("sans-serif"), Resource.fetchBytes(myFontUrl));
 ```
-
-System fonts stay available by default; pass `font: { loadSystemFonts: false }`
-alongside the mapped options when the declared files should be the only ones
-resvg sees.
-
-## Matching player and export
-
-Pointing `url` and `path` at the same font file is what makes browser playback
-and exported frames render with matching families — the same face, resolved two
-ways for two consumers.

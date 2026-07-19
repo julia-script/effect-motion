@@ -2,9 +2,7 @@
 
 ## Purpose
 Engine-level font loading as a refcounted, session-scoped resource over the ThorVG wasm engine, in the bindings-only `@effect-motion/thorvg` package.
-
 ## Requirements
-
 ### Requirement: Scoped, refcounted font loading
 The thorvg package SHALL expose font loading as a scoped resource: acquiring a font (family + source) loads it into the engine when that family's refcount goes 0→1 and only increments the count otherwise; releasing decrements the count. When the count reaches zero the registry SHALL attempt an engine unload (`_tvg_font_unload`) and, because the current wasm build cannot unload data-loaded fonts (`NotSupported`), SHALL retain a tombstone for the family when the engine refuses — a later same-source acquisition then succeeds without re-uploading, and conflicting sources stay blocked. The registry SHALL be keyed per wasm module (surviving engine recreation, e.g. HMR) so it cannot desync from the actual engine state, and SHALL be cleared when the engine is terminated.
 
@@ -52,3 +50,22 @@ A failed fetch or engine load for one family SHALL NOT fail the acquiring sessio
 #### Scenario: One bad URL among several fonts
 - **WHEN** a session acquires three families and one URL returns 404
 - **THEN** the other two load, the failure is logged, and the session opens
+
+### Requirement: Byte-source scoped acquisition
+The scoped font registry SHALL accept in-memory bytes as a source, identified by a caller-supplied source identity (the resource id or an equivalent stable key), with the same refcount, dedup, tombstone, and conflict semantics as URL sources: identical family+identity acquisitions deduplicate; a family held under a different identity fails loudly per the existing conflict requirement. Format handling (magic-byte sniffing with explicit override) applies to byte sources unchanged.
+
+#### Scenario: Two sessions share one byte upload
+- **WHEN** two concurrent sessions acquire the same family from bytes under the same source identity
+- **THEN** the bytes are uploaded to the engine exactly once
+
+#### Scenario: Byte source conflicts with a different source
+- **WHEN** family "Inter" is held from one source identity and a session acquires "Inter" from a different one
+- **THEN** the acquisition fails with an error naming the family and both identities
+
+### Requirement: No implicit default font at engine acquire
+Engine acquisition SHALL NOT auto-load any font: when no fonts are supplied, the engine starts with an empty font table and performs no network fetch. The previous `DEFAULT_FONT_URL` fallback is removed; default-font provision is the motion render path's responsibility (see `resource-loaders`).
+
+#### Scenario: Bare engine acquire fetches nothing
+- **WHEN** the engine is acquired with no font configuration
+- **THEN** no font is loaded and no network request is made
+

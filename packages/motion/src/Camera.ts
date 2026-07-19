@@ -61,7 +61,7 @@ const fields = {
 	poiZ: Schema.optionalKey(Schema.Number),
 };
 
-type CameraData = Schema.Struct<typeof fields>["Type"];
+type CameraData = Entity.EntityData<typeof fields>["Type"];
 
 export const Camera = Entity.make("Camera", fields, {
 	// x/y/z is the camera position; rotation + focalLength are raw numeric
@@ -85,9 +85,10 @@ export const Camera = Entity.make("Camera", fields, {
  * rotation, the width-relative default focal length (AE's 50mm equivalent).
  * Projects z=0 content to its plain-2D screen position at scale 1.
  */
-export const identity = (width: number): CameraState => {
+export const identity = (width: number) => {
 	const focalLength = Projection.defaultFocalLength(width);
-	return {
+
+	return Camera.data.make({
 		x: 0,
 		y: 0,
 		z: Projection.defaultCameraZ(focalLength),
@@ -98,7 +99,7 @@ export const identity = (width: number): CameraState => {
 		// the z=0 plane in focus, no depth of field
 		focusDistance: Projection.defaultCameraZ(focalLength),
 		aperture: 0,
-	};
+	});
 };
 
 /** The camera view carried on each frame (POI rides along when set). */
@@ -114,7 +115,7 @@ export type CameraTarget =
 	| Effect.Effect<Instance.AnyInstance, never, Runner.Runner>
 	| Partial<Entity.Position>;
 
-type CamData = (typeof Camera)["data"];
+type CamData = typeof fields;
 type CamTraits = (typeof Camera)["traits"];
 // R defaults to Runner so helper outputs pipe straight into helper inputs
 type CamOrEffect<E = never, R = Runner.Runner> = Instance.InstanceOrEffect<

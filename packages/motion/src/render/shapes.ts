@@ -199,13 +199,17 @@ export const image: PaintFunction<typeof Image.Image> = ({
 	projection,
 }) =>
 	Effect.gen(function* () {
-		// the session decoded the asset once at open; a missing name (never
-		// declared, or its fetch/decode failed) is a soft skip — this instance
-		// paints nothing and the rest of the frame renders
+		// the render prepare pass registered every referenced image from its
+		// loader's bytes before paints run — a miss here means the prepare
+		// contract was bypassed, and that is a defect, not a soft skip
 		const { pictures } = yield* Tvg.RenderSession;
-		const source = pictures.get(data.image);
+		const source = pictures.get(data.image.id);
 		if (source === undefined) {
-			return;
+			return yield* Effect.die(
+				new Error(
+					`Renderer: image "${data.image.id}" was not registered before paint`,
+				),
+			);
 		}
 		// duplicates share the decoded surface (spike-verified ~42µs each), so
 		// per-frame cost is a handle copy, not a decode
@@ -263,11 +267,10 @@ export const text: PaintFunction<typeof Text.Text> = ({
 }) =>
 	Effect.gen(function* () {
 		const glyphs = yield* Tvg.Text.make();
-		// setFont fails ("insufficient condition") when the family isn't loaded
-		// into the engine yet — a missing/not-yet-fetched font. That must NOT
-		// abort the frame (it would blank every other paint too): swallow it so
-		// this one text simply doesn't draw and the rest of the frame renders.
-		yield* Tvg.Text.setFont(glyphs, data.fontFamily).pipe(Effect.ignore);
+		// the render prepare pass registered every referenced family from its
+		// loader's bytes (loud defect when unprovided), so a setFont failure
+		// here is a real engine error — no more silent glyph fallback
+		yield* Tvg.Text.setFont(glyphs, data.fontFamily.id);
 		yield* Tvg.Text.setText(glyphs, data.text);
 		const { r, g, b } = Color.bytes(data.fill);
 		yield* Tvg.Text.setColor(glyphs, r, g, b);

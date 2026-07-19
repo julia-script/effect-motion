@@ -1,12 +1,14 @@
 import * as Schema from "effect/Schema";
 import * as Entity from "../Entity.js";
+import * as ImageResource from "../Image.js";
 import * as Shape2D from "./Shape2D.js";
 
 /**
- * A raster/vector image leaf. `image` names an asset declared via the
- * `Images` annotation; the render session decodes it once and every frame
- * reuses the decoded picture. An undeclared or failed asset paints nothing
- * (soft skip — the rest of the frame renders).
+ * A raster/vector image leaf. `image` holds an Image resource reference
+ * (`{_tag, id}` — yield an `Image.Image(...)` constant to get one); the
+ * render session decodes the loader's bytes once and every frame reuses the
+ * decoded picture. A reference with no loader in context at render is a
+ * loud defect naming the id.
  *
  * `width`/`height` are optional and undefaulted: set BOTH to draw at that
  * size (numeric, so they tween); leave both absent to draw at the source's
@@ -21,7 +23,7 @@ export const Image = Entity.make(
 	"shapes/Image",
 	{
 		...Shape2D.position,
-		image: Schema.String,
+		image: ImageResource.schema,
 		width: Schema.optionalKey(Schema.Number),
 		height: Schema.optionalKey(Schema.Number),
 		...Shape2D.opacity,

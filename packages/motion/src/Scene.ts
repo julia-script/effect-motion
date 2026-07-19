@@ -1,5 +1,6 @@
-import { Context, Latch, Layer } from "effect";
+import { Latch, Layer } from "effect";
 import * as Cause from "effect/Cause";
+import * as Context from "effect/Context";
 import type * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
@@ -14,6 +15,7 @@ import type * as Color from "./Color.js";
 import type * as Entity from "./Entity.js";
 import type * as Instance from "./Instance.js";
 import * as Phaser from "./Phaser.js";
+import type * as Resource from "./Resource.js";
 import * as Runner from "./Runner.js";
 import { Group } from "./shapes/Group.js";
 import * as Time from "./Time.js";
@@ -21,21 +23,34 @@ import * as Time from "./Time.js";
 export const TypeId = "~motion/Scene" as const;
 export interface Scene<E = never, R = never> {
 	readonly [TypeId]: typeof TypeId;
-	readonly runner: Effect.Effect<void, E, R | Scope.Scope>;
+	/**
+	 * The scene body. Loader requirements are EXCLUDED here: frames are pure
+	 * of resource bytes (the engine cannot measure text), so running a scene
+	 * never needs a loader — only rendering its frames does (they re-surface
+	 * on `Frame<Resources>` via `~resources`).
+	 */
+	readonly runner: Effect.Effect<
+		void,
+		E,
+		Resource.ExcludeLoaders<R> | Scope.Scope
+	>;
 	/**
 	 * composition config, After Effects–style: what this comp IS. The
 	 * runner inherits the ROOT scene's; a played scene keeps its own as
-	 * its bounds (see {@link play}). Unlike annotations, read by the runtime.
+	 * its bounds (see {@link play}).
 	 */
 	readonly width: number;
 	readonly height: number;
 	readonly backgroundColor: Color.Color;
-	/** tooling-facing metadata; never read by the runtime */
-	readonly annotations: Context.Context<never>;
-	annotate<I, S>(key: Context.Key<I, S>, value: S): Scene<E, R>;
-	annotateMerge(context: Context.Context<never>): Scene<E, R>;
+	/** phantom: the loader members of R, carried to `Frame<Resources>` */
+	readonly "~resources": Resource.ExtractLoaders<R>;
 }
-export type AnyScene = Scene<never, never>;
+export type AnyScene = Scene<any, any>;
+/** the loader requirements a scene's frames carry (what render will demand) */
+export type Resources<S extends AnyScene> = S["~resources"];
+/** the scene's failure channel */
+export type Error<S extends AnyScene> =
+	S extends Scene<infer E, any> ? E : never;
 
 export const make = <
 	const Eff extends Effect.Effect<any, any, any>,
@@ -55,40 +70,44 @@ export const make = <
 			? R
 			: never
 > => {
-	return makeScene(Effect.scoped(Effect.gen(f)), Context.empty(), meta);
+	return makeScene(Effect.scoped(Effect.gen(f)), meta);
 };
 
-// annotate/annotateMerge return new scene values sharing the same body
 const makeScene = <E = never, R = never>(
 	runnerEffect: Effect.Effect<void, E, R>,
-	annotations: Context.Context<never>,
 	meta: Partial<Runner.CompConfig>,
 ): Scene<E, R> => ({
 	[TypeId]: TypeId,
-	runner: runnerEffect,
-	annotations,
+
+	// THE erasure seam (design D3): loader requirements in R are phantom —
+	// authored yields never dereference their tags — so the body is safe to
+	// run with only ExcludeLoaders<R>. Guarded by the loader-free-run test.
+	runner: runnerEffect as Effect.Effect<
+		void,
+		E,
+		Resource.ExcludeLoaders<R> | Scope.Scope
+	>,
+	"~resources": undefined as never,
+
 	width: meta.width ?? Runner.defaultComp.width,
 	height: meta.height ?? Runner.defaultComp.height,
 	backgroundColor: meta.backgroundColor ?? Runner.defaultComp.backgroundColor,
-	annotate: <I, S>(key: Context.Key<I, S>, value: S) =>
-		makeScene(runnerEffect, Context.add(annotations, key, value), meta),
-	annotateMerge: (context: Context.Context<never>) =>
-		makeScene(runnerEffect, Context.merge(annotations, context), meta),
 });
 
 export const instantiate = Effect.fnUntraced(function* <
 	Name extends string,
-	Data extends Schema.Top,
-	Traits extends Partial<Entity.EntityTraits<Data["Type"]>>,
+	Data extends Schema.Struct.Fields,
+	Traits extends Entity.PartialTraits<Data>,
 >(
 	entity: Entity.Entity<Name, Data, Traits>,
-	props: Runner.InstantiateProps<Data["~type.make.in"]>,
+	props: Entity.EntityData<Data>["~type.make.in"],
 ): Effect.fn.Return<
 	Instance.Instance<Name, Data, Traits>,
 	never,
 	Runner.Runner
 > {
 	const runner = yield* Runner.Runner;
+
 	return yield* runner.instantiate(entity, props);
 });
 
@@ -111,23 +130,19 @@ export const sleep = (duration: Duration.Input) =>
 		}
 	});
 
-export interface FrameEntry<Entity extends Entity.AnyEntity> {
-	data: Entity["data"]["Type"];
-	entity: Entity;
-	/**
-	 * builtin visibility, held beside the data; renderers skip `false`.
-	 * Optional in the frame type (a hand-built frame or external producer
-	 * may omit it) — absent means visible; the runner always sets it.
-	 */
-	$visible?: boolean;
+export interface FrameEntry {
+	data: Entity.AnyEntity["data"]["Type"];
+	entity: Entity.AnyEntity;
 }
-export type EntriesFromEntities<Entities> = Entities extends Entity.AnyEntity
-	? {
-			[K in Entities as K["name"]]: FrameEntry<K>;
-		}[Entities["name"]]
-	: never;
-export interface Frame<Entities extends Entity.AnyEntity = Entity.AnyEntity> {
-	instances: Record<string, EntriesFromEntities<Entities>>;
+
+export interface Frame<out Resources = never> {
+	/**
+	 * phantom: the loader requirements `Renderer.render` will demand for this
+	 * frame. Never a runtime value — an unused type parameter would be
+	 * structurally erased, so it must anchor on an (always-absent) field.
+	 */
+	readonly "~resources"?: Resources;
+	instances: Record<string, FrameEntry>;
 	/** id of the root group (conventionally "root"); never rendered itself */
 	root: string;
 	/** render metadata — frameRate from the runner settings, resolution and
@@ -139,48 +154,51 @@ export interface Frame<Entities extends Entity.AnyEntity = Entity.AnyEntity> {
 	/** the active camera's view; Camera.IDENTITY when unused */
 	camera: Camera.CameraState;
 }
-export const step = <E, R>(runningScene: RunningScene<E, R>) =>
-	Effect.gen(function* () {
-		// done: the scene fiber ended. awaitedCount === 0: the body and every
-		// fork completed — the scene is over even if its fiber is still
-		// winding down through finalizers. Deciding here, from synchronous
-		// bookkeeping, keeps frame counts deterministic: the hot frame loop
-		// can starve the scene fiber for many frames, so waiting for its own
-		// drain to stop backgrounds would leak extra frames.
-		if (runningScene.done || runningScene.runner.awaitedCount() === 0) {
-			// scene end: stop the backgrounds (including demoted tails), and
-			// cut the root's own tail if the body finished-and-continued —
-			// interrupting a completed fiber is a no-op, so the ordinary path
-			// is unchanged (idempotent with the scene fiber's own drain)
-			yield* Fiber.interruptAll(
-				[...runningScene.runner.backgrounds].map((b) => b.fiber),
-			);
-			yield* Fiber.interrupt(runningScene.fiber);
-			const exit = yield* Fiber.await(runningScene.fiber);
-			// propagate a failed scene's cause instead of ending silently
-			if (Exit.isFailure(exit) && !Cause.hasInterruptsOnly(exit.cause)) {
-				return yield* Effect.failCause(exit.cause);
-			}
-			// branch failures are recorded out-of-band: our interrupt may
-			// have cut the scene fiber's drain before it could re-raise them
-			const recorded = runningScene.runner.failureCause();
-			if (recorded !== undefined) {
-				return yield* Effect.failCause(recorded as Cause.Cause<E>);
-			}
-			return null;
+// R is never: everything step touches is bound to the runningScene value
+// (runner instance, phaser, fiber) — no ambient service is read
+export const step = Effect.fnUntraced(function* <E, R>(
+	runningScene: RunningScene<E, R>,
+): Effect.fn.Return<Frame<Resource.ExtractLoaders<R>> | null, E, never> {
+	// done: the scene fiber ended. awaitedCount === 0: the body and every
+	// fork completed — the scene is over even if its fiber is still
+	// winding down through finalizers. Deciding here, from synchronous
+	// bookkeeping, keeps frame counts deterministic: the hot frame loop
+	// can starve the scene fiber for many frames, so waiting for its own
+	// drain to stop backgrounds would leak extra frames.
+	if (runningScene.done || runningScene.runner.awaitedCount() === 0) {
+		// scene end: stop the backgrounds (including demoted tails), and
+		// cut the root's own tail if the body finished-and-continued —
+		// interrupting a completed fiber is a no-op, so the ordinary path
+		// is unchanged (idempotent with the scene fiber's own drain)
+		yield* Fiber.interruptAll(
+			[...runningScene.runner.backgrounds].map((b) => b.fiber),
+		);
+		yield* Fiber.interrupt(runningScene.fiber);
+		const exit = yield* Fiber.await(runningScene.fiber);
+		// propagate a failed scene's cause instead of ending silently
+		if (Exit.isFailure(exit) && !Cause.hasInterruptsOnly(exit.cause)) {
+			return yield* Effect.failCause(exit.cause);
 		}
-		const { maxFrames } = runningScene.runner.settings;
-		if (runningScene.framesDelivered >= maxFrames) {
-			return yield* Effect.die(
-				new Error(
-					`Scene exceeded maxFrames (${maxFrames}). Raise the maxFrames setting, or set maxFrames: Infinity for an intentionally infinite scene.`,
-				),
-			);
+		// branch failures are recorded out-of-band: our interrupt may
+		// have cut the scene fiber's drain before it could re-raise them
+		const recorded = runningScene.runner.failureCause();
+		if (recorded !== undefined) {
+			return yield* Effect.failCause(recorded as Cause.Cause<E>);
 		}
-		yield* runningScene.runner.phaser.awaitAdvance;
-		runningScene.framesDelivered++;
-		return (yield* runningScene.runner.state) as Frame;
-	});
+		return null;
+	}
+	const { maxFrames } = runningScene.runner.settings;
+	if (runningScene.framesDelivered >= maxFrames) {
+		return yield* Effect.die(
+			new Error(
+				`Scene exceeded maxFrames (${maxFrames}). Raise the maxFrames setting, or set maxFrames: Infinity for an intentionally infinite scene.`,
+			),
+		);
+	}
+	yield* runningScene.runner.phaser.awaitAdvance;
+	runningScene.framesDelivered++;
+	return yield* runningScene.runner.state;
+});
 export interface RunningScene<E, R> {
 	readonly runner: Runner.Runner["Service"];
 
@@ -311,7 +329,7 @@ export const stream = <E = never, R = never>(
 			Stream.fromEffectRepeat(step(runningScene)).pipe(
 				// refinement: the stream ends at the first null, so the
 				// element type is Frame<Entities>, not Frame | null
-				Stream.takeWhile((state): state is Frame => state !== null),
+				Stream.takeWhile((state) => state !== null),
 			),
 		),
 		Stream.unwrap,
@@ -322,8 +340,12 @@ const isUpdaterFn = <Data>(
 	props: Updater<Data>,
 ): props is (data: Data) => Data => typeof props === "function";
 
-export const data = <Name extends string, Data extends Schema.Top>(
-	instance: Instance.Instance<Name, Data>,
+export const data = <
+	Name extends string,
+	Data extends Schema.Struct.Fields,
+	Traits extends Entity.PartialTraits<Data>,
+>(
+	instance: Instance.Instance<Name, Data, Traits>,
 ) =>
 	Effect.gen(function* () {
 		const runner = yield* Runner.Runner;
@@ -335,9 +357,13 @@ export const data = <Name extends string, Data extends Schema.Top>(
 		}
 		return current;
 	});
-export const update = <Name extends string, Data extends Schema.Top>(
-	instance: Instance.Instance<Name, Data>,
-	props: Updater<Data["Type"]>,
+export const update = <
+	Name extends string,
+	Data extends Schema.Struct.Fields,
+	Traits extends Entity.PartialTraits<Data>,
+>(
+	instance: Instance.Instance<Name, Data, Traits>,
+	props: Updater<Entity.EntityData<Data>["Type"]>,
 ) =>
 	Effect.gen(function* () {
 		const runner = yield* Runner.Runner;

@@ -20,7 +20,7 @@ const fields = {
 	...Shape2D.opacity,
 };
 
-type LineData = Schema.Struct<typeof fields>["Type"];
+type LineData = Entity.EntityData<typeof fields>["Type"];
 
 export const Line = Entity.make("shapes/Line", fields, {
 	// position moves the WHOLE line: translating x/y/z alone would stretch

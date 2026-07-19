@@ -15,8 +15,6 @@ import {
 import * as Layer from "effect/Layer";
 import type * as Scope from "effect/Scope";
 import * as CanvasExporter from "effect-motion/CanvasExporter";
-import * as Fonts from "effect-motion/Fonts";
-import * as Images from "effect-motion/Images";
 import * as Renderer from "effect-motion/Renderer";
 import type * as Runner from "effect-motion/Runner";
 import * as Scene from "effect-motion/Scene";
@@ -128,7 +126,7 @@ class FrameRing {
 }
 
 const useScene = (
-	scene: Scene.Scene<never, Runner.Runner | Scope.Scope>,
+	sceneProp: Scene.AnyScene,
 	options: {
 		fps: number;
 		prebufferedFrames: number;
@@ -139,8 +137,17 @@ const useScene = (
 		bufferCapacity: number;
 		/** extra playback settings for Scene.run (frameRate comes from fps) */
 		settings?: Partial<Runner.Settings> | undefined;
+		/**
+		 * loader layers for the scene's resources. The props boundary
+		 * (PlayerProps) enforces coverage; inside, the layer merges into the
+		 * per-mount runtime so loads run at runtime construction.
+		 */
+		renderLayers?: Layer.Layer<never, unknown, never> | undefined;
 	},
 ) => {
+	// internal seam mirroring makeScene's: the props boundary guarantees
+	// renderLayers covers Scene.Resources<S>, so frames render as loader-free
+	const scene = sceneProp as Scene.Scene<never, Runner.Runner>;
 	// loop is read live from optsRef inside the play loop, not destructured here
 	const { fps, prebufferedFrames, autoPlay, isInfinite, settings } = options;
 	const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -152,6 +159,9 @@ const useScene = (
 	// repeat mode is player state seeded from the prop (an initial value); the
 	// user toggles it live via the repeat button
 	const [loop, setLoop] = useState(options.loop);
+	// first real failure (engine acquisition, loader load at runtime build,
+	// render) — rendered visibly by the Player, never only logged
+	const [error, setError] = useState<unknown>(null);
 
 	// latest option values (incl. live loop), read inside the long-lived Effect
 	// service without re-creating the runtime (which would re-run the scene)
@@ -353,18 +363,14 @@ const useScene = (
 					});
 				}),
 			).pipe(
-				// per-mount session: the canvas (sized by the render path) plus the
-				// scene's declared fonts and images, held until the runtime is
-				// disposed. Session.make awaits font/image settlement, so nothing
-				// renders (and the player can't report ready) before assets settle.
-				Layer.provideMerge(
-					Session.layer({
-						width: 1,
-						height: 1,
-						fonts: Fonts.urlMap(scene),
-						images: Images.urlMap(scene),
-					}),
-				),
+				// caller-provided loader layers: every provided load runs here, at
+				// runtime construction (eager, preload-all-provided) — a failed
+				// load fails the runtime build and surfaces as the error state
+				Layer.provideMerge(options.renderLayers ?? Layer.empty),
+				// per-mount session: the canvas (sized by the render path), held
+				// until the runtime is disposed. Fonts/images register lazily from
+				// the loader services during rendering.
+				Layer.provideMerge(Session.layer({ width: 1, height: 1 })),
 				Layer.provideMerge(thorLayer),
 			),
 		);
@@ -411,6 +417,10 @@ const useScene = (
 				return;
 			}
 			console.error("effect-motion player:", String(exit.cause), exit.cause);
+			// surface the first failure visibly (loader/engine failures at
+			// runtime construction land here too — the runtime build is lazy,
+			// forced by the first render/load call)
+			setError((current: unknown) => current ?? exit.cause);
 		});
 	};
 
@@ -482,10 +492,11 @@ const useScene = (
 		loop,
 		setLoop,
 		load,
+		error,
 	};
 };
 
-export type PlayerProps = {
+export type PlayerProps<S extends Scene.AnyScene = Scene.AnyScene> = {
 	// number of frames to prebuffer ahead of the current frame
 	// also the number of frames buffered before playing
 	// some edge cases:
@@ -526,14 +537,28 @@ export type PlayerProps = {
 	// clock and the scene always agree on one rate.
 	settings?: Partial<Runner.Settings>;
 
-	scene: Scene.Scene<never, Runner.Runner | Scope.Scope>;
-};
+	scene: S;
+} & (Scene.Resources<S> extends never
+	? {
+			// a loader-free scene takes no renderLayers — passing one is an error
+			renderLayers?: never;
+		}
+	: {
+			/**
+			 * Loader layers covering EVERY resource the scene's frames carry
+			 * (`Scene.Resources<S>`): `Layer.mergeAll(Font.layer(...), ...)`.
+			 * REQUIRED when the scene declares resources — the player will not
+			 * compile without full coverage. Loads run eagerly at runtime
+			 * construction; a failure surfaces as the player's error state.
+			 */
+			renderLayers: Layer.Layer<Scene.Resources<S>, unknown, never>;
+		});
 
 // keep-everything cap for an infinite scene: enough for ~30s of backward seek
 // at 60fps, ~1MB of frame data. Bump via bufferCapacity for deeper scrubbing.
 const INFINITE_BUFFER_CAP = 1800;
 
-export const Player = ({
+export const Player = <S extends Scene.AnyScene>({
 	scene,
 	fps: fpsProp = 60,
 	// default: prebuffer everything (Infinity) so the total time / progress bar
@@ -545,7 +570,8 @@ export const Player = ({
 	defaultRepeatMode = false,
 	bufferCapacity,
 	settings,
-}: PlayerProps) => {
+	renderLayers,
+}: PlayerProps<S>) => {
 	// one effective rate for both the scene run and the playback clock
 	const fps = settings?.frameRate ?? fpsProp;
 	const {
@@ -561,9 +587,13 @@ export const Player = ({
 		isPlaying,
 		loop,
 		setLoop,
+		error,
 	} = useScene(scene, {
 		fps,
 		settings,
+		renderLayers: renderLayers as
+			| Layer.Layer<never, unknown, never>
+			| undefined,
 		// an infinite scene can never buffer to the end — window it (60 frames
 		// if the caller left prebufferedFrames unbounded)
 		prebufferedFrames:
@@ -611,6 +641,19 @@ export const Player = ({
 	const chipFrame = scrubbing ? currentFrame : hoverFrame;
 	const chipFrac = denominator > 0 ? chipFrame / denominator : 0;
 	const barActive = barHover || scrubbing;
+
+	// a failed engine acquisition, loader load, or render: show the failure
+	// in the player's frame instead of a black box + console line
+	if (error !== null) {
+		return (
+			<div style={S.player}>
+				<div style={S.errorPanel} role="alert">
+					<strong>effect-motion player failed</strong>
+					<pre style={S.errorDetail}>{String(error)}</pre>
+				</div>
+			</div>
+		);
+	}
 
 	return (
 		// biome-ignore lint/a11y/noStaticElementInteractions: hover-only listeners toggle control visibility; the buttons/slider inside are the interactive surface
@@ -816,6 +859,21 @@ const S = {
 		WebkitUserSelect: "none",
 		fontFamily:
 			"system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+	},
+	errorPanel: {
+		padding: "24px 20px",
+		color: "#ffb4ab",
+		background: "#1a1113",
+		fontSize: 13,
+		lineHeight: 1.5,
+	},
+	errorDetail: {
+		margin: "8px 0 0",
+		whiteSpace: "pre-wrap",
+		wordBreak: "break-word",
+		fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+		fontSize: 12,
+		opacity: 0.85,
 	},
 	canvas: {
 		display: "block",

@@ -1,7 +1,7 @@
 import TVG, { type InitOptions, type RendererType } from "@thorvg/webcanvas";
 import { Context, Effect, Layer, Option, Record } from "effect";
 import { get } from "effect/Record";
-import { clearLoaded, DEFAULT_FONT_URL, loadFonts } from "./Font.js";
+import { clearLoaded, loadFonts } from "./Font.js";
 import { wrap, wrapPromise } from "./Interop.js";
 import type { ThorVGModule, TvgCanvasInstance } from "./thorvgemscripten.js";
 
@@ -57,10 +57,9 @@ export const init = (options: InitOptions) =>
 export interface ThorvgOptions extends InitOptions {
 	/**
 	 * Fonts to load into the engine on acquire, as `family -> TrueType URL`.
-	 * Defaults to the single default sans (see {@link DEFAULT_FONT_URL}). An
-	 * empty object loads no fonts (text then has no glyphs). Merged, not
-	 * replaced — the default family is present unless overridden. This is the
-	 * ENGINE default only; per-scene fonts go through the scoped Font registry.
+	 * Absent or empty loads NO fonts and makes no network request — there is
+	 * no implicit default font; the motion render path provides one from
+	 * loader services. Per-scene fonts go through the scoped Font registry.
 	 */
 	readonly fonts?: Record<string, string>;
 	/**
@@ -98,7 +97,10 @@ export const make = (options: ThorvgOptions) =>
 	Effect.acquireRelease(
 		init(options).pipe(
 			Effect.tap(({ module }) => {
-				const fonts = options.fonts ?? { "sans-serif": DEFAULT_FONT_URL };
+				const fonts = options.fonts;
+				if (fonts === undefined || Object.keys(fonts).length === 0) {
+					return Effect.void;
+				}
 				return wrapPromise(() => loadFonts(module, fonts));
 			}),
 			Effect.map(({ module, threadCount }) =>

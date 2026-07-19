@@ -1,14 +1,15 @@
 export * as Camera from "./Camera.js";
 export * as Color from "./Color.js";
 export * as Entity from "./Entity.js";
-export * as Fonts from "./Fonts.js";
-export * as Images from "./Images.js";
+export * as Font from "./Font.js";
+export * as Image from "./Image.js";
 export * as Instance from "./Instance.js";
 export * as Motion from "./Motion.js";
 export * as Phaser from "./Phaser.js";
 export * as Physics from "./Physics.js";
 export * as Particles from "./particles/index.js";
 export * as Renderer from "./Renderer.js";
+export * as Resource from "./Resource.js";
 export * as Scene from "./Scene.js";
 export * as Shapes from "./Shapes.js";
 export * as Timing from "./Timing.js";

@@ -148,8 +148,8 @@ const simulate = Effect.fnUntraced(function* <
 
 const springPosition = Effect.fnUntraced(function* <
 	Name extends string,
-	Data extends Schema.Top,
-	Traits extends Partial<Entity.EntityTraits<Data["Type"]>>,
+	Data extends Schema.Struct.Fields,
+	Traits extends Entity.PartialTraits<Data>,
 	E = never,
 	R = never,
 >(
@@ -160,7 +160,7 @@ const springPosition = Effect.fnUntraced(function* <
 	settleTolerance?: number,
 ) {
 	const instance = yield* Instance.flatten(instanceOrEffect);
-	const lens = Entity.traitOrDie<Data["Type"], Entity.Position>(
+	const lens = Entity.traitOrDie<Entity.EntityData<Data>["Type"], Entity.Position>(
 		instance.entity,
 		"~position",
 	);
@@ -180,8 +180,8 @@ const springPosition = Effect.fnUntraced(function* <
 
 const firstArgIsInstance = (args: IArguments) => Instance.isInstance(args[0]);
 
-type HasPosition<Data extends Schema.Top> = {
-	readonly "~position": Entity.TraitLens<Data["Type"], Entity.Position>;
+type HasPosition<Data extends Schema.Struct.Fields> = {
+	readonly "~position": Entity.TraitLens<Entity.EntityData<Data>["Type"], Entity.Position>;
 };
 
 /**
@@ -194,9 +194,8 @@ type HasPosition<Data extends Schema.Top> = {
 export const springTo = dual<
 	<
 		Name extends string,
-		Data extends Schema.Top,
-		Traits extends Partial<Entity.EntityTraits<Data["Type"]>> &
-			HasPosition<Data>,
+		Data extends Schema.Struct.Fields,
+		Traits extends Entity.PartialTraits<Data> & HasPosition<Data>,
 	>(
 		to: Partial<Entity.Position>,
 		springInput?: SpringInput,
@@ -210,9 +209,8 @@ export const springTo = dual<
 	>,
 	<
 		Name extends string,
-		Data extends Schema.Top,
-		Traits extends Partial<Entity.EntityTraits<Data["Type"]>> &
-			HasPosition<Data>,
+		Data extends Schema.Struct.Fields,
+		Traits extends Entity.PartialTraits<Data> & HasPosition<Data>,
 		E = never,
 		R = never,
 	>(
@@ -233,9 +231,8 @@ export const springTo = dual<
 export const spring = dual<
 	<
 		Name extends string,
-		Data extends Schema.Top,
-		Traits extends Partial<Entity.EntityTraits<Data["Type"]>> &
-			HasPosition<Data>,
+		Data extends Schema.Struct.Fields,
+		Traits extends Entity.PartialTraits<Data> & HasPosition<Data>,
 	>(
 		from: Partial<Entity.Position>,
 		to: Partial<Entity.Position>,
@@ -250,9 +247,8 @@ export const spring = dual<
 	>,
 	<
 		Name extends string,
-		Data extends Schema.Top,
-		Traits extends Partial<Entity.EntityTraits<Data["Type"]>> &
-			HasPosition<Data>,
+		Data extends Schema.Struct.Fields,
+		Traits extends Entity.PartialTraits<Data> & HasPosition<Data>,
 		E = never,
 		R = never,
 	>(

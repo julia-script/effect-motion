@@ -97,16 +97,16 @@ const interpolate = Effect.fnUntraced(function* <
 });
 
 /** target props, or an updater computing them from the current data */
-export type Target<Data extends Schema.Top> =
-	| Partial<InterpolableOrInterpolator<Data["Type"]>>
-	| ((data: Data["Type"]) => Partial<InterpolableOrInterpolator<Data["Type"]>>);
+export type Target<Data extends Schema.Struct.Fields> =
+	| Partial<InterpolableOrInterpolator<Entity.EntityData<Data>["Type"]>>
+	| ((data: Entity.EntityData<Data>["Type"]) => Partial<InterpolableOrInterpolator<Entity.EntityData<Data>["Type"]>>);
 
-// InterpolableOnly of an opaque Data["Type"] can't be proven
+// InterpolableOnly of an opaque Entity.EntityData<Data>["Type"] can't be proven
 // index-compatible with Record<string, number>; the runtime shape is
 // guaranteed by the Target type, so cast once here.
-export const resolveTarget = <Data extends Schema.Top>(
+export const resolveTarget = <Data extends Schema.Struct.Fields>(
 	target: Target<Data>,
-	current: Data["Type"],
+	current: Entity.EntityData<Data>["Type"],
 ): Record<string, number> =>
 	(typeof target === "function"
 		? target(current)
@@ -136,8 +136,8 @@ export const startValues = (
 
 const animate = Effect.fnUntraced(function* <
 	Name extends string,
-	Data extends Schema.Top,
-	Traits extends Partial<Entity.EntityTraits<Data["Type"]>>,
+	Data extends Schema.Struct.Fields,
+	Traits extends Entity.PartialTraits<Data>,
 	E = never,
 	R = never,
 >(
@@ -160,10 +160,10 @@ const animate = Effect.fnUntraced(function* <
 		target,
 		duration,
 		(value) =>
-			// Data["Type"] is opaque to TS, so spread is disallowed — assign + cast
+			// Entity.EntityData<Data>["Type"] is opaque to TS, so spread is disallowed — assign + cast
 			Scene.update(
 				instance,
-				(data) => Object.assign({}, data, value) as Data["Type"],
+				(data) => Object.assign({}, data, value) as Entity.EntityData<Data>["Type"],
 			),
 		timing,
 	);
@@ -185,8 +185,8 @@ const firstArgIsInstance = (args: IArguments) => Instance.isInstance(args[0]);
 export const tweenTo = dual<
 	<
 		Name extends string,
-		Data extends Schema.Top,
-		Traits extends Partial<Entity.EntityTraits<Data["Type"]>>,
+		Data extends Schema.Struct.Fields,
+		Traits extends Entity.PartialTraits<Data>,
 	>(
 		to: Target<Data>,
 		duration: Duration.Input,
@@ -200,8 +200,8 @@ export const tweenTo = dual<
 	>,
 	<
 		Name extends string,
-		Data extends Schema.Top,
-		Traits extends Partial<Entity.EntityTraits<Data["Type"]>>,
+		Data extends Schema.Struct.Fields,
+		Traits extends Entity.PartialTraits<Data>,
 		E = never,
 		R = never,
 	>(
@@ -231,12 +231,12 @@ export const tweenTo = dual<
 export const drive = dual<
 	<
 		Name extends string,
-		Data extends Schema.Top,
-		Traits extends Partial<Entity.EntityTraits<Data["Type"]>>,
+		Data extends Schema.Struct.Fields,
+		Traits extends Entity.PartialTraits<Data>,
 	>(
 		duration: Duration.Input,
 		timing: Timing.TimingInput,
-		fn: (t: number, data: Data["Type"]) => Data["Type"],
+		fn: (t: number, data: Entity.EntityData<Data>["Type"]) => Entity.EntityData<Data>["Type"],
 	) => <E = never, R = never>(
 		instance: Instance.InstanceOrEffect<Name, Data, Traits, E, R>,
 	) => Effect.Effect<
@@ -246,15 +246,15 @@ export const drive = dual<
 	>,
 	<
 		Name extends string,
-		Data extends Schema.Top,
-		Traits extends Partial<Entity.EntityTraits<Data["Type"]>>,
+		Data extends Schema.Struct.Fields,
+		Traits extends Entity.PartialTraits<Data>,
 		E = never,
 		R = never,
 	>(
 		instance: Instance.InstanceOrEffect<Name, Data, Traits, E, R>,
 		duration: Duration.Input,
 		timing: Timing.TimingInput,
-		fn: (t: number, data: Data["Type"]) => Data["Type"],
+		fn: (t: number, data: Entity.EntityData<Data>["Type"]) => Entity.EntityData<Data>["Type"],
 	) => Effect.Effect<
 		Instance.Instance<Name, Data, Traits>,
 		E,
@@ -288,8 +288,8 @@ export const drive = dual<
 export const tween = dual<
 	<
 		Name extends string,
-		Data extends Schema.Top,
-		Traits extends Partial<Entity.EntityTraits<Data["Type"]>>,
+		Data extends Schema.Struct.Fields,
+		Traits extends Entity.PartialTraits<Data>,
 	>(
 		from: Target<Data>,
 		to: Target<Data>,
@@ -304,8 +304,8 @@ export const tween = dual<
 	>,
 	<
 		Name extends string,
-		Data extends Schema.Top,
-		Traits extends Partial<Entity.EntityTraits<Data["Type"]>>,
+		Data extends Schema.Struct.Fields,
+		Traits extends Entity.PartialTraits<Data>,
 		E = never,
 		R = never,
 	>(
@@ -327,17 +327,17 @@ export const tween = dual<
 // one recipe: read origin via the lens's get (base forms take an explicit
 // one), animate the extracted value, apply via set each frame
 
-type HasPosition<Data extends Schema.Top> = {
-	readonly "~position": Entity.TraitLens<Data["Type"], Entity.Position>;
+type HasPosition<Data extends Schema.Struct.Fields> = {
+	readonly "~position": Entity.TraitLens<Entity.EntityData<Data>["Type"], Entity.Position>;
 };
-type HasOpacity<Data extends Schema.Top> = {
-	readonly "~opacity": Entity.TraitLens<Data["Type"], number>;
+type HasOpacity<Data extends Schema.Struct.Fields> = {
+	readonly "~opacity": Entity.TraitLens<Entity.EntityData<Data>["Type"], number>;
 };
 
 const animatePosition = Effect.fnUntraced(function* <
 	Name extends string,
-	Data extends Schema.Top,
-	Traits extends Partial<Entity.EntityTraits<Data["Type"]>>,
+	Data extends Schema.Struct.Fields,
+	Traits extends Entity.PartialTraits<Data>,
 	E = never,
 	R = never,
 >(
@@ -349,7 +349,7 @@ const animatePosition = Effect.fnUntraced(function* <
 ) {
 	const instance = yield* Instance.flatten(instanceOrEffect);
 
-	const lens = Entity.traitOrDie<Data["Type"], Entity.Position>(
+	const lens = Entity.traitOrDie<Entity.EntityData<Data>["Type"], Entity.Position>(
 		instance.entity,
 		"~position",
 	);
@@ -369,8 +369,8 @@ const animatePosition = Effect.fnUntraced(function* <
 
 const animateOpacity = Effect.fnUntraced(function* <
 	Name extends string,
-	Data extends Schema.Top,
-	Traits extends Partial<Entity.EntityTraits<Data["Type"]>>,
+	Data extends Schema.Struct.Fields,
+	Traits extends Entity.PartialTraits<Data>,
 	E = never,
 	R = never,
 >(
@@ -381,7 +381,7 @@ const animateOpacity = Effect.fnUntraced(function* <
 	timing?: Timing.TimingInput,
 ) {
 	const instance = yield* Instance.flatten(instanceOrEffect);
-	const lens = Entity.traitOrDie<Data["Type"], number>(
+	const lens = Entity.traitOrDie<Entity.EntityData<Data>["Type"], number>(
 		instance.entity,
 		"~opacity",
 	);
@@ -406,9 +406,8 @@ const animateOpacity = Effect.fnUntraced(function* <
 export const moveTo = dual<
 	<
 		Name extends string,
-		Data extends Schema.Top,
-		Traits extends Partial<Entity.EntityTraits<Data["Type"]>> &
-			HasPosition<Data>,
+		Data extends Schema.Struct.Fields,
+		Traits extends Entity.PartialTraits<Data> & HasPosition<Data>,
 	>(
 		to: Partial<Entity.Position>,
 		duration: Duration.Input,
@@ -422,9 +421,8 @@ export const moveTo = dual<
 	>,
 	<
 		Name extends string,
-		Data extends Schema.Top,
-		Traits extends Partial<Entity.EntityTraits<Data["Type"]>> &
-			HasPosition<Data>,
+		Data extends Schema.Struct.Fields,
+		Traits extends Entity.PartialTraits<Data> & HasPosition<Data>,
 		E = never,
 		R = never,
 	>(
@@ -445,9 +443,8 @@ export const moveTo = dual<
 export const move = dual<
 	<
 		Name extends string,
-		Data extends Schema.Top,
-		Traits extends Partial<Entity.EntityTraits<Data["Type"]>> &
-			HasPosition<Data>,
+		Data extends Schema.Struct.Fields,
+		Traits extends Entity.PartialTraits<Data> & HasPosition<Data>,
 	>(
 		from: Partial<Entity.Position>,
 		to: Partial<Entity.Position>,
@@ -462,9 +459,8 @@ export const move = dual<
 	>,
 	<
 		Name extends string,
-		Data extends Schema.Top,
-		Traits extends Partial<Entity.EntityTraits<Data["Type"]>> &
-			HasPosition<Data>,
+		Data extends Schema.Struct.Fields,
+		Traits extends Entity.PartialTraits<Data> & HasPosition<Data>,
 		E = never,
 		R = never,
 	>(
@@ -490,9 +486,8 @@ export const move = dual<
 export const fadeTo = dual<
 	<
 		Name extends string,
-		Data extends Schema.Top,
-		Traits extends Partial<Entity.EntityTraits<Data["Type"]>> &
-			HasOpacity<Data>,
+		Data extends Schema.Struct.Fields,
+		Traits extends Entity.PartialTraits<Data> & HasOpacity<Data>,
 	>(
 		to: number,
 		duration: Duration.Input,
@@ -506,9 +501,8 @@ export const fadeTo = dual<
 	>,
 	<
 		Name extends string,
-		Data extends Schema.Top,
-		Traits extends Partial<Entity.EntityTraits<Data["Type"]>> &
-			HasOpacity<Data>,
+		Data extends Schema.Struct.Fields,
+		Traits extends Entity.PartialTraits<Data> & HasOpacity<Data>,
 		E = never,
 		R = never,
 	>(
@@ -529,9 +523,8 @@ export const fadeTo = dual<
 export const fade = dual<
 	<
 		Name extends string,
-		Data extends Schema.Top,
-		Traits extends Partial<Entity.EntityTraits<Data["Type"]>> &
-			HasOpacity<Data>,
+		Data extends Schema.Struct.Fields,
+		Traits extends Entity.PartialTraits<Data> & HasOpacity<Data>,
 	>(
 		from: number,
 		to: number,
@@ -546,9 +539,8 @@ export const fade = dual<
 	>,
 	<
 		Name extends string,
-		Data extends Schema.Top,
-		Traits extends Partial<Entity.EntityTraits<Data["Type"]>> &
-			HasOpacity<Data>,
+		Data extends Schema.Struct.Fields,
+		Traits extends Entity.PartialTraits<Data> & HasOpacity<Data>,
 		E = never,
 		R = never,
 	>(

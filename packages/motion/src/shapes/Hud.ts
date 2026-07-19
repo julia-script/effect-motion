@@ -26,7 +26,7 @@ const fields = {
 	),
 };
 
-type HudData = Schema.Struct<typeof fields>["Type"];
+type HudData = Entity.EntityData<typeof fields>["Type"];
 
 export const Hud = Entity.make("shapes/Hud", fields, {
 	// screen-space position; z is pinned 0 (no world depth on the container)

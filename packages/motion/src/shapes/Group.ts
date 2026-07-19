@@ -96,7 +96,7 @@ const fields = {
 };
 
 type StoredInput = Schema.Struct<typeof fields>["~type.make.in"];
-type GroupData = Schema.Struct<typeof fields>["Type"];
+type GroupData = Entity.EntityData<typeof fields>["Type"];
 type GroupInput = Omit<StoredInput, "transform"> & {
 	readonly transform?: typeof TransformOperations.Type;
 };
@@ -115,7 +115,7 @@ const traits = {
 	// moving a group moves the subtree (children keep local coordinates)
 	"~position": Shape2D.positionLens<GroupData>(),
 	"~opacity": Shape2D.opacityLens<GroupData>(),
-};
+} satisfies Entity.PartialTraits<typeof fields>;
 
 export const Group = Entity.make<"shapes/Group", typeof fields, typeof traits>(
 	"shapes/Group",

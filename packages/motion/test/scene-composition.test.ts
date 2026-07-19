@@ -36,13 +36,10 @@ const child = (meta?: Partial<Runner.CompConfig>) =>
 	);
 
 describe("scene composition config", () => {
-	it("a scene value carries its comp config; annotated copies share it", () => {
+	it("a scene value carries its comp config", () => {
 		const s = child();
 		expect(s.width).toBe(100);
 		expect(s.height).toBe(50);
-		const annotated = s.annotateMerge(s.annotations);
-		expect(annotated.width).toBe(100);
-		expect(annotated.backgroundColor).toBe(s.backgroundColor);
 	});
 
 	it("a nested comp does not resize the movie", async () => {

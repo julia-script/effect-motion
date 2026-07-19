@@ -1,7 +1,6 @@
-import { Context, Effect, Layer, type Scope } from "effect";
+import { Context, Effect, Layer, Scope } from "effect";
 import * as Canvas from "./Canvas.js";
-import type { ThorvgWasm } from "./Engine.js";
-import * as Font from "./Font.js";
+import { ThorvgWasm } from "./Engine.js";
 import type { OwnedPaint } from "./Interop.js";
 import * as Picture from "./Picture.js";
 import type { ThorvgException } from "./ThorvgException.js";
@@ -9,22 +8,31 @@ import type { ThorvgException } from "./ThorvgException.js";
 /**
  * The session tier (design D3): everything a consumer holds for the lifetime
  * of "a scene being shown" — a player mount, an export run. Opening a session
- * acquires a canvas at the requested size and holds the requested fonts
- * (refcounted, per the Font registry); closing the scope releases both. The
- * engine's keeper canvas (design D1) makes deleting session canvases safe:
- * the font table survives them.
+ * acquires a canvas at the requested size; closing the scope releases it and
+ * every session-owned picture. Fonts are engine-global and are registered by
+ * the render path through the scoped Font registry, not by the session.
  */
 
 export interface RenderSessionShape {
 	readonly canvas: Canvas.Canvas;
 	/**
-	 * Decoded source pictures by declared name, loaded once at session open
-	 * and freed by the session scope. The per-frame render path duplicates
-	 * these (duplicates share the decoded surface — spike-verified) and hands
-	 * the duplicates to the frame subtree. A name whose fetch/decode failed is
-	 * simply absent.
+	 * Decoded source pictures by resource id, registered lazily by the render
+	 * path (first frame that uses an image) and freed by the session scope.
+	 * The per-frame render path duplicates these (duplicates share the
+	 * decoded surface — spike-verified) and hands the duplicates to the frame
+	 * subtree.
 	 */
 	readonly pictures: ReadonlyMap<string, OwnedPaint>;
+	/**
+	 * Decode encoded bytes (png/jpg/webp/svg) into a session-owned picture
+	 * under `id`, or return the already-registered one — decode-once per
+	 * session. The picture is bound to the SESSION scope (it outlives the
+	 * per-frame render scope), so it is freed when the session closes.
+	 */
+	readonly registerPicture: (
+		id: string,
+		bytes: Uint8Array,
+	) => Effect.Effect<OwnedPaint, ThorvgException>;
 }
 
 export class RenderSession extends Context.Service<
@@ -36,69 +44,7 @@ export interface SessionOptions {
 	/** initial canvas size; the render path resizes in place when needed */
 	readonly width: number;
 	readonly height: number;
-	/**
-	 * fonts this session's scene needs, `family -> url` (e.g.
-	 * `Fonts.urlMap(scene)` from effect-motion). Held for the session:
-	 * loaded on open (deduped with other holders), released on close.
-	 * Individual load failures are logged skips; conflicting sources for an
-	 * already-held family fail loudly.
-	 */
-	readonly fonts?: Record<string, string>;
-	/**
-	 * images this session's scene needs, `name -> url` (e.g.
-	 * `Images.urlMap(scene)` from effect-motion). Fetched and decoded once at
-	 * open into session-owned pictures, freed on close. A failed fetch/decode
-	 * is a logged skip naming the asset and source — the session still opens.
-	 * Unlike fonts, pictures are not engine-global: sessions never interact.
-	 */
-	readonly images?: Record<string, string>;
 }
-
-// fetch one image's bytes and decode into a session-owned picture; any
-// failure is a logged skip (design D4 — fonts semantics, verbatim)
-const loadPicture = (
-	name: string,
-	url: string,
-): Effect.Effect<OwnedPaint | undefined, never, ThorvgWasm | Scope.Scope> =>
-	Effect.gen(function* () {
-		const bytes = yield* Effect.promise(() =>
-			fetch(url)
-				.then((r) => {
-					if (!r.ok) {
-						throw new Error(`HTTP ${r.status}`);
-					}
-					return r.arrayBuffer();
-				})
-				.then((buf) => new Uint8Array(buf))
-				.catch((err) => {
-					console.warn(
-						`@effect-motion/thorvg: image "${name}" failed to fetch from ${url}`,
-						err,
-					);
-					return undefined;
-				}),
-		);
-		if (bytes === undefined) {
-			return undefined;
-		}
-		// a picture whose decode failed stays detached and is freed by the
-		// session scope like any owned paint
-		const made = yield* Effect.result(
-			Effect.gen(function* () {
-				const picture = yield* Picture.make();
-				yield* Picture.load(picture, bytes);
-				return picture;
-			}),
-		);
-		if (made._tag === "Failure") {
-			console.warn(
-				`@effect-motion/thorvg: image "${name}" from ${url} failed to decode`,
-				made.failure,
-			);
-			return undefined;
-		}
-		return made.success;
-	});
 
 export const make = (
 	options: SessionOptions,
@@ -109,26 +55,29 @@ export const make = (
 > =>
 	Effect.gen(function* () {
 		const canvas = yield* Canvas.make(options.width, options.height);
-		if (options.fonts !== undefined) {
-			yield* Font.scopedMany(options.fonts);
-		}
+		// captured so lazily-registered pictures attach their release to the
+		// SESSION's lifetime, not the per-frame render scope calling in
+		const sessionScope = yield* Effect.scope;
+		const wasm = yield* ThorvgWasm;
 		const pictures = new Map<string, OwnedPaint>();
-		if (options.images !== undefined) {
-			yield* Effect.forEach(
-				Object.entries(options.images),
-				([name, url]) =>
-					loadPicture(name, url).pipe(
-						Effect.map((picture) => {
-							if (picture !== undefined) {
-								pictures.set(name, picture);
-							}
-							return picture;
-						}),
-					),
-				{ concurrency: "unbounded", discard: true },
+		const registerPicture = (
+			id: string,
+			bytes: Uint8Array,
+		): Effect.Effect<OwnedPaint, ThorvgException> =>
+			Effect.gen(function* () {
+				const existing = pictures.get(id);
+				if (existing !== undefined) {
+					return existing;
+				}
+				const picture = yield* Picture.make();
+				yield* Picture.load(picture, bytes);
+				pictures.set(id, picture);
+				return picture;
+			}).pipe(
+				Scope.provide(sessionScope),
+				Effect.provideService(ThorvgWasm, wasm),
 			);
-		}
-		return RenderSession.of({ canvas, pictures });
+		return RenderSession.of({ canvas, pictures, registerPicture });
 	});
 
 export const layer = (options: SessionOptions) =>

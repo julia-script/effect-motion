@@ -53,9 +53,11 @@ odd — no silent resizing. Use even dimensions, or pass a scale filter through
 
 ## Fonts
 
-Fonts declared on the scene with the `Fonts` annotation are passed to the
-rasterizer automatically, so exported frames use the same faces the player
-shows. Declare a `path` source per face for offline rendering.
+Fonts are typed scene dependencies (see [Fonts](/docs/going-further/fonts)):
+provide the same loader layers to the export path's render that the player
+gets via `renderLayers`, and exported frames use the same faces the player
+shows. In Node, load effects can read font bytes straight from disk — the
+offline-rendering path needs no URLs.
 
 ## ffmpeg is bundled
 

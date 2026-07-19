@@ -1,4 +1,5 @@
 import type { PlayerProps } from "@effect-motion/react";
+import type * as Layer from "effect/Layer";
 import { scene as appendChild } from "./append-child.scene";
 import { scene as bezier3d } from "./bezier-3d.scene";
 import { scene as cameraDolly } from "./camera-dolly.scene";
@@ -10,7 +11,10 @@ import { scene as cameraZoom } from "./camera-zoom.scene";
 import { scene as chain } from "./chain.scene";
 import { scene as children } from "./children.scene";
 import { scene as crossfade } from "./crossfade.scene";
-import { scene as customFonts } from "./custom-fonts.scene";
+import {
+	scene as customFonts,
+	renderLayers as customFontsLayers,
+} from "./custom-fonts.scene";
 import { scene as depth3d } from "./depth-3d.scene";
 import { scene as depthGrid } from "./depth-grid.scene";
 import { scene as easingRace } from "./easing-race.scene";
@@ -20,7 +24,7 @@ import { scene as floatingMotes } from "./floating-motes.scene";
 import { scene as forkBackground } from "./fork-background.scene";
 import { scene as groups } from "./groups.scene";
 import { scene as hud } from "./hud.scene";
-import { scene as images } from "./images.scene";
+import { scene as images, renderLayers as imagesLayers } from "./images.scene";
 import { scene as moonMoth } from "./moon-moth.scene";
 import { scene as particleField } from "./particle-field.scene";
 import { scene as particles } from "./particles.scene";
@@ -38,7 +42,13 @@ import { scene as theBox } from "./the-box.scene";
  * Every example the docs can embed. The key doubles as the source file
  * name (`examples/<key>.scene.ts`) that the Example component displays.
  */
-export const examples: Record<string, PlayerProps["scene"]> = {
+/** an example: its scene, plus loader layers when the scene declares resources */
+export interface ExampleEntry {
+	readonly scene: PlayerProps["scene"];
+	readonly renderLayers?: Layer.Layer<never, unknown, never>;
+}
+
+export const examples: Record<string, PlayerProps["scene"] | ExampleEntry> = {
 	"easing-race": easingRace,
 	springs,
 	groups,
@@ -68,8 +78,14 @@ export const examples: Record<string, PlayerProps["scene"]> = {
 	"floating-motes": floatingMotes,
 	snow,
 	crossfade,
-	"custom-fonts": customFonts,
-	images,
+	"custom-fonts": {
+		scene: customFonts,
+		renderLayers: customFontsLayers as Layer.Layer<never, unknown, never>,
+	},
+	images: {
+		scene: images,
+		renderLayers: imagesLayers as Layer.Layer<never, unknown, never>,
+	},
 	text,
 	"the-box": theBox,
 	"effect-logo": effectLogo,

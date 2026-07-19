@@ -131,16 +131,16 @@ describe("render sessions", () => {
 		expect(Buffer.from(aAfterBClosed).equals(Buffer.from(a))).toBe(true);
 	}, 30000);
 
-	it("session fonts load on open, are shared, and release on close", async () => {
-		const { during, conflictDuring, afterViaNewSession } = await run(
+	it("byte-source fonts acquired beside a session share, conflict, and release", async () => {
+		// sessions no longer load fonts themselves: the render path acquires
+		// each family from loader bytes through the scoped registry, scoped to
+		// its render — this mirrors that shape at the thorvg level
+		const { during, conflictDuring, afterViaNewScope } = await run(
 			Effect.gen(function* () {
 				const { during, conflictDuring } = yield* Effect.scoped(
 					Effect.gen(function* () {
-						yield* Session.make({
-							width: 8,
-							height: 8,
-							fonts: { "session-font": FONT_URL },
-						});
+						yield* Session.make({ width: 8, height: 8 });
+						yield* Font.scoped("session-font", { bytes: fontBytes });
 						const during = yield* paintText("session-font");
 						// a concurrent hold of the same family from another source
 						// conflicts loudly
@@ -154,23 +154,20 @@ describe("render sessions", () => {
 						return { during, conflictDuring };
 					}),
 				);
-				// session closed -> hold released; a new session re-acquires the
-				// same family+url cheaply (tombstone) and still renders
-				const afterViaNewSession = yield* Effect.scoped(
+				// scope closed -> hold released; a new acquisition of the same
+				// bytes re-acquires cheaply (tombstone) and still renders
+				const afterViaNewScope = yield* Effect.scoped(
 					Effect.gen(function* () {
-						yield* Session.make({
-							width: 8,
-							height: 8,
-							fonts: { "session-font": FONT_URL },
-						});
+						yield* Session.make({ width: 8, height: 8 });
+						yield* Font.scoped("session-font", { bytes: fontBytes });
 						return yield* paintText("session-font");
 					}),
 				);
-				return { during, conflictDuring, afterViaNewSession };
+				return { during, conflictDuring, afterViaNewScope };
 			}),
 		);
 		expect(during).toBeGreaterThan(500);
 		expect(conflictDuring._tag).toBe("Failure");
-		expect(afterViaNewSession).toBeGreaterThan(500);
+		expect(afterViaNewScope).toBeGreaterThan(500);
 	}, 30000);
 });

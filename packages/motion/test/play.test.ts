@@ -235,19 +235,3 @@ describe("Scene.play mounting", () => {
 		}
 	});
 });
-
-describe("scene metadata", () => {
-	const Label = Context.Reference<string>("test/Label", {
-		defaultValue: () => "",
-	});
-
-	it("annotate returns a new value; the original is untouched; playback is identical", async () => {
-		const scene = riser();
-		const annotated = scene.annotate(Label, "hello");
-		expect(Context.get(annotated.annotations, Label)).toBe("hello");
-		expect(Context.get(scene.annotations, Label)).toBe(""); // default
-		const plain = dataFrames(await collectRaw(scene));
-		const withMeta = dataFrames(await collectRaw(annotated));
-		expect(withMeta).toEqual(plain);
-	});
-});

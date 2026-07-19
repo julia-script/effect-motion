@@ -1,3 +1,4 @@
+import { Effect, Function, Predicate } from "effect";
 import * as Schema from "effect/Schema";
 import type { AnyStructSchema } from "effect/unstable/workflow/Workflow";
 
@@ -33,22 +34,32 @@ export type EntityTraits<Data> = {
 
 export type TraitKey = keyof EntityTraits<unknown>;
 
+export type EntityData<Data extends Schema.Struct.Fields> = Schema.Struct<
+	Data & {
+		readonly "~visible": Schema.withConstructorDefault<Schema.Boolean>;
+	}
+>;
+export type PartialTraits<Data extends Schema.Struct.Fields> = Partial<
+	EntityTraits<EntityData<Data>["Type"]>
+>;
 export interface Entity<
 	Name extends string = string,
-	Data extends Schema.Top = Schema.Top,
-	Traits extends Partial<EntityTraits<Data["Type"]>> = {},
+	Data extends Schema.Struct.Fields = {},
+	Traits extends PartialTraits<Data> = {},
 > {
 	readonly [TypeId]: typeof TypeId;
 	readonly name: Name;
-	readonly data: Data;
+	readonly data: EntityData<Data>;
 	readonly traits: Traits;
 }
 
-export type AnyEntity = Entity<any, any, any>;
+export type AnyEntity = Entity<string, {}, {}>;
 
 /** the entity's trait lens, or a defect naming entity and trait */
 export const traitOrDie = <Data, Value>(
-	entity: AnyEntity,
+	// structural minimum, not AnyEntity: generic Fields-typed entities must
+	// pass through without variance fights — only name/traits are read
+	entity: { readonly name: string; readonly traits: unknown },
 	key: TraitKey,
 ): TraitLens<Data, Value> => {
 	const lens = (entity.traits as Partial<Record<TraitKey, unknown>>)[key];
@@ -77,29 +88,43 @@ const normalizeStructLike = <T extends Schema.Struct.Fields | AnyStructSchema>(
 
 export const make = <
 	Name extends string,
-	Data extends Schema.Struct.Fields | AnyStructSchema,
-	const Traits extends Partial<
-		EntityTraits<NormalizeStructLike<Data>["Type"]>
-	> = {},
+	Data extends Schema.Struct.Fields = {},
+	const Traits extends PartialTraits<Data> = {},
 >(
 	name: Name,
 	data: Data,
 	traits?: Traits,
-): Entity<Name, NormalizeStructLike<Data>, Traits> => {
-	const normalized = normalizeStructLike(data);
-	// `$` is reserved for builtin, engine-owned instance properties (e.g.
-	// `$visible`), which live beside the data — never as entity-data fields.
-	for (const field of Object.keys(normalized.fields)) {
-		if (field.startsWith("$")) {
-			throw new Error(
-				`Entity "${name}": field "${field}" uses the reserved "$" prefix (reserved for builtin instance properties like $visible)`,
-			);
-		}
-	}
+): Entity<Name, Data, Traits> => {
 	return {
 		[TypeId]: TypeId,
 		name,
-		data: normalized,
+		data: Schema.Struct({
+			...data,
+			"~visible": Schema.Boolean.pipe(
+				Schema.withConstructorDefault(Effect.succeed(true)),
+			),
+		}),
 		traits: traits ?? ({} as Traits),
 	};
+};
+
+export const is = (u: unknown): u is Entity<string, {}, {}> => {
+	if (!Predicate.hasProperty(u, TypeId)) {
+		return false;
+	}
+	return true;
+};
+
+export const isEntity = <
+	Name extends string,
+	Data extends Schema.Struct.Fields,
+	Traits extends PartialTraits<Data>,
+>(
+	entity: Entity<Name, Data, Traits>,
+	u: unknown,
+): u is Entity<Name, Data, Traits> => {
+	if (!is(u)) {
+		return false;
+	}
+	return u.name === entity.name;
 };
