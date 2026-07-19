@@ -1,5 +1,12 @@
 # @effect-motion/react
 
+## 0.4.1
+
+### Patch Changes
+
+- Updated dependencies [3ee8e30]
+  - effect-motion@0.4.1
+
 ## 0.4.0
 
 ### Patch Changes

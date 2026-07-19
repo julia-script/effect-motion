@@ -1,6 +1,6 @@
 {
 	"name": "create-effect-motion",
-	"version": "0.4.0",
+	"version": "0.4.1",
 	"description": "Scaffold a new effect-motion project — run with `pnpm create effect-motion` (or npm/yarn/bun create)",
 	"type": "module",
 	"license": "MIT",
