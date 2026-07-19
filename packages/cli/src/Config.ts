@@ -32,6 +32,12 @@ export interface TargetSettings {
  */
 export interface PlayerOptions {
 	readonly autoPlay?: boolean;
+	/**
+	 * Preview-only frame rate — wins over `settings.frameRate` in the studio
+	 * (e.g. preview a heavy 60fps target at 30). The scene RUNS at this rate,
+	 * so previewed frames are not the export's frames.
+	 */
+	readonly frameRate?: number;
 	/** Initial repeat mode; the studio's repeat button toggles it after. */
 	readonly defaultRepeatMode?: boolean;
 	/** Declare a never-ending scene so the player windows its buffer. */

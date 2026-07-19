@@ -21,7 +21,11 @@ type PlayerOptions = Pick<
 	| "isInfinite"
 	| "prebufferedFrames"
 	| "bufferCapacity"
->;
+> & {
+	/** preview-only rate override — merged into settings, where the one
+	 * playback clock lives (Player's settings.frameRate wins over fps) */
+	readonly frameRate?: number;
+};
 
 type SceneEntry = {
 	/** picker identity: `target:<name>` for config targets, `file:<path>` otherwise */
@@ -189,19 +193,27 @@ export const App = () => {
 						<pre>{state.message}</pre>
 					</div>
 				)}
-				{state._tag === "ready" && (
-					<Player
-						key={state.key}
-						scene={state.scene}
-						autoPlay
-						defaultRepeatMode
-						{...(entry?.settings !== undefined
-							? { settings: entry.settings }
-							: {})}
-						// the config's player block wins over the studio defaults
-						{...(entry?.player ?? {})}
-					/>
-				)}
+				{state._tag === "ready" &&
+					(() => {
+						// player.frameRate is a preview override of the scene's own
+						// rate, so it lands in settings (the Player's one clock);
+						// everything else is a Player prop and wins over the defaults
+						const { frameRate, ...playerProps } = entry?.player ?? {};
+						const settings =
+							frameRate !== undefined
+								? { ...entry?.settings, frameRate }
+								: entry?.settings;
+						return (
+							<Player
+								key={state.key}
+								scene={state.scene}
+								autoPlay
+								defaultRepeatMode
+								{...(settings !== undefined ? { settings } : {})}
+								{...playerProps}
+							/>
+						);
+					})()}
 				{(state._tag === "idle" || state._tag === "loading") &&
 					entries.length === 0 && (
 						<p className="studio-empty">
