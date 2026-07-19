@@ -5,7 +5,7 @@ import * as Entity from "../src/Entity";
 import * as Motion from "../src/Motion";
 import * as Physics from "../src/Physics";
 import * as Scene from "../src/Scene";
-import * as Shapes from "../src/shapes";
+import * as Shapes from "../src/Shapes";
 
 describe("lens laws on built-ins", () => {
 	it("set returns new immutable data; get(set(d, v)) = v", () => {

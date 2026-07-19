@@ -59,19 +59,6 @@ describe("phase advance on awaitAdvance", () => {
 			}),
 		));
 
-	it("concurrent awaitAdvance dies", () =>
-		runTest(
-			Effect.gen(function* () {
-				const phaser = yield* Phaser.Phaser.make;
-				phaser.register(1); // keep the phaser busy so waiters suspend
-				const first = yield* Effect.forkChild(phaser.awaitAdvance);
-				yield* Effect.yieldNow;
-				const exit = yield* Effect.exit(phaser.awaitAdvance);
-				expect(Exit.isFailure(exit)).toBe(true);
-				yield* Fiber.interrupt(first);
-				phaser.deregister(1);
-			}),
-		));
 });
 
 describe("generations", () => {

@@ -5,7 +5,7 @@ import * as Camera from "../src/Camera";
 import * as Color from "../src/Color";
 import * as Runner from "../src/Runner";
 import * as Scene from "../src/Scene";
-import * as Shapes from "../src/shapes";
+import * as Shapes from "../src/Shapes";
 import { render, renderExit } from "./support/framebuffer";
 
 type Entities = typeof Shapes.Group | typeof Shapes.Circle;

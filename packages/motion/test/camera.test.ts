@@ -6,7 +6,7 @@ import * as Color from "../src/Color";
 import * as Motion from "../src/Motion";
 import type * as Runner from "../src/Runner";
 import * as Scene from "../src/Scene";
-import * as Shapes from "../src/shapes";
+import * as Shapes from "../src/Shapes";
 import { render } from "./support/framebuffer";
 
 type Entities = typeof Shapes.Circle | typeof Shapes.Group;
@@ -98,7 +98,7 @@ describe("camera animated by the existing primitives", () => {
 			},
 			{ frameRate: 30 },
 		);
-		const circleId = Object.keys(frames[0]?.instances).find((id) =>
+		const circleId = Object.keys(frames[0]!.instances).find((id) =>
 			id.startsWith("shapes/Circle"),
 		)!;
 		for (const frame of frames) {

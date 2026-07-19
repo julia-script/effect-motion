@@ -4,7 +4,7 @@ import * as Stream from "effect/Stream";
 import { describe, expect, it } from "vitest";
 import * as Motion from "../src/Motion";
 import * as Scene from "../src/Scene";
-import * as Shapes from "../src/shapes";
+import * as Shapes from "../src/Shapes";
 
 // runs a scene and returns, per frame, the non-root instances' data in
 // instantiation order

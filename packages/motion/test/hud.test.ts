@@ -7,7 +7,7 @@ import * as Motion from "../src/Motion";
 import type * as Projection from "../src/Projection";
 import type * as Runner from "../src/Runner";
 import * as Scene from "../src/Scene";
-import * as Shapes from "../src/shapes";
+import * as Shapes from "../src/Shapes";
 import { render, renderExit } from "./support/framebuffer";
 
 type Entities =

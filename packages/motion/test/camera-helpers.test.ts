@@ -5,7 +5,7 @@ import * as Camera from "../src/CameraHelpers";
 import * as Motion from "../src/Motion";
 import type * as Runner from "../src/Runner";
 import * as Scene from "../src/Scene";
-import * as Shapes from "../src/shapes";
+import * as Shapes from "../src/Shapes";
 
 type Frame = Scene.Frame<any>;
 

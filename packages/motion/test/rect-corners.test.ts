@@ -6,7 +6,7 @@ import * as Color from "../src/Color";
 import * as Motion from "../src/Motion";
 import type * as Scene from "../src/Scene";
 import * as SceneMod from "../src/Scene";
-import * as Shapes from "../src/shapes";
+import * as Shapes from "../src/Shapes";
 import { render } from "./support/framebuffer";
 
 type Entities = typeof Shapes.Rect | typeof Shapes.Group;

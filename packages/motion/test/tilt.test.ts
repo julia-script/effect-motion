@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import * as Camera from "../src/Camera";
 import * as Color from "../src/Color";
 import type * as Scene from "../src/Scene";
-import * as Shapes from "../src/shapes";
+import * as Shapes from "../src/Shapes";
 import { type Rendered, render } from "./support/framebuffer";
 
 type Entities = typeof Shapes.Rect | typeof Shapes.Group;
