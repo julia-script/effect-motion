@@ -8,6 +8,7 @@ import type * as Runner from "../src/Runner";
 import * as Scene from "../src/Scene";
 import * as Shapes from "../src/Shapes";
 import { render } from "./support/framebuffer";
+import { unreachable } from "./support/raise";
 
 type Entities = typeof Shapes.Circle | typeof Shapes.Group;
 type Frame = Scene.Frame<Entities>;
@@ -32,8 +33,7 @@ const framesOf = (
 const lastFrame = (
 	make: () => Generator<Effect.Effect<any, any, any>, void, never>,
 	settings: Partial<Runner.Settings> = {},
-	// biome-ignore lint/style/noNonNullAssertion: every test scene emits frames
-) => framesOf(make, settings).then((frames) => frames.at(-1)!);
+) => framesOf(make, settings).then((frames) => frames.at(-1) ?? unreachable());
 
 describe("camera state on the frame", () => {
 	it("defaults to the resting 3D identity when never touched", async () => {
@@ -104,12 +104,14 @@ describe("camera animated by the existing primitives", () => {
 			},
 			{ frameRate: 30 },
 		);
-		const circleId = Object.keys(frames[0]!.instances).find((id) =>
-			id.startsWith("shapes/Circle"),
-			// biome-ignore lint/style/noNonNullAssertion: the scene instantiates a circle
-		)!;
+		const circleId =
+			Object.keys((frames[0] ?? unreachable()).instances).find((id) =>
+				id.startsWith("shapes/Circle"),
+			) ?? unreachable();
 		for (const frame of frames) {
-			expect((frame.instances[circleId]?.data as { x: number }).x).toBe(100);
+			expect(
+				((frame.instances[circleId] ?? unreachable()).data as { x: number }).x,
+			).toBe(100);
 		}
 		expect(frames.at(-1)?.camera.x).toBe(300);
 	});

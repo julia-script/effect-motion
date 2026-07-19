@@ -14,6 +14,8 @@ export interface Instance<
 	readonly entity: Entity.Entity<Name, Data, Traits>;
 }
 
+export type AnyInstance = Instance<any, any, any>;
+
 /** the Instance type of a given entity, traits included */
 export type Of<E extends Entity.AnyEntity> =
 	E extends Entity.Entity<infer Name, infer Data, infer Traits>

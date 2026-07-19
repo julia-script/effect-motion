@@ -1,11 +1,12 @@
 import { Effect } from "effect";
 import * as Stream from "effect/Stream";
 import { describe, expect, it } from "vitest";
-import * as Camera from "../src/CameraHelpers";
+import * as Camera from "../src/Camera";
 import * as Motion from "../src/Motion";
 import type * as Runner from "../src/Runner";
 import * as Scene from "../src/Scene";
 import * as Shapes from "../src/Shapes";
+import { unreachable } from "./support/raise";
 
 type Frame = Scene.Frame<any>;
 
@@ -56,7 +57,11 @@ describe("lookAt", () => {
 			yield* cam.pipe(Camera.lookAt(hero));
 			yield* Scene.tick;
 		});
-		expect(poiOf(frames.at(-1)!)).toEqual({ x: 400, y: 80, z: -200 });
+		expect(poiOf(frames.at(-1) ?? unreachable())).toEqual({
+			x: 400,
+			y: 80,
+			z: -200,
+		});
 	});
 
 	it("offset shifts the aim", async () => {
@@ -66,7 +71,11 @@ describe("lookAt", () => {
 			yield* Camera.lookAt(cam, hero, undefined, undefined, { y: -40 });
 			yield* Scene.tick;
 		});
-		expect(poiOf(frames.at(-1)!)).toEqual({ x: 100, y: 160, z: 0 });
+		expect(poiOf(frames.at(-1) ?? unreachable())).toEqual({
+			x: 100,
+			y: 160,
+			z: 0,
+		});
 	});
 
 	it("plain position and effect targets both resolve", async () => {
@@ -80,8 +89,12 @@ describe("lookAt", () => {
 			);
 			yield* Scene.tick;
 		});
-		expect(poiOf(frames[0]!)).toEqual({ x: 10, y: 20, z: 0 });
-		expect(poiOf(frames.at(-1)!)).toEqual({ x: 77, y: 0, z: -5 });
+		expect(poiOf(frames[0] ?? unreachable())).toEqual({ x: 10, y: 20, z: 0 });
+		expect(poiOf(frames.at(-1) ?? unreachable())).toEqual({
+			x: 77,
+			y: 0,
+			z: -5,
+		});
 	});
 
 	it("eased re-aim retargets onto a moving target and lands exactly", async () => {
@@ -94,10 +107,10 @@ describe("lookAt", () => {
 				cam.pipe(Camera.lookAt(hero, "1 second", "easeInOutCubic")),
 			]);
 		});
-		const last = frames.at(-1)!;
+		const last = frames.at(-1) ?? unreachable();
 		expect(poiOf(last).x).toBe(300); // exact landing on the moving target
 		// mid-flight the POI trails the hero (eased blend of start and current)
-		const mid = frames[29]!;
+		const mid = frames[29] ?? unreachable();
 		const heroMidX = (
 			Object.values(mid.instances).find(
 				(e: any) => e.entity?.name === "shapes/Circle",
@@ -118,7 +131,7 @@ describe("lookAt", () => {
 		const dist = Math.hypot(100, 0, REST.z);
 		const seed = { x: ORIGIN.x, y: ORIGIN.y, z: REST.z - dist };
 		const t = 1 / 60;
-		const first = poiOf(frames[0]!);
+		const first = poiOf(frames[0] ?? unreachable());
 		expect(first.x).toBeCloseTo(seed.x + (target.x - seed.x) * t, 8);
 		expect(first.z).toBeCloseTo(seed.z + (target.z - seed.z) * t, 8);
 	});
@@ -165,7 +178,7 @@ describe("follow", () => {
 		);
 		// trails by exactly one frame...
 		for (let i = 1; i < 60; i++) {
-			expect(poiOf(a[i]!).x).toBe(heroXs[i - 1]);
+			expect(poiOf(a[i] ?? unreachable()).x).toBe(heroXs[i - 1]);
 		}
 		// ...and identically on every run (deterministic, not racy)
 		const b = await run();
@@ -183,9 +196,9 @@ describe("follow", () => {
 				Camera.follow(b, "500 millis"),
 			);
 		});
-		expect(poiOf(frames[29]!)).toEqual({ x: 50, y: 10, z: 0 }); // on a
-		expect(poiOf(frames[59]!)).toEqual({ x: 350, y: 90, z: 0 }); // landed on b
-		expect(poiOf(frames[75]!)).toEqual({ x: 350, y: 90, z: 0 }); // tracking b
+		expect(poiOf(frames[29] ?? unreachable())).toEqual({ x: 50, y: 10, z: 0 }); // on a
+		expect(poiOf(frames[59] ?? unreachable())).toEqual({ x: 350, y: 90, z: 0 }); // landed on b
+		expect(poiOf(frames[75] ?? unreachable())).toEqual({ x: 350, y: 90, z: 0 }); // tracking b
 	});
 });
 
