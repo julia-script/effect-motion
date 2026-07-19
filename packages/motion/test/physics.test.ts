@@ -51,7 +51,7 @@ const runScene = async <A>(
 	extract: (data: Record<string, any>) => A,
 	settings: Partial<Runner.Settings> = {},
 ): Promise<A[]> => {
-	const scene = Scene.make(make as never);
+	const scene = Scene.make(make as never, { width: 500, height: 300 });
 	const frames = await Effect.runPromise(
 		Scene.stream(scene as never, settings).pipe(
 			Stream.runCollect,

@@ -9,18 +9,15 @@ import { MotionCliError } from "./MotionCliError.js";
  */
 
 /**
- * Per-target render settings: the Runner `Settings` subset an export can
- * honor, plus `dpr`. From the author's perspective dpr is a rendering
- * setting like width/height; the render command maps it to the export
- * package's supersampling option.
+ * Per-target playback settings: the Runner `Settings` subset an export can
+ * honor, plus `dpr` (mapped to the export package's supersampling option).
+ * Resolution and background are NOT here — they are the scene's own
+ * composition config, set in `Scene.make(gen, { width, height, backgroundColor })`.
  */
 export interface TargetSettings {
-	readonly width?: number;
-	readonly height?: number;
 	readonly frameRate?: number;
 	readonly seed?: Runner.Seed;
 	readonly maxFrames?: number;
-	readonly backgroundColor?: Runner.Settings["backgroundColor"];
 	readonly dpr?: number;
 }
 
@@ -127,8 +124,6 @@ export const validateConfig = (
 
 /** Flag values a `motion render` invocation can lay over a target. */
 export interface RenderOverrides {
-	readonly width?: number;
-	readonly height?: number;
 	readonly frameRate?: number;
 	readonly dpr?: number;
 	readonly seed?: Runner.Seed;

@@ -12,7 +12,7 @@ const collectX = async (
 	make: () => Generator<Effect.Effect<any, any, any>, void, never>,
 	settings: Partial<Runner.Settings> = {},
 ): Promise<number[]> => {
-	const scene = Scene.make(make as never);
+	const scene = Scene.make(make as never, { width: 500, height: 300 });
 	const frames = await Effect.runPromise(
 		Scene.stream(scene as never, settings).pipe(
 			Stream.runCollect,

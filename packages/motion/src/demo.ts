@@ -10,6 +10,13 @@ import * as Renderer from "./Renderer.js";
 import * as Scene from "./Scene.js";
 import * as Shapes from "./Shapes.js";
 
+// the demo's comp config — the old runner defaults, now explicit on the scene
+const demoComp = {
+	width: 500,
+	height: 300,
+	backgroundColor: Color.rgba(22, 22, 29),
+};
+
 // children live in the group's local coordinates: one motion moves them all
 export const scene = Scene.make(function* () {
 	const duo = yield* Scene.instantiate(Shapes.Group, {
@@ -39,7 +46,7 @@ export const scene = Scene.make(function* () {
 		Physics.springTo({ y: 80 }, "jump"),
 		Motion.fadeTo(0.15, "1 second"),
 	);
-});
+}, demoComp);
 
 // schedule-driven composition: a background pulse loops for the scene's
 // duration while three staggered dots define its actual length
@@ -75,14 +82,12 @@ export const staggered = Scene.make(function* () {
 		[dot(0), dot(25), dot(50)],
 		Schedule.spaced("250 millis"),
 	);
-});
+}, demoComp);
 
 // render the middle frame of the duo scene to a PNG through the single ThorVG
 // renderer (Node adapter) — the end-to-end path: Scene.stream → renderToPng.
 const movie = Effect.gen(function* () {
-	const frames = yield* Scene.stream(scene, { width: 500, height: 300 }).pipe(
-		Stream.runCollect,
-	);
+	const frames = yield* Scene.stream(scene).pipe(Stream.runCollect);
 
 	const list = [...frames];
 	const mid = list[Math.floor(list.length / 2)] as Scene.Frame;

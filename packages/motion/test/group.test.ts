@@ -155,7 +155,7 @@ describe("scene attachment", () => {
 	const collectFrames = async (
 		make: () => Generator<Effect.Effect<any, any, any>, void, never>,
 	) => {
-		const scene = Scene.make(make as never);
+		const scene = Scene.make(make as never, { width: 500, height: 300 });
 		const frames = await Effect.runPromise(
 			Scene.stream(scene as never).pipe(
 				Stream.runCollect,
@@ -313,7 +313,7 @@ describe("polymorphic children", () => {
 	const collectFrames = async (
 		make: () => Generator<Effect.Effect<any, any, any>, void, never>,
 	) => {
-		const scene = Scene.make(make as never);
+		const scene = Scene.make(make as never, { width: 500, height: 300 });
 		const frames = await Effect.runPromise(
 			Scene.stream(scene as never).pipe(
 				Stream.runCollect,
@@ -388,7 +388,7 @@ describe("builtin $visible", () => {
 	const collectFrames = async (
 		make: () => Generator<Effect.Effect<any, any, any>, void, never>,
 	) => {
-		const scene = Scene.make(make as never);
+		const scene = Scene.make(make as never, { width: 500, height: 300 });
 		const frames = await Effect.runPromise(
 			Scene.stream(scene as never).pipe(
 				Stream.runCollect,

@@ -65,15 +65,21 @@ const intro = yield* Scene.play(introScene);
 yield* intro.finished; // sequential
 ```
 
-**Mounting.** Give `play` a `parent` group and the whole child scene lives under
-it — move or fade the group and the nested scene follows:
+**Bounded sub-comps.** Like an After Effects precomp, a played scene keeps its
+own composition config as its **bounds**: content clips to them, a
+non-transparent `backgroundColor` paints within them, and the child can be
+smaller or bigger than the movie. By default the child's bounds render centered
+in the enclosing comp. The handle exposes the implicit mount group — move,
+fade, or scale it to transform the whole nested scene, bounds included:
 
 ```ts
-const stage = yield* Scene.instantiate(Shapes.Group, { x: 60, y: 40 });
-const h = yield* Scene.play(intro, { parent: stage });
-yield* h.finished;
-yield* Motion.fadeTo(stage, 0, "500 millis"); // fades the whole sub-scene
+const h = yield* Scene.play(card); // card: Scene.make(gen, { width: 300, height: 200 })
+yield* Motion.moveTo(h.group, { x: 40, y: 40 }, "500 millis");
+yield* Motion.fadeTo(h.group, 0, "500 millis"); // fades the whole sub-scene
 ```
+
+**Mounting.** Give `play` a `parent` group and the whole child scene (its
+bounds group included) lives under it.
 
 **Stable seeds.** Every `play` reseeds a fresh `Random` stream, so a nested scene
 animates exactly as it does standalone — `Scene.play(scene)` inside a movie

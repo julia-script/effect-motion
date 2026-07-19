@@ -102,10 +102,6 @@ describe.runIf(canVerify)("motion render (e2e)", () => {
 				"./src/scenes/dot.ts",
 				"--out-dir",
 				dir,
-				"--width",
-				"100",
-				"--height",
-				"60",
 				"--fps",
 				"10",
 			]);
@@ -114,7 +110,8 @@ describe.runIf(canVerify)("motion render (e2e)", () => {
 		}
 		const out = join(dir, "dot.mp4");
 		expect(existsSync(out)).toBe(true);
-		expect(probe(out)).toContain("width=100");
+		// the scene's own comp config sizes the video (120×80 from dot.ts)
+		expect(probe(out)).toContain("width=120");
 	});
 
 	it("fails with UnknownTarget for a name not in the config", async () => {

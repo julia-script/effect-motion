@@ -16,42 +16,49 @@ const palette = [
 	Color.hex("#3da9fc"),
 ];
 
-export const scene = Scene.make(function* () {
-	// confetti: 120 particles born at once, launched in a wide cone, pulled
-	// down by gravity, shrinking and fading as they age
-	const confetti = yield* Particles.emitter({
-		x: 250,
-		y: 90,
-		speed: [140, 320],
-		angle: [-70, 70],
-		life: [1.2, 2.2],
-		size: [3, 6],
-		gravity: 520,
-		palette,
-		sizeOverLife: { from: 1, to: 0.4, ease: "easeInQuad" },
-		opacityOverLife: { from: 1, to: 0, ease: "easeInQuad" },
-		capacity: 200,
-	});
+export const scene = Scene.make(
+	function* () {
+		// confetti: 120 particles born at once, launched in a wide cone, pulled
+		// down by gravity, shrinking and fading as they age
+		const confetti = yield* Particles.emitter({
+			x: 250,
+			y: 90,
+			speed: [140, 320],
+			angle: [-70, 70],
+			life: [1.2, 2.2],
+			size: [3, 6],
+			gravity: 520,
+			palette,
+			sizeOverLife: { from: 1, to: 0.4, ease: "easeInQuad" },
+			opacityOverLife: { from: 1, to: 0, ease: "easeInQuad" },
+			capacity: 200,
+		});
 
-	// ambience: a slow upward stream, low gravity, long-lived, with a random
-	// per-particle opacity so the embers vary in brightness
-	const embers = yield* Particles.emitter({
-		x: 250,
-		y: 300,
-		speed: [20, 60],
-		angle: [-15, 15],
-		life: [2.5, 4],
-		size: [2, 4],
-		opacityRange: [0.4, 1],
-		gravity: -40,
-		palette: [Color.hex("#ff8906"), Color.hex("#f25f4c"), Color.hex("#ffd803")],
-		opacityOverLife: { from: 0.9, to: 0, ease: "easeOutCubic" },
-		capacity: 300,
-	});
+		// ambience: a slow upward stream, low gravity, long-lived, with a random
+		// per-particle opacity so the embers vary in brightness
+		const embers = yield* Particles.emitter({
+			x: 250,
+			y: 300,
+			speed: [20, 60],
+			angle: [-15, 15],
+			life: [2.5, 4],
+			size: [2, 4],
+			opacityRange: [0.4, 1],
+			gravity: -40,
+			palette: [
+				Color.hex("#ff8906"),
+				Color.hex("#f25f4c"),
+				Color.hex("#ffd803"),
+			],
+			opacityOverLife: { from: 0.9, to: 0, ease: "easeOutCubic" },
+			capacity: 300,
+		});
 
-	// both fields advance concurrently, each ticking the phaser once/frame
-	yield* Scene.all([
-		Particles.simulate(confetti, "2.5 seconds", { burst: 120 }),
-		Particles.simulate(embers, "2.5 seconds", { rate: 40 }),
-	]);
-});
+		// both fields advance concurrently, each ticking the phaser once/frame
+		yield* Scene.all([
+			Particles.simulate(confetti, "2.5 seconds", { burst: 120 }),
+			Particles.simulate(embers, "2.5 seconds", { rate: 40 }),
+		]);
+	},
+	{ width: 500, height: 300, backgroundColor: Color.rgba(22, 22, 29) },
+);

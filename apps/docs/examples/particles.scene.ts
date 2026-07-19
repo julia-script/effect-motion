@@ -13,22 +13,25 @@ const palette = [
 	Color.hex("#3da9fc"),
 ];
 
-export const scene = Scene.make(function* () {
-	const fountain = yield* Particles.emitter({
-		x: 250,
-		y: 290,
-		speed: [300, 600], // launched hard upward…
-		angle: [-20, 20], // …in a narrow cone
-		life: [1, 1.8],
-		size: [3, 7],
-		gravity: 800, // gravity arcs them back down
-		palette,
-		// each jet shrinks and fades as it falls
-		sizeOverLife: { from: 1, to: 0.5, ease: "easeInQuad" },
-		opacityOverLife: { from: 1, to: 0, ease: "easeInQuad" },
-		capacity: 300,
-	});
+export const scene = Scene.make(
+	function* () {
+		const fountain = yield* Particles.emitter({
+			x: 250,
+			y: 290,
+			speed: [300, 600], // launched hard upward…
+			angle: [-20, 20], // …in a narrow cone
+			life: [1, 1.8],
+			size: [3, 7],
+			gravity: 800, // gravity arcs them back down
+			palette,
+			// each jet shrinks and fades as it falls
+			sizeOverLife: { from: 1, to: 0.5, ease: "easeInQuad" },
+			opacityOverLife: { from: 1, to: 0, ease: "easeInQuad" },
+			capacity: 300,
+		});
 
-	// a continuous stream for 3 seconds
-	yield* Particles.simulate(fountain, "3 seconds", { rate: 90 });
-});
+		// a continuous stream for 3 seconds
+		yield* Particles.simulate(fountain, "3 seconds", { rate: 90 });
+	},
+	{ width: 500, height: 300, backgroundColor: Color.rgba(22, 22, 29) },
+);

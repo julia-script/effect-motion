@@ -25,8 +25,6 @@ const renderFlags = {
 			Flag.withDescription("Path to a motion.config.ts (tsc -p style)"),
 		),
 	),
-	width: Flag.optional(Flag.integer("width")),
-	height: Flag.optional(Flag.integer("height")),
 	fps: Flag.optional(
 		Flag.integer("fps").pipe(Flag.withDescription("Frame rate override")),
 	),
@@ -60,8 +58,6 @@ const renderFlags = {
 
 type RenderInput = {
 	readonly config: Option.Option<string>;
-	readonly width: Option.Option<number>;
-	readonly height: Option.Option<number>;
 	readonly fps: Option.Option<number>;
 	readonly dpr: Option.Option<number>;
 	readonly seed: Option.Option<string>;
@@ -74,8 +70,6 @@ type RenderInput = {
 
 const overridesFrom = (input: RenderInput): RenderOverrides => {
 	const raw = {
-		width: opt(input.width),
-		height: opt(input.height),
 		frameRate: opt(input.fps),
 		dpr: opt(input.dpr),
 		seed: opt(input.seed),

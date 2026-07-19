@@ -19,14 +19,20 @@ const framesOf = (
 	settings: Partial<Runner.Settings> = {},
 ): Promise<Frame[]> =>
 	Effect.runPromise(
-		Scene.stream(Scene.make(make as never) as never, settings).pipe(
-			Stream.runCollect,
-		) as unknown as Effect.Effect<Iterable<Frame>, never, never>,
+		Scene.stream(
+			Scene.make(make as never, { width: 500, height: 300 }) as never,
+			settings,
+		).pipe(Stream.runCollect) as unknown as Effect.Effect<
+			Iterable<Frame>,
+			never,
+			never
+		>,
 	).then((chunk) => [...chunk]);
 
 const lastFrame = (
 	make: () => Generator<Effect.Effect<any, any, any>, void, never>,
 	settings: Partial<Runner.Settings> = {},
+	// biome-ignore lint/style/noNonNullAssertion: every test scene emits frames
 ) => framesOf(make, settings).then((frames) => frames.at(-1)!);
 
 describe("camera state on the frame", () => {
@@ -100,6 +106,7 @@ describe("camera animated by the existing primitives", () => {
 		);
 		const circleId = Object.keys(frames[0]!.instances).find((id) =>
 			id.startsWith("shapes/Circle"),
+			// biome-ignore lint/style/noNonNullAssertion: the scene instantiates a circle
 		)!;
 		for (const frame of frames) {
 			expect((frame.instances[circleId]?.data as { x: number }).x).toBe(100);
@@ -115,13 +122,10 @@ describe("the renderer projects instances through the camera", () => {
 		props: { x?: number; y?: number; z?: number; radius?: number },
 		camera: CameraMod.CameraState = CameraMod.identity(500),
 	) => {
-		const frame = await lastFrame(
-			function* () {
-				yield* Scene.instantiate(Shapes.Circle, props);
-				yield* Scene.tick;
-			},
-			{ width: 500, height: 300 },
-		);
+		const frame = await lastFrame(function* () {
+			yield* Scene.instantiate(Shapes.Circle, props);
+			yield* Scene.tick;
+		});
 		return render({ ...frame, camera } as Frame);
 	};
 

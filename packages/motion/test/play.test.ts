@@ -17,11 +17,12 @@ const collectRaw = async (
 	)) as Iterable<any>),
 ];
 
-// per frame: non-root instances' data, in instantiation order
+// per frame: non-root, non-group instances' data, in instantiation order
+// (groups excluded: every play mounts an implicit bounds group)
 const dataFrames = (frames: any[]): Array<Array<Record<string, any>>> =>
 	frames.map((f) =>
 		Object.entries(f.instances)
-			.filter(([id]) => id !== f.root)
+			.filter(([id]) => id !== f.root && !id.includes("Group"))
 			.map(([, e]: any) => e.data as Record<string, any>),
 	);
 
@@ -170,20 +171,21 @@ describe("Scene.play mounting", () => {
 		return (last.instances[parentId]?.data.children ?? []) as string[];
 	};
 
-	it("a mounted scene's instances attach under the mount group", async () => {
+	it("a mounted scene's instances attach under the mount group (via its bounds group)", async () => {
 		const movie = Scene.make(function* () {
 			const g = yield* Scene.instantiate(Shapes.Group, { x: 10, y: 0 });
 			const h = yield* Scene.play(riser() as never, { parent: g as never });
 			yield* h.finished;
 		} as never);
 		const frames = await collectRaw(movie);
-		const groupId = Object.keys(frames.at(-1)?.instances).find((id) =>
-			id.includes("Group"),
-		)!;
-		const circleId = Object.keys(frames.at(-1)?.instances).find((id) =>
-			id.includes("Circle"),
-		)!;
-		expect(childOf(frames, groupId)).toContain(circleId);
+		const ids = Object.keys(frames.at(-1)?.instances);
+		const gId = ids.find((id) => id.endsWith("_0"))!; // the explicit parent
+		const circleId = ids.find((id) => id.includes("Circle"))!;
+		// play's implicit bounds group sits between the parent and the child
+		const [boundsId, ...rest] = childOf(frames, gId);
+		expect(rest).toHaveLength(0);
+		expect(boundsId).toContain("Group");
+		expect(childOf(frames, boundsId!)).toContain(circleId);
 		expect(childOf(frames, "root")).not.toContain(circleId);
 	});
 
@@ -206,10 +208,12 @@ describe("Scene.play mounting", () => {
 		const frames = await collectRaw(movie);
 		const ids = Object.keys(frames.at(-1)?.instances);
 		const mountId = ids.find((id) => id.endsWith("_0"))!; // first group
-		const innerId = ids.find((id) => id.includes("Group") && id !== mountId)!;
 		const circleId = ids.find((id) => id.includes("Circle"))!;
-		expect(childOf(frames, mountId)).toContain(innerId); // ambient
-		expect(childOf(frames, innerId)).toContain(circleId); // explicit
+		// mount → implicit bounds group → inner group (ambient) → circle
+		const [boundsId] = childOf(frames, mountId);
+		const [innerId] = childOf(frames, boundsId!);
+		expect(innerId).toContain("Group");
+		expect(childOf(frames, innerId!)).toContain(circleId); // explicit
 	});
 
 	it("one scene value, two independent mounts", async () => {

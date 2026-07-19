@@ -137,7 +137,7 @@ const useScene = (
 		loop: boolean;
 		/** max frames retained in memory; Infinity keeps everything */
 		bufferCapacity: number;
-		/** extra runner settings for Scene.run (frameRate comes from fps) */
+		/** extra playback settings for Scene.run (frameRate comes from fps) */
 		settings?: Partial<Runner.Settings> | undefined;
 	},
 ) => {
@@ -520,7 +520,8 @@ export type PlayerProps = {
 	// grow forever. Seeking before the retained window clamps to its start.
 	bufferCapacity?: number;
 
-	// extra runner settings for the scene run (width/height/seed/…). A
+	// extra playback settings for the scene run (seed/maxFrames/…) —
+	// resolution and background are the SCENE's own comp config. A
 	// settings.frameRate takes precedence over the fps prop so the playback
 	// clock and the scene always agree on one rate.
 	settings?: Partial<Runner.Settings>;

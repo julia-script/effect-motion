@@ -50,7 +50,7 @@ const runScene = async <A>(
 	make: () => Generator<Effect.Effect<any, any, any>, void, never>,
 	extract: (frame: Scene.Frame<any>) => A,
 ): Promise<A[]> => {
-	const scene = Scene.make(make as never);
+	const scene = Scene.make(make as never, { width: 500, height: 300 });
 	const frames = await Effect.runPromise(
 		Scene.stream(scene as never).pipe(
 			Stream.runCollect,

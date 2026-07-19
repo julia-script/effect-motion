@@ -29,14 +29,13 @@ type SceneInternalR = SceneRunner | Scope.Scope;
  */
 
 /**
- * Scene settings honored by the export path — a subset of the runner's
- * settings, passed through to `Scene.stream`. Framerate and dimensions set
- * here become the video's framerate and dimensions.
+ * Playback settings honored by the export path — a subset of the runner's
+ * settings, passed through to `Scene.stream`. The video's dimensions come
+ * from the SCENE's own composition config (`Scene.make(gen, { width, height })`);
+ * a framerate set here becomes the video's framerate.
  */
 export interface VideoSceneSettings {
 	readonly frameRate?: number;
-	readonly width?: number;
-	readonly height?: number;
 	/** Set to `Infinity` for an intentionally infinite scene (with `frames`). */
 	readonly maxFrames?: number;
 }
@@ -68,20 +67,21 @@ export interface VideoOptions {
 
 // The ThorVG engine (global font registry) plus a render session (the canvas
 // Renderer.render draws each frame onto). The session canvas is resized per
-// frame, so the seed size only has to be valid — the settings dimensions when
-// given, else a 1×1 placeholder the first frame's resize corrects.
-const fontedLayer = (
-	scene: { readonly annotations: Context.Context<never> },
-	settings: VideoSceneSettings | undefined,
-) => {
+// frame, so the seed size only has to be valid — the scene's own comp
+// dimensions (the canvas is resized to each frame's size regardless).
+const fontedLayer = (scene: {
+	readonly annotations: Context.Context<never>;
+	readonly width: number;
+	readonly height: number;
+}) => {
 	const fonts = {
 		"sans-serif": Font.DEFAULT_FONT_URL,
 		...Fonts.urlMap(scene),
 	};
 	return Layer.provideMerge(
 		Session.layer({
-			width: settings?.width ?? 1,
-			height: settings?.height ?? 1,
+			width: scene.width,
+			height: scene.height,
 			fonts,
 		}),
 		EngineNode.layer("sw", fonts),
@@ -159,5 +159,5 @@ export const render = <E = never>(
 		// the scene's declared url fonts, merged over the default sans, so text
 		// in a declared family renders (design D3); path-only entries skipped.
 		// Fonts go to both the engine (global registry) and the render session.
-		Effect.provide(fontedLayer(scene, options.settings)),
+		Effect.provide(fontedLayer(scene)),
 	);

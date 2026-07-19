@@ -23,13 +23,12 @@ export type Seed = number | string;
 /** the fixed default: scenes are deterministic even with no seed set */
 export const defaultSeed: Seed = "effect-motion";
 
+/**
+ * Playback settings — how the movie RUNS. What the movie IS (resolution,
+ * background) lives on the root scene as its composition config.
+ */
 export type Settings = {
 	frameRate: number;
-	/** output resolution — carried on every frame so renderers can size themselves */
-	width: number;
-	height: number;
-	/** canvas background — carried on every frame so renderers can paint it (default a near-black, not pure #000) */
-	backgroundColor: Color.Color;
 	/**
 	 * seeds the scene's pseudo-random service (effect's Random via
 	 * withSeed); the fixed default keeps default-constructed scenes
@@ -44,6 +43,24 @@ export type Settings = {
 	 * scene.
 	 */
 	maxFrames: number;
+};
+
+/**
+ * A scene's composition config, After Effects–style: what the comp IS.
+ * The runner inherits the ROOT scene's config; a nested scene keeps its
+ * own as its bounds (see Scene.play).
+ */
+export type CompConfig = {
+	width: number;
+	height: number;
+	/** carried on every frame so renderers can paint it; transparent = nothing painted */
+	backgroundColor: Color.Color;
+};
+
+export const defaultComp: CompConfig = {
+	width: 1920,
+	height: 1080,
+	backgroundColor: Color.transparent,
 };
 
 export type GroupInstance = Instance.Of<typeof Group>;
@@ -100,7 +117,10 @@ export interface BranchEntry {
 }
 
 export class Runner extends Context.Service<Runner>()("Runner", {
-	make: Effect.fnUntraced(function* (settings: Partial<Settings> = {}) {
+	make: Effect.fnUntraced(function* (
+		settings: Partial<Settings> = {},
+		comp: CompConfig = defaultComp,
+	) {
 		const instances: Record<
 			string,
 			{ data: unknown; entity: Entity.AnyEntity; $visible: boolean }
@@ -159,9 +179,6 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 		const resolvedSettings = {
 			...settings,
 			frameRate: settings.frameRate ?? 60,
-			width: settings.width ?? 500,
-			height: settings.height ?? 300,
-			backgroundColor: settings.backgroundColor ?? Color.rgba(22, 22, 29),
 			seed: settings.seed ?? defaultSeed,
 			maxFrames: settings.maxFrames ?? 36_000,
 		} satisfies Settings;
@@ -175,13 +192,13 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 		// camera is present from the start, so `depth`/zoom work with no author
 		// ceremony; `setCamera` swaps which instance is active.
 		const camera: Instance.Of<typeof Camera> = Instance.make(Camera, "camera");
-		setDataUnsafe(camera, identity(resolvedSettings.width));
+		setDataUnsafe(camera, identity(comp.width));
 		let activeCameraId = camera.id;
 		const cameraState = (): CameraState => {
 			const data = instances[activeCameraId]?.data as CameraState | undefined;
 			// a destroyed active camera falls back to identity rather than dying:
 			// the view is not scene-critical state
-			return data ?? identity(resolvedSettings.width);
+			return data ?? identity(comp.width);
 		};
 
 		// append `id` to a group's children and record it as the child's parent
@@ -301,8 +318,7 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 						focusDistance?: number;
 					};
 					const focalLength =
-						p.focalLength ??
-						Projection.defaultFocalLength(resolvedSettings.width);
+						p.focalLength ?? Projection.defaultFocalLength(comp.width);
 					return {
 						focalLength,
 						z: p.z ?? focalLength,
@@ -348,6 +364,8 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 			// leaving it detached from the tree (still alive, just unmounted)
 			removeChild,
 			settings: resolvedSettings,
+			// the root scene's composition config (resolution + background)
+			comp,
 			getDataUnsafe,
 
 			setDataUnsafe,
@@ -361,9 +379,9 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 					instances: renderable,
 					root: ROOT_ID,
 					frameRate: resolvedSettings.frameRate,
-					width: resolvedSettings.width,
-					height: resolvedSettings.height,
-					backgroundColor: resolvedSettings.backgroundColor,
+					width: comp.width,
+					height: comp.height,
+					backgroundColor: comp.backgroundColor,
 					camera: cameraState(),
 				};
 			}),

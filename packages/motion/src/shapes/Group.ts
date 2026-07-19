@@ -1,6 +1,7 @@
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import * as SchemaGetter from "effect/SchemaGetter";
+import * as Color from "../Color.js";
 import * as Entity from "../Entity.js";
 import * as Shape2D from "./Shape2D.js";
 
@@ -83,6 +84,12 @@ const fields = {
 	transform: TransformMatrix.pipe(
 		Schema.withConstructorDefault(Effect.succeed(identityTransform)),
 	),
+	// comp bounds (Scene.play mount groups carry the child comp's): a SIZED
+	// group clips its subtree to them, paints a non-transparent
+	// backgroundColor within them, and renders as one unit (AE precomp)
+	width: Schema.optionalKey(Schema.Number),
+	height: Schema.optionalKey(Schema.Number),
+	backgroundColor: Schema.optionalKey(Color.Color),
 	children: Schema.Array(Schema.String).pipe(
 		Schema.withConstructorDefault(Effect.sync(() => [])),
 	),

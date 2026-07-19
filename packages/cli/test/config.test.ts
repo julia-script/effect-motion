@@ -61,7 +61,7 @@ describe("resolveTarget", () => {
 	const target = {
 		name: "intro",
 		scene: "./src/scenes/intro.ts",
-		settings: { width: 1920, height: 1080, frameRate: 60, dpr: 2 },
+		settings: { frameRate: 60, dpr: 2 },
 	};
 
 	it("derives <output>/<name>.<format> with defaults", () => {
@@ -85,7 +85,7 @@ describe("resolveTarget", () => {
 			outDir: "./elsewhere",
 		});
 		expect(resolved.settings.frameRate).toBe(30);
-		expect(resolved.settings.width).toBe(1920);
+		expect(resolved.settings.dpr).toBe(2);
 		expect(resolved.outDir).toBe("./elsewhere");
 	});
 

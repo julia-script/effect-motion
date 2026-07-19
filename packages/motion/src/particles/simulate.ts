@@ -84,8 +84,8 @@ const run = Effect.fnUntraced(function* (
 	// fill spreads across a region: the field's own if set, else the frame
 	const current = yield* Scene.data(instance);
 	const region = {
-		w: current.region?.w ?? runner.settings.width,
-		h: current.region?.h ?? runner.settings.height,
+		w: current.region?.w ?? runner.comp.width,
+		h: current.region?.h ?? runner.comp.height,
 	};
 
 	for (let i = 1; i <= frames; i++) {

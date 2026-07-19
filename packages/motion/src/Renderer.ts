@@ -15,6 +15,7 @@ import * as Projection from "./Projection.js";
 import { circleOfConfusion, quantizeSigma } from "./render/dof.js";
 import { builtinPaints } from "./render/shapes.js";
 import type { EntriesFromEntities, Frame } from "./Scene.js";
+import * as Group from "./shapes/Group.js";
 import { Hud } from "./shapes/Hud.js";
 
 /**
@@ -200,6 +201,24 @@ const renderToCanvas = <const Entities extends Entity.AnyEntity>(
 			readonly projection: PaintProjection;
 			/** identity-projected screen-space content — paints in the top tier */
 			readonly hud: boolean;
+			/** present on a SIZED group: the subtree paints as one clipped unit */
+			readonly comp?: CompUnit;
+		}
+		/**
+		 * A sub-composition (an AE precomp): a sized group's subtree collected
+		 * into one paintable unit. It clips to the bounds, paints a
+		 * non-transparent background within them, and applies the group's
+		 * opacity and local transform to the whole unit.
+		 */
+		interface CompUnit {
+			readonly width: number;
+			readonly height: number;
+			readonly backgroundColor?: Color.Color;
+			readonly opacity: number;
+			readonly transform: Group.TransformMatrix;
+			/** the group's projected screen anchor — bounds center the unit here */
+			readonly anchor: Projection.Vec2;
+			readonly subs: Paintable[];
 		}
 		const origin: Projection.Vec2 = {
 			x: frame.width / 2,
@@ -229,6 +248,9 @@ const renderToCanvas = <const Entities extends Entity.AnyEntity>(
 			offset: Projection.Vec3,
 			hud: boolean,
 			inWorldContainer: boolean,
+			// where this node's paintables land: the top-level list, or an
+			// enclosing sub-composition's own sub-list
+			sink: Paintable[],
 		): Effect.Effect<void> =>
 			Effect.gen(function* () {
 				if (visited.has(id)) {
@@ -276,6 +298,59 @@ const renderToCanvas = <const Entities extends Entity.AnyEntity>(
 				const childIds = childIdsOf(entry.data).filter((childId) =>
 					isVisible(frame, childId),
 				);
+				// a SIZED container is a sub-composition (Scene.play's mount
+				// group, or any Group given bounds): its subtree collects into
+				// its own unit at the group's depth — clipped, backed, and
+				// transformed as one layer, AE-precomp-style
+				const isComp =
+					Array.isArray((entry.data as { children?: unknown }).children) &&
+					typeof data.width === "number" &&
+					typeof data.height === "number";
+				if (isComp) {
+					const proj = Projection.project(effectiveCamera, world, origin);
+					const subs: Paintable[] = [];
+					yield* Effect.all(
+						childIds.map((childId) =>
+							flatten(
+								childId,
+								world,
+								subtreeHud,
+								inWorldContainer || !subtreeHud,
+								subs,
+							),
+						),
+					);
+					const groupData = entry.data as {
+						opacity?: number;
+						transform?: Group.TransformMatrix;
+						backgroundColor?: Color.Color;
+					};
+					sink.push({
+						id,
+						entry,
+						projection: {
+							screen: Projection.billboardAffine(proj, {
+								x: data.x ?? 0,
+								y: data.y ?? 0,
+							}),
+							depth: proj.depth,
+							scale: proj.scale,
+						},
+						hud: subtreeHud,
+						comp: {
+							width: data.width as number,
+							height: data.height as number,
+							...(groupData.backgroundColor !== undefined
+								? { backgroundColor: groupData.backgroundColor }
+								: {}),
+							opacity: groupData.opacity ?? 1,
+							transform: groupData.transform ?? Group.identityTransform,
+							anchor: { x: proj.x, y: proj.y },
+							subs,
+						},
+					});
+					return;
+				}
 				if (childIds.length > 0) {
 					// a pure container: contribute position, recurse, paint
 					// nothing itself (the root, Groups, Huds). ponytail: only
@@ -288,6 +363,7 @@ const renderToCanvas = <const Entities extends Entity.AnyEntity>(
 								world,
 								subtreeHud,
 								inWorldContainer || !subtreeHud,
+								sink,
 							),
 						),
 					);
@@ -317,7 +393,7 @@ const renderToCanvas = <const Entities extends Entity.AnyEntity>(
 					// the segment branch does — path paints ignore it (their
 					// geometry is already screen-space) but the field stays coherent
 					const first = projected.subpaths[0]?.points[0] ?? origin;
-					paintables.push({
+					sink.push({
 						id,
 						entry,
 						projection: {
@@ -385,7 +461,7 @@ const renderToCanvas = <const Entities extends Entity.AnyEntity>(
 					// Upgrade: split the segment where its (linear) view depth
 					// crosses DoF bucket boundaries → gradient blur along the
 					// line plus per-piece sort keys.
-					paintables.push({
+					sink.push({
 						id,
 						entry,
 						projection: {
@@ -438,7 +514,7 @@ const renderToCanvas = <const Entities extends Entity.AnyEntity>(
 					// the tilted plane is entirely behind the near plane — cull
 					return;
 				}
-				paintables.push({
+				sink.push({
 					id,
 					entry,
 					projection: {
@@ -464,7 +540,9 @@ const renderToCanvas = <const Entities extends Entity.AnyEntity>(
 		yield* Effect.all(
 			childIdsOf(rootEntry.data)
 				.filter((childId) => isVisible(frame, childId))
-				.map((childId) => flatten(childId, { x: 0, y: 0, z: 0 }, false, false)),
+				.map((childId) =>
+					flatten(childId, { x: 0, y: 0, z: 0 }, false, false, paintables),
+				),
 		);
 
 		// painter's order: two tiers — world content by depth (farthest
@@ -472,12 +550,11 @@ const renderToCanvas = <const Entities extends Entity.AnyEntity>(
 		// id tie-break so equal-depth paintables paint deterministically.
 		// ponytail: naive O(n log n) per frame — swap for a spatial structure
 		// only if a scene with thousands of objects proves it.
-		paintables.sort(
-			(a, b) =>
-				(a.hud ? 1 : 0) - (b.hud ? 1 : 0) ||
-				b.projection.depth - a.projection.depth ||
-				(a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
-		);
+		const byPaintOrder = (a: Paintable, b: Paintable) =>
+			(a.hud ? 1 : 0) - (b.hud ? 1 : 0) ||
+			b.projection.depth - a.projection.depth ||
+			(a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+		paintables.sort(byPaintOrder);
 
 		const meta: FrameMeta = {
 			frameRate: frame.frameRate,
@@ -513,12 +590,137 @@ const renderToCanvas = <const Entities extends Entity.AnyEntity>(
 			}
 		});
 
+		// paint one paintable into `target`: a leaf via its entity's paint fn,
+		// a sub-composition as one clipped nested scene (below)
+		const paintOne = (
+			p: Paintable,
+			target: OwnedPaint,
+		): Effect.Effect<
+			void,
+			ThorvgException,
+			ThorvgWasm | RenderSession | Scope.Scope
+		> =>
+			Effect.gen(function* () {
+				if (p.comp !== undefined) {
+					return yield* paintComp(p, p.comp, target);
+				}
+				// the concrete paint fn for this entity name; the map is exhaustive
+				// over Entities by construction (PaintFunctions<Entities>). The
+				// specific member depends on the instance's entity, known only at
+				// runtime — hence the cast to the erased paint-fn type.
+				const paint: PaintFunction<Entity.AnyEntity> =
+					builtinPaints[p.entry.entity.name as keyof typeof builtinPaints];
+				if (paint === undefined) {
+					return yield* Effect.die(
+						new Error(
+							`Renderer: no paint function for entity "${p.entry.entity.name}"`,
+						),
+					);
+				}
+				yield* paint({
+					entity: p.entry.entity,
+					id: p.id,
+					data: p.entry.data,
+					projection: p.projection,
+					canvas,
+					scene: target,
+					meta,
+				});
+			});
+
+		// A sub-composition paints as ONE layer: inner scene clipped to the
+		// bounds (background rect first, then the subtree in painter's order),
+		// outer scene carrying the group's transform and opacity — the clip
+		// lives inside, so the bounds move/scale WITH the unit, as an AE
+		// precomp layer's frame does.
+		const paintComp = (
+			p: Paintable,
+			comp: CompUnit,
+			target: OwnedPaint,
+		): Effect.Effect<
+			void,
+			ThorvgException,
+			ThorvgWasm | RenderSession | Scope.Scope
+		> =>
+			Effect.gen(function* () {
+				const scale = p.projection.scale;
+				// bounds start at the group's anchor: a comp's local space is
+				// top-left-anchored like every shape (world = screen at rest)
+				const w = comp.width * scale;
+				const h = comp.height * scale;
+				const x = comp.anchor.x;
+				const y = comp.anchor.y;
+				const outer = yield* Tvg.Scene.make();
+				const clipShape = yield* Tvg.Shape.make();
+				yield* Tvg.Shape.appendRect(clipShape, x, y, w, h);
+				yield* Tvg.Paint.clip(outer, clipShape);
+				if (comp.backgroundColor !== undefined) {
+					const { r, g, b, a } = Color.bytes(comp.backgroundColor);
+					if (a > 0) {
+						const bg = yield* Tvg.Shape.make();
+						yield* Tvg.Shape.appendRect(bg, x, y, w, h);
+						yield* Tvg.Shape.setFillColor(bg, r, g, b, a);
+						yield* Tvg.Scene.add(outer, bg);
+					}
+				}
+				// ponytail: the unit's content paints sharp — depth of field
+				// treats the comp as one layer at its anchor depth (like a
+				// tilted plane's quad); bucket inside the unit if a deep comp
+				// ever needs per-child blur.
+				for (const sub of [...comp.subs].sort(byPaintOrder)) {
+					if (sub.projection.scale <= 0 && sub.projection.quad === undefined) {
+						continue;
+					}
+					yield* paintOne(sub, outer);
+				}
+				if (!Group.isIdentityTransform(comp.transform)) {
+					// the group's local matrix conjugated into screen space about
+					// the BOUNDS CENTER (AE scales a precomp layer about its
+					// anchor, default the layer center):
+					// screen = T(c)·S(scale)·M·S(1/scale)·T(-c), c = bounds center
+					const cx = x + w / 2;
+					const cy = y + h / 2;
+					const t = (e: number, f: number): Group.TransformMatrix => ({
+						a: 1,
+						b: 0,
+						c: 0,
+						d: 1,
+						e,
+						f,
+					});
+					const s = (k: number): Group.TransformMatrix => ({
+						a: k,
+						b: 0,
+						c: 0,
+						d: k,
+						e: 0,
+						f: 0,
+					});
+					const m = [
+						t(cx, cy),
+						s(scale),
+						comp.transform,
+						s(1 / scale),
+						t(-cx, -cy),
+					].reduce(Group.multiplyTransforms);
+					yield* Tvg.Paint.setTransform(outer, m);
+				}
+				if (comp.opacity < 1) {
+					yield* Tvg.Paint.setOpacity(
+						outer,
+						Math.round(Math.max(0, Math.min(1, comp.opacity)) * 255),
+					);
+				}
+				yield* Tvg.Scene.add(target, outer);
+			});
+
 		// paint far→near. A paintable whose anchor is behind the camera
 		// (scale <= 0) is culled here so paint functions never see an invalid
 		// placement — EXCEPT a tilted plane carrying a quad: its polygon is
 		// already near-plane-clipped, and it can be visible (near part in
 		// front) while its anchor corner is behind.
-		for (const { id, entry, projection, hud } of paintables) {
+		for (const p of paintables) {
+			const { projection, hud } = p;
 			if (projection.scale <= 0 && projection.quad === undefined) {
 				continue;
 			}
@@ -533,28 +735,7 @@ const renderToCanvas = <const Entities extends Entity.AnyEntity>(
 				bucketScene = sigma === 0 ? scene : yield* Tvg.Scene.make();
 				bucketSigma = sigma;
 			}
-			// the concrete paint fn for this entity name; the map is exhaustive
-			// over Entities by construction (PaintFunctions<Entities>). The
-			// specific member depends on the instance's entity, known only at
-			// runtime — hence the cast to the erased paint-fn type.
-			const paint: PaintFunction<Entity.AnyEntity> =
-				builtinPaints[entry.entity.name as keyof typeof builtinPaints];
-			if (paint === undefined) {
-				return yield* Effect.die(
-					new Error(
-						`Renderer: no paint function for entity "${entry.entity.name}"`,
-					),
-				);
-			}
-			yield* paint({
-				entity: entry.entity,
-				id,
-				data: entry.data,
-				projection,
-				canvas,
-				scene: bucketScene,
-				meta,
-			});
+			yield* paintOne(p, bucketScene);
 		}
 		yield* closeBucket;
 	});
@@ -630,7 +811,9 @@ export const render = (
 
 		yield* Tvg.Canvas.add(canvas, scene);
 		yield* Tvg.Canvas.update(canvas);
-		yield* Tvg.Canvas.draw(canvas);
+		// clear the target buffer: with a transparent background nothing else
+		// overwrites the previous frame's (or uninitialized) pixels
+		yield* Tvg.Canvas.draw(canvas, true);
 		yield* Tvg.Canvas.sync(canvas);
 
 		const buffer = yield* Tvg.Canvas.render(canvas);

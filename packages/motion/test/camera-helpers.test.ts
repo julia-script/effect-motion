@@ -15,18 +15,23 @@ const framesOf = (
 	settings: Partial<Runner.Settings> = {},
 ): Promise<Frame[]> =>
 	Effect.runPromise(
-		Scene.stream(Scene.make(make as never) as never, settings).pipe(
-			Stream.runCollect,
-		) as unknown as Effect.Effect<Iterable<Frame>, never, never>,
+		Scene.stream(
+			Scene.make(make as never, { width: 500, height: 300 }) as never,
+			settings,
+		).pipe(Stream.runCollect) as unknown as Effect.Effect<
+			Iterable<Frame>,
+			never,
+			never
+		>,
 	).then((chunk) => [...chunk]);
 
 const exitOf = (
 	make: () => Generator<Effect.Effect<any, any, any>, void, never>,
 ) =>
 	Effect.runPromiseExit(
-		Scene.stream(Scene.make(make as never) as never).pipe(
-			Stream.runDrain,
-		) as unknown as Effect.Effect<void, unknown, never>,
+		Scene.stream(
+			Scene.make(make as never, { width: 500, height: 300 }) as never,
+		).pipe(Stream.runDrain) as unknown as Effect.Effect<void, unknown, never>,
 	);
 
 const poiOf = (frame: Frame) => ({

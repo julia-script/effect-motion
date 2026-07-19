@@ -71,7 +71,7 @@ const mockSpawner = (record: SpawnRecord[], bytesOut?: number[]) => {
 // a short scene at 200x120 (even dims); 3 ticks emit 4 frames (the initial
 // state plus one per tick)
 const EXPECTED_FRAMES = 4;
-const threeFrameScene = Scene.make(function* () {
+const frameBody = function* () {
 	yield* Scene.instantiate(Shapes.Circle, {
 		x: 40,
 		y: 40,
@@ -81,9 +81,12 @@ const threeFrameScene = Scene.make(function* () {
 	yield* Scene.tick;
 	yield* Scene.tick;
 	yield* Scene.tick;
-});
+};
+const threeFrameScene = Scene.make(frameBody, { width: 200, height: 120 });
+// odd width: invalid for yuv420p — must be rejected before ffmpeg spawns
+const oddScene = Scene.make(frameBody, { width: 201, height: 120 });
 
-const evenSettings = { width: 200, height: 120, frameRate: 30 } as const;
+const evenSettings = { frameRate: 30 } as const;
 
 it("streams a scene to N PNG frames at the scene's framerate", async () => {
 	const record: SpawnRecord[] = [];
@@ -124,8 +127,8 @@ it("rejects odd output dimensions before spawning ffmpeg", async () => {
 	const record: SpawnRecord[] = [];
 	const failure = await Effect.runPromise(
 		Effect.flip(
-			Video.render(threeFrameScene, "out.mp4", {
-				settings: { width: 201, height: 120 },
+			Video.render(oddScene, "out.mp4", {
+				settings: {},
 			}).pipe(Effect.provide(mockSpawner(record))),
 		),
 	);
@@ -137,17 +140,20 @@ it("rejects odd output dimensions before spawning ffmpeg", async () => {
 });
 
 it("caps an infinite scene with options.frames", async () => {
-	const infinite = Scene.make(function* () {
-		yield* Scene.instantiate(Shapes.Circle, {
-			x: 10,
-			y: 10,
-			radius: 5,
-			fill: Color.hex("#fff"),
-		});
-		while (true) {
-			yield* Scene.tick;
-		}
-	});
+	const infinite = Scene.make(
+		function* () {
+			yield* Scene.instantiate(Shapes.Circle, {
+				x: 10,
+				y: 10,
+				radius: 5,
+				fill: Color.hex("#fff"),
+			});
+			while (true) {
+				yield* Scene.tick;
+			}
+		},
+		{ width: 200, height: 120 },
+	);
 	const record: SpawnRecord[] = [];
 	await Effect.runPromise(
 		Video.render(infinite, "out.mp4", {

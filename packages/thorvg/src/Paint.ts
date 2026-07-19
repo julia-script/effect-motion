@@ -1,4 +1,4 @@
-import { Effect } from "effect";
+import { Effect, Ref } from "effect";
 import { ThorvgWasm } from "./Engine.js";
 import {
 	acquirePaint,
@@ -79,6 +79,20 @@ export const setTransform = (
 				);
 			}),
 		),
+	);
+
+/**
+ * Clip a paint to a shape's geometry. Transfers ownership of the clipper:
+ * the target paint frees it (design D2, same contract as Scene.add).
+ */
+export const clip = (paint: OwnedPaint, clipper: OwnedPaint) =>
+	ThorvgWasm.pipe(
+		Effect.flatMap(({ module }) =>
+			checked("_tvg_paint_set_clip", () =>
+				module._tvg_paint_set_clip(paint.ptr, clipper.ptr),
+			),
+		),
+		Effect.andThen(Ref.set(clipper.owned, false)),
 	);
 
 /** Duplicate a paint. The copy is detached, so the Scope owns its free (design D2). */

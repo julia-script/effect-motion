@@ -46,15 +46,17 @@ export default defineConfig({
 		{
 			name: "hello-world", // unique — doubles as the output basename
 			scene: "./src/scenes/hello-world.ts",
-			settings: { width: 1920, height: 1080, frameRate: 60, dpr: 1 },
+			settings: { frameRate: 60, dpr: 1 },
 			output: "./output", // a directory — the file name is derived
 		},
 	],
 });
 ```
 
-The output file is always `<output>/<name>.mp4`. `settings` takes the
-runner's settings plus `dpr` (supersampling: output pixels = scene
+The output file is always `<output>/<name>.mp4`. Resolution and background
+are the scene's own composition config (`Scene.make(gen, { width, height,
+backgroundColor })`); `settings` takes the runner's playback settings plus
+`dpr` (supersampling: output pixels = scene
 dimensions × dpr while authored coordinates stay put).
 
 There is nothing special about `src/main.ts` — it is an ordinary scene that

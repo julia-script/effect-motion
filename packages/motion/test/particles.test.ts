@@ -311,17 +311,20 @@ describe("simulate (scene integration)", () => {
 	});
 
 	it("fill constructor spreads across the frame at frame 0", async () => {
-		const scene = Scene.make(function* () {
-			const f = yield* field({
-				size: [1, 2],
-				drift: [4, 12],
-				palette: [Color.white],
-				capacity: 200,
-			});
-			yield* simulate(f, "500 millis", { fill: 120 });
-		});
+		const scene = Scene.make(
+			function* () {
+				const f = yield* field({
+					size: [1, 2],
+					drift: [4, 12],
+					palette: [Color.white],
+					capacity: 200,
+				});
+				yield* simulate(f, "500 millis", { fill: 120 });
+			},
+			{ width: 500, height: 300 },
+		);
 		const frames = await Effect.runPromise(
-			Scene.stream(scene as never, { width: 500, height: 300 }).pipe(
+			Scene.stream(scene as never).pipe(
 				Stream.runCollect,
 			) as unknown as Effect.Effect<Iterable<Scene.Frame<any>>, never, never>,
 		);

@@ -75,74 +75,77 @@ const boxEdges = (): Array<[Point3, Point3]> => {
 	return edges;
 };
 
-export const scene = Scene.make(function* () {
-	// the wireframe box: each edge is a skeletal Line, both endpoints at
-	// their own depth
-	for (const [a, b] of boxEdges()) {
-		yield* Scene.instantiate(Shapes.Line, {
-			...a,
-			x2: b.x,
-			y2: b.y,
-			z2: b.z,
-			stroke: Color.hex("#3d4266"),
-			strokeWidth: 1,
+export const scene = Scene.make(
+	function* () {
+		// the wireframe box: each edge is a skeletal Line, both endpoints at
+		// their own depth
+		for (const [a, b] of boxEdges()) {
+			yield* Scene.instantiate(Shapes.Line, {
+				...a,
+				x2: b.x,
+				y2: b.y,
+				z2: b.z,
+				stroke: Color.hex("#3d4266"),
+				strokeWidth: 1,
+			});
+		}
+
+		// the control polygon: straight rails between the control points
+		yield* Scene.instantiate(Shapes.Path, {
+			...ANCHOR,
+			fill: noFill,
+			stroke: Color.hex("#b8c1ec"),
+			strokeWidth: 1.5,
+			commands: [
+				{ _tag: "M", ...P0 },
+				{ _tag: "L", ...P1 },
+				{ _tag: "L", ...P2 },
+				{ _tag: "L", ...P3 },
+			],
 		});
-	}
 
-	// the control polygon: straight rails between the control points
-	yield* Scene.instantiate(Shapes.Path, {
-		...ANCHOR,
-		fill: noFill,
-		stroke: Color.hex("#b8c1ec"),
-		strokeWidth: 1.5,
-		commands: [
-			{ _tag: "M", ...P0 },
-			{ _tag: "L", ...P1 },
-			{ _tag: "L", ...P2 },
-			{ _tag: "L", ...P3 },
-		],
-	});
-
-	// the curve itself — one Path, every sample at its own depth
-	yield* Scene.instantiate(Shapes.Path, {
-		...ANCHOR,
-		fill: noFill,
-		stroke: Color.hex("#e53170"),
-		strokeWidth: 3,
-		commands: curveCommands,
-	});
-
-	// markers + labels at the control points (world = anchor + local)
-	const points = [P0, P1, P2, P3];
-	for (const [i, p] of points.entries()) {
-		yield* Scene.instantiate(Shapes.Circle, {
-			x: ANCHOR.x + p.x,
-			y: ANCHOR.y + p.y,
-			z: p.z,
-			radius: 4,
-			fill: Color.hex("#7f5af0"),
+		// the curve itself — one Path, every sample at its own depth
+		yield* Scene.instantiate(Shapes.Path, {
+			...ANCHOR,
+			fill: noFill,
+			stroke: Color.hex("#e53170"),
+			strokeWidth: 3,
+			commands: curveCommands,
 		});
-		yield* Scene.instantiate(Shapes.Text, {
-			x: ANCHOR.x + p.x + 12,
-			y: ANCHOR.y + p.y - 8,
-			z: p.z,
-			text: `P${i}`,
-			fontSize: 14,
-			fill: Color.hex("#b8c1ec"),
-		});
-	}
 
-	// aim at the box center, then turntable around it — the point of
-	// interest keeps the camera locked on while only its position moves
-	const cam = yield* Scene.camera;
-	yield* cam.pipe(
-		Camera.lookAt({
-			x: (BOX.x0 + BOX.x1) / 2,
-			y: (BOX.y0 + BOX.y1) / 2,
-			z: (BOX.z0 + BOX.z1) / 2,
-		}),
-		Camera.orbitTo(0.45, "2.5 seconds", "easeInOutCubic"),
-		Camera.orbitTo(-0.35, "3 seconds", "easeInOutCubic"),
-		Camera.orbitTo(0, "2 seconds", "easeInOutCubic"),
-	);
-});
+		// markers + labels at the control points (world = anchor + local)
+		const points = [P0, P1, P2, P3];
+		for (const [i, p] of points.entries()) {
+			yield* Scene.instantiate(Shapes.Circle, {
+				x: ANCHOR.x + p.x,
+				y: ANCHOR.y + p.y,
+				z: p.z,
+				radius: 4,
+				fill: Color.hex("#7f5af0"),
+			});
+			yield* Scene.instantiate(Shapes.Text, {
+				x: ANCHOR.x + p.x + 12,
+				y: ANCHOR.y + p.y - 8,
+				z: p.z,
+				text: `P${i}`,
+				fontSize: 14,
+				fill: Color.hex("#b8c1ec"),
+			});
+		}
+
+		// aim at the box center, then turntable around it — the point of
+		// interest keeps the camera locked on while only its position moves
+		const cam = yield* Scene.camera;
+		yield* cam.pipe(
+			Camera.lookAt({
+				x: (BOX.x0 + BOX.x1) / 2,
+				y: (BOX.y0 + BOX.y1) / 2,
+				z: (BOX.z0 + BOX.z1) / 2,
+			}),
+			Camera.orbitTo(0.45, "2.5 seconds", "easeInOutCubic"),
+			Camera.orbitTo(-0.35, "3 seconds", "easeInOutCubic"),
+			Camera.orbitTo(0, "2 seconds", "easeInOutCubic"),
+		);
+	},
+	{ width: 500, height: 300, backgroundColor: Color.rgba(22, 22, 29) },
+);

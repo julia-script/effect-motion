@@ -226,9 +226,14 @@ describe("HUD scene authoring", () => {
 		settings: Partial<Runner.Settings> = {},
 	): Promise<Frame[]> =>
 		Effect.runPromise(
-			Scene.stream(Scene.make(make as never) as never, settings).pipe(
-				Stream.runCollect,
-			) as unknown as Effect.Effect<Iterable<Frame>, never, never>,
+			Scene.stream(
+				Scene.make(make as never, { width: 500, height: 300 }) as never,
+				settings,
+			).pipe(Stream.runCollect) as unknown as Effect.Effect<
+				Iterable<Frame>,
+				never,
+				never
+			>,
 		).then((chunk) => [...chunk]);
 
 	it("a sub-scene mounts into the HUD via Scene.play({ parent })", async () => {

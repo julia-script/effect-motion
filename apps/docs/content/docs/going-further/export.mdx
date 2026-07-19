@@ -22,7 +22,7 @@ import { myScene } from "./scene"
 
 await Effect.runPromise(
   Video.render(myScene, "out.mp4", {
-    settings: { width: 1920, height: 1080, frameRate: 60 },
+    settings: { frameRate: 60 },
   }).pipe(Effect.provide(NodeServices.layer)),
 )
 ```
@@ -35,7 +35,7 @@ H.264, `yuv420p`, faststart MP4.
 
 - **`frames`** — cap the number of frames encoded. An **infinite scene** must
   set this: without it, the encode runs as long as the scene does, forever.
-- **`settings`** — the scene's `frameRate`, `width`, `height`, and
+- **`settings`** — the scene's `frameRate` and
   `maxFrames` for this export. Set `maxFrames: Infinity` for an intentionally
   infinite scene (paired with `frames`).
 - **`binary`** — override the ffmpeg binary. Defaults to the **bundled**

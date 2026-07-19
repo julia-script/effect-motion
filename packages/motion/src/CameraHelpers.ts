@@ -10,6 +10,7 @@ import * as Scene from "./Scene.js";
 import * as Time from "./Time.js";
 import * as Timing from "./Timing.js";
 
+export type { CameraState } from "./Camera.js";
 /**
  * The public Camera surface: the entity/identity from Camera.js plus the
  * directing helpers. This module (not Camera.ts) is what index exports as
@@ -27,7 +28,6 @@ import * as Timing from "./Timing.js";
 // is enumerable at a glance: the entity + identity from the schema module,
 // plus the helpers below
 export { Camera, identity } from "./Camera.js";
-export type { CameraState } from "./Camera.js";
 
 type AnyInstance = Instance.Instance<any, any, any>;
 
@@ -129,11 +129,11 @@ const setPoi = (data: object, p: Entity.Position) =>
 
 // the camera's WORLD position: x/y are pan-from-viewport-center
 const worldPosition = Effect.fnUntraced(function* (cam: CamInstance) {
-	const { settings } = yield* Runner.Runner;
+	const { comp } = yield* Runner.Runner;
 	const data = (yield* Scene.data(cam)) as CameraShape;
 	return {
-		x: settings.width / 2 + data.x,
-		y: settings.height / 2 + data.y,
+		x: comp.width / 2 + data.x,
+		y: comp.height / 2 + data.y,
 		z: data.z ?? 0,
 	};
 });
@@ -293,8 +293,8 @@ const orbitImpl = Effect.fnUntraced(function* (
 	timing?: Timing.TimingInput,
 ) {
 	const cam = yield* Instance.flatten(camOrEffect);
-	const { settings } = yield* Runner.Runner;
-	const origin = { x: settings.width / 2, y: settings.height / 2 };
+	const { comp } = yield* Runner.Runner;
+	const origin = { x: comp.width / 2, y: comp.height / 2 };
 	const startData = (yield* Scene.data(cam)) as CameraShape;
 	const poi = poiOrDie(startData);
 	const world = {
@@ -368,8 +368,8 @@ const dollyImpl = Effect.fnUntraced(function* (
 	timing?: Timing.TimingInput,
 ) {
 	const cam = yield* Instance.flatten(camOrEffect);
-	const { settings } = yield* Runner.Runner;
-	const origin = { x: settings.width / 2, y: settings.height / 2 };
+	const { comp } = yield* Runner.Runner;
+	const origin = { x: comp.width / 2, y: comp.height / 2 };
 	const startData = (yield* Scene.data(cam)) as CameraShape;
 	const poi = poiOrDie(startData);
 	const world = {

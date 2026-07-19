@@ -6,13 +6,13 @@ export default defineConfig({
 		{
 			name: "dot",
 			scene: "./src/scenes/dot.ts",
-			settings: { width: 120, height: 80, frameRate: 10 },
+			settings: { frameRate: 10 },
 			output: "./output",
 		},
 		{
 			name: "dot-hd",
 			scene: "./src/scenes/dot.ts",
-			settings: { width: 120, height: 80, frameRate: 10, dpr: 2 },
+			settings: { frameRate: 10, dpr: 2 },
 			output: "./output",
 		},
 	],

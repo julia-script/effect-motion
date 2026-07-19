@@ -34,7 +34,7 @@ lazy:
 
 ```ts
 // eager: every frame
-const frames = yield* Scene.run(scene, { width: 500, height: 300 });
+const frames = yield* Scene.run(scene);
 
 // lazy: a stream of frames
 const frameStream = Scene.stream(scene, { frameRate: 60 });
@@ -44,15 +44,32 @@ Each frame is **self-describing**: it carries its own `width`, `height`,
 `frameRate`, and `backgroundColor` alongside the instance data, so a renderer
 can size and paint itself from the frame alone.
 
+## Composition config
+
+A scene carries its own composition config, After Effects–style — what the
+comp IS. Pass it as `Scene.make`'s second argument:
+
+```ts
+const scene = Scene.make(function* () {
+	// ...
+}, { width: 500, height: 300, backgroundColor: Color.hex("#16161d") });
+```
+
+| Field | Default | Meaning |
+| --- | --- | --- |
+| `width` / `height` | `1920` / `1080` | the comp's resolution (stamped on every frame) |
+| `backgroundColor` | transparent | comp background; transparent paints nothing |
+
+The movie inherits the ROOT scene's config; a scene played inside another
+keeps its own as its bounds (see [nesting](#nesting-scenes)).
+
 ## Settings
 
-Settings are passed to `run`/`stream` and default to sensible values:
+Playback settings are passed to `run`/`stream` — how the scene RUNS:
 
 | Setting | Default | Meaning |
 | --- | --- | --- |
 | `frameRate` | `60` | frames per second |
-| `width` / `height` | `500` / `300` | output resolution (stamped on every frame) |
-| `backgroundColor` | `Color.hex("#16161d")` | canvas background (a near-black, not pure `#000`); a `Color` from the `Color` API |
 | `seed` | `"effect-motion"` | seeds the scene's pseudo-random stream |
 | `maxFrames` | `36_000` | hard cap (10 min at 60fps); a scene that exceeds it fails loudly. Set `Infinity` for an intentionally infinite scene |
 

@@ -15,12 +15,21 @@ import type * as Entity from "./Entity.js";
 import type * as Instance from "./Instance.js";
 import * as Phaser from "./Phaser.js";
 import * as Runner from "./Runner.js";
+import { Group } from "./shapes/Group.js";
 import * as Time from "./Time.js";
 
 export const TypeId = "~motion/Scene" as const;
 export interface Scene<E = never, R = never> {
 	readonly [TypeId]: typeof TypeId;
 	readonly runner: Effect.Effect<void, E, R | Scope.Scope>;
+	/**
+	 * composition config, After Effects–style: what this comp IS. The
+	 * runner inherits the ROOT scene's; a played scene keeps its own as
+	 * its bounds (see {@link play}). Unlike annotations, read by the runtime.
+	 */
+	readonly width: number;
+	readonly height: number;
+	readonly backgroundColor: Color.Color;
 	/** tooling-facing metadata; never read by the runtime */
 	readonly annotations: Context.Context<never>;
 	annotate<I, S>(key: Context.Key<I, S>, value: S): Scene<E, R>;
@@ -33,6 +42,7 @@ export const make = <
 	const AEff,
 >(
 	f: () => Generator<Eff, AEff, never>,
+	meta: Partial<Runner.CompConfig> = {},
 ): Scene<
 	[Eff] extends [never]
 		? never
@@ -45,21 +55,25 @@ export const make = <
 			? R
 			: never
 > => {
-	return makeScene(Effect.scoped(Effect.gen(f)), Context.empty());
+	return makeScene(Effect.scoped(Effect.gen(f)), Context.empty(), meta);
 };
 
 // annotate/annotateMerge return new scene values sharing the same body
 const makeScene = <E = never, R = never>(
 	runnerEffect: Effect.Effect<void, E, R>,
 	annotations: Context.Context<never>,
+	meta: Partial<Runner.CompConfig>,
 ): Scene<E, R> => ({
 	[TypeId]: TypeId,
 	runner: runnerEffect,
 	annotations,
+	width: meta.width ?? Runner.defaultComp.width,
+	height: meta.height ?? Runner.defaultComp.height,
+	backgroundColor: meta.backgroundColor ?? Runner.defaultComp.backgroundColor,
 	annotate: <I, S>(key: Context.Key<I, S>, value: S) =>
-		makeScene(runnerEffect, Context.add(annotations, key, value)),
+		makeScene(runnerEffect, Context.add(annotations, key, value), meta),
 	annotateMerge: (context: Context.Context<never>) =>
-		makeScene(runnerEffect, Context.merge(annotations, context)),
+		makeScene(runnerEffect, Context.merge(annotations, context), meta),
 });
 
 export const instantiate = Effect.fnUntraced(function* <
@@ -116,7 +130,8 @@ export interface Frame<Entities extends Entity.AnyEntity = Entity.AnyEntity> {
 	instances: Record<string, EntriesFromEntities<Entities>>;
 	/** id of the root group (conventionally "root"); never rendered itself */
 	root: string;
-	/** render metadata from the runner settings — a frame is self-describing */
+	/** render metadata — frameRate from the runner settings, resolution and
+	 * background from the ROOT scene's comp config; a frame is self-describing */
 	frameRate: number;
 	width: number;
 	height: number;
@@ -181,7 +196,12 @@ export const run = <E, R>(
 	settings: Partial<Runner.Settings> = {},
 ) =>
 	Effect.gen(function* () {
-		const runner = yield* Runner.Runner.make(settings);
+		// the runner inherits the ROOT scene's composition config
+		const runner = yield* Runner.Runner.make(settings, {
+			width: scene.width,
+			height: scene.height,
+			backgroundColor: scene.backgroundColor,
+		});
 		let done = false;
 
 		// the body is itself a branch: Scene.finish inside it demotes the
@@ -360,6 +380,12 @@ export const removeChild = (
 export const settings = Effect.fnUntraced(function* () {
 	const runner = yield* Runner.Runner;
 	return runner.settings;
+});
+
+/** the movie's composition config — the ROOT scene's width/height/background */
+export const comp = Effect.fnUntraced(function* () {
+	const runner = yield* Runner.Runner;
+	return runner.comp;
 });
 
 /**
@@ -592,49 +618,91 @@ export const background = <A, E = never, R = never>(
 	});
 
 export interface PlayOptions {
-	/** group to mount the scene's instances under (default: the root) */
+	/** group to mount the child's bounds group under (default: the ambient parent) */
 	readonly parent?: Runner.GroupInstance;
 	/** seed for this evaluation (default: the movie's seed) */
 	readonly seed?: Runner.Seed;
 }
 
 /**
+ * A played scene's branch handle plus its mount group — the child comp as
+ * one unit. Move/fade the group (trait lenses) or scale it (transform
+ * operations) to transform the whole nested scene, bounds included.
+ */
+export interface PlayHandle<A = void, E = never> extends BranchHandle<A, E> {
+	readonly group: Runner.GroupInstance;
+}
+
+/**
  * Play a scene as a branch of the current scene — the explicit door to
- * nesting. The child shares the movie's runner, phaser, frame rate, and
- * frame cap, and gets its own scope, branch handle, mount parent, and a
- * FRESH seeded Random stream: `play(scene)` inside a movie seeded `S`
- * animates exactly like `run(scene, { seed: S })` standalone. Awaited
- * like a fork — `yield* handle.finished` for sequential nesting, or
- * don't await for concurrent scenes.
+ * nesting, After Effects–precomp-style. The child shares the movie's
+ * runner, phaser, frame rate, and frame cap, and gets its own scope,
+ * branch handle, and a FRESH seeded Random stream: `play(scene)` inside a
+ * movie seeded `S` animates exactly like `run(scene, { seed: S })`
+ * standalone. Each evaluation mounts the child under an implicit group
+ * carrying the child scene's bounds (width/height/backgroundColor):
+ * content clips to them, a non-transparent background paints within them,
+ * and the group is placed so the child's bounds CENTER in the enclosing
+ * comp (the movie, or the enclosing played scene) — a child smaller or
+ * bigger than the movie renders centered. Awaited like a fork —
+ * `yield* handle.finished` for sequential nesting, or don't await for
+ * concurrent scenes.
  */
 export const play = <E, R>(
 	scene: Scene<E, R>,
 	options?: PlayOptions,
 ): Effect.Effect<
-	BranchHandle<void, E>,
+	PlayHandle<void, E>,
 	never,
 	Runner.Runner | Exclude<R, Scope.Scope>
 > =>
 	Effect.gen(function* () {
 		const runner = yield* Runner.Runner;
-		const mounted =
-			options?.parent === undefined
-				? scene.runner.pipe(Effect.scoped)
-				: scene.runner.pipe(
-						Effect.scoped,
-						Effect.provideService(Runner.CurrentParent, options.parent),
-					);
-		const body = mounted.pipe(
+		// default placement: the child's bounds centered in the enclosing
+		// comp — the ambient (or explicit) parent's bounds when it is a
+		// sized group, the movie's comp at the root. An unsized parent
+		// group has no bounds to center in; the child mounts at its origin.
+		const ambient = options?.parent ?? (yield* Runner.CurrentParent);
+		const enclosing = (() => {
+			if (ambient === null) {
+				return runner.comp;
+			}
+			const data = runner.getDataUnsafe(ambient) as {
+				width?: number;
+				height?: number;
+			} | null;
+			return data !== null &&
+				typeof data.width === "number" &&
+				typeof data.height === "number"
+				? { width: data.width, height: data.height }
+				: null;
+		})();
+		// the child's comp bounds ride on the mount group: the renderer clips
+		// the subtree to them and paints the child's background within them
+		const group = yield* runner
+			.instantiate(Group, {
+				x: enclosing === null ? 0 : (enclosing.width - scene.width) / 2,
+				y: enclosing === null ? 0 : (enclosing.height - scene.height) / 2,
+				width: scene.width,
+				height: scene.height,
+				backgroundColor: scene.backgroundColor,
+			})
+			.pipe(Effect.provideService(Runner.CurrentParent, ambient));
+		const body = scene.runner.pipe(
+			Effect.scoped,
+			// the child's instances mount under its bounds group
+			Effect.provideService(Runner.CurrentParent, group),
 			// fresh stream per evaluation: nested playback must equal a
 			// standalone run with the same seed, never inherit the parent's
 			// stream position
 			Random.withSeed(options?.seed ?? runner.settings.seed),
 		);
-		return (yield* forkBranch(
+		const handle = (yield* forkBranch(
 			runner,
 			body as Effect.Effect<void, E, never>,
 			"fork",
 		)) as BranchHandle<void, E>;
+		return { ...handle, group } satisfies PlayHandle<void, E>;
 	}) as never;
 
 /**

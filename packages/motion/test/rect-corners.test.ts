@@ -70,19 +70,21 @@ describe("Rect corner radii", () => {
 	it("radii tween like any numeric field", async () => {
 		const frames = await Effect.runPromise(
 			SceneMod.stream(
-				SceneMod.make(function* () {
-					const card = yield* SceneMod.instantiate(Shapes.Rect, {
-						x: 50,
-						y: 50,
-						width: 100,
-						height: 100,
-						rx: 0,
-						ry: 0,
-					});
-					yield* SceneMod.tick;
-					yield* Motion.tweenTo(card, { rx: 40, ry: 40 }, "300 millis");
-				} as never),
-				{ width: 200, height: 200 },
+				SceneMod.make(
+					function* () {
+						const card = yield* SceneMod.instantiate(Shapes.Rect, {
+							x: 50,
+							y: 50,
+							width: 100,
+							height: 100,
+							rx: 0,
+							ry: 0,
+						});
+						yield* SceneMod.tick;
+						yield* Motion.tweenTo(card, { rx: 40, ry: 40 }, "300 millis");
+					} as never,
+					{ width: 200, height: 200 },
+				),
 			).pipe(Stream.runCollect) as unknown as Effect.Effect<
 				Iterable<Scene.Frame<Entities>>,
 				never,

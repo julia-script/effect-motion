@@ -1,31 +1,31 @@
 # frame-metadata Specification
 
 ## Purpose
-Frames are self-describing for rendering: every emitted frame carries the frame rate and output resolution from the runner settings, so consumers (SVG sinks, video encoders, custom renderers) need no side-channel to size or time their output.
+Frames are self-describing for rendering: every emitted frame carries the frame rate from the runner settings and the output resolution and background from the root scene's composition config, so consumers (SVG sinks, video encoders, custom renderers) need no side-channel to size or time their output.
 
 ## Requirements
 
-### Requirement: Runner settings define scene resolution
-`Runner.Settings` SHALL include `width` and `height` numbers defining the scene's output resolution, defaulting to 500 and 300 when not set, alongside the existing `frameRate` default of 60.
+### Requirement: The root scene defines scene resolution
+The ROOT scene's composition config SHALL define the movie's output resolution and background: `width` and `height` numbers defaulting to 1920 and 1080, and `backgroundColor` defaulting to transparent. `Runner.Settings` SHALL NOT include `width`, `height`, or `backgroundColor`; it retains the existing `frameRate` default of 60.
 
 #### Scenario: Defaults apply
-- **WHEN** a scene is run with no settings
-- **THEN** the effective settings have width 500, height 300, and frameRate 60
+- **WHEN** a scene created with no composition meta is run with no settings
+- **THEN** the effective resolution is width 1920, height 1080, with frameRate 60
 
 #### Scenario: Explicit resolution
-- **WHEN** a scene is run with `{ width: 1920, height: 1080 }`
-- **THEN** the effective settings carry those values
+- **WHEN** a scene created with `Scene.make(gen, { width: 1920, height: 1080 })` is run
+- **THEN** the effective resolution carries those values
 
 ### Requirement: Frames carry render metadata
-Every emitted `Frame` SHALL carry `frameRate`, `width`, and `height` taken from the runner's effective settings, so a frame is self-describing for rendering without access to the runner.
+Every emitted `Frame` SHALL carry `frameRate` from the runner's effective settings and `width`, `height`, and `backgroundColor` from the ROOT scene's composition config, so a frame is self-describing for rendering without access to the runner.
 
-#### Scenario: Frame reflects settings
-- **WHEN** a scene runs with `{ frameRate: 30, width: 800, height: 600 }` and a frame is stepped
+#### Scenario: Frame reflects root scene config
+- **WHEN** a scene with `{ width: 800, height: 600 }` runs with `{ frameRate: 30 }` and a frame is stepped
 - **THEN** the frame has frameRate 30, width 800, and height 600
 
 #### Scenario: Every frame carries it
 - **WHEN** a scene produces multiple frames (including frames from nested `Scene.play` branches)
-- **THEN** each frame carries the same metadata from the single runner's settings
+- **THEN** each frame carries the same metadata from the root scene and the single runner's settings
 
 ### Requirement: Sink render functions receive frame metadata
 The generic renderer family (`Renderer.make`) SHALL pass the frame's

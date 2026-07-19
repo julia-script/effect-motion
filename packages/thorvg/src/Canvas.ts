@@ -37,11 +37,16 @@ export const update = (canvas: Canvas) =>
 			),
 		),
 	);
-export const draw = (canvas: Canvas, preserve = false) =>
+/**
+ * Draw the canvas. `clear` mirrors upstream `tvg_canvas_draw(canvas, clear)`:
+ * true wipes the target buffer first — required for transparent backgrounds,
+ * where no full-frame paint overwrites the previous (or uninitialized) pixels.
+ */
+export const draw = (canvas: Canvas, clear = false) =>
 	ThorvgWasm.pipe(
 		Effect.flatMap(({ module }) =>
 			checked("_tvg_canvas_draw", () =>
-				module._tvg_canvas_draw(canvas.ptr, preserve ? 1 : 0),
+				module._tvg_canvas_draw(canvas.ptr, clear ? 1 : 0),
 			),
 		),
 	);

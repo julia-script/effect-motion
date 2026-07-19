@@ -26,22 +26,25 @@ afterAll(() => {
 });
 
 // import after gate check so the module still loads when skipped
-const scene = Scene.make(function* () {
-	yield* Scene.instantiate(Shapes.Circle, {
-		x: 100,
-		y: 60,
-		radius: 30,
-		fill: Color.hex("#fde68a"),
-	});
-	yield* Scene.instantiate(Shapes.Rect, {
-		x: 20,
-		y: 20,
-		width: 40,
-		height: 40,
-		fill: Color.hex("#7c3aed"),
-	});
-	for (let i = 0; i < 9; i++) yield* Scene.tick;
-});
+const scene = Scene.make(
+	function* () {
+		yield* Scene.instantiate(Shapes.Circle, {
+			x: 100,
+			y: 60,
+			radius: 30,
+			fill: Color.hex("#fde68a"),
+		});
+		yield* Scene.instantiate(Shapes.Rect, {
+			x: 20,
+			y: 20,
+			width: 40,
+			height: 40,
+			fill: Color.hex("#7c3aed"),
+		});
+		for (let i = 0; i < 9; i++) yield* Scene.tick;
+	},
+	{ width: 240, height: 120 },
+);
 
 it.runIf(canVerify)(
 	"renders a scene to a real playable MP4 end-to-end",
@@ -51,7 +54,7 @@ it.runIf(canVerify)(
 
 		await Effect.runPromise(
 			Video.render(scene, out, {
-				settings: { width: 240, height: 120, frameRate: 10 },
+				settings: { frameRate: 10 },
 			}).pipe(Effect.provide(NodeServices.layer)) as Effect.Effect<void>,
 		);
 
