@@ -8,12 +8,14 @@ scaffolding, previewing, and rendering, all driven by a single
 `motion.config.ts`:
 
 ```bash
-npx @effect-motion/cli init
+pnpm create effect-motion
+# or: npm create effect-motion / yarn create effect-motion / bun create effect-motion
 ```
 
 The wizard asks where to create the project (`.` uses the current directory
-and names the project after it) and which package manager to use, then
-installs a ready-to-run project:
+and names the project after it), which package manager to use, and whether
+to set up Biome for linting/formatting, then installs a ready-to-run
+project:
 
 ```
 my-project/
@@ -23,6 +25,7 @@ my-project/
 │  └─ main.ts                 # the movie — a scene composing the others
 ├─ motion.config.ts           # render targets
 ├─ AGENTS.md                  # authoring rules for AI coding agents
+├─ biome.json                 # if Biome was selected
 ├─ package.json               # exact pins of effect-motion + effect
 └─ tsconfig.json
 ```

@@ -3,7 +3,7 @@ import * as Camera from "../src/Camera";
 import * as Color from "../src/Color";
 import * as P from "../src/Projection";
 import type * as Scene from "../src/Scene";
-import * as Shapes from "../src/shapes";
+import * as Shapes from "../src/Shapes";
 import { render } from "./support/framebuffer";
 
 // 720-wide resting camera (see projection.test.ts) and a 500x300 viewport

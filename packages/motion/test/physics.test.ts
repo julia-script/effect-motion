@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import * as Physics from "../src/Physics";
 import type * as Runner from "../src/Runner";
 import * as Scene from "../src/Scene";
-import * as Shapes from "../src/shapes";
+import * as Shapes from "../src/Shapes";
 
 // runs resolve and returns the defect message it died with
 const resolveDies = async (input: Physics.SpringInput): Promise<string> => {
@@ -62,7 +62,7 @@ const runScene = async <A>(
 		const entry = Object.entries(frame.instances).find(
 			([id]) => id !== frame.root,
 		)?.[1];
-		return extract(entry.data as Record<string, any>);
+		return extract(entry!.data as Record<string, any>);
 	});
 };
 

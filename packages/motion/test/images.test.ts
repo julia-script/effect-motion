@@ -3,7 +3,7 @@ import * as Stream from "effect/Stream";
 import { describe, expect, it } from "vitest";
 import * as Images from "../src/Images";
 import * as Scene from "../src/Scene";
-import * as Shapes from "../src/shapes";
+import * as Shapes from "../src/Shapes";
 
 const logo: Images.ImageResource = {
 	name: "logo",

@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import * as Color from "../src/Color";
 import type * as Runner from "../src/Runner";
 import * as Scene from "../src/Scene";
-import * as Shapes from "../src/shapes";
+import * as Shapes from "../src/Shapes";
 import { render } from "./support/framebuffer";
 
 const oneFrameScene = Scene.make(function* () {

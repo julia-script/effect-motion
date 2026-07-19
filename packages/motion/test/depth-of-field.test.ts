@@ -8,7 +8,7 @@ import * as Projection from "../src/Projection";
 import type * as Runner from "../src/Runner";
 import { circleOfConfusion, MAX_SIGMA, quantizeSigma } from "../src/render/dof";
 import * as Scene from "../src/Scene";
-import * as Shapes from "../src/shapes";
+import * as Shapes from "../src/Shapes";
 import { render } from "./support/framebuffer";
 
 type Entities = typeof Shapes.Circle | typeof Shapes.Group;

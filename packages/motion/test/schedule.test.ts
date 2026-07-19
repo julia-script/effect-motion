@@ -3,7 +3,7 @@ import * as Stream from "effect/Stream";
 import { describe, expect, it } from "vitest";
 import * as Motion from "../src/Motion";
 import * as Scene from "../src/Scene";
-import * as Shapes from "../src/shapes";
+import * as Shapes from "../src/Shapes";
 import * as Time from "../src/Time";
 import { whileInputBelow } from "./support/schedule";
 
@@ -124,7 +124,7 @@ const trackX = async (
 		const entry = Object.entries(frame.instances).find(
 			([id]) => id !== frame.root,
 		)?.[1];
-		return (entry.data as { x: number }).x;
+		return (entry!.data as { x: number }).x;
 	});
 };
 

@@ -1,23 +1,19 @@
 import * as Data from "effect/Data";
 
 /**
- * Every failure mode of the CLI, as a `reason` union on a single tagged
- * error. One type keeps the error channel a single name in every command
- * signature; adding a failure mode is a union-member addition handled
- * exhaustively at exactly one place (the top-level reporter in bin.ts).
+ * Every failure mode of the scaffolder, as a `reason` union on a single
+ * tagged error — same pattern as @effect-motion/cli's MotionCliError (a
+ * deliberate small copy; the two packages share no code).
  */
 export type MotionCliReason =
-	| "ConfigNotFound"
-	| "ConfigInvalid"
-	| "SceneLoadFailed"
-	| "UnknownTarget"
-	| "RenderFailed"
-	| "StudioFailed";
+	| "ScaffoldTargetNotEmpty"
+	| "ScaffoldFailed"
+	| "InstallFailed";
 
 /**
- * The one error type of `@effect-motion/cli`: either wraps an upstream
+ * The one error type of `create-effect-motion`: either wraps an upstream
  * failure (`cause` carries it) or states a custom one. `message` MUST name
- * the offender — the file, target, or path that failed — because it is the
+ * the offender — the directory or command that failed — because it is the
  * only line shown without `--verbose`.
  */
 export class MotionCliError extends Data.TaggedError("MotionCliError")<{
