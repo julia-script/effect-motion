@@ -1,6 +1,6 @@
 {
 	"name": "@effect-motion/export",
-	"version": "0.3.0",
+	"version": "0.3.1",
 	"description": "Node-only export tools for effect-motion: render scenes to PNG frames (ThorVG) and encode to video (ffmpeg)",
 	"type": "module",
 	"license": "MIT",
