@@ -21,7 +21,7 @@ const crcTable = (() => {
 const crc32 = (bytes: Uint8Array): number => {
 	let c = 0xffffffff;
 	for (let i = 0; i < bytes.length; i++) {
-		c = crcTable[(c ^ bytes[i]!)! & 0xff]! ^ (c >>> 8);
+		c = (crcTable[(c ^ (bytes[i] ?? 0)) & 0xff] ?? 0) ^ (c >>> 8);
 	}
 	return (c ^ 0xffffffff) >>> 0;
 };

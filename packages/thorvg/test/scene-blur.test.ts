@@ -8,6 +8,7 @@ import * as Paint from "../src/Paint";
 import * as Scene from "../src/Scene";
 import * as Shape from "../src/Shape";
 import * as Text from "../src/Text";
+import { unreachable } from "./raise";
 
 /**
  * Spike for camera-depth-of-field design D4: gaussian blur as a nested-scene
@@ -32,7 +33,12 @@ const px = (
 	y: number,
 ): [number, number, number, number] => {
 	const o = (y * width + x) * 4;
-	return [fb[o]!, fb[o + 1]!, fb[o + 2]!, fb[o + 3]!];
+	return [
+		fb[o] ?? unreachable(),
+		fb[o + 1] ?? unreachable(),
+		fb[o + 2] ?? unreachable(),
+		fb[o + 3] ?? unreachable(),
+	];
 };
 
 const addBackground = (scene: OwnedPaint, w: number, h: number) =>
@@ -170,7 +176,7 @@ describe("scene blur spike (camera-depth-of-field D4)", () => {
 				const fb = new Uint8Array(yield* Canvas.render(canvas));
 				let n = 0;
 				for (let i = 0; i < fb.length; i += 4) {
-					if (fb[i]! > 40) n++;
+					if (fb[i] ?? 0 > 40) n++;
 				}
 				return n;
 			}),

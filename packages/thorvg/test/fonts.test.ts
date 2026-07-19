@@ -6,6 +6,7 @@ import * as EngineNode from "../src/EngineNode";
 import * as Font from "../src/Font";
 import * as Paint from "../src/Paint";
 import * as Text from "../src/Text";
+import { unreachable } from "./raise";
 
 /**
  * The scoped font registry (design D4 / thorvg-fonts spec): refcounted per
@@ -47,7 +48,7 @@ const paintTextAndCount = (family: string) =>
 		const fb = new Uint8Array(yield* Canvas.render(canvas));
 		let n = 0;
 		for (let i = 0; i < fb.length; i += 4) {
-			if (fb[i]! > 40) n++;
+			if ((fb[i] ?? unreachable()) > 40) n++;
 		}
 		return n;
 	});

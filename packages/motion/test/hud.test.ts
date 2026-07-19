@@ -9,6 +9,7 @@ import type * as Runner from "../src/Runner";
 import * as Scene from "../src/Scene";
 import * as Shapes from "../src/Shapes";
 import { render, renderExit } from "./support/framebuffer";
+import { unreachable } from "./support/raise";
 
 type Entities =
 	| typeof Shapes.Circle
@@ -249,12 +250,13 @@ describe("HUD scene authoring", () => {
 			});
 			yield* handle.finished;
 		});
-		const last = frames.at(-1)!;
+		const last = frames.at(-1) ?? unreachable();
 		const hudEntry = Object.entries(last.instances).find(
 			([, e]) => (e as any).entity.name === "shapes/Hud",
 		);
 		expect(hudEntry).toBeDefined();
-		const children = (hudEntry?.[1] as any).data.children as string[];
+		const children = ((hudEntry ?? unreachable())[1] as any).data
+			.children as string[];
 		expect(children.length).toBe(1);
 		// the mounted circle is a child of the Hud, not of the root
 		const rootChildren = (last.instances[last.root] as any).data

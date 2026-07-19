@@ -8,6 +8,7 @@ import type * as Scene from "../src/Scene";
 import * as SceneMod from "../src/Scene";
 import * as Shapes from "../src/Shapes";
 import { render } from "./support/framebuffer";
+import { unreachable } from "./support/raise";
 
 type Entities = typeof Shapes.Rect | typeof Shapes.Group;
 
@@ -103,7 +104,9 @@ describe("Rect corner radii", () => {
 		expect(radii[0]).toBe(0);
 		expect(radii.at(-1)).toBe(40);
 		for (let i = 1; i < radii.length; i++) {
-			expect(radii[i]!).toBeGreaterThanOrEqual(radii[i - 1]!);
+			expect(radii[i] ?? unreachable()).toBeGreaterThanOrEqual(
+				radii[i - 1] ?? unreachable(),
+			);
 		}
 	});
 });

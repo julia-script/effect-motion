@@ -4,6 +4,7 @@ import { Effect, Layer } from "effect";
 import type * as Entity from "../../src/Entity";
 import * as Renderer from "../../src/Renderer";
 import type { Frame } from "../../src/Scene";
+import { unreachable } from "./raise";
 
 /** extra session inputs a test can provide (e.g. images for Shapes.Image) */
 export interface RenderOptions {
@@ -52,7 +53,12 @@ export const render = <const Entities extends Entity.AnyEntity>(
 				return [0, 0, 0, 0];
 			}
 			const o = (Math.round(y) * width + Math.round(x)) * 4;
-			return [rgba[o]!, rgba[o + 1]!, rgba[o + 2]!, rgba[o + 3]!];
+			return [
+				rgba[o] ?? unreachable(),
+				rgba[o + 1] ?? unreachable(),
+				rgba[o + 2] ?? unreachable(),
+				rgba[o + 3] ?? unreachable(),
+			];
 		};
 		// background is pixel (0,0) — the corner is never covered by a
 		// centered shape in these tests

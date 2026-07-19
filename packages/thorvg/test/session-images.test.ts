@@ -190,18 +190,21 @@ describe("session images", () => {
 				});
 				// distinguish by natural size: green is 8×8, red is 4×4
 				const sizeOf = (
-					source: NonNullable<ReturnType<typeof sessionA.pictures.get>>,
+					source?: NonNullable<ReturnType<typeof sessionA.pictures.get>>,
 				) =>
 					Effect.scoped(
 						Effect.gen(function* () {
+							if (!source) {
+								return 0;
+							}
 							const dup = yield* Paint.duplicate(source);
 							// prime: first aabb query on a fresh paint is garbage
 							yield* Paint.getAabb(dup);
 							return (yield* Paint.getAabb(dup)).w;
 						}),
 					);
-				const a = yield* sizeOf(sessionA.pictures.get("logo")!);
-				const b = yield* sizeOf(sessionB.pictures.get("logo")!);
+				const a = yield* sizeOf(sessionA.pictures.get("logo"));
+				const b = yield* sizeOf(sessionB.pictures.get("logo"));
 				return { a, b };
 			}),
 		);

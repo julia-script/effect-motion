@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as P from "../src/Projection";
+import { unreachable } from "./support/raise";
 
 // The resting camera used across these tests: sits a focal-length back on
 // +z, no rotation — the identity view that must reproduce plain-2D placement.
@@ -171,12 +172,13 @@ describe("billboard affine", () => {
 
 describe("projectSegment (skeletal shapes)", () => {
 	it("flat segment under the resting camera is identity", () => {
-		const s = P.projectSegment(
-			identity,
-			{ x: 10, y: 20, z: 0 },
-			{ x: 200, y: 80, z: 0 },
-			origin,
-		)!;
+		const s =
+			P.projectSegment(
+				identity,
+				{ x: 10, y: 20, z: 0 },
+				{ x: 200, y: 80, z: 0 },
+				origin,
+			) ?? unreachable();
 		expect(s.a.x).toBeCloseTo(10, 10);
 		expect(s.a.y).toBeCloseTo(20, 10);
 		expect(s.b.x).toBeCloseTo(200, 10);
@@ -187,12 +189,13 @@ describe("projectSegment (skeletal shapes)", () => {
 	it("endpoints foreshorten independently", () => {
 		// a rail receding from z=0 toward the horizon: the far end pulls
 		// toward the viewport center, the near end stays put
-		const s = P.projectSegment(
-			identity,
-			{ x: 100, y: 100, z: 0 },
-			{ x: 100, y: 100, z: -4000 },
-			origin,
-		)!;
+		const s =
+			P.projectSegment(
+				identity,
+				{ x: 100, y: 100, z: 0 },
+				{ x: 100, y: 100, z: -4000 },
+				origin,
+			) ?? unreachable();
 		expect(s.a.x).toBeCloseTo(100, 10);
 		expect(s.a.y).toBeCloseTo(100, 10);
 		// far end: same world x/y but deeper — projected strictly between
@@ -204,12 +207,13 @@ describe("projectSegment (skeletal shapes)", () => {
 	});
 
 	it("midpoint depth and scale are the segment's keys", () => {
-		const s = P.projectSegment(
-			identity,
-			{ x: 0, y: 0, z: 0 },
-			{ x: 0, y: 0, z: -1000 },
-			origin,
-		)!;
+		const s =
+			P.projectSegment(
+				identity,
+				{ x: 0, y: 0, z: 0 },
+				{ x: 0, y: 0, z: -1000 },
+				origin,
+			) ?? unreachable();
 		// view depths: F (z=0) and F+1000 (z=-1000) → midpoint F+500
 		expect(s.depth).toBeCloseTo(F + 500, 10);
 		expect(s.scale).toBeCloseTo(F / (F + 500), 10);
@@ -217,12 +221,13 @@ describe("projectSegment (skeletal shapes)", () => {
 
 	it("a segment straddling the camera clips to the near plane", () => {
 		// start in front of the camera plane, end behind it
-		const s = P.projectSegment(
-			identity,
-			{ x: 0, y: 0, z: 0 },
-			{ x: 0, y: 0, z: identity.z + 500 },
-			origin,
-		)!;
+		const s =
+			P.projectSegment(
+				identity,
+				{ x: 0, y: 0, z: 0 },
+				{ x: 0, y: 0, z: identity.z + 500 },
+				origin,
+			) ?? unreachable();
 		expect(s).toBeDefined();
 		// the visible part runs from the front endpoint toward the camera;
 		// both screen points are finite (no folded/mirrored projection)
@@ -259,41 +264,36 @@ describe("clipSegmentToRect (viewport clipping)", () => {
 	it("a fully-inside segment is returned untouched (same references)", () => {
 		const a = { x: 10, y: 10 };
 		const b = { x: 400, y: 200 };
-		const r = P.clipSegmentToRect(a, b, min, max)!;
+		const r = P.clipSegmentToRect(a, b, min, max) ?? unreachable();
 		expect(r[0]).toBe(a);
 		expect(r[1]).toBe(b);
 	});
 
 	it("a segment crossing one edge clips to the boundary", () => {
-		const r = P.clipSegmentToRect(
-			{ x: 250, y: 150 },
-			{ x: 1000, y: 150 },
-			min,
-			max,
-		)!;
+		const r =
+			P.clipSegmentToRect({ x: 250, y: 150 }, { x: 1000, y: 150 }, min, max) ??
+			unreachable();
 		expect(r[0]).toEqual({ x: 250, y: 150 });
 		expect(r[1].x).toBeCloseTo(500, 10);
 		expect(r[1].y).toBeCloseTo(150, 10);
 	});
 
 	it("a segment spanning the rect clips both endpoints", () => {
-		const r = P.clipSegmentToRect(
-			{ x: -10000, y: 150 },
-			{ x: 10000, y: 150 },
-			min,
-			max,
-		)!;
+		const r =
+			P.clipSegmentToRect(
+				{ x: -10000, y: 150 },
+				{ x: 10000, y: 150 },
+				min,
+				max,
+			) ?? unreachable();
 		expect(r[0].x).toBeCloseTo(0, 10);
 		expect(r[1].x).toBeCloseTo(500, 10);
 	});
 
 	it("a diagonal through a corner region keeps only the inside run", () => {
-		const r = P.clipSegmentToRect(
-			{ x: -100, y: -100 },
-			{ x: 700, y: 700 },
-			min,
-			max,
-		)!;
+		const r =
+			P.clipSegmentToRect({ x: -100, y: -100 }, { x: 700, y: 700 }, min, max) ??
+			unreachable();
 		expect(r[0].x).toBeCloseTo(0, 10);
 		expect(r[0].y).toBeCloseTo(0, 10);
 		expect(r[1].x).toBeCloseTo(300, 10);

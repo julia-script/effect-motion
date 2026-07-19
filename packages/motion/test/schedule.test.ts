@@ -5,6 +5,7 @@ import * as Motion from "../src/Motion";
 import * as Scene from "../src/Scene";
 import * as Shapes from "../src/Shapes";
 import * as Time from "../src/Time";
+import { unreachable } from "./support/raise";
 import { whileInputBelow } from "./support/schedule";
 
 const run = <A>(eff: Effect.Effect<A, any, never>): Promise<A> =>
@@ -124,7 +125,7 @@ const trackX = async (
 		const entry = Object.entries(frame.instances).find(
 			([id]) => id !== frame.root,
 		)?.[1];
-		return (entry!.data as { x: number }).x;
+		return ((entry ?? unreachable()).data as { x: number }).x;
 	});
 };
 

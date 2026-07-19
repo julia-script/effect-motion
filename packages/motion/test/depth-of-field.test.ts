@@ -10,6 +10,7 @@ import { circleOfConfusion, MAX_SIGMA, quantizeSigma } from "../src/render/dof";
 import * as Scene from "../src/Scene";
 import * as Shapes from "../src/Shapes";
 import { render } from "./support/framebuffer";
+import { unreachable } from "./support/raise";
 
 type Entities = typeof Shapes.Circle | typeof Shapes.Group;
 type Frame = Scene.Frame<Entities>;
@@ -32,7 +33,7 @@ const framesOf = (
 const lastFrame = (
 	make: () => Generator<Effect.Effect<any, any, any>, void, never>,
 	settings: Partial<Runner.Settings> = {},
-) => framesOf(make, settings).then((frames) => frames.at(-1)!);
+) => framesOf(make, settings).then((frames) => frames.at(-1) ?? unreachable());
 
 describe("camera depth-of-field fields", () => {
 	it("defaults: focus at the resting distance, aperture 0", async () => {
@@ -74,7 +75,9 @@ describe("camera depth-of-field fields", () => {
 		expect(values.at(-1)).toBe(500);
 		// strictly increasing along the tween
 		for (let i = 1; i < values.length; i++) {
-			expect(values[i]!).toBeGreaterThanOrEqual(values[i - 1]!);
+			expect(values[i] ?? unreachable()).toBeGreaterThanOrEqual(
+				values[i - 1] ?? unreachable(),
+			);
 		}
 		expect(frames.at(-1)?.camera.aperture).toBe(8);
 	});

@@ -5,6 +5,7 @@ import * as Motion from "../src/Motion";
 import * as Scene from "../src/Scene";
 import * as Shapes from "../src/Shapes";
 import type * as Timing from "../src/Timing";
+import { unreachable } from "./support/raise";
 
 // runs a scene and extracts a value from its first instance per frame
 const runScene = async <A>(
@@ -22,7 +23,7 @@ const runScene = async <A>(
 		const entry = Object.entries(frame.instances).find(
 			([id]) => id !== frame.root,
 		)?.[1];
-		return extract(entry!.data as Record<string, any>);
+		return extract(entry?.data as Record<string, any>);
 	});
 };
 
@@ -89,7 +90,7 @@ describe("timing on motion combinators", () => {
 			(data) => data.x as number,
 		);
 		// explicit start: first frame is near 0, not 500
-		expect(track[0]!).toBeLessThan(50);
+		expect(track[0] ?? unreachable()).toBeLessThan(50);
 		expect(track[59]).toBeCloseTo(100, 10);
 	});
 });

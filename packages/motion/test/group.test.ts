@@ -7,6 +7,7 @@ import * as Runner from "../src/Runner";
 import * as Scene from "../src/Scene";
 import * as Shapes from "../src/Shapes";
 import { render, renderExit } from "./support/framebuffer";
+import { unreachable } from "./support/raise";
 
 type Entities = typeof Shapes.Group | typeof Shapes.Circle;
 
@@ -169,14 +170,14 @@ describe("scene attachment", () => {
 			yield* Scene.instantiate(Shapes.Circle, { x: 5 });
 			yield* Scene.tick;
 		});
-		const frame = frames[0]!;
+		const frame = frames[0] ?? unreachable();
 		const root = frame.instances[frame.root]?.data as {
 			children: ReadonlyArray<string>;
 		};
 		expect(root.children).toHaveLength(1);
-		expect(frame.instances[root.children[0]!]?.entity.name).toBe(
-			"shapes/Circle",
-		);
+		expect(
+			frame.instances[root.children[0] ?? unreachable()]?.entity.name,
+		).toBe("shapes/Circle");
 	});
 
 	// skipped: passes an ops-list transform ({_tag: "transform/scale"}) that
@@ -194,12 +195,12 @@ describe("scene attachment", () => {
 			});
 			yield* Scene.tick;
 		});
-		const frame = frames[0]!;
+		const frame = frames[0] ?? unreachable();
 		const root = frame.instances[frame.root]?.data as {
 			children: ReadonlyArray<string>;
 		};
 		expect(root.children).toHaveLength(1); // only the group at top level
-		const group = frame.instances[root.children[0]!]
+		const group = frame.instances[root.children[0] ?? unreachable()]
 			?.data as typeof Shapes.Group.data.Type;
 		expect(group.children).toHaveLength(1);
 		expect(group.transform).toMatchObject({ a: 2, d: 3 });
@@ -212,12 +213,12 @@ describe("scene attachment", () => {
 			yield* Scene.appendChild(group, circle);
 			yield* Scene.tick;
 		});
-		const frame = frames[0]!;
+		const frame = frames[0] ?? unreachable();
 		const root = frame.instances[frame.root]?.data as {
 			children: ReadonlyArray<string>;
 		};
 		expect(root.children).toHaveLength(1); // circle moved out of root
-		const group = frame.instances[root.children[0]!]?.data as {
+		const group = frame.instances[root.children[0] ?? unreachable()]?.data as {
 			children: ReadonlyArray<string>;
 		};
 		expect(group.children).toHaveLength(1);
@@ -232,16 +233,27 @@ describe("scene attachment", () => {
 			runner.destroy(circle);
 			yield* Scene.tick;
 		});
-		const before = frames[0]!;
-		const after = frames[1]!;
-		const groupId = (
-			before.instances[before.root]?.data as { children: string[] }
-		).children[0]!;
+		const before = frames[0] ?? unreachable();
+		const after = frames[1] ?? unreachable();
+		const groupId =
+			(
+				(before.instances[before.root] ?? unreachable()).data as {
+					children: string[];
+				}
+			).children[0] ?? unreachable();
 		expect(
-			(before.instances[groupId]?.data as { children: string[] }).children,
+			(
+				(before.instances[groupId] ?? unreachable()).data as {
+					children: string[];
+				}
+			).children,
 		).toHaveLength(1);
 		expect(
-			(after.instances[groupId]?.data as { children: string[] }).children,
+			(
+				(after.instances[groupId] ?? unreachable()).data as {
+					children: string[];
+				}
+			).children,
 		).toHaveLength(0);
 	});
 
@@ -323,20 +335,22 @@ describe("polymorphic children", () => {
 	};
 
 	const childrenOf = (frame: Scene.Frame<any>, id: string) =>
-		(frame.instances[id]?.data as { children: string[] }).children;
+		((frame.instances[id] ?? unreachable()).data as { children: string[] })
+			.children;
 
 	it("a string child becomes a Text", async () => {
 		const frames = await collectFrames(function* () {
 			yield* Scene.instantiate(Shapes.Group, { children: ["hello"] });
 			yield* Scene.tick;
 		});
-		const frame = frames[0]!;
-		const groupId = childrenOf(frame, frame.root)[0]!;
-		const childId = childrenOf(frame, groupId)[0]!;
+		const frame = frames[0] ?? unreachable();
+		const groupId = childrenOf(frame, frame.root)[0] ?? unreachable();
+		const childId = childrenOf(frame, groupId)[0] ?? unreachable();
 		expect(frame.instances[childId]?.entity.name).toBe("shapes/Text");
-		expect((frame.instances[childId]?.data as { text: string }).text).toBe(
-			"hello",
-		);
+		expect(
+			((frame.instances[childId] ?? unreachable()).data as { text: string })
+				.text,
+		).toBe("hello");
 	});
 
 	it("a not-yielded nested instantiate is resolved internally", async () => {
@@ -347,9 +361,9 @@ describe("polymorphic children", () => {
 			});
 			yield* Scene.tick;
 		});
-		const frame = frames[0]!;
-		const groupId = childrenOf(frame, frame.root)[0]!;
-		const childId = childrenOf(frame, groupId)[0]!;
+		const frame = frames[0] ?? unreachable();
+		const groupId = childrenOf(frame, frame.root)[0] ?? unreachable();
+		const childId = childrenOf(frame, groupId)[0] ?? unreachable();
 		expect(frame.instances[childId]?.entity.name).toBe("shapes/Circle");
 	});
 
@@ -359,10 +373,10 @@ describe("polymorphic children", () => {
 			yield* Scene.instantiate(Shapes.Group, { children: [circle] });
 			yield* Scene.tick;
 		});
-		const frame = frames[0]!;
+		const frame = frames[0] ?? unreachable();
 		// only the group at top level — the circle moved out of root
 		expect(childrenOf(frame, frame.root)).toHaveLength(1);
-		const groupId = childrenOf(frame, frame.root)[0]!;
+		const groupId = childrenOf(frame, frame.root)[0] ?? unreachable();
 		expect(childrenOf(frame, groupId)).toHaveLength(1);
 	});
 
@@ -374,13 +388,19 @@ describe("polymorphic children", () => {
 			});
 			yield* Scene.tick;
 		});
-		const frame = frames[0]!;
-		const groupId = childrenOf(frame, frame.root)[0]!;
+		const frame = frames[0] ?? unreachable();
+		const groupId = childrenOf(frame, frame.root)[0] ?? unreachable();
 		const kids = childrenOf(frame, groupId);
 		expect(kids).toHaveLength(3);
-		expect(frame.instances[kids[0]!]?.entity.name).toBe("shapes/Text");
-		expect(frame.instances[kids[1]!]?.entity.name).toBe("shapes/Circle");
-		expect(frame.instances[kids[2]!]?.entity.name).toBe("shapes/Circle");
+		expect(frame.instances[kids[0] ?? unreachable()]?.entity.name).toBe(
+			"shapes/Text",
+		);
+		expect(frame.instances[kids[1] ?? unreachable()]?.entity.name).toBe(
+			"shapes/Circle",
+		);
+		expect(frame.instances[kids[2] ?? unreachable()]?.entity.name).toBe(
+			"shapes/Circle",
+		);
 	});
 });
 
@@ -402,9 +422,13 @@ describe("builtin $visible", () => {
 			yield* Scene.instantiate(Shapes.Circle, { x: 1 });
 			yield* Scene.tick;
 		});
-		const frame = frames[0]!;
-		const id = (frame.instances[frame.root]?.data as { children: string[] })
-			.children[0]!;
+		const frame = frames[0] ?? unreachable();
+		const id =
+			(
+				(frame.instances[frame.root] ?? unreachable()).data as {
+					children: string[];
+				}
+			).children[0] ?? unreachable();
 		expect(frame.instances[id]?.$visible).toBe(true);
 	});
 
@@ -420,7 +444,9 @@ describe("builtin $visible", () => {
 			yield* Scene.instantiate(Shapes.Circle, { x: 300, y: 150, radius: 15 });
 			yield* Scene.tick;
 		});
-		const r = await render(frames[0]! as Scene.Frame<Entities>);
+		const r = await render(
+			(frames[0] ?? unreachable()) as Scene.Frame<Entities>,
+		);
 		expect(r.isPainted(120, 120)).toBe(false); // hidden → background
 		expect(r.isPainted(300, 150)).toBe(true); // visible → painted
 	});

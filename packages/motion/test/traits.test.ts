@@ -6,6 +6,7 @@ import * as Motion from "../src/Motion";
 import * as Physics from "../src/Physics";
 import * as Scene from "../src/Scene";
 import * as Shapes from "../src/Shapes";
+import { unreachable } from "./support/raise";
 
 describe("lens laws on built-ins", () => {
 	it("set returns new immutable data; get(set(d, v)) = v", () => {
@@ -76,7 +77,7 @@ describe("trait-based helpers", () => {
 			});
 			yield* line.pipe(Motion.moveTo({ x: 100, y: 100, z: 100 }, "500 millis"));
 		}, firstNonRoot);
-		const last = track.at(-1)!;
+		const last = track.at(-1) ?? unreachable();
 		// targeted trait fields land exactly (determinism invariant); the
 		// derived endpoints accumulate per-frame deltas, so they're close-to
 		// (the drift is itself deterministic — identical across runs)
@@ -100,7 +101,7 @@ describe("trait-based helpers", () => {
 			});
 			yield* Motion.moveTo(circle, { x: 200 }, "500 millis");
 		}, firstNonRoot);
-		const last = track.at(-1)!;
+		const last = track.at(-1) ?? unreachable();
 		expect(last.x).toBe(200);
 		expect(last.y).toBe(77);
 		for (const frame of track) {
@@ -119,7 +120,7 @@ describe("trait-based helpers", () => {
 			yield* Motion.fade(circle, 1, 0.25, "200 millis");
 		}, firstNonRoot);
 		expect(track[0]?.x).toBeLessThan(120); // explicit origin, not 500
-		const last = track.at(-1)!;
+		const last = track.at(-1) ?? unreachable();
 		expect(last.x).toBe(100);
 		expect(last.opacity).toBe(0.25);
 		// the fadeTo leg ended exactly on 0.8 before the fade leg started
@@ -147,7 +148,7 @@ describe("trait-based helpers", () => {
 				return { groupX: group.x, circleX: circle.x };
 			},
 		);
-		const last = track.at(-1)!;
+		const last = track.at(-1) ?? unreachable();
 		expect(last.groupX).toBe(40);
 		expect(last.circleX).toBe(5); // local coordinates untouched
 	});
@@ -198,7 +199,7 @@ describe("animation chaining", () => {
 			},
 			(frame) => firstNonRoot(frame),
 		);
-		const last = track.at(-1)!;
+		const last = track.at(-1) ?? unreachable();
 		expect(last.radius).toBe(20);
 		expect(last.x).toBe(50);
 		expect(last.y).toBe(30);
@@ -216,7 +217,7 @@ describe("animation chaining", () => {
 			},
 			(frame) => firstNonRoot(frame),
 		);
-		const last = track.at(-1)!;
+		const last = track.at(-1) ?? unreachable();
 		expect(last.x).toBe(50);
 		expect(last.opacity).toBe(0.5);
 	});

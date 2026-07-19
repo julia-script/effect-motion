@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import * as Motion from "../src/Motion";
 import * as Scene from "../src/Scene";
 import * as Shapes from "../src/Shapes";
+import { unreachable } from "./support/raise";
 
 // runs a scene and returns, per frame, the non-root instances' data in
 // instantiation order
@@ -47,7 +48,7 @@ describe("Scene.fork", () => {
 			// body over at frame 30; the fork animates until frame 60
 		});
 		expect(frames).toHaveLength(61);
-		const last = frames.at(-1)!;
+		const last = frames.at(-1) ?? unreachable();
 		expect(last[0]?.x).toBe(100);
 		expect(last[1]?.x).toBe(100);
 		// after the body ended, the fork still progressed frame by frame
@@ -69,7 +70,7 @@ describe("Scene.fork", () => {
 		});
 		// last particle ends at frame 26, plus the settle frame
 		expect(frames).toHaveLength(27);
-		const last = frames.at(-1)!;
+		const last = frames.at(-1) ?? unreachable();
 		expect(last).toHaveLength(3);
 		for (const data of last) {
 			expect(data.x).toBe(100);
@@ -117,7 +118,7 @@ describe("Scene.background", () => {
 		});
 		// bounded by the 30-frame body, not the 600-frame background
 		expect(frames).toHaveLength(31);
-		const last = frames.at(-1)!;
+		const last = frames.at(-1) ?? unreachable();
 		expect(last[0]?.x).toBe(100);
 		// the background animated while the body ran, mid-frame interrupt is safe
 		expect(last[1]?.x).toBeGreaterThan(0);

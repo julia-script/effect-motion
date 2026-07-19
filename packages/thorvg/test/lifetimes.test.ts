@@ -11,6 +11,7 @@ import { wrapPromise } from "../src/Interop";
 import * as Paint from "../src/Paint";
 import * as Shape from "../src/Shape";
 import * as Text from "../src/Text";
+import { unreachable } from "./raise";
 
 /**
  * Engine-tier lifetimes (design D1/D2). ThorVG's Initializer is refcounted
@@ -66,7 +67,7 @@ const paintTextAndCount = (family: string) =>
 		const fb = new Uint8Array(yield* Canvas.render(canvas));
 		let n = 0;
 		for (let i = 0; i < fb.length; i += 4) {
-			if (fb[i]! > 40) n++;
+			if ((fb[i] ?? unreachable()) > 40) n++;
 		}
 		return n;
 	});

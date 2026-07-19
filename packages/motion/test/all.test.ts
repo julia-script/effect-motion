@@ -11,7 +11,7 @@ import { whileInputBelow } from "./support/schedule";
 const collectFrames = async (
 	make: () => Generator<Effect.Effect<any, any, any>, void, never>,
 ): Promise<Array<Array<Record<string, any>>>> => {
-	const scene = Scene.make(make as never, { width: 500, height: 300 });
+	const scene = Scene.make(make as never);
 	const frames = await Effect.runPromise(
 		Scene.stream(scene as never).pipe(
 			Stream.runCollect,
@@ -93,7 +93,7 @@ describe("Scene.chain", () => {
 			completed = result.completed;
 		});
 		expect(completed).toBe(3);
-		expect(frames.at(-1)!).toHaveLength(3); // items 4 and 5 never ran
+		expect(frames.at(-1)).toHaveLength(3); // items 4 and 5 never ran
 	});
 
 	it("item results feed the schedule as input", async () => {
@@ -164,7 +164,7 @@ describe("Scene.stagger", () => {
 		});
 		// releases at frames 0, 3, 6; effects 4 and 5 never run
 		expect(released).toBe(3);
-		expect(frames.at(-1)!).toHaveLength(3);
+		expect(frames.at(-1)).toHaveLength(3);
 		// last release at 6 + 10 animation frames = 16, settle at 17
 		expect(frames).toHaveLength(17);
 	});

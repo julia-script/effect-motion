@@ -7,6 +7,7 @@ import type * as Runner from "../src/Runner";
 import * as Scene from "../src/Scene";
 import * as Shapes from "../src/Shapes";
 import { render } from "./support/framebuffer";
+import { unreachable } from "./support/raise";
 
 const collect = async (scene: unknown): Promise<any[]> => [
 	...((await Effect.runPromise(
@@ -16,7 +17,8 @@ const collect = async (scene: unknown): Promise<any[]> => [
 	)) as Iterable<any>),
 ];
 
-const lastFrame = (scene: unknown) => collect(scene).then((f) => f.at(-1)!);
+const lastFrame = (scene: unknown) =>
+	collect(scene).then((f) => f.at(-1) ?? unreachable());
 
 // a 100×50 child comp with a red background and one white circle at local (25, 25)
 const child = (meta?: Partial<Runner.CompConfig>) =>
@@ -202,8 +204,9 @@ describe("Scene.play mounts a bounded sub-composition", () => {
 			id.includes("Group"),
 		) as Array<[string, any]>;
 		expect(groups).toHaveLength(2);
-		const outer = groups.find(([, e]) => e.data.width === 150)!;
-		const nested = groups.find(([, e]) => e.data.width === 100)!;
+		const outer = groups.find(([, e]) => e.data.width === 150) ?? unreachable();
+		const nested =
+			groups.find(([, e]) => e.data.width === 100) ?? unreachable();
 		// the inner bounds group is a child of the outer bounds group,
 		// centered in ITS comp: (150 - 100) / 2, (80 - 50) / 2
 		expect(outer[1].data.children).toContain(nested[0]);

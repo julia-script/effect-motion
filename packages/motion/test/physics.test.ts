@@ -5,6 +5,7 @@ import * as Physics from "../src/Physics";
 import type * as Runner from "../src/Runner";
 import * as Scene from "../src/Scene";
 import * as Shapes from "../src/Shapes";
+import { unreachable } from "./support/raise";
 
 // runs resolve and returns the defect message it died with
 const resolveDies = async (input: Physics.SpringInput): Promise<string> => {
@@ -62,7 +63,7 @@ const runScene = async <A>(
 		const entry = Object.entries(frame.instances).find(
 			([id]) => id !== frame.root,
 		)?.[1];
-		return extract(entry!.data as Record<string, any>);
+		return extract(entry?.data as Record<string, any>);
 	});
 };
 
@@ -120,7 +121,7 @@ describe("spring physics", () => {
 			},
 			(data) => ({ x: data.x as number, y: data.y as number }),
 		);
-		const last = track.at(-1)!;
+		const last = track.at(-1) ?? unreachable();
 		expect(last).toEqual({ x: 100, y: 40 });
 	});
 
@@ -133,7 +134,7 @@ describe("spring physics", () => {
 			(data) => data.x as number,
 		);
 		// starts from the explicit origin, not the current position
-		expect(track[0]!).toBeLessThan(120);
+		expect(track[0] ?? unreachable()).toBeLessThan(120);
 		expect(track.at(-1)).toBe(100);
 	});
 
@@ -146,7 +147,7 @@ describe("spring physics", () => {
 			(data) => data.x as number,
 		);
 		expect(track.at(-1)).toBe(150);
-		expect(track[0]!).toBeGreaterThan(50);
+		expect(track[0] ?? unreachable()).toBeGreaterThan(50);
 	});
 });
 
@@ -156,9 +157,9 @@ describe("frame-rate independence", () => {
 		const at60 = await springXScene("smooth", undefined, { frameRate: 60 });
 
 		// position at ~0.5 s: frame 14 at 30 fps, frame 29 at 60 fps
-		expect(at30[14]!).toBeCloseTo(at60[29]!, 6);
+		expect(at30[14] ?? unreachable()).toBeCloseTo(at60[29] ?? unreachable(), 6);
 		// and at ~0.25 s
-		expect(at30[6]!).toBeCloseTo(at60[13]!, 6);
+		expect(at30[6] ?? unreachable()).toBeCloseTo(at60[13] ?? unreachable(), 6);
 		// both settle exactly
 		expect(at30.at(-1)).toBe(100);
 		expect(at60.at(-1)).toBe(100);

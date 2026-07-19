@@ -8,6 +8,7 @@ import * as Picture from "../src/Picture";
 import { encodePng } from "../src/png";
 import * as Scene from "../src/Scene";
 import * as Shape from "../src/Shape";
+import { unreachable } from "./raise";
 
 /**
  * Spike for image-assets design D2: (1) session pictures are reused per frame
@@ -39,7 +40,12 @@ const px = (
 	y: number,
 ): [number, number, number, number] => {
 	const o = (y * width + x) * 4;
-	return [fb[o]!, fb[o + 1]!, fb[o + 2]!, fb[o + 3]!];
+	return [
+		fb[o] ?? unreachable(),
+		fb[o + 1] ?? unreachable(),
+		fb[o + 2] ?? unreachable(),
+		fb[o + 3] ?? unreachable(),
+	];
 };
 
 // SW canvas targets are malloc'd (uninitialized) — every render test must

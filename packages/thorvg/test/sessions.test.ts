@@ -8,6 +8,7 @@ import * as Paint from "../src/Paint";
 import * as Session from "../src/Session";
 import * as Shape from "../src/Shape";
 import * as Text from "../src/Text";
+import { unreachable } from "./raise";
 
 /** RenderSession (design D3): scoped canvas + scoped fonts per session. */
 
@@ -70,7 +71,7 @@ const paintText = (family: string) =>
 		const fb = new Uint8Array(yield* Canvas.render(canvas));
 		let n = 0;
 		for (let i = 0; i < fb.length; i += 4) {
-			if (fb[i]! > 40) n++;
+			if ((fb[i] ?? unreachable()) > 40) n++;
 		}
 		return n;
 	});

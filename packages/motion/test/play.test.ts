@@ -5,6 +5,7 @@ import * as Motion from "../src/Motion";
 import * as Runner from "../src/Runner";
 import * as Scene from "../src/Scene";
 import * as Shapes from "../src/Shapes";
+import { unreachable } from "./support/raise";
 
 const collectRaw = async (
 	scene: unknown,
@@ -41,7 +42,7 @@ describe("Scene.play", () => {
 			yield* b.finished;
 		} as never);
 		const frames = dataFrames(await collectRaw(movie));
-		const last = frames.at(-1)!;
+		const last = frames.at(-1) ?? unreachable();
 		expect(last[0]?.x).toBe(100);
 		expect(last[1]?.x).toBe(100);
 		// B exists only after A finished, and starts from 0 then
@@ -143,7 +144,7 @@ describe("Scene.play", () => {
 			const b = yield* Scene.play(rand() as never, { seed: "b" });
 			yield* b.finished;
 		} as never);
-		const last = dataFrames(await collectRaw(movie)).at(-1)!;
+		const last = dataFrames(await collectRaw(movie)).at(-1) ?? unreachable();
 		expect(last[0]?.x).not.toBe(last[1]?.x);
 	});
 
@@ -167,7 +168,7 @@ describe("Scene.play", () => {
 
 describe("Scene.play mounting", () => {
 	const childOf = (frames: any[], parentId: string): string[] => {
-		const last = frames.at(-1)!;
+		const last = frames.at(-1) ?? unreachable();
 		return (last.instances[parentId]?.data.children ?? []) as string[];
 	};
 
@@ -179,13 +180,13 @@ describe("Scene.play mounting", () => {
 		} as never);
 		const frames = await collectRaw(movie);
 		const ids = Object.keys(frames.at(-1)?.instances);
-		const gId = ids.find((id) => id.endsWith("_0"))!; // the explicit parent
-		const circleId = ids.find((id) => id.includes("Circle"))!;
+		const gId = ids.find((id) => id.endsWith("_0")) ?? unreachable(); // the explicit parent
+		const circleId = ids.find((id) => id.includes("Circle")) ?? unreachable();
 		// play's implicit bounds group sits between the parent and the child
 		const [boundsId, ...rest] = childOf(frames, gId);
 		expect(rest).toHaveLength(0);
 		expect(boundsId).toContain("Group");
-		expect(childOf(frames, boundsId!)).toContain(circleId);
+		expect(childOf(frames, boundsId ?? unreachable())).toContain(circleId);
 		expect(childOf(frames, "root")).not.toContain(circleId);
 	});
 
@@ -207,13 +208,13 @@ describe("Scene.play mounting", () => {
 		} as never);
 		const frames = await collectRaw(movie);
 		const ids = Object.keys(frames.at(-1)?.instances);
-		const mountId = ids.find((id) => id.endsWith("_0"))!; // first group
-		const circleId = ids.find((id) => id.includes("Circle"))!;
+		const mountId = ids.find((id) => id.endsWith("_0")) ?? unreachable(); // first group
+		const circleId = ids.find((id) => id.includes("Circle")) ?? unreachable();
 		// mount → implicit bounds group → inner group (ambient) → circle
 		const [boundsId] = childOf(frames, mountId);
-		const [innerId] = childOf(frames, boundsId!);
+		const [innerId] = childOf(frames, boundsId ?? unreachable());
 		expect(innerId).toContain("Group");
-		expect(childOf(frames, innerId!)).toContain(circleId); // explicit
+		expect(childOf(frames, innerId ?? unreachable())).toContain(circleId); // explicit
 	});
 
 	it("one scene value, two independent mounts", async () => {

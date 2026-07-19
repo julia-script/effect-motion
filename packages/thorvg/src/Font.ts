@@ -224,7 +224,7 @@ const registryOf = (module: ThorVGModule): Map<string, RegistryEntry> => {
 const hashBytes = (bytes: Uint8Array): string => {
 	let h = 5381;
 	for (let i = 0; i < bytes.length; i++) {
-		h = ((h << 5) + h + bytes[i]!) | 0;
+		h = ((h << 5) + h + (bytes[i] ?? 0)) | 0;
 	}
 	return `bytes:${bytes.length}:${h >>> 0}`;
 };

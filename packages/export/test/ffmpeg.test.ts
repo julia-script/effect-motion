@@ -82,7 +82,7 @@ it("spawns ffmpeg with image2pipe defaults and pipes PNG bytes to stdin", async 
 	);
 
 	expect(record).toHaveLength(1);
-	const { command, args, stdinBytes } = record[0]!;
+	const { command, args, stdinBytes } = record[0] ?? {};
 	// defaults to the bundled ffmpeg-static binary (falls back to "ffmpeg"
 	// only where ffmpeg-static ships no build)
 	expect(command).toBe(ffmpegStatic ?? "ffmpeg");
@@ -115,7 +115,10 @@ it("honors custom binary and appends extraArgs before the output path", async ()
 		}).pipe(Effect.provide(mockSpawner({ record }))),
 	);
 
-	const { command, args } = record[0]!;
+	const { command, args } = record[0] ?? {};
+	if (!command || !args) {
+		throw new Error("No record found");
+	}
 	expect(command).toBe("/opt/ffmpeg/bin/ffmpeg");
 	// extraArgs sit after the default output flags, before -y/output
 	expect(args.slice(-4)).toEqual(["-crf", "18", "-y", "clip.mp4"]);

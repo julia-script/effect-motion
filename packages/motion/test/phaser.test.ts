@@ -58,7 +58,6 @@ describe("phase advance on awaitAdvance", () => {
 				expect(log).toEqual(["only"]);
 			}),
 		));
-
 });
 
 describe("generations", () => {
