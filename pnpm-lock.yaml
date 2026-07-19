@@ -152,6 +152,9 @@ importers:
 
   packages/motion:
     dependencies:
+      '@effect-motion/thorvg':
+        specifier: workspace:^
+        version: link:../thorvg
       '@effect/platform-node':
         specifier: 4.0.0-beta.98
         version: 4.0.0-beta.98(effect@4.0.0-beta.98)(ioredis@5.11.1)
@@ -159,9 +162,6 @@ importers:
         specifier: ^3.2.0
         version: 3.2.0
     devDependencies:
-      '@effect-motion/thorvg':
-        specifier: workspace:*
-        version: link:../thorvg
       '@types/chroma-js':
         specifier: ^3.1.2
         version: 3.1.2
