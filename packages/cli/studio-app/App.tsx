@@ -9,8 +9,19 @@ type TargetLike = {
 	readonly name?: string;
 	readonly scene?: string;
 	readonly settings?: Record<string, unknown>;
+	readonly player?: Record<string, unknown>;
 };
 type ConfigLike = { readonly targets?: ReadonlyArray<TargetLike> };
+
+/** the PlayerProps subset a config's `player` block may set */
+type PlayerOptions = Pick<
+	PlayerProps,
+	| "autoPlay"
+	| "defaultRepeatMode"
+	| "isInfinite"
+	| "prebufferedFrames"
+	| "bufferCapacity"
+>;
 
 type SceneEntry = {
 	/** picker identity: `target:<name>` for config targets, `file:<path>` otherwise */
@@ -20,6 +31,8 @@ type SceneEntry = {
 	readonly path: string;
 	readonly registered: boolean;
 	readonly settings: PlayerProps["settings"] | undefined;
+	/** studio preview options from the target's `player` block */
+	readonly player: PlayerOptions | undefined;
 	readonly load: () => Promise<unknown>;
 };
 
@@ -59,6 +72,7 @@ const buildEntries = (config: ConfigLike | null): ReadonlyArray<SceneEntry> => {
 			// a registered scene previews with its target settings so the
 			// preview aspect matches the export
 			settings: target.settings as PlayerProps["settings"],
+			player: target.player as PlayerOptions | undefined,
 			load: globLoaders.get(path) ?? loadByAbsolutePath(path),
 		});
 	}
@@ -70,6 +84,7 @@ const buildEntries = (config: ConfigLike | null): ReadonlyArray<SceneEntry> => {
 			path,
 			registered: false,
 			settings: undefined,
+			player: undefined,
 			load,
 		});
 	}
@@ -183,6 +198,8 @@ export const App = () => {
 						{...(entry?.settings !== undefined
 							? { settings: entry.settings }
 							: {})}
+						// the config's player block wins over the studio defaults
+						{...(entry?.player ?? {})}
 					/>
 				)}
 				{(state._tag === "idle" || state._tag === "loading") &&

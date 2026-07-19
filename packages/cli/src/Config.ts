@@ -24,6 +24,22 @@ export interface TargetSettings {
 	readonly dpr?: number;
 }
 
+/**
+ * Studio preview options for a target's Player — how the scene PLAYS in
+ * `motion studio`, as opposed to `settings`, which is what the scene IS.
+ * `motion render` ignores them. Field meanings match `PlayerProps` in
+ * `@effect-motion/react`.
+ */
+export interface PlayerOptions {
+	readonly autoPlay?: boolean;
+	/** Initial repeat mode; the studio's repeat button toggles it after. */
+	readonly defaultRepeatMode?: boolean;
+	/** Declare a never-ending scene so the player windows its buffer. */
+	readonly isInfinite?: boolean;
+	readonly prebufferedFrames?: number;
+	readonly bufferCapacity?: number;
+}
+
 /** v1 ships MP4 only; the field exists so more containers slot in later. */
 export type OutputFormat = "mp4";
 
@@ -33,6 +49,8 @@ export interface MotionTarget {
 	/** Path to a module exporting `scene`, relative to the config file. */
 	readonly scene: string;
 	readonly settings?: TargetSettings;
+	/** Studio-only: how this target previews (autoplay, repeat, …). */
+	readonly player?: PlayerOptions;
 	/** Output DIRECTORY (never a file), relative to the config file. */
 	readonly output?: string;
 	readonly format?: OutputFormat;
