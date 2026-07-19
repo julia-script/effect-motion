@@ -92,6 +92,11 @@ const handler = (input: StudioInput) =>
 						resolve: {
 							dedupe: ["react", "react-dom", "effect", "effect-motion"],
 						},
+						// the studio app's JSX must not depend on the project's
+						// tsconfig — scaffolded projects set no `jsx`, and esbuild's
+						// fallback is the classic transform, which crashes with
+						// "React is not defined" before anything mounts
+						esbuild: { jsx: "automatic" },
 						plugins: [
 							{
 								name: "motion:project-watch",
