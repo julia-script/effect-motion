@@ -5,7 +5,7 @@ import { MotionCliError } from "./MotionCliError.js";
 import { COMPANIONS, PINS } from "./pins.js";
 
 /**
- * The non-interactive core of `motion init`: everything except the prompts,
+ * The non-interactive core of the scaffolder: everything except the prompts,
  * so tests can drive it directly. Copies templates/default into the target
  * directory and generates package.json from the pinned versions.
  */
@@ -53,7 +53,11 @@ const wrapFsError =
 				: new MotionCliError({ reason, message, cause }),
 		);
 
-const packageJson = (name: string) =>
+export type ScaffoldOptions = {
+	readonly biome: boolean;
+};
+
+const packageJson = (name: string, options: ScaffoldOptions) =>
 	`${JSON.stringify(
 		{
 			name,
@@ -63,6 +67,9 @@ const packageJson = (name: string) =>
 			scripts: {
 				studio: "motion studio",
 				render: "motion render",
+				...(options.biome
+					? { lint: "biome check .", "lint:fix": "biome check --fix ." }
+					: {}),
 			},
 			dependencies: {
 				"@effect-motion/export": PINS["@effect-motion/export"],
@@ -73,6 +80,9 @@ const packageJson = (name: string) =>
 				"react-dom": COMPANIONS["react-dom"],
 			},
 			devDependencies: {
+				...(options.biome
+					? { "@biomejs/biome": COMPANIONS["@biomejs/biome"] }
+					: {}),
 				"@effect-motion/cli": PINS["@effect-motion/cli"],
 				"@types/node": COMPANIONS["@types/node"],
 				"@types/react": COMPANIONS["@types/react"],
@@ -84,8 +94,38 @@ const packageJson = (name: string) =>
 		"\t",
 	)}\n`;
 
-/** Copy the template tree + write the generated package.json. */
-export const scaffoldProject = (dir: string, name: string) =>
+// Formatter settings must match how the template files are formatted (tabs,
+// double quotes) so a fresh scaffold passes `biome check` with no diagnostics.
+const biomeJson = `${JSON.stringify(
+	{
+		$schema: "https://biomejs.dev/schemas/2.5.3/schema.json",
+		vcs: { enabled: true, clientKind: "git", useIgnoreFile: true },
+		files: { ignoreUnknown: true },
+		formatter: { enabled: true, indentStyle: "tab" },
+		linter: {
+			enabled: true,
+			rules: {
+				preset: "recommended",
+				// a scene with no animation yet is a generator without yield
+				correctness: { useYield: "off" },
+			},
+		},
+		javascript: { formatter: { quoteStyle: "double" } },
+		assist: {
+			enabled: true,
+			actions: { source: { organizeImports: "on" } },
+		},
+	},
+	null,
+	"\t",
+)}\n`;
+
+/** Copy the template tree + write the generated package.json (+ biome.json). */
+export const scaffoldProject = (
+	dir: string,
+	name: string,
+	options: ScaffoldOptions,
+) =>
 	Effect.gen(function* () {
 		const fs = yield* FileSystem;
 		const path = yield* Path;
@@ -96,8 +136,11 @@ export const scaffoldProject = (dir: string, name: string) =>
 		// tarballs, so both ship outside the template tree
 		yield* fs.writeFileString(
 			path.join(dir, "package.json"),
-			packageJson(name),
+			packageJson(name, options),
 		);
+		if (options.biome) {
+			yield* fs.writeFileString(path.join(dir, "biome.json"), biomeJson);
+		}
 		yield* fs.rename(
 			path.join(dir, "_gitignore"),
 			path.join(dir, ".gitignore"),

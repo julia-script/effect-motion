@@ -122,6 +122,28 @@ importers:
         specifier: ^4.1.10
         version: 4.1.10(@types/node@26.1.1)(happy-dom@20.10.6)(vite@7.3.6(@types/node@26.1.1)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.0)(yaml@2.9.0))
 
+  packages/create-effect-motion:
+    dependencies:
+      '@effect/platform-node':
+        specifier: 4.0.0-beta.98
+        version: 4.0.0-beta.98(effect@4.0.0-beta.98)(ioredis@5.11.1)
+      effect:
+        specifier: 4.0.0-beta.98
+        version: 4.0.0-beta.98
+    devDependencies:
+      '@biomejs/biome':
+        specifier: ^2.5.3
+        version: 2.5.3
+      '@types/node':
+        specifier: ^26.1.1
+        version: 26.1.1
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: ^4.1.10
+        version: 4.1.10(@types/node@26.1.1)(happy-dom@20.10.6)(vite@8.1.4(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0))
+
   packages/export:
     dependencies:
       '@effect-motion/thorvg':

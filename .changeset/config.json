@@ -2,7 +2,15 @@
 	"$schema": "https://unpkg.com/@changesets/config@3.1.1/schema.json",
 	"changelog": "@changesets/cli/changelog",
 	"commit": false,
-	"fixed": [["effect-motion", "@effect-motion/react", "@effect-motion/export", "@effect-motion/cli"]],
+	"fixed": [
+		[
+			"effect-motion",
+			"@effect-motion/react",
+			"@effect-motion/export",
+			"@effect-motion/cli",
+			"create-effect-motion"
+		]
+	],
 	"linked": [],
 	"access": "public",
 	"baseBranch": "main",

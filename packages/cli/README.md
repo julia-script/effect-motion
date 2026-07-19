@@ -1,32 +1,14 @@
 # @effect-motion/cli
 
-Command line for [effect-motion](https://github.com/julia-script/effect-motion): scaffold a project, preview scenes in the browser, render videos — all driven by one `motion.config.ts`.
+Command line for [effect-motion](https://github.com/julia-script/effect-motion): preview scenes in the browser and render videos — all driven by one `motion.config.ts`.
 
 ```sh
-npx @effect-motion/cli init    # scaffold a project
+pnpm create effect-motion      # scaffold a project (npm/yarn/bun create work too)
 motion studio                  # preview scenes with hot reload
 motion render                  # render every target to MP4
 ```
 
-## init
-
-`motion init [directory]` scaffolds a single-project workspace:
-
-```
-my-project/
-├─ src/
-│  ├─ scenes/hello-world.ts   # a scene: a module exporting `scene`
-│  ├─ assets/                 # static files
-│  └─ main.ts                 # the movie — an ordinary scene composing the others
-├─ motion.config.ts           # render targets
-├─ AGENTS.md                  # authoring rules for AI coding agents
-├─ package.json               # EXACT pins of effect-motion + effect
-└─ tsconfig.json
-```
-
-Answering `.` scaffolds into the current directory and names the project after it. The package-manager prompt defaults to whichever manager invoked the CLI; `--pm <pnpm|npm|yarn|bun>` and `--no-install` skip prompts/install.
-
-Dependency versions are pinned **exactly** — the `effect` pin is a determinism invariant (upgrading effect can change seeded random sequences), so upgrade both together, deliberately.
+Scaffolding lives in the [`create-effect-motion`](https://www.npmjs.com/package/create-effect-motion) package — this CLI is installed as a devDependency of the projects it creates.
 
 ## motion.config.ts
 

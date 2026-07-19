@@ -1,11 +1,10 @@
+import { readFileSync } from "node:fs";
 import * as Console from "effect/Console";
 import * as Effect from "effect/Effect";
 import { CliError, Command, Flag, GlobalFlag } from "effect/unstable/cli";
-import { initCommand } from "./commands/init.js";
 import { renderCommand } from "./commands/render.js";
 import { studioCommand } from "./commands/studio.js";
 import { type MotionCliError, renderForTerminal } from "./MotionCliError.js";
-import { PINS } from "./pins.js";
 
 // registered globally so `--verbose` parses anywhere on the command line;
 // the reporter reads argv directly because it sits outside handler context
@@ -17,13 +16,17 @@ const verboseFlag = GlobalFlag.setting("verbose")({
 
 export const rootCommand = Command.make("motion").pipe(
 	Command.withDescription(
-		"effect-motion: scaffold projects, preview scenes, render videos",
+		"effect-motion: preview scenes and render videos (scaffold new projects with `pnpm create effect-motion`)",
 	),
-	Command.withSubcommands([initCommand, studioCommand, renderCommand]),
+	Command.withSubcommands([studioCommand, renderCommand]),
 	Command.withGlobalFlags([verboseFlag]),
 );
 
-export const CLI_VERSION = PINS["@effect-motion/cli"];
+export const CLI_VERSION = (
+	JSON.parse(
+		readFileSync(new URL("../package.json", import.meta.url), "utf8"),
+	) as { version: string }
+).version;
 
 /**
  * The single exhaustive failure boundary (design D3a): MotionCliError
