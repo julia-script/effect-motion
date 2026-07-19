@@ -1,5 +1,11 @@
 # @effect-motion/react
 
+## 0.3.2
+
+### Patch Changes
+
+- effect-motion@0.3.2
+
 ## 0.3.1
 
 ### Patch Changes

@@ -1,5 +1,13 @@
 # @effect-motion/cli
 
+## 0.3.2
+
+### Patch Changes
+
+- 18a1ac6: Add `@effect-motion/cli` to the fixed release group so it versions in lockstep with `effect-motion`, and pick up the fixed `effect-motion` build (runtime `@effect-motion/thorvg` dependency).
+  - effect-motion@0.3.2
+  - @effect-motion/export@0.3.2
+
 ## 0.2.0
 
 ### Minor Changes
