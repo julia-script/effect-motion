@@ -1,7 +1,7 @@
 # depth-of-field Specification
 
 ## Purpose
-Camera focus as tweenable data — `focusDistance` and `aperture` — driving a deterministic circle-of-confusion and blur-bucketed rendering in the ThorVG renderer. Aperture 0 is a structural no-op: the render path is byte-identical to a renderer without depth-of-field support.
+Camera focus as tweenable data — `focusDistance` and `aperture` — driving a deterministic per-pixel circle-of-confusion in the renderer's GPU post-processing chain. Aperture 0 is a structural no-op: the DoF chain is bypassed entirely and the render path is the plain one.
 
 ## Requirements
 
@@ -17,37 +17,19 @@ The camera SHALL carry a `focusDistance` (view-space distance to the sharp plane
 - **THEN** `focusDistance` equals the resting camera distance and `aperture` is 0
 
 ### Requirement: Aperture zero is structurally off
-With `aperture` 0 (the default), rendering SHALL take the existing single-scene paint path — no blur scenes, no per-paintable blur computation — and produce byte-identical output to a renderer without depth-of-field support.
+With `aperture` 0 (the default), rendering SHALL take the plain render path — the depth-of-field post-processing chain is bypassed entirely, with no per-frame DoF computation or cost — and produce output indistinguishable from a renderer without depth-of-field support.
 
 #### Scenario: Existing scenes are unaffected
 - **WHEN** any scene that never sets `aperture` renders
-- **THEN** the framebuffer is byte-identical to the pre-DoF renderer's output
+- **THEN** the frame renders through the plain path with no DoF pipeline involvement
 
 ### Requirement: Blur follows depth deterministically
-With `aperture > 0`, each paintable's blur SHALL be a pure function of its projected view-space depth and the frame's camera: exactly zero at the focus plane, increasing with distance from it, scaled by aperture. The same frame data SHALL always produce the same pixels.
+With `aperture > 0`, blur SHALL be per-pixel: a pure function of each pixel's view-space depth and the frame's camera — exactly zero at the focus plane, increasing continuously with distance from it, scaled by aperture. The same frame data SHALL always produce the same blur field; rendered pixels are not required to be byte-identical across environments.
 
 #### Scenario: The focus plane is sharp
 - **WHEN** a shape sits at view depth equal to `focusDistance` with `aperture > 0`
-- **THEN** it renders with no blur (identical pixels to the same shape with aperture 0)
+- **THEN** it renders sharp (visually identical to the same shape with aperture 0)
 
 #### Scenario: Off-plane content blurs, more with distance
 - **WHEN** two identical shapes sit at increasing distances from the focus plane
-- **THEN** both render blurred, the farther-from-focus one more strongly
-
-#### Scenario: Deterministic across runs
-- **WHEN** the same frame renders twice
-- **THEN** the framebuffers are byte-identical
-
-### Requirement: Blur grouping preserves paint order
-The renderer SHALL apply blur by grouping contiguous runs of the depth-sorted paint list that share a quantized blur amount into blurred sub-scenes, preserving the far→near painter's order exactly. Quantization SHALL be deterministic. Sharp runs SHALL paint into the root scene as without DoF.
-
-#### Scenario: Occlusion order survives blurring
-- **WHEN** a blurred far shape, a sharp mid shape, and a blurred near shape overlap
-- **THEN** the near shape paints over the mid shape, which paints over the far shape, each with its own blur
-
-### Requirement: One blur amount per paintable
-A paintable SHALL receive a single blur amount from its anchor's depth; entities spanning depth internally (particle fields, tilted planes) blur uniformly. This approximation SHALL be documented.
-
-#### Scenario: Particle field blurs uniformly
-- **WHEN** a particle field's anchor sits off the focus plane
-- **THEN** the whole field renders with its anchor's blur amount
+- **THEN** both render blurred, the farther-from-focus one more strongly, with no discrete banding between depths

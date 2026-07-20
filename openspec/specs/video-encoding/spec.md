@@ -1,7 +1,7 @@
 # video-encoding Specification
 
 ## Purpose
-Encode a stream of PNG frames into a video file via a system ffmpeg, and compose the whole scene → video pipeline in one call, in the Node-only `@effect-motion/export` package. Encoding is an export tool, not a renderer: it consumes the ThorVG PNG renderer's output (`renderToPng`) and produces a shareable artifact — a stream of frames that no per-frame `render()` contract can express.
+Encode a stream of PNG frames into a video file via a system ffmpeg, and compose the whole scene → video pipeline in one call, in the Node-only `@effect-motion/export` package. Encoding is an export tool, not a renderer: it consumes the renderer's Node PNG output and produces a shareable artifact — a stream of frames that no per-frame `render()` contract can express.
 ## Requirements
 ### Requirement: PNG stream encodes to a video file through ffmpeg
 `Ffmpeg.encode(pngStream, outPath, options)` SHALL spawn an ffmpeg process and pipe the PNG frame stream into its stdin using the `image2pipe` demuxer, producing a video file at `outPath`. No intermediate frame files SHALL be written to disk. The ffmpeg binary SHALL resolve from `PATH` by default and MUST be overridable via `options.binary`. `options.frameRate` SHALL set the input framerate. Default output flags SHALL be H.264 (`libx264`), `yuv420p` pixel format, and `+faststart` MP4; `options.extraArgs` SHALL be appended to the ffmpeg invocation before the output path.
@@ -26,15 +26,15 @@ Failures — the binary missing from `PATH`, a nonzero ffmpeg exit, or a broken 
 - **THEN** the effect fails with an `EncodeError` that includes the process's stderr output
 
 ### Requirement: A scene renders to a video file in one call
-`Video.render(scene, outPath, options?)` SHALL compose the full pipeline: stream the scene's frames, rasterize each to PNG through the ThorVG renderer (`renderToPng`), and encode the PNGs with `Ffmpeg.encode`. The ThorVG engine SHALL be acquired internally (the Node SW layer), so callers wire no renderer. The input framerate SHALL come from the frames' render metadata, not from a caller option.
+`Video.render(scene, outPath, options?)` SHALL compose the full pipeline: stream the scene's frames, render each through `@effect-motion/renderer`'s Node adapter (Dawn via `@effect-motion/three/node`) with GPU readback, PNG-encode the readback, and encode the PNGs with `Ffmpeg.encode`. The renderer SHALL be acquired internally, so callers wire no renderer. The input framerate SHALL come from the frames' render metadata, not from a caller option.
 
 #### Scenario: End-to-end scene to MP4
 - **WHEN** `Video.render(scene, "out.mp4")` runs for a finite scene with ffmpeg available
 - **THEN** a playable MP4 exists at `out.mp4` whose frame count matches the scene's frames and whose framerate matches the scene's frame metadata
 
-#### Scenario: The ThorVG engine is provided internally
+#### Scenario: The renderer is provided internally
 - **WHEN** `Video.render` runs
-- **THEN** it acquires the ThorVG engine itself and the caller supplies no renderer layer or engine
+- **THEN** it acquires the renderer and GPU device itself and the caller supplies no renderer layer
 
 ### Requirement: Odd output dimensions fail before ffmpeg is spawned
 Because `yuv420p` requires even dimensions, `Video.render` SHALL inspect the first frame's metadata and fail with an `EncodeError` naming the offending dimension when width or height is odd. The error message MUST state the remedy (use even scene dimensions, or supply a scale filter via `extraArgs`). The library SHALL NOT silently resize or pad frames.

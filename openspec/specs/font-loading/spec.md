@@ -1,7 +1,7 @@
 # font-loading Specification
 
 ## Purpose
-Scene-level font declaration and the loading contract. Scenes declare the fonts their text depends on via the `Fonts` annotation; the runtime never reads it (the engine cannot measure text, so fonts cannot affect frame data). Consumers load the declared `url` sources into the ThorVG engine, which rasterizes the text (fetch-by-URL, TrueType; see the `thorvg-text` capability). `path`-only sources are ignored in this model.
+Scene-level font declaration and the loading contract. Scenes declare the fonts their text depends on via the `Fonts` annotation; the runtime never reads it (the engine cannot measure text, so fonts cannot affect frame data). Consumers load the declared `url` sources, whose bytes feed the renderer's SDF text path (see the `three-text` capability). `path`-only sources are ignored in this model.
 ## Requirements
 ### Requirement: Missing font loader is a loud defect at render
 Rendering a frame containing text whose `fontFamily` id has no corresponding loader in context SHALL die with a defect naming the font id. There SHALL be no silent glyph fallback for undeclared fonts. (This is the runtime backstop for the accepted cooperative-typing boundary: hand-built resource values bypass the type-level accounting but not this check.)

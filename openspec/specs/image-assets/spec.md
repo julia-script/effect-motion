@@ -1,7 +1,7 @@
 # image-assets Specification
 
 ## Purpose
-Scene-level image assets: scenes declare images via the `Images` annotation (name plus url/path source), the `Shapes.Image` entity places them as billboard paintables, and the render session fetches and decodes each declared image once into session-held pictures released on close. The render path soft-skips images that failed to load — rendered output may vary, frame data never does. Spans `effect-motion` (annotation, entity) and `@effect-motion/thorvg`'s render session (loading, ownership, paint).
+Scene-level image assets: scenes declare images via the `Images` annotation (name plus url/path source), the `Shapes.Image` entity places them as billboard paintables, and the renderer decodes each declared image once into a renderer-owned texture disposed on scope close. The render path soft-skips images that failed to load — rendered output may vary, frame data never does. Spans `effect-motion` (annotation, entity) and `@effect-motion/renderer`'s scoped texture registry (loading, ownership, draw).
 ## Requirements
 ### Requirement: Image entity
 `effect-motion` SHALL provide a `Shapes.Image` entity whose data carries a required `image` field holding an Image resource reference (`Image.schema`, `{ _tag, id }`) — not a plain name string — position fields with the standard position trait lens, `opacity` with the standard opacity trait lens, and optional undefaulted numeric `width`/`height`. When both dimensions are set the picture is drawn at that size (the fields tween like any numerics); when absent the picture draws at its decoded natural size. A single set dimension SHALL be ignored (natural size used). The entity SHALL NOT carry orientation fields (billboard only).
@@ -23,13 +23,13 @@ Scene-level image assets: scenes declare images via the `Images` annotation (nam
 - **THEN** the picture draws at its natural decoded size
 
 ### Requirement: Session-loaded, session-owned pictures
-The render path SHALL register each distinct image resource once per render session: on the first frame referencing an image id, the loader's already-loaded bytes are decoded into a picture held by the session; subsequent frames reuse the decoded picture (no per-frame decode); on session close the session's pictures are released. There SHALL be no URL fetching in this path — bytes come from loader services, loaded eagerly at layer construction (see `resource-loaders`). The per-frame paint object joins the frame subtree and is freed with it.
+The render path SHALL register each distinct image resource once per renderer scope: on the first frame referencing an image id, the loader's already-loaded bytes are decoded into a texture held by the renderer; subsequent frames reuse the decoded texture (no per-frame decode); on renderer scope close the textures are released. There SHALL be no URL fetching in this path — bytes come from loader services, loaded eagerly at layer construction (see `resource-loaders`).
 
-#### Scenario: Decode happens once per session
-- **WHEN** a session renders many frames containing the same image
-- **THEN** the loader's bytes are decoded into a picture once, on first use, and reused thereafter
+#### Scenario: Decode happens once per renderer scope
+- **WHEN** a renderer draws many frames containing the same image
+- **THEN** the loader's bytes are decoded into a texture once, on first use, and reused thereafter
 
-#### Scenario: Session close releases pictures
-- **WHEN** a session closes
-- **THEN** its decoded pictures are freed (pictures are session-owned paints, not engine-global)
+#### Scenario: Scope close releases textures
+- **WHEN** the renderer's scope closes
+- **THEN** its decoded textures are disposed (textures are renderer-owned resources, not process-global)
 

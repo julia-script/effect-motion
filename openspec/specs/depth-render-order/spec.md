@@ -1,26 +1,26 @@
 # depth-render-order Specification
 
 ## Purpose
-Depth-sorted painting: the renderer flattens the instance tree to a draw list and paints farthest-first with a stable id tie-break, so overlap is correct and deterministic across runs.
+Depth-correct rendering: occlusion comes from the GPU depth buffer, with a stable id tie-break ordering translucent content at equal depth, so overlap is correct and deterministic across runs.
 
 
 ## Requirements
 
 ### Requirement: Render order is view-space depth, not tree order
 
-The renderer SHALL flatten the instance tree to a draw list, attach each entry's view-space depth from the projection, sort the list far→near, and paint in sorted order. Tree order SHALL NOT determine what is drawn in front.
+Occlusion SHALL be resolved by view-space depth via the GPU depth buffer — tree order SHALL NOT determine what is drawn in front. Translucent content at equal or near-equal depth SHALL blend in a deterministic order derived from the stable instance-id tie-break, identical across runs and across the browser and Node renderers.
 
 #### Scenario: A deeper object paints behind a nearer one regardless of tree order
 
 - **WHEN** shape A is authored before shape B in the tree but A's world z is farther from the camera than B's
-- **THEN** A is painted before (behind) B
+- **THEN** A appears behind B
 - **AND** reversing their tree order does not change which one appears in front.
 
 #### Scenario: Sort is deterministic on ties
 
-- **WHEN** two objects have equal view-space depth
-- **THEN** they are painted in a stable, id-tie-broken order
-- **AND** the order is identical across runs and across both sinks.
+- **WHEN** two translucent objects have equal view-space depth
+- **THEN** they blend in a stable, id-tie-broken order
+- **AND** the order is identical across runs and across browser and Node.
 
 ### Requirement: Group is coordinate composition, not a paint-order boundary
 
