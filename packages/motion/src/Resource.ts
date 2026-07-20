@@ -16,7 +16,7 @@ export interface LoaderBrand {
 
 /**
  * The loader members of a requirements union — what a scene's frames carry
- * as `Frame<Resources>` and what `Renderer.render` requires. Distributes:
+ * as `Frame<Resources>` and what the renderer requires. Distributes:
  * `FontLoader<"a"> | Runner` → `FontLoader<"a">`.
  */
 export type ExtractLoaders<R> = R extends LoaderBrand ? R : never;

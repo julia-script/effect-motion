@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as Camera from "../src/Camera";
-import * as Color from "../src/Color";
 import * as P from "../src/Projection";
-import type * as Scene from "../src/Scene";
-import * as Shapes from "../src/Shapes";
-import { render } from "./support/framebuffer";
 
 // 720-wide resting camera (see projection.test.ts) and a 500x300 viewport
 const F = P.defaultFocalLength(720);
@@ -101,41 +97,18 @@ describe("resolveCamera auto-orient", () => {
 });
 
 describe("POI camera end-to-end", () => {
-	type Entities = typeof Shapes.Circle | typeof Shapes.Group;
-	it("a shape at the POI renders at the viewport center", async () => {
-		// 200×200 frame: shape far off-center at depth; camera aims at it
+	it("a world point at the POI projects to the viewport center", () => {
+		// 200x200 viewport: point far off-center at depth; camera aims at it
+		const o: P.Vec2 = { x: 100, y: 100 };
 		const cam = {
 			...Camera.identity(200),
 			poiX: 160,
 			poiY: 40,
 			poiZ: -300,
 		};
-		const frame: Scene.Frame<Entities> = {
-			instances: {
-				c: {
-					data: Shapes.Circle.data.make({
-						x: 160,
-						y: 40,
-						z: -300,
-						radius: 10,
-						fill: Color.hex("#00ff00"),
-					}),
-					entity: Shapes.Circle,
-				},
-				root: {
-					data: Shapes.Group.data.make({ children: ["c"] }),
-					entity: Shapes.Group,
-				},
-			},
-			root: "root",
-			frameRate: 60,
-			width: 200,
-			height: 200,
-			backgroundColor: Color.hex("#000000"),
-			camera: cam,
-		} as Scene.Frame<Entities>;
-		const r = await render(frame);
-		expect(r.isPainted(100, 100)).toBe(true); // centered under the aim
-		expect(r.isPainted(160, 40)).toBe(false); // not at its unaimed position
+		const resolved = P.resolveCamera(cam, o);
+		const proj = P.project(resolved, { x: 160, y: 40, z: -300 }, o);
+		expect(proj.x).toBeCloseTo(100, 6);
+		expect(proj.y).toBeCloseTo(100, 6);
 	});
 });

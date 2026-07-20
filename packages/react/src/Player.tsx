@@ -1,8 +1,6 @@
 "use client";
 
-import type { RenderSession, ThorvgWasm } from "@effect-motion/thorvg";
-import * as Engine from "@effect-motion/thorvg/Engine";
-import * as Session from "@effect-motion/thorvg/Session";
+import * as FrameRenderer from "@effect-motion/renderer/Renderer";
 import {
 	Cause,
 	Context,
@@ -13,9 +11,6 @@ import {
 	Semaphore,
 } from "effect";
 import * as Layer from "effect/Layer";
-import type * as Scope from "effect/Scope";
-import * as CanvasExporter from "effect-motion/CanvasExporter";
-import * as Renderer from "effect-motion/Renderer";
 import type * as Runner from "effect-motion/Runner";
 import * as Scene from "effect-motion/Scene";
 import * as Time from "effect-motion/Time";
@@ -27,10 +22,6 @@ import {
 	useState,
 } from "react";
 
-const thorLayer = Engine.browserLayer(
-	"https://unpkg.com/@thorvg/webcanvas@1.0.8/dist/thorvg.wasm",
-);
-
 class PlayerError extends Data.TaggedError("PlayerError")<{
 	message: string;
 	cause: unknown;
@@ -41,37 +32,18 @@ class PlayerError extends Data.TaggedError("PlayerError")<{
 }
 
 /**
- * Softened device-pixel-ratio, thorvg.web's formula: interpolate 75% of the
- * way from 1 to the native dpr — visually indistinguishable from full dpr at
- * a fraction of the rasterized pixels. Read per render call so moving the
- * window across monitors picks up the new ratio.
+ * Softened device-pixel-ratio: interpolate 75% of the way from 1 to the
+ * native dpr — visually indistinguishable from full dpr at a fraction of the
+ * rendered pixels. Read per render call so moving the window across monitors
+ * picks up the new ratio.
  */
 const calculateDpr = () =>
 	typeof window === "undefined" ? 1 : 1 + (window.devicePixelRatio - 1) * 0.75;
-// const layer = Layer.con
-// const runtime = ManagedRuntime.make()
+
 const PlayerScene = Context.Service<{
-	// runningScene: Scene.RunningScene<never, Runner.Runner | Scope.Scope>;
-	// step: Effect.Effect<void, ThorvgException | EffectMotionError, ThorvgWasm>;
-	render: (
-		frameIndex: number,
-	) => Effect.Effect<
-		void,
-		PlayerError,
-		ThorvgWasm | RenderSession | Scope.Scope
-	>;
-	load: (
-		frameIndex: number,
-	) => Effect.Effect<
-		void,
-		PlayerError,
-		ThorvgWasm | RenderSession | Scope.Scope
-	>;
-	play: Effect.Effect<
-		void,
-		PlayerError,
-		ThorvgWasm | RenderSession | Scope.Scope
-	>;
+	render: (frameIndex: number) => Effect.Effect<void, PlayerError>;
+	load: (frameIndex: number) => Effect.Effect<void, PlayerError>;
+	play: Effect.Effect<void, PlayerError>;
 	pause: Effect.Effect<void, never, never>;
 
 	readonly frameIndex: Effect.Effect<number>;
@@ -168,12 +140,11 @@ const useScene = (
 	const optsRef = useRef({ ...options, loop });
 	optsRef.current = { ...options, loop };
 
-	// One runtime per mount, DISPOSED on unmount: disposal closes the session
-	// (canvas deleted, fonts released — refcounted, so siblings keep theirs)
-	// and releases the engine (a browser no-op: the wasm module is a page
-	// singleton, design D2; two players share one module via the idempotent
-	// acquire). Held in a ref, not state, so a strict-mode remount can
-	// recreate it after the first cleanup disposed it.
+	// One runtime per mount, DISPOSED on unmount: disposal closes the layer
+	// scope, which disposes the per-player three renderer (GPU resources,
+	// retained objects) — nothing is shared across players. Held in a ref,
+	// not state, so a strict-mode remount can recreate it after the first
+	// cleanup disposed it.
 	const makeRuntime = () =>
 		ManagedRuntime.make(
 			Layer.effectContext(
@@ -182,6 +153,27 @@ const useScene = (
 						...settings,
 						frameRate: fps,
 					});
+					// the per-player renderer, bound to this mount's canvas and
+					// released with the runtime; init (incl. WebGPU device) happens
+					// here, so an acquisition failure surfaces as the error state
+					const canvas = canvasRef.current;
+					if (canvas === null) {
+						return yield* Effect.fail(
+							PlayerError.of("Player canvas is not mounted")(null),
+						);
+					}
+					const sink = yield* FrameRenderer.make({
+						canvas,
+						width: 1,
+						height: 1,
+					}).pipe(
+						Effect.mapError(PlayerError.of("Error acquiring the renderer")),
+					);
+					// viewport tracking: sized from frame metadata on first render
+					let sized = { width: 0, height: 0, dpr: 0 };
+					// pipeline pre-warm happens once, on the first rendered frame,
+					// before playback reveals motion — no first-frame compile jank
+					let prewarmed = false;
 					let currentFrame = 0;
 					let isPlaying = false;
 					// total frame count once the stream ends; null while unknown
@@ -246,11 +238,7 @@ const useScene = (
 
 					const render: (
 						frameIndex: number,
-					) => Effect.Effect<
-						void,
-						PlayerError,
-						ThorvgWasm | RenderSession | Scope.Scope
-					> = (frameIndex) =>
+					) => Effect.Effect<void, PlayerError> = (frameIndex) =>
 						renderSemaphore.withPermitsIfAvailable(1)(
 							Effect.gen(function* () {
 								if (!canvasRef.current) {
@@ -266,13 +254,27 @@ const useScene = (
 								// loadFrameBuffer), and the playhead must reflect what's shown
 								updateCurrentFrame(framebuffer.index);
 
-								const renderBuffer = yield* Renderer.render(framebuffer.frame, {
-									dpr: calculateDpr(),
-								});
-								yield* CanvasExporter.toCanvas(renderBuffer, canvasRef.current);
-							}).pipe(
-								Effect.mapError(PlayerError.of("Error exporting canvas")),
-							),
+								const frame = framebuffer.frame;
+								const dpr = calculateDpr();
+								if (
+									sized.width !== frame.width ||
+									sized.height !== frame.height ||
+									sized.dpr !== dpr
+								) {
+									sized = { width: frame.width, height: frame.height, dpr };
+									sink.renderer.setPixelRatio(dpr);
+									sink.renderer.setSize(frame.width, frame.height, false);
+								}
+								// font loaders resolve from this runtime's context (the
+								// renderLayers merge); missing loaders defect loudly
+								yield* sink.resolveResources(frame);
+								yield* Effect.sync(() => sink.syncFrame(frame));
+								if (!prewarmed) {
+									prewarmed = true;
+									yield* sink.prewarm();
+								}
+								yield* sink.render();
+							}).pipe(Effect.mapError(PlayerError.of("Error rendering frame"))),
 						);
 
 					const play = Effect.suspend(() => {
@@ -367,11 +369,6 @@ const useScene = (
 				// runtime construction (eager, preload-all-provided) — a failed
 				// load fails the runtime build and surfaces as the error state
 				Layer.provideMerge(options.renderLayers ?? Layer.empty),
-				// per-mount session: the canvas (sized by the render path), held
-				// until the runtime is disposed. Fonts/images register lazily from
-				// the loader services during rendering.
-				Layer.provideMerge(Session.layer({ width: 1, height: 1 })),
-				Layer.provideMerge(thorLayer),
 			),
 		);
 	const runtimeRef = useRef<ReturnType<typeof makeRuntime> | null>(null);

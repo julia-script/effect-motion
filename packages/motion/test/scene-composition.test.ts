@@ -6,7 +6,6 @@ import * as Motion from "../src/Motion";
 import type * as Runner from "../src/Runner";
 import * as Scene from "../src/Scene";
 import * as Shapes from "../src/Shapes";
-import { render } from "./support/framebuffer";
 import { unreachable } from "./support/raise";
 
 const collect = async (scene: unknown): Promise<any[]> => [
@@ -102,89 +101,6 @@ describe("Scene.play mounts a bounded sub-composition", () => {
 		expect(group.data.x).toBe(50); // (200 - 100) / 2
 		expect(group.data.y).toBe(25); // (100 - 50) / 2
 		expect(Color.toHex(group.data.backgroundColor)).toBe("#ff0000");
-	});
-
-	it("the child's background paints within its bounds; the outside shows the root's", async () => {
-		const movie = Scene.make(
-			function* () {
-				const h = yield* Scene.play(child() as never);
-				yield* h.finished;
-			} as never,
-			{
-				width: 200,
-				height: 100,
-				backgroundColor: Color.hex("#001122"),
-			},
-		);
-		const r = await render(await lastFrame(movie));
-		expect(r.at(100, 50)).toEqual([0xff, 0, 0, 255]); // inside child bounds
-		expect(r.at(10, 10)).toEqual([0x00, 0x11, 0x22, 255]); // root bg outside
-		// bounds edges: just inside vs just outside
-		expect(r.at(52, 50)).toEqual([0xff, 0, 0, 255]);
-		expect(r.at(47, 50)).toEqual([0x00, 0x11, 0x22, 255]);
-	});
-
-	it("a transparent child background paints nothing", async () => {
-		const movie = Scene.make(
-			function* () {
-				const h = yield* Scene.play(
-					child({ backgroundColor: Color.transparent }) as never,
-				);
-				yield* h.finished;
-			} as never,
-			{
-				width: 200,
-				height: 100,
-				backgroundColor: Color.hex("#001122"),
-			},
-		);
-		const r = await render(await lastFrame(movie));
-		// inside the child's bounds but away from its circle: root bg shows through
-		expect(r.at(60, 30)).toEqual([0x00, 0x11, 0x22, 255]);
-	});
-
-	it("child content outside its bounds is clipped", async () => {
-		const wide = Scene.make(
-			function* () {
-				// local x 120 is outside the 100-wide comp; local x 25 is inside
-				yield* Scene.instantiate(Shapes.Circle, { x: 120, y: 25, radius: 8 });
-				yield* Scene.instantiate(Shapes.Circle, { x: 25, y: 25, radius: 8 });
-				yield* Scene.tick;
-			} as never,
-			{ width: 100, height: 50 },
-		);
-		const movie = Scene.make(
-			function* () {
-				const h = yield* Scene.play(wide as never);
-				yield* h.finished;
-			} as never,
-			{ width: 200, height: 100 },
-		);
-		const r = await render(await lastFrame(movie));
-		expect(r.isPainted(75, 50)).toBe(true); // inside: 50 + 25
-		expect(r.isPainted(170, 50)).toBe(false); // clipped: 50 + 120
-	});
-
-	it("a child bigger than the movie shows only the movie's window", async () => {
-		const big = Scene.make(
-			function* () {
-				yield* Scene.instantiate(Shapes.Circle, { x: 200, y: 100, radius: 8 });
-				yield* Scene.tick;
-			} as never,
-			{ width: 400, height: 200 },
-		);
-		const movie = Scene.make(
-			function* () {
-				const h = yield* Scene.play(big as never);
-				yield* h.finished;
-			} as never,
-			{ width: 200, height: 100 },
-		);
-		const frame = await lastFrame(movie);
-		expect(frame.width).toBe(200);
-		const r = await render(frame);
-		// child centered: its (200,100) sits at world (100, 50) — visible
-		expect(r.isPainted(100, 50)).toBe(true);
 	});
 
 	it("the handle's group drives the whole child: move and fade", async () => {

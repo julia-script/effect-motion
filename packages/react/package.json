@@ -41,7 +41,7 @@
 		"access": "public"
 	},
 	"dependencies": {
-		"@effect-motion/thorvg": "workspace:^",
+		"@effect-motion/renderer": "workspace:^",
 		"effect-motion": "workspace:^"
 	},
 	"peerDependencies": {

@@ -200,6 +200,86 @@ export const fetchBytes = (
 - Callers work with the wrapper; a `new Foo()` or `await` from an external
   package appearing outside its boundary module is the smell.
 
+### Prefer Effect's built-in modules over hand-wrapping
+
+Hand-wrapping (`tryPromise` + tagged error, as above) is for APIs that
+have **no** Effect module. Where Effect ships one, use it — it already
+carries typed errors, interruption, and a swappable implementation layer:
+
+- **HTTP: `effect/unstable/http`, not raw `fetch`.** The client is a
+  service, so tests swap the layer instead of mocking `fetch`:
+
+```ts
+import { Effect, Schema } from "effect";
+import {
+	FetchHttpClient,
+	HttpClient,
+	HttpClientRequest,
+	HttpClientResponse,
+} from "effect/unstable/http";
+
+const getUser = Effect.fnUntraced(function* (id: string) {
+	const client = yield* HttpClient.HttpClient;
+	const response = yield* client.execute(
+		HttpClientRequest.get(`https://api.example.com/users/${id}`),
+	);
+	return yield* HttpClientResponse.schemaBodyJson(User)(response);
+});
+
+// implementation provided once, at the edge
+program.pipe(Effect.provide(FetchHttpClient.layer));
+```
+
+- **Filesystem: `effect/FileSystem`, not `node:fs/promises`.** Same
+  shape — `scaffold.ts` in `packages/create-effect-motion` is the house
+  example:
+
+```ts
+import * as Effect from "effect/Effect";
+import { FileSystem } from "effect/FileSystem";
+import { NodeServices } from "@effect/platform-node";
+
+const write = Effect.gen(function* () {
+	const fs = yield* FileSystem;
+	yield* fs.writeFileString("./out.txt", "hello");
+});
+
+write.pipe(Effect.provide(NodeServices.layer), Effect.runPromise);
+```
+
+(The `fetchBytes` example above predates this rule and is grandfathered
+behind its promise cache; new HTTP code goes through `HttpClient`.)
+
+## Effectful functions are `Effect.fn`
+
+Define effectful functions with `Effect.fn("name")` (traced — a span with
+the function's name and args) or `Effect.fnUntraced` (hot/internal paths
+where span overhead matters). Not an arrow returning `Effect.gen`:
+
+```ts
+// ✓ traced — shows up in spans with its arguments
+const greet = Effect.fn("greet")(function* (
+	who: string,
+): Effect.fn.Return<string, never, never> {
+	return `hello ${who}`;
+});
+
+// ✓ untraced — same shape, no span
+const greetFast = Effect.fnUntraced(function* (who: string) {
+	return `hello ${who}`;
+});
+
+// ✗ loses tracing, span arguments, and the improved stack traces
+const greetWrong = (who: string) =>
+	Effect.gen(function* () {
+		return `hello ${who}`;
+	});
+```
+
+The explicit `Effect.fn.Return<A, E, R>` annotation is optional — use it
+when you want the signature pinned rather than inferred (public API,
+recursive functions).
+
 ## Stay type-safe
 
 The type system is one of Effect's greatest strengths — leverage it, don't

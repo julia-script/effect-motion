@@ -8,7 +8,6 @@ export * as Motion from "./Motion.js";
 export * as Phaser from "./Phaser.js";
 export * as Physics from "./Physics.js";
 export * as Particles from "./particles/index.js";
-export * as Renderer from "./Renderer.js";
 export * as Resource from "./Resource.js";
 export * as Scene from "./Scene.js";
 export * as Shapes from "./Shapes.js";

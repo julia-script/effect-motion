@@ -1,0 +1,65 @@
+{
+	"name": "@effect-motion/renderer",
+	"version": "0.1.0",
+	"description": "Retained three.js frame renderer for effect-motion",
+	"type": "module",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/julia-script/effect-motion.git",
+		"directory": "packages/renderer"
+	},
+	"homepage": "https://github.com/julia-script/effect-motion#readme",
+	"bugs": "https://github.com/julia-script/effect-motion/issues",
+	"keywords": [
+		"effect",
+		"motion",
+		"renderer",
+		"three",
+		"webgpu",
+		"motion-graphics"
+	],
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		},
+		"./*": {
+			"types": "./dist/*.d.ts",
+			"default": "./dist/*.js"
+		}
+	},
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "tsc -p tsconfig.build.json",
+		"dev": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
+		"test": "vitest run --passWithNoTests",
+		"check": "tsc --noEmit"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"dependencies": {
+		"@effect-motion/three": "workspace:^",
+		"@effect/platform-node": "4.0.0-beta.98",
+		"@types/three": "^0.185.1",
+		"effect-motion": "workspace:^",
+		"jpeg-js": "^0.4.4",
+		"pngjs": "^7.0.0",
+		"three": "^0.185.1",
+		"troika-three-text": "^0.52.4",
+		"webgl-sdf-generator": "^1.1.1"
+	},
+	"peerDependencies": {
+		"effect": ">=4.0.0-beta.98"
+	},
+	"devDependencies": {
+		"@types/node": "^26.1.1",
+		"@types/pngjs": "^6.0.5",
+		"effect": "4.0.0-beta.98",
+		"typescript": "^7.0.2",
+		"vitest": "^4.1.10"
+	}
+}

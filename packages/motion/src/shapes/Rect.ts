@@ -4,8 +4,8 @@ import * as Shape2D from "./Shape2D.js";
 
 // A Rect is the canonical 2.5D plane: give it Euler orientation so it can
 // tilt in 3D (lie flat as a floor, tilt as a wall). All-zero rotation (the
-// default) keeps it a camera-facing billboard. The renderer projects its
-// four corners when tilted (see Renderer flatten + Projection.planeCorners).
+// default) keeps it a camera-facing billboard. The renderer tilts it as a
+// real plane in 3D when rotated (GPU projection; see @effect-motion/renderer).
 //
 // `rx`/`ry` round the corners (SVG semantics: a lone radius applies to both
 // axes); numeric, so they tween. A TILTED rect ignores them — the tilt path

@@ -1,0 +1,57 @@
+{
+	"name": "@effect-motion/three",
+	"version": "0.1.0",
+	"description": "Bindings-only Effect wrapper over three.js for effect-motion",
+	"type": "module",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/julia-script/effect-motion.git",
+		"directory": "packages/three"
+	},
+	"homepage": "https://github.com/julia-script/effect-motion#readme",
+	"bugs": "https://github.com/julia-script/effect-motion/issues",
+	"keywords": [
+		"effect",
+		"motion",
+		"three",
+		"webgpu",
+		"motion-graphics"
+	],
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		},
+		"./*": {
+			"types": "./dist/*.d.ts",
+			"default": "./dist/*.js"
+		}
+	},
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "tsc -p tsconfig.build.json",
+		"dev": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
+		"test": "vitest run --passWithNoTests",
+		"check": "tsc --noEmit"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"dependencies": {
+		"@types/three": "^0.185.1",
+		"three": "^0.185.1",
+		"webgpu": "^0.4.0"
+	},
+	"peerDependencies": {
+		"effect": ">=4.0.0-beta.98"
+	},
+	"devDependencies": {
+		"@types/node": "^26.1.1",
+		"effect": "4.0.0-beta.98",
+		"typescript": "^7.0.2",
+		"vitest": "^4.1.10"
+	}
+}

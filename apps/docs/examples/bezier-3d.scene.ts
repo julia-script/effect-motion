@@ -47,7 +47,7 @@ const BOX = {
 	x0: 200,
 	y0: 0,
 	z0: 200,
-	
+
 	x1: -200,
 	y1: -300,
 	z1: -200,
@@ -84,7 +84,7 @@ const boxEdges = (): Array<[Point3, Point3]> => {
 };
 
 export const scene = Scene.make(
-	'bezier-3d',
+	"bezier-3d",
 	function* () {
 		// the wireframe box: each edge is a skeletal Line, both endpoints at
 		// their own depth

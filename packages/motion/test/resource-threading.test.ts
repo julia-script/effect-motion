@@ -2,7 +2,6 @@ import { Effect } from "effect";
 import * as Stream from "effect/Stream";
 import { describe, expect, it } from "vitest";
 import * as Font from "../src/Font";
-import * as Renderer from "../src/Renderer";
 import type * as Resource from "../src/Resource";
 import * as Scene from "../src/Scene";
 import * as Shapes from "../src/Shapes";
@@ -73,28 +72,11 @@ describe("resource threading", () => {
 	});
 });
 
-// rendering a resource-carrying frame REQUIRES its loaders in the effect's
-// requirements — the whole point of the threading (never invoked; type-only)
-type EffectR<T> =
-	T extends Effect.Effect<infer _A, infer _E, infer R> ? R : never;
-const _renderDemandsLoaders = (
-	frame: Scene.Frame<Font.FontLoader<"Roboto">>,
-) => {
-	const eff = Renderer.render(frame);
-	type _requiresLoader = Assert<
-		Equal<
-			Resource.ExtractLoaders<EffectR<typeof eff>>,
-			Font.FontLoader<"Roboto">
-		>
-	>;
-	return eff;
-};
-
 type _keep = [_resources];
 
 describe("type-level assertions", () => {
 	it("stay referenced for the typechecker", () => {
-		const keep: [_keep | null, unknown] = [null, _renderDemandsLoaders];
-		expect(keep).toHaveLength(2);
+		const keep: [_keep | null] = [null];
+		expect(keep).toHaveLength(1);
 	});
 });

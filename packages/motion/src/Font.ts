@@ -55,7 +55,7 @@ export const Loader = <ID extends string>(
  * - **author side**: `yield*` it in a scene to get the {@link Font} value for
  *   `fontFamily`, adding `FontLoader<ID>` to the scene's requirements. The
  *   requirement is PHANTOM — the effect succeeds without touching context,
- *   so `Scene.run`/`stream` stay loader-free and only `Renderer.render`
+ *   so `Scene.run`/`stream` stay loader-free and only the render path
  *   (the first actual consumer of bytes) demands the loader.
  * - **provider side**: `.Loader` is the context key; pair it with
  *   {@link layer} to provide bytes.
@@ -115,7 +115,7 @@ export { defaultFont as default };
 
 /**
  * A CORS-open, static-weight TrueType mapped to the default family. Lived
- * on the thorvg engine before this refactor; now the render path fetches it
+ * on the render engine before this refactor; now the render path fetches it
  * (module-cached) only when a frame actually uses the default font and no
  * caller-provided `"sans-serif"` loader is in context.
  */

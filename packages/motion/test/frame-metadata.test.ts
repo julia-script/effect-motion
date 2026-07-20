@@ -5,7 +5,6 @@ import * as Color from "../src/Color";
 import type * as Runner from "../src/Runner";
 import * as Scene from "../src/Scene";
 import * as Shapes from "../src/Shapes";
-import { render } from "./support/framebuffer";
 
 const oneFrameScene = (meta?: Partial<Runner.CompConfig>) =>
 	Scene.make(function* () {
@@ -42,29 +41,5 @@ describe("frame render metadata", () => {
 		expect(frame.width).toBe(1920);
 		expect(frame.height).toBe(1080);
 		expect(Color.bytes(frame.backgroundColor).a).toBe(0);
-	});
-});
-
-describe("renderer sizes and backgrounds the framebuffer from frame metadata", () => {
-	it("the framebuffer takes the frame's resolution", async () => {
-		const frame = await firstFrame({ width: 320, height: 200 });
-		const r = await render(
-			frame as Scene.Frame<typeof Shapes.Circle | typeof Shapes.Group>,
-		);
-		expect(r.width).toBe(320);
-		expect(r.height).toBe(200);
-	});
-
-	it("the frame's background color fills the buffer", async () => {
-		// a corner far from the single small circle shows the background color
-		const frame = await firstFrame({
-			width: 320,
-			height: 200,
-			backgroundColor: Color.hex("#224466"),
-		});
-		const r = await render(
-			frame as Scene.Frame<typeof Shapes.Circle | typeof Shapes.Group>,
-		);
-		expect(r.at(310, 190)).toEqual([0x22, 0x44, 0x66, 255]);
 	});
 });

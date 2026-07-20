@@ -11,3 +11,5 @@ coverage
 
 # debug artifact from packages/motion/src/demo.ts
 packages/motion/output.png
+
+tmp/

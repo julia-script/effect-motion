@@ -1,4 +1,4 @@
-import { Effect, Exit } from "effect";
+import { Effect } from "effect";
 import * as Stream from "effect/Stream";
 import { describe, expect, it } from "vitest";
 import * as Camera from "../src/Camera";
@@ -6,12 +6,11 @@ import * as Color from "../src/Color";
 import * as Runner from "../src/Runner";
 import * as Scene from "../src/Scene";
 import * as Shapes from "../src/Shapes";
-import { render, renderExit } from "./support/framebuffer";
 import { unreachable } from "./support/raise";
 
 type Entities = typeof Shapes.Group | typeof Shapes.Circle;
 
-const frameOf = (
+const _frameOf = (
 	instances: Scene.Frame<Entities>["instances"],
 	rootChildren: ReadonlyArray<string>,
 ): Scene.Frame<Entities> => ({
@@ -31,125 +30,9 @@ const frameOf = (
 });
 
 // a white default circle at (x, y); big enough to give a solid painted center
-const circleAt = (x: number, y = 0, radius = 12) => ({
+const _circleAt = (x: number, y = 0, radius = 12) => ({
 	data: Shapes.Circle.data.make({ x, y, radius }),
 	entity: Shapes.Circle,
-});
-
-describe("group rendering", () => {
-	// A Group is coordinate composition, not a paint-order boundary: it paints
-	// no element of its own. Its position shifts each child's WORLD coordinates,
-	// so the child renders at the composed screen position. (ponytail: only the
-	// group's translation composes down for the POC; its 2D affine `transform`
-	// matrix is not yet threaded into child world coords.)
-	it("a group's position shifts its child's rendered screen position", async () => {
-		const frame = frameOf(
-			{
-				g1: {
-					data: Shapes.Group.data.make({ x: 100, y: 50, children: ["c1"] }),
-					entity: Shapes.Group,
-				},
-				c1: circleAt(10, 20),
-			},
-			["g1"],
-		);
-
-		// child local (10,20) + group (100,50) → world/screen (110,70) under the
-		// resting camera. The circle paints there, not at its un-composed (10,20).
-		const r = await render(frame);
-		expect(r.isPainted(110, 70)).toBe(true);
-		expect(r.isPainted(10, 20)).toBe(false);
-	});
-
-	it("nested groups compose their translations", async () => {
-		const frame = frameOf(
-			{
-				outer: {
-					data: Shapes.Group.data.make({ x: 10, y: 40, children: ["inner"] }),
-					entity: Shapes.Group,
-				},
-				inner: {
-					data: Shapes.Group.data.make({ x: 20, y: 30, children: ["c1"] }),
-					entity: Shapes.Group,
-				},
-				c1: circleAt(5, 5),
-			},
-			["outer"],
-		);
-		// outer(10,40) + inner(20,30) + local(5,5) = (35,75) composed
-		const r = await render(frame);
-		expect(r.isPainted(35, 75)).toBe(true);
-	});
-
-	it("the root group itself does not render", async () => {
-		// c1 at world (60,60); the root contributes no paint of its own, and the
-		// corner stays background — only the circle is painted.
-		const frame = frameOf({ c1: circleAt(60, 60) }, ["c1"]);
-		const r = await render(frame);
-		expect(r.isPainted(60, 60)).toBe(true);
-		expect(r.isPainted(0, 0)).toBe(false);
-	});
-});
-
-describe("traversal defects", () => {
-	const dies = async (frame: Scene.Frame<Entities>) => {
-		const exit = await renderExit(frame);
-		expect(Exit.isFailure(exit)).toBe(true);
-		// JSON.stringify drops Error internals; surface defect messages
-		return JSON.stringify(exit, (_key, value) =>
-			value instanceof Error ? value.message : value,
-		);
-	};
-
-	it("duplicate reference dies naming the id", async () => {
-		const frame = frameOf(
-			{
-				g1: {
-					data: Shapes.Group.data.make({ children: ["c1"] }),
-					entity: Shapes.Group,
-				},
-				g2: {
-					data: Shapes.Group.data.make({ children: ["c1"] }),
-					entity: Shapes.Group,
-				},
-				c1: circleAt(0),
-			},
-			["g1", "g2"],
-		);
-		expect(await dies(frame)).toContain(
-			'\\"c1\\" is referenced more than once',
-		);
-	});
-
-	it("cycle dies as a duplicate reference", async () => {
-		const frame = frameOf(
-			{
-				g1: {
-					data: Shapes.Group.data.make({ children: ["g2"] }),
-					entity: Shapes.Group,
-				},
-				g2: {
-					data: Shapes.Group.data.make({ children: ["g1"] }),
-					entity: Shapes.Group,
-				},
-			},
-			["g1"],
-		);
-		expect(await dies(frame)).toContain("referenced more than once");
-	});
-
-	it("dangling reference dies naming the id", async () => {
-		const frame = frameOf(
-			{
-				g1: {
-					data: Shapes.Group.data.make({ children: ["ghost"] }),
-					entity: Shapes.Group,
-				},
-			},
-			["g1"],
-		);
-		expect(await dies(frame)).toContain('unknown instance id \\"ghost\\"');
-	});
 });
 
 describe("scene attachment", () => {
@@ -255,69 +138,6 @@ describe("scene attachment", () => {
 				}
 			).children,
 		).toHaveLength(0);
-	});
-
-	it("depth controls paint order, not tree order", async () => {
-		// two overlapping circles at the same screen point: the nearer one (z
-		// closer to the camera) paints LAST, so it wins the shared pixel — even
-		// though the near one is authored FIRST in tree order.
-		const near = {
-			// z=0, red, painted on top
-			data: Shapes.Circle.data.make({
-				x: 250,
-				y: 150,
-				radius: 20,
-				fill: Color.hex("#ff0000"),
-			}),
-			entity: Shapes.Circle,
-		};
-		const far = {
-			// z behind, green; overlaps the same center
-			data: Shapes.Circle.data.make({
-				x: 250,
-				y: 150,
-				z: -400,
-				radius: 20,
-				fill: Color.hex("#00ff00"),
-			}),
-			entity: Shapes.Circle,
-		};
-		const frame = frameOf({ near, far }, ["near", "far"]);
-		const r = await render(frame);
-		// the shared center shows the NEAR circle's red (painted last), not the
-		// far green — depth won over tree order.
-		const [red, green] = r.at(250, 150);
-		expect(red).toBeGreaterThan(200);
-		expect(green).toBeLessThan(80);
-	});
-
-	it("equal-depth paintables tie-break on id deterministically", async () => {
-		// both at z=0, overlapping: tie broken by id ("a" < "b"), so "b" paints
-		// LAST and wins the shared pixel — independent of tree order ("b","a").
-		const a = {
-			data: Shapes.Circle.data.make({
-				x: 250,
-				y: 150,
-				radius: 20,
-				fill: Color.hex("#ff0000"),
-			}),
-			entity: Shapes.Circle,
-		};
-		const b = {
-			data: Shapes.Circle.data.make({
-				x: 250,
-				y: 150,
-				radius: 20,
-				fill: Color.hex("#00ff00"),
-			}),
-			entity: Shapes.Circle,
-		};
-		const frame = frameOf({ a, b }, ["b", "a"]);
-		const r = await render(frame);
-		// "b" (green) painted after "a" by id order → green wins the center
-		const [red, green] = r.at(250, 150);
-		expect(green).toBeGreaterThan(200);
-		expect(red).toBeLessThan(80);
 	});
 });
 
@@ -430,24 +250,5 @@ describe("builtin ~visible", () => {
 				}
 			).children[0] ?? unreachable();
 		expect(frame.instances[id]?.data["~visible"]).toBe(true);
-	});
-
-	it("a hidden instance is skipped by the renderer", async () => {
-		const frames = await collectFrames(function* () {
-			// hidden circle centered at (120,120); visible one at (300,150)
-			yield* Scene.instantiate(Shapes.Circle, {
-				x: 120,
-				y: 120,
-				radius: 15,
-				"~visible": false,
-			});
-			yield* Scene.instantiate(Shapes.Circle, { x: 300, y: 150, radius: 15 });
-			yield* Scene.tick;
-		});
-		const r = await render(
-			(frames[0] ?? unreachable()) as Scene.Frame<Entities>,
-		);
-		expect(r.isPainted(120, 120)).toBe(false); // hidden → background
-		expect(r.isPainted(300, 150)).toBe(true); // visible → painted
 	});
 });

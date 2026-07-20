@@ -1,13 +1,11 @@
-import { Session, type ThorvgException } from "@effect-motion/thorvg";
-import { EngineNode } from "@effect-motion/thorvg/node";
+import * as NodeRenderer from "@effect-motion/renderer/node";
+import type { ThreeException } from "@effect-motion/three";
 import * as Effect from "effect/Effect";
-import * as Layer from "effect/Layer";
 import type * as Scope from "effect/Scope";
 import * as Sink from "effect/Sink";
 import * as Stream from "effect/Stream";
 import type { ChildProcessSpawner } from "effect/unstable/process";
-import { Renderer, type Resource, Scene } from "effect-motion";
-import * as PngExporter from "effect-motion/PngExporter";
+import { type Resource, Scene } from "effect-motion";
 import * as Ffmpeg from "./Ffmpeg.js";
 
 // Scene.instantiate/tick leak the runner requirement into a scene's static R,
@@ -22,9 +20,13 @@ type SceneInternalR = SceneRunner | Scope.Scope;
 
 /**
  * The one-call export path: a scene becomes a video file. Composes the whole
- * pipeline — `Scene.stream` → ThorVG PNG renderer → ffmpeg — reading the
- * framerate and dimensions from the scene's own frame metadata. The ThorVG
- * engine is acquired internally (Node SW layer), so callers wire nothing.
+ * pipeline — `Scene.stream` → three GPU renderer (Dawn) → PNG → ffmpeg —
+ * reading the framerate and dimensions from the scene's own frame metadata.
+ * The renderer is acquired internally, so callers wire nothing.
+ *
+ * ponytail: frames rasterize serially (sync → render → readback per frame);
+ * readback being async allows pipelining ahead of the encoder if it ever
+ * becomes the bottleneck.
  */
 
 /**
@@ -55,7 +57,7 @@ export interface VideoOptions {
 	/** Extra ffmpeg arguments, appended before the output path. */
 	readonly extraArgs?: ReadonlyArray<string>;
 	/**
-	 * Supersampling factor: frames are rasterized at scene dimensions × dpr
+	 * Supersampling factor: frames are rendered at scene dimensions × dpr
 	 * (the video's pixel size) while the scene keeps its authored logical
 	 * coordinates and framing. Defaults to 1.
 	 */
@@ -64,27 +66,12 @@ export interface VideoOptions {
 	readonly settings?: VideoSceneSettings;
 }
 
-// The ThorVG engine plus a render session (the canvas Renderer.render draws
-// each frame onto). The session canvas is resized per frame, so the seed
-// size only has to be valid — the scene's own comp dimensions (the canvas is
-// resized to each frame's size regardless). Fonts/images register from the
-// caller's loader services during rendering (the default font is
-// auto-provided by the render path).
-const baseLayer = (scene: {
-	readonly width: number;
-	readonly height: number;
-}) =>
-	Layer.provideMerge(
-		Session.layer({ width: scene.width, height: scene.height }),
-		EngineNode.layer("sw"),
-	);
-
 /**
  * Render a scene to a video file at `outPath`.
  *
  * Fails with {@link Ffmpeg.EncodeError} on odd output dimensions (invalid for
  * `yuv420p`) — before any ffmpeg process is spawned — or on an ffmpeg failure;
- * a ThorVG render failure surfaces as `ThorvgException`.
+ * a GPU render failure surfaces as `ThreeException`.
  */
 export const render = <E = never, LoaderR = never>(
 	scene: Scene.Scene<E, SceneInternalR | LoaderR>,
@@ -92,9 +79,9 @@ export const render = <E = never, LoaderR = never>(
 	options: VideoOptions = {},
 ): Effect.Effect<
 	void,
-	E | Ffmpeg.EncodeError | ThorvgException,
+	E | Ffmpeg.EncodeError | ThreeException,
 	// the scene is run to completion internally, so its Scope is discharged
-	// here; the ThorVG engine is provided internally too. The scene's
+	// here; the GPU renderer is provided internally too. The scene's
 	// resource loaders stay the CALLER's requirement — provide them via
 	// Font.layer/Image.layer (Node fs loaders work here: no URLs needed)
 	ChildProcessSpawner.ChildProcessSpawner | Resource.ExtractLoaders<LoaderR>
@@ -131,15 +118,19 @@ export const render = <E = never, LoaderR = never>(
 				});
 			}
 
+			// one renderer for the whole export, sized from the first frame's
+			// metadata, released with this scope
+			const renderer = yield* NodeRenderer.make({
+				width: meta.width,
+				height: meta.height,
+				pixelRatio: dpr,
+			});
+
 			const allFrames = Stream.concat(Stream.make(meta), rest);
-			// each frame is rasterized to a framebuffer by the ThorVG renderer
-			// then PNG-encoded. Rasterization is serial: Renderer.render mutates
-			// one shared RenderSession canvas per frame (resize/clear/draw/read),
-			// so concurrent renders would clobber each other's pixels.
+			// serial by construction: syncFrame mutates one retained scene, so
+			// concurrent renders would clobber each other's state
 			const pngStream = Stream.mapEffect(allFrames, (frame) =>
-				Renderer.render(frame, { dpr }).pipe(
-					Effect.flatMap(PngExporter.toBuffer),
-				),
+				renderer.renderToPng(frame),
 			);
 
 			// writing a file implies its directory: create the output's parent
@@ -160,8 +151,8 @@ export const render = <E = never, LoaderR = never>(
 		// the Exclude-chain the pipeline infers over the unresolved LoaderR
 		// can't be proven equal to the declared surface; the runtime shape is
 		// exactly it (loaders in, loaders out — everything else provided here)
-	).pipe(Effect.provide(baseLayer(scene))) as Effect.Effect<
+	) as Effect.Effect<
 		void,
-		E | Ffmpeg.EncodeError | ThorvgException,
+		E | Ffmpeg.EncodeError | ThreeException,
 		ChildProcessSpawner.ChildProcessSpawner | Resource.ExtractLoaders<LoaderR>
 	>;

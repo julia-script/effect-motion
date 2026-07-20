@@ -93,7 +93,7 @@ it.runIf(canVerify)(
 			Scene: SceneMod,
 			Shapes: ShapesMod,
 		} = await import("effect-motion");
-		const { encodePng } = await import("@effect-motion/thorvg/png");
+		const { encodePng } = await import("@effect-motion/renderer/node");
 
 		const rgba = new Uint8Array(8 * 8 * 4);
 		for (let i = 0; i < rgba.length; i += 4) {

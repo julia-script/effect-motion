@@ -156,7 +156,7 @@ export interface FrameEntry {
 
 export interface Frame<out Resources = never> {
 	/**
-	 * phantom: the loader requirements `Renderer.render` will demand for this
+	 * phantom: the loader requirements the renderer will demand for this
 	 * frame. Never a runtime value — an unused type parameter would be
 	 * structurally erased, so it must anchor on an (always-absent) field.
 	 */
