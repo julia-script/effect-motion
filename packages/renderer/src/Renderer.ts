@@ -579,13 +579,13 @@ export const resolveResources = Effect.fnUntraced(function* (
  * GPU-side companion to `FrameSync.syncComp`; both render paths call it
  * before their main pass.
  */
-export const renderCompTargets = (
+export const renderCompTargets = Effect.fnUntraced(function* (
 	renderer: THREE.WebGPURenderer,
 	sync: FrameSync,
 	pixelRatio: number,
-): void => {
+): Effect.fn.Return<void, ThreeException> {
 	for (const comp of sync.comps.values()) {
-		renderCompTargets(renderer, comp.sync, pixelRatio);
+		yield* renderCompTargets(renderer, comp.sync, pixelRatio);
 		const pw = Math.max(1, Math.round(comp.width * pixelRatio));
 		const ph = Math.max(1, Math.round(comp.height * pixelRatio));
 		if (comp.rt === null || comp.rt.width !== pw || comp.rt.height !== ph) {
@@ -596,10 +596,13 @@ export const renderCompTargets = (
 		}
 		const previous = renderer.getRenderTarget();
 		renderer.setRenderTarget(comp.rt);
-		renderer.render(comp.sync.scene, comp.sync.camera);
-		renderer.setRenderTarget(previous);
+		// ensuring: the previous target comes back even when the render
+		// fails — the sync version silently skipped the restore on a throw
+		yield* Gpu.render(renderer, comp.sync.scene, comp.sync.camera).pipe(
+			Effect.ensuring(Effect.sync(() => renderer.setRenderTarget(previous))),
+		);
 	}
-};
+});
 
 export interface MakeOptions {
 	readonly canvas?: HTMLCanvasElement;
@@ -670,12 +673,10 @@ export class FrameRenderer {
 	render(): Effect.Effect<void, ThreeException> {
 		return Effect.promise(() => this.sync.whenReady()).pipe(
 			Effect.flatMap(() =>
-				Interop.wrap("comp targets", () =>
-					renderCompTargets(
-						this.renderer,
-						this.sync,
-						this.renderer.getPixelRatio(),
-					),
+				renderCompTargets(
+					this.renderer,
+					this.sync,
+					this.renderer.getPixelRatio(),
 				),
 			),
 			Effect.flatMap(() => {
@@ -692,12 +693,20 @@ export class FrameRenderer {
 				if (this.sync.hudScene.children.length === 0) {
 					return Effect.void;
 				}
-				return Interop.wrap("hud overlay", () => {
+				return Effect.sync(() => {
 					this.renderer.autoClear = false;
 					this.renderer.clearDepth();
-					this.renderer.render(this.sync.hudScene, this.sync.hudCamera);
-					this.renderer.autoClear = true;
-				});
+				}).pipe(
+					Effect.flatMap(() =>
+						Gpu.render(this.renderer, this.sync.hudScene, this.sync.hudCamera),
+					),
+					// autoClear must come back on even when the hud render fails
+					Effect.ensuring(
+						Effect.sync(() => {
+							this.renderer.autoClear = true;
+						}),
+					),
+				);
 			}),
 		);
 	}

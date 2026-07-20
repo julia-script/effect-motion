@@ -177,9 +177,7 @@ export class NodeFrameRenderer {
 					}
 				)._nodes.nodeFrame.update(),
 			);
-			yield* Interop.wrap("comp targets", () =>
-				renderCompTargets(self.renderer, self.sync, self.pixelRatioValue),
-			);
+			yield* renderCompTargets(self.renderer, self.sync, self.pixelRatioValue);
 			const pipeline =
 				self.sync.hudScene.children.length > 0 ? self.postWithHud : self.post;
 			yield* Interop.wrap("RenderPipeline.render", () => pipeline.render());
