@@ -5,7 +5,6 @@
 // One module per actor, re-exported as namespaces.
 export * as Builtins from "./Builtins.js";
 export { builtinRegistry, builtinRenderers } from "./Builtins.js";
-export * as Dof from "./Dof.js";
 export * as EntityRenderer from "./EntityRenderer.js";
 export * as Images from "./Images.js";
 export * as Renderer from "./Renderer.js";

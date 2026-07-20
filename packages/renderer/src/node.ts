@@ -9,13 +9,11 @@ import {
 // side effects first-class: installs navigator.gpu (Dawn), WebGPU globals,
 // and the rAF/`self` shims three needs — before any renderer is created
 import * as NodeGpu from "@effect-motion/three/node";
-import type { Scope } from "effect";
-import { Effect } from "effect";
+import { Effect, Scope } from "effect";
 import type { EffectMotionError } from "effect-motion";
 import type * as Entity from "effect-motion/Entity";
 import type { Frame } from "effect-motion/Scene";
 import { builtinRegistry } from "./Builtins.js";
-import { buildDofBlur, type DofUniforms, makeDofUniforms } from "./Dof.js";
 import type { EntityRenderer } from "./EntityRenderer.js";
 import type { RenderException } from "./RenderException.js";
 import { renderCompTargets } from "./Renderer.js";
@@ -130,11 +128,12 @@ export interface NodeRendererOptions {
 export interface NodeRenderer {
 	readonly sync: Sync.Sync;
 	readonly gpu: Gpu.Renderer;
+	/** the acquisition scope — image decodes fork into it (see Renderer.ts) */
+	readonly scope: Scope.Scope;
 	/** internal: plain pipeline (world + DoF blur) */
 	readonly post: PostProcessing.RenderPipeline;
 	/** internal: pipeline with the HUD pass composited over the world */
 	readonly postWithHud: PostProcessing.RenderPipeline;
-	readonly dofUniforms: DofUniforms;
 	/** internal: the readback render target */
 	readonly target: RenderTarget.RenderTarget;
 	readonly width: number;
@@ -161,26 +160,24 @@ export const renderToPng = Effect.fnUntraced(function* (
 			),
 		);
 	}
-	yield* Sync.resolveResources(renderer.sync, frame);
+	yield* Sync.resolveResources(renderer.sync, frame).pipe(
+		Effect.provideService(Scope.Scope, renderer.scope),
+	);
 	yield* Sync.syncFrame(renderer.sync, frame);
 	// glyph layouts registered during sync must land before readback —
 	// an export frame never ships half-built text
 	yield* Sync.whenReady(renderer.sync);
-	// custom gather-blur DoF (see make): aperture 0 zeroes the CoC,
-	// so the blur is an arithmetic identity on sharp frames
-	if (renderer.sync.dof.on) {
-		renderer.dofUniforms.focus.value = renderer.sync.dof.focusDistance;
-		renderer.dofUniforms.strength.value = renderer.sync.dof.strengthUv;
-	} else {
-		renderer.dofUniforms.strength.value = 0;
-	}
 	// three advances nodeFrame.frameId only inside its rAF-driven
 	// animation loop (a 16ms setTimeout shim headless). Back-to-back
 	// exports outrun it, so FRAME-deduped nodes — the scene PassNode
 	// above all — skip their per-frame work and consecutive frames
 	// read a stale pass texture (pairwise-duplicated video frames).
 	// Drive it explicitly: one exported frame IS one three frame.
-	yield* Effect.sync(() => Gpu.advanceFrame(renderer.gpu));
+	// sync call in a generator: a plain statement, no Effect.sync ceremony
+	// (that only buys an allocation and a fiber step for an infallible
+	// field write). Effect.sync is for the combinators that take one —
+	// ensuring, addFinalizer.
+	Gpu.advanceFrame(renderer.gpu);
 	yield* renderCompTargets(renderer.gpu, renderer.sync, renderer.pixelRatio);
 	const pipeline = ThreeScene.isEmpty(renderer.sync.hudScene)
 		? renderer.post
@@ -225,12 +222,13 @@ export const make = Effect.fn("NodeRenderer.make")(function* (
 		height: options.height,
 		pixelRatio: dpr,
 	});
-	yield* Effect.addFinalizer(() => Effect.sync(() => Sync.dispose(sync)));
+	yield* Effect.addFinalizer(() => Sync.dispose(sync));
 	const scenePass = PostProcessing.pass(sync.scene, sync.camera);
-	// custom depth-of-field shared with the browser path (see Dof.ts)
-	const dofUniforms = makeDofUniforms();
-	const blurred = buildDofBlur(scenePass, dofUniforms);
-	const post = PostProcessing.makePipeline(gpu, blurred);
+	// ponytail: depth of field is being rebuilt (see the
+	// layered-depth-of-field change) — the pipeline draws the scene pass
+	// straight through until it lands.
+	const sceneColor = scenePass.getTextureNode();
+	const post = PostProcessing.makePipeline(gpu, sceneColor);
 	// HUD composite variant: the HUD pass (identity camera, transparent
 	// background) blended over the world INSIDE the pipeline, so the sRGB
 	// output transform applies exactly once. Chosen per frame only when
@@ -247,16 +245,17 @@ export const make = Effect.fn("NodeRenderer.make")(function* (
 	const hudTex = hudScenePass.getTextureNode() as Node;
 	const postWithHud = PostProcessing.makePipeline(
 		gpu,
-		(blurred as Node).mul(hudTex.a.oneMinus()).add(hudTex.rgb.mul(hudTex.a)),
+		(sceneColor as Node).mul(hudTex.a.oneMinus()).add(hudTex.rgb.mul(hudTex.a)),
 	);
 	const target = yield* RenderTarget.make(pixelWidth, pixelHeight);
 	Gpu.setRenderTarget(gpu, target);
+	const scope = yield* Effect.scope;
 	return {
 		sync,
 		gpu,
+		scope,
 		post,
 		postWithHud,
-		dofUniforms,
 		target,
 		width: options.width,
 		height: options.height,

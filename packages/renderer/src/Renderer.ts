@@ -1,18 +1,15 @@
 import type { ThreeException } from "@effect-motion/three";
 import {
 	Renderer as Gpu,
-	PostProcessing,
 	RenderTarget,
 	Scene as ThreeScene,
 } from "@effect-motion/three";
-import type { Scope } from "effect";
-import { Effect } from "effect";
+import { Effect, Scope } from "effect";
 import { dual } from "effect/Function";
 import type { EffectMotionError } from "effect-motion";
 import type * as Entity from "effect-motion/Entity";
 import type { Frame } from "effect-motion/Scene";
 import { builtinRegistry } from "./Builtins.js";
-import { buildDofBlur, type DofUniforms, makeDofUniforms } from "./Dof.js";
 import type { EntityRenderer } from "./EntityRenderer.js";
 import type { RenderException } from "./RenderException.js";
 import * as Sync from "./Sync.js";
@@ -92,12 +89,6 @@ const firstArgIsRenderer = (args: IArguments): boolean => {
 	);
 };
 
-interface DofPipeline {
-	readonly post: PostProcessing.RenderPipeline;
-	readonly pass: PostProcessing.Pass;
-	readonly key: string;
-}
-
 /**
  * A `Sync` wired to a real WebGPU renderer. Mostly data — the API is the
  * sibling functions (`syncFrame`, `resolveResources`, `render`,
@@ -106,38 +97,14 @@ interface DofPipeline {
 export interface Renderer {
 	readonly sync: Sync.Sync;
 	readonly gpu: Gpu.Renderer;
-	/** internal: DoF uniforms shared across pipeline rebuilds */
-	readonly uniforms: DofUniforms;
-	/** internal: DoF pipeline, built lazily at the CURRENT drawing-buffer
-	 * size and rebuilt on resize — constructing the pass while the
-	 * renderer is still 1×1 (before the first frame sizes it) leaves the
-	 * pass's depth texture stale after resize; viewZ then reads garbage
-	 * and every pixel gets the same max CoC (uniform blur, nothing ever
-	 * in focus). */
-	dofPipeline: DofPipeline | null;
+	/**
+	 * The scope this renderer was acquired in. Image decodes fork into it,
+	 * so they are interrupted with the renderer rather than outliving it —
+	 * and callers of `resolveResources` do not have to carry a Scope of
+	 * their own.
+	 */
+	readonly scope: Scope.Scope;
 }
-
-const ensureDofPipeline = (
-	renderer: Renderer,
-): PostProcessing.RenderPipeline => {
-	const size = Gpu.getDrawingBufferSize(renderer.gpu);
-	const key = `${size.width}x${size.height}`;
-	if (renderer.dofPipeline === null || renderer.dofPipeline.key !== key) {
-		if (renderer.dofPipeline !== null) {
-			PostProcessing.disposePass(renderer.dofPipeline.pass);
-		}
-		const scenePass = PostProcessing.pass(
-			renderer.sync.scene,
-			renderer.sync.camera,
-		);
-		const post = PostProcessing.makePipeline(
-			renderer.gpu,
-			buildDofBlur(scenePass, renderer.uniforms),
-		);
-		renderer.dofPipeline = { post, pass: scenePass, key };
-	}
-	return renderer.dofPipeline.post;
-};
 
 /**
  * Resize the drawing buffer to a frame's logical size at a device pixel
@@ -182,7 +149,10 @@ export const syncFrame = (
 export const resolveResources = (
 	renderer: Renderer,
 	frame: AnyFrame,
-): Effect.Effect<void> => Sync.resolveResources(renderer.sync, frame);
+): Effect.Effect<void> =>
+	Sync.resolveResources(renderer.sync, frame).pipe(
+		Effect.provideService(Scope.Scope, renderer.scope),
+	);
 
 /**
  * Render the current retained scene: through the DoF pipeline when the
@@ -203,18 +173,12 @@ export const render = (
 				Gpu.getPixelRatio(renderer.gpu),
 			),
 		),
-		Effect.flatMap(() => {
-			if (renderer.sync.dof.on) {
-				renderer.uniforms.focus.value = renderer.sync.dof.focusDistance;
-				renderer.uniforms.strength.value = renderer.sync.dof.strengthUv;
-				return PostProcessing.render(ensureDofPipeline(renderer));
-			}
-			return Gpu.render(
-				renderer.gpu,
-				renderer.sync.scene,
-				renderer.sync.camera,
-			);
-		}),
+		Effect.flatMap(() =>
+			// ponytail: depth of field is being rebuilt (see the
+			// layered-depth-of-field change) — every frame renders sharp,
+			// and Sync still derives the camera's DoF state for it.
+			Gpu.render(renderer.gpu, renderer.sync.scene, renderer.sync.camera),
+		),
 		Effect.flatMap(() => {
 			// HUD overlay: identity camera, above everything, DoF-exempt
 			if (ThreeScene.isEmpty(renderer.sync.hudScene)) {
@@ -273,8 +237,7 @@ export const make = Effect.fn("Renderer.make")(function* (
 			? { pixelRatio: options.pixelRatio }
 			: {}),
 	});
-	yield* Effect.addFinalizer(() => Effect.sync(() => Sync.dispose(sync)));
-	// the DoF pipeline is built lazily at the real drawing-buffer size
-	// (see ensureDofPipeline)
-	return { sync, gpu, uniforms: makeDofUniforms(), dofPipeline: null };
+	yield* Effect.addFinalizer(() => Sync.dispose(sync));
+	const scope = yield* Effect.scope;
+	return { sync, gpu, scope };
 });

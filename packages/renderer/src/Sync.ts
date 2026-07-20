@@ -78,7 +78,7 @@ export interface SyncStats {
 export interface DofState {
 	on: boolean;
 	focusDistance: number;
-	/** CoC scale in uv units (0 = off) — see Dof.ts */
+	/** CoC scale in uv units (0 = off) — consumed by the DoF rebuild */
 	strengthUv: number;
 }
 
@@ -551,16 +551,19 @@ const syncComp = (
 	}
 };
 
-const disposeComp = (comp: CompState): void => {
-	dispose(comp.sync);
+const disposeComp = Effect.fnUntraced(function* (comp: CompState) {
+	yield* dispose(comp.sync);
 	comp.material.dispose();
 	if (comp.rt !== null) {
 		RenderTarget.dispose(comp.rt);
 	}
-};
+});
 
-/** dispose every retained object (scope teardown) */
-export const dispose = (sync: Sync): void => {
+/**
+ * Dispose every retained object (scope teardown). Effectful because the
+ * image store's textures live behind Deferreds.
+ */
+export const dispose = Effect.fnUntraced(function* (sync: Sync) {
 	for (const entry of sync.retained.values()) {
 		ThreeScene.remove(entry.hud ? sync.hudScene : sync.scene, [
 			entry.retained.object,
@@ -574,8 +577,8 @@ export const dispose = (sync: Sync): void => {
 	}
 	sync.comps.clear();
 	Text.dispose(sync.text);
-	Images.dispose(sync.images);
-};
+	yield* Images.dispose(sync.images);
+});
 
 /**
  * Resolve the frame's font and image resources into the sync actor:
@@ -632,6 +635,6 @@ export const resolveResources = Effect.fnUntraced(function* (
 				),
 			);
 		}
-		Images.register(sync.images, id, provided.value.bytes);
+		yield* Images.register(sync.images, id, provided.value.bytes);
 	}
 });

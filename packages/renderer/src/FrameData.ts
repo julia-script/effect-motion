@@ -1,4 +1,5 @@
-import type { Color } from "effect-motion";
+import type { Color, Shapes } from "effect-motion";
+import type * as Entity from "effect-motion/Entity";
 
 /**
  * Typed readers over frame instance data.
@@ -6,27 +7,39 @@ import type { Color } from "effect-motion";
  * A frame's `instances[id].data` is `Entity.AnyEntity["data"]["Type"]` —
  * structurally `{}`, because an entity's fields are only known to the
  * entity that declared them. The renderer nonetheless has to read a few
- * well-known shapes out of it (position, size, children, resource ids),
- * and each read needs a cast that TypeScript cannot check.
+ * well-known shapes out of it.
  *
- * This module is where those casts live — written once each, named, and
- * documented — instead of scattered through the walk. The readers are
- * deliberately defensive: every field is optional and every return is
- * either a checked value or a documented fallback, so malformed data
- * degrades predictably rather than throwing from inside a hot loop.
+ * The shapes themselves are NOT re-declared here: every type below is
+ * derived from the motion package's own entity schemas, so a field that
+ * is renamed or retyped upstream breaks this module at compile time
+ * rather than silently reading `undefined` at runtime. What remains
+ * unavoidable is the *narrowing* — going from `{}` to a known entity's
+ * data — and that single cast lives in `dataOf`, once, rather than
+ * scattered through the walk.
  */
 
-/** A 2D affine, as a Group's `transform` field carries it. */
-export interface Affine {
-	readonly a: number;
-	readonly b: number;
-	readonly c: number;
-	readonly d: number;
-	readonly e: number;
-	readonly f: number;
-}
+/** Every entity's data carries the Shape2D base (position, opacity). */
+type Shape2DData = Entity.EntityData<
+	(typeof Shapes.Circle)["data"]["fields"]
+>["Type"];
 
-/** Local position; missing axes read as 0 (the scene-graph default). */
+/** A Group's data: the base plus children, size, transform, background. */
+type GroupData = Entity.EntityData<
+	(typeof Shapes.Group)["data"]["fields"]
+>["Type"];
+
+type TextData = Entity.EntityData<
+	(typeof Shapes.Text)["data"]["fields"]
+>["Type"];
+
+type ImageData = Entity.EntityData<
+	(typeof Shapes.Image)["data"]["fields"]
+>["Type"];
+
+/** The 2D affine a Group carries, straight from motion's schema. */
+export type Affine = Shapes.TransformMatrix;
+
+/** Composed local position — the Shape2D base every entity shares. */
 export interface Position {
 	readonly x: number;
 	readonly y: number;
@@ -39,114 +52,73 @@ export interface Size {
 	readonly height: number;
 }
 
-interface Probe {
-	readonly x?: unknown;
-	readonly y?: unknown;
-	readonly z?: unknown;
-	readonly width?: unknown;
-	readonly height?: unknown;
-	readonly children?: unknown;
-	readonly opacity?: unknown;
-	readonly transform?: unknown;
-	readonly backgroundColor?: unknown;
-	readonly fontFamily?: unknown;
-	readonly image?: unknown;
-	readonly "~visible"?: unknown;
-}
-
-/** The one cast: entity data is `{}`, so reading it means probing it. */
-const probe = (data: unknown): Probe => (data ?? {}) as Probe;
-
-const numberOr = (value: unknown, fallback: number): number =>
-	typeof value === "number" ? value : fallback;
+/**
+ * The one narrowing cast: frame data is `{}`, so reading a known field
+ * means asserting the entity's own shape. Every reader below goes through
+ * here, and each still guards the field it reads — an entity that does
+ * not carry it (a Circle has no `children`) simply misses.
+ */
+const dataOf = (data: unknown): Partial<GroupData & TextData & ImageData> =>
+	(data ?? {}) as Partial<GroupData & TextData & ImageData>;
 
 /** Local position, defaulting each missing axis to 0. */
 export const positionOf = (data: unknown): Position => {
-	const p = probe(data);
+	const d = dataOf(data) as Partial<Shape2DData>;
 	return {
-		x: numberOr(p.x, 0),
-		y: numberOr(p.y, 0),
-		z: numberOr(p.z, 0),
+		x: d.x ?? 0,
+		y: d.y ?? 0,
+		z: d.z ?? 0,
 	};
 };
 
 /**
  * Composition size, or `null` when this entity is not sized. Both
- * dimensions must be numbers: a sized group is what makes a subtree a
+ * dimensions must be present: a sized group is what makes a subtree a
  * comp, and a half-specified size is not one.
  */
 export const sizeOf = (data: unknown): Size | null => {
-	const p = probe(data);
-	return typeof p.width === "number" && typeof p.height === "number"
-		? { width: p.width, height: p.height }
+	const { width, height } = dataOf(data);
+	return typeof width === "number" && typeof height === "number"
+		? { width, height }
 		: null;
 };
 
-/** Child instance ids; anything non-array reads as no children. */
-export const childIdsOf = (data: unknown): ReadonlyArray<string> => {
-	const children = probe(data).children;
-	return Array.isArray(children) ? (children as ReadonlyArray<string>) : [];
-};
+/** Child instance ids; an entity without children reads as none. */
+export const childIdsOf = (data: unknown): ReadonlyArray<string> =>
+	dataOf(data).children ?? [];
 
 /** Whether the entity is visible — absent `~visible` means visible. */
 export const isVisible = (data: unknown): boolean =>
-	probe(data)["~visible"] !== false;
+	dataOf(data)["~visible"] !== false;
 
 /** Group opacity, clamped to 0..1; absent reads as fully opaque. */
-export const opacityOf = (data: unknown): number => {
-	const opacity = numberOr(probe(data).opacity, 1);
-	return Math.max(0, Math.min(1, opacity));
-};
+export const opacityOf = (data: unknown): number =>
+	Math.max(0, Math.min(1, dataOf(data).opacity ?? 1));
 
 /** A group's 2D affine, or `null` when absent or the identity. */
 export const affineOf = (data: unknown): Affine | null => {
-	const transform = probe(data).transform;
-	if (transform === null || typeof transform !== "object") {
+	const transform = dataOf(data).transform;
+	if (transform === undefined) {
 		return null;
 	}
-	const m = transform as Partial<Affine>;
-	const affine: Affine = {
-		a: numberOr(m.a, 1),
-		b: numberOr(m.b, 0),
-		c: numberOr(m.c, 0),
-		d: numberOr(m.d, 1),
-		e: numberOr(m.e, 0),
-		f: numberOr(m.f, 0),
-	};
 	const isIdentity =
-		affine.a === 1 &&
-		affine.b === 0 &&
-		affine.c === 0 &&
-		affine.d === 1 &&
-		affine.e === 0 &&
-		affine.f === 0;
-	return isIdentity ? null : affine;
+		transform.a === 1 &&
+		transform.b === 0 &&
+		transform.c === 0 &&
+		transform.d === 1 &&
+		transform.e === 0 &&
+		transform.f === 0;
+	return isIdentity ? null : transform;
 };
 
 /** A comp's own background color, or `null` for a transparent comp. */
-export const backgroundColorOf = (data: unknown): Color.Color | null => {
-	const background = probe(data).backgroundColor;
-	return background === undefined || background === null
-		? null
-		: (background as Color.Color);
-};
+export const backgroundColorOf = (data: unknown): Color.Color | null =>
+	dataOf(data).backgroundColor ?? null;
 
 /** The font-family resource id on a Text entity, if it carries one. */
-export const fontFamilyIdOf = (data: unknown): string | null => {
-	const family = probe(data).fontFamily;
-	if (family === null || typeof family !== "object") {
-		return null;
-	}
-	const id = (family as { id?: unknown }).id;
-	return typeof id === "string" ? id : null;
-};
+export const fontFamilyIdOf = (data: unknown): string | null =>
+	dataOf(data).fontFamily?.id ?? null;
 
 /** The image resource id on an Image entity, if it carries one. */
-export const imageIdOf = (data: unknown): string | null => {
-	const image = probe(data).image;
-	if (image === null || typeof image !== "object") {
-		return null;
-	}
-	const id = (image as { id?: unknown }).id;
-	return typeof id === "string" ? id : null;
-};
+export const imageIdOf = (data: unknown): string | null =>
+	dataOf(data).image?.id ?? null;
