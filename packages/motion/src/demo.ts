@@ -1,16 +1,9 @@
-import { NodeServices } from "@effect/platform-node";
-import { Session } from "@effect-motion/thorvg";
-import { EngineNode } from "@effect-motion/thorvg/node";
-import { Effect, Layer, Schedule, Schema, Stream } from "effect";
-import * as Color from "./Color.js";
+import { Effect, Stream } from "effect";
 import * as Entity from "./Entity.js";
 import * as Font from "./Font.js";
-import * as Motion from "./Motion.js";
-import * as Physics from "./Physics.js";
 import * as PngExporter from "./PngExporter.js";
 import * as Renderer from "./Renderer.js";
 import * as Scene from "./Scene.js";
-import * as Shapes from "./Shapes.js";
 
 // local copy: the test-support helper lives outside the build rootDir
 const unreachable = (): never => {
@@ -24,14 +17,14 @@ const DummyEntity = Entity.make("DummyEntity", {
 
 export const scene = Scene.make(function* () {
 	const font = yield* RobotoFont;
-	const demoEntity = yield* Scene.instantiate(DummyEntity, {
+	const _demoEntity = yield* Scene.instantiate(DummyEntity, {
 		fontFamily: font,
 	});
 });
 // // render the middle frame of the duo scene to a PNG through the single ThorVG
 // // renderer (Node adapter) — the end-to-end path: Scene.stream → renderToPng.
-const movie = Effect.gen(function* () {
-	const demo = yield* Scene.run(scene);
+const _movie = Effect.gen(function* () {
+	const _demo = yield* Scene.run(scene);
 	const frames = yield* Scene.stream(scene).pipe(Stream.runCollect);
 
 	const list = [...frames];

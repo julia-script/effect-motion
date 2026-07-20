@@ -26,7 +26,6 @@ const fixture = join(
 	"fixtures",
 	"basic",
 );
-const configPath = join(fixture, "motion.config.ts");
 const outDir = canVerify ? mkdtempSync(join(tmpdir(), "motion-cli-e2e-")) : "";
 afterAll(() => {
 	if (outDir) rmSync(outDir, { recursive: true, force: true });
@@ -38,6 +37,16 @@ const runCli = (args: ReadonlyArray<string>) =>
 			Effect.provide(NodeServices.layer),
 		) as Effect.Effect<void>,
 	);
+
+const inFixture = async (fn: () => Promise<void>) => {
+	const previousCwd = process.cwd();
+	process.chdir(fixture);
+	try {
+		await fn();
+	} finally {
+		process.chdir(previousCwd);
+	}
+};
 
 const probe = (file: string) =>
 	execFileSync("ffprobe", [
@@ -54,8 +63,13 @@ const probe = (file: string) =>
 	]).toString();
 
 describe.runIf(canVerify)("motion render (e2e)", () => {
-	it("renders all config targets to derived paths, honoring dpr", async () => {
-		await runCli(["render", "--config", configPath, "--out-dir", outDir]);
+	it("executes the default render entrypoint (multiple outputs, dpr honored)", async () => {
+		process.env.MOTION_OUT_DIR = outDir;
+		try {
+			await inFixture(() => runCli(["render"]));
+		} finally {
+			delete process.env.MOTION_OUT_DIR;
+		}
 
 		const plain = join(outDir, "dot.mp4");
 		const hd = join(outDir, "dot-hd.mp4");
@@ -75,48 +89,34 @@ describe.runIf(canVerify)("motion render (e2e)", () => {
 		expect(hdProbe).toContain("height=160");
 	});
 
-	it("renders a single named target with flag overrides beating config", async () => {
-		const dir = join(outDir, "named");
-		await runCli([
-			"render",
-			"--config",
-			configPath,
-			"--out-dir",
-			dir,
-			"--fps",
-			"5",
-			"dot",
-		]);
+	it("executes an explicit entrypoint path", async () => {
+		const dir = join(outDir, "explicit");
+		process.env.MOTION_OUT_DIR = dir;
+		try {
+			await runCli(["render", join(fixture, "render.ts")]);
+		} finally {
+			delete process.env.MOTION_OUT_DIR;
+		}
 		expect(existsSync(join(dir, "dot.mp4"))).toBe(true);
-		expect(existsSync(join(dir, "dot-hd.mp4"))).toBe(false);
-		expect(probe(join(dir, "dot.mp4"))).toContain("r_frame_rate=5/1");
 	});
 
-	it("configless mode renders a scene file directly", async () => {
-		const dir = join(outDir, "configless");
+	it("fails naming the path when no entrypoint exists", async () => {
+		const empty = mkdtempSync(join(tmpdir(), "motion-cli-empty-"));
 		const previousCwd = process.cwd();
-		process.chdir(fixture);
+		process.chdir(empty);
 		try {
-			await runCli([
-				"render",
-				"./src/scenes/dot.ts",
-				"--out-dir",
-				dir,
-				"--fps",
-				"10",
-			]);
+			await expect(runCli(["render"])).rejects.toThrow(/render\.ts/);
 		} finally {
 			process.chdir(previousCwd);
+			rmSync(empty, { recursive: true, force: true });
 		}
-		const out = join(dir, "dot.mp4");
-		expect(existsSync(out)).toBe(true);
-		// the scene's own comp config sizes the video (120×80 from dot.ts)
-		expect(probe(out)).toContain("width=120");
 	});
 
-	it("fails with UnknownTarget for a name not in the config", async () => {
-		await expect(
-			runCli(["render", "--config", configPath, "nope"]),
-		).rejects.toThrow(/unknown target/i);
+	it("fails naming the file when the default export is not an Effect", async () => {
+		await inFixture(async () => {
+			await expect(runCli(["render", "./bad-render.ts"])).rejects.toThrow(
+				/not an Effect/,
+			);
+		});
 	});
 });

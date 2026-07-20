@@ -145,11 +145,68 @@ describe("resource constants", () => {
 });
 
 // keep the type-only assertions and negative cases referenced
-export type _keep = [
-	_extract,
-	_exclude,
-	_extractEmpty,
-	_excludeAll,
-	_authoredR,
-];
-export const _keepValues = [_nonLiteralRejected, unreachable];
+describe("fetchBytes memoization", () => {
+	const realFetch = globalThis.fetch;
+
+	it("fetches each URL once across layer constructions; failures retry", async () => {
+		const calls: string[] = [];
+		globalThis.fetch = ((input: RequestInfo | URL) => {
+			const url = String(input);
+			calls.push(url);
+			if (
+				url.endsWith("/flaky") &&
+				calls.filter((c) => c === url).length === 1
+			) {
+				return Promise.resolve(new Response("nope", { status: 500 }));
+			}
+			return Promise.resolve(
+				new Response(new Uint8Array([1, 2]), { status: 200 }),
+			);
+		}) as typeof fetch;
+		try {
+			const url = "https://assets.test/font.ttf";
+			const layerOf = () =>
+				Font.layer(Font.Font("MemoFont"), Resource.fetchBytes(url));
+			// two constructions (two Player mounts): one fetch
+			for (let i = 0; i < 2; i++) {
+				await Effect.runPromise(
+					Effect.scoped(Layer.build(layerOf()).pipe(Effect.asVoid)),
+				);
+			}
+			expect(calls.filter((c) => c === url)).toHaveLength(1);
+
+			// a failed fetch is not cached: the next construction retries
+			const flaky = "https://assets.test/flaky";
+			const flakyLayer = () =>
+				Font.layer(Font.Font("FlakyFont"), Resource.fetchBytes(flaky));
+			const first = await Effect.runPromise(
+				Effect.result(
+					Effect.scoped(Layer.build(flakyLayer()).pipe(Effect.asVoid)),
+				),
+			);
+			expect(first._tag).toBe("Failure");
+			const second = await Effect.runPromise(
+				Effect.result(
+					Effect.scoped(Layer.build(flakyLayer()).pipe(Effect.asVoid)),
+				),
+			);
+			expect(second._tag).toBe("Success");
+			expect(calls.filter((c) => c === flaky)).toHaveLength(2);
+		} finally {
+			globalThis.fetch = realFetch;
+		}
+	});
+});
+
+type _keep = [_extract, _exclude, _extractEmpty, _excludeAll, _authoredR];
+
+describe("type-level assertions", () => {
+	it("stay referenced for the typechecker", () => {
+		const keep: [_keep | null, unknown, unknown] = [
+			null,
+			_nonLiteralRejected,
+			unreachable,
+		];
+		expect(keep).toHaveLength(3);
+	});
+});

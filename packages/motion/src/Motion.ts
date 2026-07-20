@@ -99,7 +99,9 @@ const interpolate = Effect.fnUntraced(function* <
 /** target props, or an updater computing them from the current data */
 export type Target<Data extends Schema.Struct.Fields> =
 	| Partial<InterpolableOrInterpolator<Entity.EntityData<Data>["Type"]>>
-	| ((data: Entity.EntityData<Data>["Type"]) => Partial<InterpolableOrInterpolator<Entity.EntityData<Data>["Type"]>>);
+	| ((
+			data: Entity.EntityData<Data>["Type"],
+	  ) => Partial<InterpolableOrInterpolator<Entity.EntityData<Data>["Type"]>>);
 
 // InterpolableOnly of an opaque Entity.EntityData<Data>["Type"] can't be proven
 // index-compatible with Record<string, number>; the runtime shape is
@@ -163,7 +165,8 @@ const animate = Effect.fnUntraced(function* <
 			// Entity.EntityData<Data>["Type"] is opaque to TS, so spread is disallowed — assign + cast
 			Scene.update(
 				instance,
-				(data) => Object.assign({}, data, value) as Entity.EntityData<Data>["Type"],
+				(data) =>
+					Object.assign({}, data, value) as Entity.EntityData<Data>["Type"],
 			),
 		timing,
 	);
@@ -236,7 +239,10 @@ export const drive = dual<
 	>(
 		duration: Duration.Input,
 		timing: Timing.TimingInput,
-		fn: (t: number, data: Entity.EntityData<Data>["Type"]) => Entity.EntityData<Data>["Type"],
+		fn: (
+			t: number,
+			data: Entity.EntityData<Data>["Type"],
+		) => Entity.EntityData<Data>["Type"],
 	) => <E = never, R = never>(
 		instance: Instance.InstanceOrEffect<Name, Data, Traits, E, R>,
 	) => Effect.Effect<
@@ -254,7 +260,10 @@ export const drive = dual<
 		instance: Instance.InstanceOrEffect<Name, Data, Traits, E, R>,
 		duration: Duration.Input,
 		timing: Timing.TimingInput,
-		fn: (t: number, data: Entity.EntityData<Data>["Type"]) => Entity.EntityData<Data>["Type"],
+		fn: (
+			t: number,
+			data: Entity.EntityData<Data>["Type"],
+		) => Entity.EntityData<Data>["Type"],
 	) => Effect.Effect<
 		Instance.Instance<Name, Data, Traits>,
 		E,
@@ -328,10 +337,16 @@ export const tween = dual<
 // one), animate the extracted value, apply via set each frame
 
 type HasPosition<Data extends Schema.Struct.Fields> = {
-	readonly "~position": Entity.TraitLens<Entity.EntityData<Data>["Type"], Entity.Position>;
+	readonly "~position": Entity.TraitLens<
+		Entity.EntityData<Data>["Type"],
+		Entity.Position
+	>;
 };
 type HasOpacity<Data extends Schema.Struct.Fields> = {
-	readonly "~opacity": Entity.TraitLens<Entity.EntityData<Data>["Type"], number>;
+	readonly "~opacity": Entity.TraitLens<
+		Entity.EntityData<Data>["Type"],
+		number
+	>;
 };
 
 const animatePosition = Effect.fnUntraced(function* <
@@ -349,10 +364,10 @@ const animatePosition = Effect.fnUntraced(function* <
 ) {
 	const instance = yield* Instance.flatten(instanceOrEffect);
 
-	const lens = Entity.traitOrDie<Entity.EntityData<Data>["Type"], Entity.Position>(
-		instance.entity,
-		"~position",
-	);
+	const lens = Entity.traitOrDie<
+		Entity.EntityData<Data>["Type"],
+		Entity.Position
+	>(instance.entity, "~position");
 	const current = lens.get(yield* Scene.data(instance));
 	// partial targets/origins hold the missing axis at its current value
 	const target = { ...current, ...to };

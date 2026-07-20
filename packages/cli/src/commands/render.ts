@@ -1,245 +1,90 @@
-import { Video } from "@effect-motion/export";
 import * as Console from "effect/Console";
 import * as Effect from "effect/Effect";
 import { FileSystem } from "effect/FileSystem";
 import * as Option from "effect/Option";
 import { Path } from "effect/Path";
-import * as Result from "effect/Result";
-import { Argument, Command, Flag } from "effect/unstable/cli";
-import type { Scene } from "effect-motion";
-import {
-	DEFAULT_OUTPUT_DIR,
-	type RenderOverrides,
-	type ResolvedTarget,
-	resolveTarget,
-} from "../Config.js";
-import { findConfig, loadConfig } from "../ConfigLoader.js";
+import { Argument, Command } from "effect/unstable/cli";
 import { MotionCliError } from "../MotionCliError.js";
-import { makeViteLoader, type ViteLoader } from "../ViteLoader.js";
+import { makeViteLoader } from "../ViteLoader.js";
 
-const opt = <A>(o: Option.Option<A>): A | undefined => Option.getOrUndefined(o);
+/**
+ * `motion render [file]` — execute a render entrypoint.
+ *
+ * The entrypoint is an ordinary program: it calls `Video.render(scene, out,
+ * options)` and provides the scene's loader layers itself, so loader
+ * coverage is a compile-time property of the USER's file (`Video.render`'s
+ * own signature demands it). The CLI's job is thin: load the module through
+ * the shared Vite pipeline, run its default-exported Effect against the
+ * platform services bin.ts provides (ChildProcessSpawner included), and
+ * render failures as CLI errors. The same file runs without the CLI by
+ * self-providing `NodeServices` (documented in `@effect-motion/export`).
+ */
 
-const renderFlags = {
-	config: Flag.optional(
-		Flag.string("config").pipe(
-			Flag.withDescription("Path to a motion.config.ts (tsc -p style)"),
-		),
-	),
-	fps: Flag.optional(
-		Flag.integer("fps").pipe(Flag.withDescription("Frame rate override")),
-	),
-	dpr: Flag.optional(
-		Flag.float("dpr").pipe(
-			Flag.withDescription(
-				"Supersampling factor (output pixels = scene × dpr)",
+const renderArgs = {
+	file: Argument.optional(
+		Argument.string("file").pipe(
+			Argument.withDescription(
+				"Render entrypoint (default ./render.ts) — a module default-exporting an Effect",
 			),
 		),
-	),
-	seed: Flag.optional(Flag.string("seed")),
-	maxFrames: Flag.optional(Flag.integer("max-frames")),
-	frames: Flag.optional(
-		Flag.integer("frames").pipe(
-			Flag.withDescription("Cap encoded frames (required for infinite scenes)"),
-		),
-	),
-	outDir: Flag.optional(
-		Flag.string("out-dir").pipe(
-			Flag.withDescription("Output directory override"),
-		),
-	),
-	format: Flag.optional(Flag.choice("format", ["mp4"] as const)),
-	targets: Argument.string("targets").pipe(
-		Argument.withDescription(
-			"Target names from the config, or one scene file path",
-		),
-		Argument.variadic(),
 	),
 };
 
 type RenderInput = {
-	readonly config: Option.Option<string>;
-	readonly fps: Option.Option<number>;
-	readonly dpr: Option.Option<number>;
-	readonly seed: Option.Option<string>;
-	readonly maxFrames: Option.Option<number>;
-	readonly frames: Option.Option<number>;
-	readonly outDir: Option.Option<string>;
-	readonly format: Option.Option<"mp4">;
-	readonly targets: ReadonlyArray<string>;
+	readonly file: Option.Option<string>;
 };
-
-const overridesFrom = (input: RenderInput): RenderOverrides => {
-	const raw = {
-		frameRate: opt(input.fps),
-		dpr: opt(input.dpr),
-		seed: opt(input.seed),
-		maxFrames: opt(input.maxFrames),
-		frames: opt(input.frames),
-		outDir: opt(input.outDir),
-		format: opt(input.format),
-	};
-	return Object.fromEntries(
-		Object.entries(raw).filter(([, v]) => v !== undefined),
-	) as RenderOverrides;
-};
-
-// a positional is a scene file (configless mode) iff it looks like a module
-// path — target names never carry an extension
-const isSceneFile = (arg: string) => /\.(ts|tsx|mts|js|mjs)$/.test(arg);
-
-const sceneBasename = (file: string) => {
-	const base = file.split("/").at(-1) ?? file;
-	return base.replace(/\.(ts|tsx|mts|js|mjs)$/, "");
-};
-
-/** Map a resolved target onto the export package's options shape. */
-const toVideoOptions = (target: ResolvedTarget): Video.VideoOptions => {
-	const { dpr, ...settings } = target.settings;
-	return {
-		// ponytail: VideoSceneSettings doesn't name seed/backgroundColor, but
-		// Video.render passes settings straight through to Scene.stream — the
-		// cast is the CLI-side adaptation decided in design D2; collapse it if
-		// the export package ever widens its settings type
-		settings: settings as Video.VideoSceneSettings,
-		...(dpr !== undefined ? { dpr } : {}),
-		...(target.frames !== undefined ? { frames: target.frames } : {}),
-	};
-};
-
-const renderOne = (
-	loader: ViteLoader,
-	baseDir: string,
-	target: ResolvedTarget,
-) =>
-	Effect.gen(function* () {
-		const path = yield* Path;
-		const fs = yield* FileSystem;
-		const sceneAbs = path.isAbsolute(target.scene)
-			? target.scene
-			: path.resolve(baseDir, target.scene);
-		const module_ = yield* loader.load(sceneAbs);
-		const scene = module_.scene;
-		if (scene === undefined) {
-			return yield* new MotionCliError({
-				reason: "SceneLoadFailed",
-				message: `${sceneAbs} has no \`scene\` export`,
-			});
-		}
-		const outDirAbs = path.resolve(baseDir, target.outDir);
-		yield* fs.makeDirectory(outDirAbs, { recursive: true }).pipe(
-			Effect.mapError(
-				(cause) =>
-					new MotionCliError({
-						reason: "RenderFailed",
-						message: `could not create output directory ${outDirAbs}`,
-						cause,
-					}),
-			),
-		);
-		const outFile = path.join(outDirAbs, target.fileName);
-		yield* Video.render(
-			scene as Scene.Scene<never, never>,
-			outFile,
-			toVideoOptions(target),
-		).pipe(
-			Effect.mapError(
-				(cause) =>
-					new MotionCliError({
-						reason: "RenderFailed",
-						message: `target "${target.name}" failed to render (${sceneAbs})`,
-						cause,
-					}),
-			),
-		);
-		return outFile;
-	});
 
 const handler = (input: RenderInput) =>
 	Effect.gen(function* () {
 		const path = yield* Path;
+		const fs = yield* FileSystem;
 		const cwd = process.cwd();
-		const overrides = overridesFrom(input);
 
-		// resolve the target list and the directory paths are relative to
-		let baseDir: string;
-		let resolved: ReadonlyArray<ResolvedTarget>;
-		const [first] = input.targets;
-		if (
-			first !== undefined &&
-			input.targets.length === 1 &&
-			isSceneFile(first)
-		) {
-			// configless mode: one scene file, library defaults + flags
-			baseDir = cwd;
-			resolved = [
-				resolveTarget(
-					{
-						name: sceneBasename(first),
-						scene: path.resolve(cwd, first),
-						output: DEFAULT_OUTPUT_DIR,
-					},
-					overrides,
-				),
-			];
-		} else {
-			const configPath = yield* findConfig(cwd, opt(input.config));
-			baseDir = path.dirname(configPath);
-			const loader = yield* makeViteLoader(baseDir);
-			const config = yield* loadConfig(loader, configPath);
-			if (input.targets.length === 0) {
-				resolved = config.targets.map((t) => resolveTarget(t, overrides));
-			} else {
-				const known = new Map(config.targets.map((t) => [t.name, t]));
-				const unknown = input.targets.filter((name) => !known.has(name));
-				if (unknown.length > 0) {
-					return yield* new MotionCliError({
-						reason: "UnknownTarget",
-						message:
-							`unknown target${unknown.length > 1 ? "s" : ""} ${unknown.join(", ")} — ` +
-							`known targets: ${[...known.keys()].join(", ") || "(none)"}`,
-					});
-				}
-				resolved = input.targets.map((name) =>
-					// biome-ignore lint/style/noNonNullAssertion: membership checked above
-					resolveTarget(known.get(name)!, overrides),
-				);
-			}
-			return yield* execute(loader, baseDir, resolved);
-		}
-
-		const loader = yield* makeViteLoader(baseDir);
-		return yield* execute(loader, baseDir, resolved);
-	}).pipe(Effect.scoped);
-
-// render sequentially: ffmpeg already saturates the CPU per target
-// (ponytail: parallelize only if profiling ever says otherwise)
-const execute = (
-	loader: ViteLoader,
-	baseDir: string,
-	targets: ReadonlyArray<ResolvedTarget>,
-) =>
-	Effect.gen(function* () {
-		const failures: Array<MotionCliError> = [];
-		for (const target of targets) {
-			const result = yield* Effect.result(renderOne(loader, baseDir, target));
-			if (Result.isSuccess(result)) {
-				yield* Console.log(`✓ ${target.name} → ${result.success}`);
-			} else {
-				failures.push(result.failure);
-				yield* Console.error(`✗ ${target.name}: ${result.failure.message}`);
-			}
-		}
-		if (failures.length > 0) {
+		const requested = Option.getOrElse(input.file, () => "./render.ts");
+		const entryAbs = path.isAbsolute(requested)
+			? requested
+			: path.resolve(cwd, requested);
+		if (!(yield* Effect.orDie(fs.exists(entryAbs)))) {
 			return yield* new MotionCliError({
-				reason: "RenderFailed",
-				message: `${failures.length} of ${targets.length} target${targets.length > 1 ? "s" : ""} failed`,
-				cause: failures[0],
+				reason: "ConfigNotFound",
+				message:
+					`no render entrypoint at ${requested} — create a render.ts that ` +
+					"default-exports a `Video.render(...)` effect (loader layers provided), " +
+					"or pass a path: `motion render ./my.render.ts`",
 			});
 		}
-	});
 
-export const renderCommand = Command.make("render", renderFlags, handler).pipe(
+		const loader = yield* makeViteLoader(path.dirname(entryAbs));
+		const module_ = yield* loader.load(entryAbs);
+		const program = module_.default;
+		if (!Effect.isEffect(program)) {
+			return yield* new MotionCliError({
+				reason: "ConfigInvalid",
+				message:
+					`${entryAbs}: default export is not an Effect — a render entrypoint ` +
+					'default-exports its render program (e.g. `export default Video.render(scene, "output/out.mp4").pipe(Effect.provide(layers))`)',
+			});
+		}
+
+		// run against the handler's own context (bin.ts provides the Node
+		// platform services). An effect requiring anything beyond them fails
+		// here with Effect's named missing-service defect — the loader half of
+		// the contract was already enforced in the user's file at compile time.
+		yield* (program as Effect.Effect<unknown, unknown>).pipe(
+			Effect.mapError(
+				(cause) =>
+					new MotionCliError({
+						reason: "RenderFailed",
+						message: `render entrypoint failed (${entryAbs})`,
+						cause,
+					}),
+			),
+		);
+		yield* Console.log(`rendered ${requested}`);
+	}).pipe(Effect.scoped);
+
+export const renderCommand = Command.make("render", renderArgs, handler).pipe(
 	Command.withDescription(
-		"Render targets from motion.config.ts (or one scene file) to video",
+		"Execute a render entrypoint (default ./render.ts) with the platform provided",
 	),
 );

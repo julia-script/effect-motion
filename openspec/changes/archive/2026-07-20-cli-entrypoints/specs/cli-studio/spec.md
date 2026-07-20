@@ -1,8 +1,13 @@
-# cli-studio Specification
+# cli-studio Specification (delta)
 
-## Purpose
-The `motion studio` preview dev server: hosting the @effect-motion/react Player over a project's scenes with hot reload, scene discovery without registration, and in-browser load-failure reporting.
-## Requirements
+## REMOVED Requirements
+
+### Requirement: Scene discovery without registration
+**Reason**: Explicit registration in `studio.ts` replaces the `src/scenes/*.ts` glob. Registration is the feature: it is what lets the studio type loader coverage across all scenes, and it puts every scene in the entrypoint's import graph so Vite's ordinary HMR covers add/edit/remove — deleting the out-of-root watcher plugin the glob forced.
+**Migration**: Add each scene to `studio.ts`'s `scenes` record (one import + one entry).
+
+## MODIFIED Requirements
+
 ### Requirement: Player preview server
 `motion studio [file]` SHALL start a Vite dev server hosting a CLI-shipped app that imports the studio entrypoint (default `./studio.ts` relative to the working directory; the positional argument selects a different file) and mounts the `@effect-motion/react` `Player` for the selected entry, passing the entry's player options and the config's `layers` as `renderLayers`. There SHALL be no config discovery walk: a missing entrypoint SHALL exit non-zero naming the expected path with a scaffold hint. `--port` and `--host` flags SHALL pass through to Vite; the chosen URL SHALL be printed on startup.
 
@@ -43,4 +48,3 @@ A studio entrypoint (or any module it imports) that throws, or an entrypoint who
 #### Scenario: Wrong default export named
 - **WHEN** `studio.ts` default-exports a plain object instead of `studioConfig(...)`
 - **THEN** the studio shows an error naming `studio.ts` and the expected contract
-

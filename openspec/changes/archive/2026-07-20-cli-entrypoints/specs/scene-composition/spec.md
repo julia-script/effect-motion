@@ -1,8 +1,7 @@
-# scene-composition Specification
+# scene-composition Specification (delta)
 
-## Purpose
-Scene values carry their own composition config — `width`, `height`, and `backgroundColor` — in the After Effects sense of a composition: a scene declares its canvas, and nesting composites child comps into the parent. The root scene's config drives the movie's output; the runner only carries playback settings.
-## Requirements
+## MODIFIED Requirements
+
 ### Requirement: A scene value carries its composition config
 A scene value SHALL carry `width`, `height`, and `backgroundColor`, provided via `Scene.make(generator, meta?)` and defaulting to 1920, 1080, and transparent. `Scene.make` SHALL also accept an optional leading display name — `Scene.make(name, generator, meta?)` — carried on the scene value as `readonly name?: string`. The name is DISPLAY-ONLY (a picker label, never an identifier): unnamed scenes carry no name, and names are not required to be unique. The config SHALL be readable by the runtime.
 
@@ -21,15 +20,3 @@ A scene value SHALL carry `width`, `height`, and `backgroundColor`, provided via
 #### Scenario: Name does not affect playback
 - **WHEN** the same generator is made with and without a name
 - **THEN** both scenes produce identical frames
-
-### Requirement: The runner inherits the root scene's composition config
-`Scene.run` and `Scene.stream` SHALL resolve resolution and background from the ROOT scene's composition config. `Runner.Settings` SHALL NOT accept `width`, `height`, or `backgroundColor`; it carries only playback settings (`frameRate`, `seed`, `maxFrames`). The default camera SHALL derive from the root scene's width.
-
-#### Scenario: Root config drives the movie
-- **WHEN** a scene with `{ width: 800, height: 600 }` is run with `{ frameRate: 30 }`
-- **THEN** the movie renders at 800×600 at 30 fps
-
-#### Scenario: Nested config does not resize the movie
-- **WHEN** a root scene plays a child scene whose width and height differ from the root's
-- **THEN** the movie's resolution and background remain the root scene's
-

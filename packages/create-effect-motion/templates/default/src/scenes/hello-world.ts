@@ -1,8 +1,10 @@
 import { Color, Motion, Scene, Shapes } from "effect-motion";
 
 // A scene is a generator: instantiate entities, then yield animations.
-// Preview it with `motion studio`, render it with `motion render`.
-export const scene = Scene.make(function* () {
+// The leading string is a DISPLAY name (the studio picker label); the
+// studio.ts record key is its identifier. Preview with `motion studio`,
+// render with `motion render`.
+export const scene = Scene.make("Hello World", function* () {
 	const circle = yield* Scene.instantiate(Shapes.Circle, {
 		x: 300,
 		y: 540,

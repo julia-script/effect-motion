@@ -42,6 +42,14 @@ export interface Scene<E = never, R = never> {
 	readonly width: number;
 	readonly height: number;
 	readonly backgroundColor: Color.Color;
+	/**
+	 * DISPLAY-ONLY name (a picker label, never an identifier) — set via the
+	 * optional leading argument of {@link make}. Names may collide; unique
+	 * identity belongs to whatever registers the scene (e.g. a studio.ts
+	 * record key). Never read by the runtime: playback is identical with
+	 * and without a name.
+	 */
+	readonly name?: string;
 	/** phantom: the loader members of R, carried to `Frame<Resources>` */
 	readonly "~resources": Resource.ExtractLoaders<R>;
 }
@@ -52,30 +60,40 @@ export type Resources<S extends AnyScene> = S["~resources"];
 export type Error<S extends AnyScene> =
 	S extends Scene<infer E, any> ? E : never;
 
-export const make = <
-	const Eff extends Effect.Effect<any, any, any>,
-	const AEff,
->(
-	f: () => Generator<Eff, AEff, never>,
-	meta: Partial<Runner.CompConfig> = {},
-): Scene<
-	[Eff] extends [never]
-		? never
-		: [Eff] extends [Effect.Effect<infer _A, infer E, infer _R>]
-			? E
-			: never,
-	[Eff] extends [never]
-		? never
-		: [Eff] extends [Effect.Effect<infer _A, infer _E, infer R>]
-			? R
-			: never
-> => {
-	return makeScene(Effect.scoped(Effect.gen(f)), meta);
+type GeneratorE<Eff> = [Eff] extends [never]
+	? never
+	: [Eff] extends [Effect.Effect<infer _A, infer E, infer _R>]
+		? E
+		: never;
+type GeneratorR<Eff> = [Eff] extends [never]
+	? never
+	: [Eff] extends [Effect.Effect<infer _A, infer _E, infer R>]
+		? R
+		: never;
+
+export const make: {
+	<const Eff extends Effect.Effect<any, any, any>, const AEff>(
+		f: () => Generator<Eff, AEff, never>,
+		meta?: Partial<Runner.CompConfig>,
+	): Scene<GeneratorE<Eff>, GeneratorR<Eff>>;
+	<const Eff extends Effect.Effect<any, any, any>, const AEff>(
+		name: string,
+		f: () => Generator<Eff, AEff, never>,
+		meta?: Partial<Runner.CompConfig>,
+	): Scene<GeneratorE<Eff>, GeneratorR<Eff>>;
+} = (first: unknown, second?: unknown, third?: unknown) => {
+	type Gen = () => Generator<Effect.Effect<any, any, any>, unknown, never>;
+	const [name, f, meta] =
+		typeof first === "string"
+			? [first, second as Gen, (third as Partial<Runner.CompConfig>) ?? {}]
+			: [undefined, first as Gen, (second as Partial<Runner.CompConfig>) ?? {}];
+	return makeScene(Effect.scoped(Effect.gen(f)), meta, name);
 };
 
 const makeScene = <E = never, R = never>(
 	runnerEffect: Effect.Effect<void, E, R>,
 	meta: Partial<Runner.CompConfig>,
+	name?: string,
 ): Scene<E, R> => ({
 	[TypeId]: TypeId,
 
@@ -89,6 +107,7 @@ const makeScene = <E = never, R = never>(
 	>,
 	"~resources": undefined as never,
 
+	...(name !== undefined ? { name } : {}),
 	width: meta.width ?? Runner.defaultComp.width,
 	height: meta.height ?? Runner.defaultComp.height,
 	backgroundColor: meta.backgroundColor ?? Runner.defaultComp.backgroundColor,

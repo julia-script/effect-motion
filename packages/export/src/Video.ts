@@ -97,8 +97,7 @@ export const render = <E = never, LoaderR = never>(
 	// here; the ThorVG engine is provided internally too. The scene's
 	// resource loaders stay the CALLER's requirement — provide them via
 	// Font.layer/Image.layer (Node fs loaders work here: no URLs needed)
-	| ChildProcessSpawner.ChildProcessSpawner
-	| Resource.ExtractLoaders<LoaderR>
+	ChildProcessSpawner.ChildProcessSpawner | Resource.ExtractLoaders<LoaderR>
 > =>
 	Effect.scoped(
 		Effect.gen(function* () {
@@ -143,6 +142,15 @@ export const render = <E = never, LoaderR = never>(
 				),
 			);
 
+			// writing a file implies its directory: create the output's parent
+			// so render programs carry no mkdir boilerplate (Node-only module,
+			// no new requirement)
+			yield* Effect.promise(async () => {
+				const { mkdir } = await import("node:fs/promises");
+				const { dirname } = await import("node:path");
+				await mkdir(dirname(outPath), { recursive: true });
+			});
+
 			yield* Ffmpeg.encode(pngStream as Stream.Stream<Uint8Array>, outPath, {
 				frameRate: meta.frameRate,
 				binary: options.binary,
@@ -155,6 +163,5 @@ export const render = <E = never, LoaderR = never>(
 	).pipe(Effect.provide(baseLayer(scene))) as Effect.Effect<
 		void,
 		E | Ffmpeg.EncodeError | ThorvgException,
-		| ChildProcessSpawner.ChildProcessSpawner
-		| Resource.ExtractLoaders<LoaderR>
+		ChildProcessSpawner.ChildProcessSpawner | Resource.ExtractLoaders<LoaderR>
 	>;

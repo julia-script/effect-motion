@@ -4,14 +4,15 @@ This is an [effect-motion](https://github.com/julia-script/effect-motion) projec
 
 ## Layout and commands
 
-- `src/scenes/*.ts` — one scene per module, each exporting `scene`. Any file here is previewable without registration.
+- `src/scenes/*.ts` — one scene per module, each exporting `scene`. `Scene.make("Display Name", gen, meta?)` optionally names a scene for the studio picker.
 - `src/main.ts` — the movie: an ordinary scene that sequences the others (`Scene.play` + `handle.finished`). Nothing is special about it.
-- `motion.config.ts` — render targets. Output is always `<output>/<name>.mp4`; never write output paths by hand.
+- `studio.ts` — the studio registration: `studioConfig({ scenes, layers })`. Record keys are unique identifiers; ONLY registered scenes appear in the picker, so add an import + entry for every new scene. Scenes with typed resources (fonts, images) need their loaders in `layers` — the file will not compile until every registered scene is covered.
+- `render.ts` — an ordinary program default-exporting a `Video.render(...)` effect. More outputs are more calls; loader layers are provided here with `Effect.provide` (compile-checked). Knobs (paths, fps, seed) live in this code — there are no CLI flags.
 - `src/assets/` — static files (images, fonts).
-- `motion studio` — browser preview with hot reload (scene picker lists config targets plus unregistered scenes).
-- `motion render [name...]` — render targets; `motion render ./src/scenes/foo.ts` renders one file with defaults. Flags beat config beat library defaults. `--verbose` prints full error cause chains.
+- `motion studio [file]` — browser preview with hot reload of `studio.ts` (or the given entrypoint).
+- `motion render [file]` — execute `render.ts` (or the given entrypoint) with the platform provided. `--verbose` prints full error cause chains. The same file runs standalone via `tsx render.ts` by piping through `NodeServices` from `@effect/platform-node`.
 
-Verify a scene change by rendering it (`motion render <target>`) or checking it in the running studio — not by reading code alone.
+Verify a scene change by rendering it (`motion render`) or checking it in the running studio — not by reading code alone.
 
 ## Writing scenes
 
@@ -39,21 +40,26 @@ export const scene = Scene.make(function* () {
 
 - **Never** use `Math.random()`, `Date.now()`, or any wall-clock/OS state in a scene — every run must be byte-identical. Use the provided seeded random (`Effect.random`, seeded from `settings.seed`).
 - Durations land exactly on target on the final frame; springs snap on settle. Don't add "fudge" frames.
-- Scene coordinates are the `settings.width`/`height` of the target that renders them (this template: 1920×1080). `dpr` scales output pixels, not coordinates.
+- Scene coordinates are the scene's OWN comp config — `Scene.make(gen, { width, height, backgroundColor })` (this template: 1920×1080). `dpr` (a `Video.render` option) scales output pixels, not coordinates.
 - The `effect` dependency is pinned **exactly** — upgrading it can change seeded-random sequences. Never bump it casually; upgrade `effect` and `effect-motion` together, deliberately.
 
-## Config
+## Entrypoints
 
 ```ts
-export default defineConfig({
-	targets: [{
-		name: "intro",                    // unique — doubles as the output basename
-		scene: "./src/scenes/intro.ts",
-		settings: { width: 1920, height: 1080, frameRate: 60, dpr: 1 },
-		output: "./output",               // a DIRECTORY; file name is derived
-		// frames: 600                    // REQUIRED if the scene is infinite
-	}],
+// studio.ts — what the studio previews
+export default studioConfig({
+	scenes: {
+		intro,                                      // key = identifier, label = scene name ?? key
+		fancy: { scene: fancy, fps: 30 },           // per-entry player options
+	},
+	// layers: Layer.mergeAll(Font.layer(...), …)  // REQUIRED once a scene declares resources
+});
+
+// render.ts — what `motion render` executes
+export default Effect.gen(function* () {
+	yield* Video.render(intro, "./output/intro.mp4", { settings: { frameRate: 60 } });
+	// yield* Video.render(intro, "./output/intro-hd.mp4", { dpr: 2 });  // more outputs = more calls
 });
 ```
 
-A scene used by several targets renders once per target (e.g. different resolutions). An infinite scene (one that never finishes) must set `frames`, or rendering would never end.
+Render the same scene several times for variants (resolutions, dpr). An infinite scene (one that never finishes) must pass `frames` in its `Video.render` options, or rendering would never end.

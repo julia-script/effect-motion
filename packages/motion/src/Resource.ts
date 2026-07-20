@@ -33,17 +33,33 @@ export type ExcludeLoaders<R> = R extends LoaderBrand ? never : R;
  * `Font.layer`/`Image.layer`. Fails with a typed error naming the URL, so a
  * bad source surfaces at layer construction (e.g. the player's error
  * state), never at frame time. Compose retries on top as needed.
+ *
+ * Memoized per URL at module level: asset bytes are immutable, and layers
+ * rebuild per Player mount (studio scene switches), so each URL is fetched
+ * at most once per process. A FAILED fetch is not cached — the next
+ * construction retries. Custom load effects cache themselves (this pattern)
+ * when they should.
  */
+const fetchCache = new Map<string, Promise<Uint8Array>>();
+
 export const fetchBytes = (
 	url: string,
 ): Effect.Effect<Uint8Array, EffectMotionError> =>
 	Effect.tryPromise({
-		try: async () => {
-			const response = await fetch(url);
-			if (!response.ok) {
-				throw new Error(`HTTP ${response.status}`);
+		try: () => {
+			let pending = fetchCache.get(url);
+			if (pending === undefined) {
+				pending = fetch(url).then(async (response) => {
+					if (!response.ok) {
+						throw new Error(`HTTP ${response.status}`);
+					}
+					return new Uint8Array(await response.arrayBuffer());
+				});
+				// evict on failure so a transient error can retry
+				pending.catch(() => fetchCache.delete(url));
+				fetchCache.set(url, pending);
 			}
-			return new Uint8Array(await response.arrayBuffer());
+			return pending;
 		},
 		catch: (cause) =>
 			EffectMotionError.of(`Resource fetch failed: ${url}`, cause),

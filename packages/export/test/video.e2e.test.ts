@@ -80,3 +80,54 @@ it.runIf(canVerify)(
 	},
 	30_000,
 );
+
+// the standalone render-program contract (video-encoding spec): loader
+// layers + NodeServices in one pipe — exactly what a render.ts writes —
+// with the output landing in a directory that does not exist yet
+it.runIf(canVerify)(
+	"standalone pipe: loader layers + NodeServices, output dir created",
+	async () => {
+		const { Video } = await import("../src");
+		const {
+			Image,
+			Scene: SceneMod,
+			Shapes: ShapesMod,
+		} = await import("effect-motion");
+		const { encodePng } = await import("@effect-motion/thorvg/png");
+
+		const rgba = new Uint8Array(8 * 8 * 4);
+		for (let i = 0; i < rgba.length; i += 4) {
+			rgba[i + 1] = 255;
+			rgba[i + 3] = 255;
+		}
+		const greenPng = encodePng(rgba, 8, 8);
+		const Dot = Image.Image("dot");
+
+		const withImage = SceneMod.make(
+			function* () {
+				const dot = yield* Dot;
+				yield* SceneMod.instantiate(ShapesMod.Image, {
+					image: dot,
+					x: 30,
+					y: 30,
+					width: 40,
+					height: 40,
+				});
+				for (let i = 0; i < 3; i++) yield* SceneMod.tick;
+			},
+			{ width: 120, height: 80 },
+		);
+
+		const out = join(dir, "fresh", "nested", "asset.mp4");
+		await Effect.runPromise(
+			Video.render(withImage as never, out, {
+				settings: { frameRate: 10 },
+			}).pipe(
+				Effect.provide(Image.layer(Dot, Effect.succeed(greenPng))),
+				Effect.provide(NodeServices.layer),
+			) as Effect.Effect<void>,
+		);
+		expect(existsSync(out)).toBe(true);
+	},
+	30_000,
+);

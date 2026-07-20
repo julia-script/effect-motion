@@ -160,10 +160,10 @@ const springPosition = Effect.fnUntraced(function* <
 	settleTolerance?: number,
 ) {
 	const instance = yield* Instance.flatten(instanceOrEffect);
-	const lens = Entity.traitOrDie<Entity.EntityData<Data>["Type"], Entity.Position>(
-		instance.entity,
-		"~position",
-	);
+	const lens = Entity.traitOrDie<
+		Entity.EntityData<Data>["Type"],
+		Entity.Position
+	>(instance.entity, "~position");
 	const current = lens.get(yield* Scene.data(instance));
 	// partial targets/origins hold the missing axis at its current value
 	const target = { ...current, ...to };
@@ -181,7 +181,10 @@ const springPosition = Effect.fnUntraced(function* <
 const firstArgIsInstance = (args: IArguments) => Instance.isInstance(args[0]);
 
 type HasPosition<Data extends Schema.Struct.Fields> = {
-	readonly "~position": Entity.TraitLens<Entity.EntityData<Data>["Type"], Entity.Position>;
+	readonly "~position": Entity.TraitLens<
+		Entity.EntityData<Data>["Type"],
+		Entity.Position
+	>;
 };
 
 /**

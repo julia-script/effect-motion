@@ -208,7 +208,7 @@ const handler = (input: CreateInput) =>
 				`${name} is ready.`,
 				dir === cwd ? "" : `  cd ${path.relative(cwd, dir)}`,
 				`  ${pm === "npm" ? "npm run" : pm} studio    # preview scenes with hot reload`,
-				`  ${pm === "npm" ? "npm run" : pm} render    # render targets from motion.config.ts`,
+				`  ${pm === "npm" ? "npm run" : pm} render    # execute render.ts (the render program)`,
 			]
 				.filter((line) => line !== "")
 				.join("\n"),

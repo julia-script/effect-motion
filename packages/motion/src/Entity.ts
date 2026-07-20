@@ -1,6 +1,5 @@
-import { Effect, Function, Predicate } from "effect";
+import { Effect, Predicate } from "effect";
 import * as Schema from "effect/Schema";
-import type { AnyStructSchema } from "effect/unstable/workflow/Workflow";
 
 export const TypeId = "~motion/Entity" as const;
 
@@ -69,21 +68,6 @@ export const traitOrDie = <Data, Value>(
 		);
 	}
 	return lens as TraitLens<Data, Value>;
-};
-
-type NormalizeStructLike<T extends Schema.Struct.Fields | AnyStructSchema> =
-	T extends AnyStructSchema
-		? T
-		: T extends Schema.Struct.Fields
-			? Schema.Struct<T>
-			: never;
-
-const normalizeStructLike = <T extends Schema.Struct.Fields | AnyStructSchema>(
-	data: T,
-): NormalizeStructLike<T> => {
-	return (
-		Schema.isSchema(data) ? data : Schema.Struct(data)
-	) as NormalizeStructLike<T>;
 };
 
 export const make = <

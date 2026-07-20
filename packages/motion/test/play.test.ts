@@ -1,4 +1,4 @@
-import { Context, Effect, Random, Schedule } from "effect";
+import { Effect, Random, Schedule } from "effect";
 import * as Stream from "effect/Stream";
 import { describe, expect, it } from "vitest";
 import * as Motion from "../src/Motion";

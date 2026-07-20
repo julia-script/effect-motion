@@ -2,9 +2,7 @@
 
 ## Purpose
 Project scaffolding via `motion init`: interactive prompts, directory/name resolution, the generated project tree, exact dependency pinning, and package-manager-aware install.
-
 ## Requirements
-
 ### Requirement: Interactive scaffold with directory-derived project name
 `motion init` SHALL prompt for a target directory (accepting a positional argument to skip the prompt) and a package manager. When the user enters `.`, the project SHALL be created in the current directory and named after the current directory's basename; otherwise the directory is created and its basename is the project name. A target directory that exists and is not empty (ignoring dotfiles like `.git`) SHALL abort the scaffold with an error.
 
@@ -21,11 +19,15 @@ Project scaffolding via `motion init`: interactive prompts, directory/name resol
 - **THEN** init aborts with an error and writes nothing
 
 ### Requirement: Generated project structure
-The scaffold SHALL produce: `src/scenes/hello-world.ts` (a simple working scene exporting `scene`), `src/main.ts` (an ordinary scene composing the scene modules via scene combinators — not a CLI-special file), `src/assets/` (empty, kept), `motion.config.ts` (registering `hello-world` and `main` as targets with `output: "./output"`), `package.json`, `tsconfig.json` (strict, matching the library's supported settings), an `AGENTS.md` teaching AI coding agents the project's authoring model (scene structure, animator conventions, determinism rules, config contract), and a `.gitignore` covering `node_modules/` and `output/`. The generated project SHALL render and preview successfully with no edits.
+The scaffold SHALL produce: `src/scenes/hello-world.ts` (a simple working NAMED scene exporting `scene`), `src/main.ts` (an ordinary scene composing the scene modules via scene combinators — not a CLI-special file), `src/assets/` (empty, kept), `studio.ts` (a `studioConfig` registering the hello and main scenes), `render.ts` (a program default-exporting a `Video.render` effect writing to `./output`), `package.json`, `tsconfig.json` (strict, matching the library's supported settings), an `AGENTS.md` teaching AI coding agents the project's authoring model (scene structure, animator conventions, determinism rules, the two entrypoint contracts), and a `.gitignore` covering `node_modules/` and `output/`. There SHALL be no `motion.config.ts`. The generated project SHALL render and preview successfully with no edits.
 
 #### Scenario: Fresh scaffold works end to end
 - **WHEN** a scaffolded project runs `motion render` after install
-- **THEN** MP4 files for the registered targets appear under `output/` with exit code 0
+- **THEN** an MP4 appears under `output/` with exit code 0
+
+#### Scenario: Fresh scaffold previews
+- **WHEN** a scaffolded project runs `motion studio` and the URL is opened
+- **THEN** the picker lists the registered scenes and the hello scene plays
 
 ### Requirement: Exact dependency pinning
 The generated `package.json` SHALL pin exact versions (no `^`/`~`/`latest`) of `effect-motion`, `@effect-motion/react`, `@effect-motion/export`, and `effect`, using the version set the installed CLI release was built and tested against. After scaffolding, the CLI SHALL run the chosen package manager's install unless `--no-install` is passed, and the package-manager prompt SHALL default to the manager that invoked the CLI (from `npm_config_user_agent`) when detectable.
@@ -37,3 +39,4 @@ The generated `package.json` SHALL pin exact versions (no `^`/`~`/`latest`) of `
 #### Scenario: Install skipped on request
 - **WHEN** `motion init --no-install` completes
 - **THEN** no install runs and the final message shows the install + studio commands for the chosen package manager
+

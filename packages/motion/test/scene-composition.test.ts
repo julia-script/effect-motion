@@ -42,6 +42,34 @@ describe("scene composition config", () => {
 		expect(s.height).toBe(50);
 	});
 
+	it("an optional leading name is carried, display-only", async () => {
+		const gen = function* () {
+			yield* Scene.instantiate(Shapes.Circle, { x: 25, y: 25, radius: 8 });
+			yield* Scene.tick;
+		};
+		const unnamed = Scene.make(gen as never, { width: 100, height: 50 });
+		const named = Scene.make("The Grand Orbit", gen as never, {
+			width: 100,
+			height: 50,
+		});
+		expect(unnamed.name).toBeUndefined();
+		expect(named.name).toBe("The Grand Orbit");
+		expect(named.width).toBe(100);
+		// the name never reaches the runtime: identical frames either way
+		const dataOf = (frames: any[]) =>
+			frames.map((f) =>
+				Object.fromEntries(
+					Object.entries(f.instances).map(([id, e]: [string, any]) => [
+						id,
+						e.data,
+					]),
+				),
+			);
+		expect(dataOf(await collect(named))).toEqual(
+			dataOf(await collect(unnamed)),
+		);
+	});
+
 	it("a nested comp does not resize the movie", async () => {
 		const movie = Scene.make(
 			function* () {
