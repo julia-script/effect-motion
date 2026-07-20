@@ -1,5 +1,6 @@
 import type { Scope } from "effect";
 import { Effect, Predicate } from "effect";
+import { dual } from "effect/Function";
 import * as Pipeable from "effect/Pipeable";
 import * as THREE from "three/webgpu";
 
@@ -21,6 +22,12 @@ export interface RenderTarget extends Pipeable.Pipeable {
 
 export const isRenderTarget = (u: unknown): u is RenderTarget =>
 	Predicate.hasProperty(u, TypeId);
+
+/**
+ * `dual`'s predicate receives the whole `arguments` object, not the first
+ * argument — dispatch on `args[0]`. Guard-based, never arity (AGENTS.md).
+ */
+const firstArgIsRenderTarget = (args: IArguments) => isRenderTarget(args[0]);
 
 const brand = (target: THREE.RenderTarget): RenderTarget => {
 	const self: RenderTarget = {
@@ -70,11 +77,13 @@ export const height = (self: RenderTarget): number =>
  * Resize in place. Three reallocates the underlying GPU textures, so the
  * handle stays valid and nothing needs re-registering with the scope.
  */
-export const setSize = (
-	self: RenderTarget,
-	nextWidth: number,
-	nextHeight: number,
-): RenderTarget => {
-	self["~three.renderTarget"].setSize(nextWidth, nextHeight);
-	return self;
-};
+export const setSize: {
+	(nextWidth: number, nextHeight: number): (self: RenderTarget) => RenderTarget;
+	(self: RenderTarget, nextWidth: number, nextHeight: number): RenderTarget;
+} = dual(
+	firstArgIsRenderTarget,
+	(self: RenderTarget, nextWidth: number, nextHeight: number) => {
+		self["~three.renderTarget"].setSize(nextWidth, nextHeight);
+		return self;
+	},
+);

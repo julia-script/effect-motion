@@ -1,5 +1,6 @@
 import type { Scope } from "effect";
 import { Effect, Predicate } from "effect";
+import { dual } from "effect/Function";
 import * as Pipeable from "effect/Pipeable";
 import * as THREE from "three/webgpu";
 import { wrap, wrapPromise } from "./Interop.js";
@@ -26,6 +27,12 @@ export interface Renderer extends Pipeable.Pipeable {
 
 export const isRenderer = (u: unknown): u is Renderer =>
 	Predicate.hasProperty(u, TypeId);
+
+/**
+ * `dual`'s predicate receives the whole `arguments` object, not the first
+ * argument — dispatch on `args[0]`. Guard-based, never arity (AGENTS.md).
+ */
+const firstArgIsRenderer = (args: IArguments) => isRenderer(args[0]);
 
 const brand = (renderer: THREE.WebGPURenderer): Renderer => {
 	const self: Renderer = {
@@ -173,15 +180,18 @@ export const compile = (
 	);
 
 /** Direct the renderer's output at a target, or `null` for the canvas. */
-export const setRenderTarget = (
-	self: Renderer,
-	target: RenderTarget.RenderTarget | null,
-): Renderer => {
-	self["~three.renderer"].setRenderTarget(
-		target === null ? null : target["~three.renderTarget"],
-	);
-	return self;
-};
+export const setRenderTarget: {
+	(target: RenderTarget.RenderTarget | null): (self: Renderer) => Renderer;
+	(self: Renderer, target: RenderTarget.RenderTarget | null): Renderer;
+} = dual(
+	firstArgIsRenderer,
+	(self: Renderer, target: RenderTarget.RenderTarget | null) => {
+		self["~three.renderer"].setRenderTarget(
+			target === null ? null : target["~three.renderTarget"],
+		);
+		return self;
+	},
+);
 
 /** The current output target, or `null` when drawing to the canvas. */
 export const getRenderTarget = (
@@ -192,20 +202,33 @@ export const getRenderTarget = (
 };
 
 /** Logical size in CSS pixels; the drawing buffer is this × pixelRatio. */
-export const setSize = (
-	self: Renderer,
-	width: number,
-	height: number,
-	updateStyle = false,
-): Renderer => {
-	self["~three.renderer"].setSize(width, height, updateStyle);
-	return self;
-};
+export const setSize: {
+	(
+		width: number,
+		height: number,
+		updateStyle?: boolean,
+	): (self: Renderer) => Renderer;
+	(
+		self: Renderer,
+		width: number,
+		height: number,
+		updateStyle?: boolean,
+	): Renderer;
+} = dual(
+	firstArgIsRenderer,
+	(self: Renderer, width: number, height: number, updateStyle = false) => {
+		self["~three.renderer"].setSize(width, height, updateStyle);
+		return self;
+	},
+);
 
-export const setPixelRatio = (self: Renderer, pixelRatio: number): Renderer => {
+export const setPixelRatio: {
+	(pixelRatio: number): (self: Renderer) => Renderer;
+	(self: Renderer, pixelRatio: number): Renderer;
+} = dual(firstArgIsRenderer, (self: Renderer, pixelRatio: number) => {
 	self["~three.renderer"].setPixelRatio(pixelRatio);
 	return self;
-};
+});
 
 export const getPixelRatio = (self: Renderer): number =>
 	self["~three.renderer"].getPixelRatio();
