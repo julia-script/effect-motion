@@ -1,5 +1,6 @@
 export * as Camera from "./Camera.js";
 export * as Color from "./Color.js";
+export { EffectMotionError } from "./EffectMotionError.js";
 export * as Entity from "./Entity.js";
 export * as Font from "./Font.js";
 export * as Image from "./Image.js";

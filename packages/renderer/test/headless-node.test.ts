@@ -10,9 +10,7 @@ import { unreachable } from "./support/raise.js";
 
 const framesOf = (
 	make: () => Generator<Effect.Effect<any, any, any>, void, never>,
-): Promise<
-	Array<Parameters<NodeRenderer.NodeFrameRenderer["renderToPng"]>[0]>
-> =>
+): Promise<Array<Parameters<typeof NodeRenderer.renderToPng>[1]>> =>
 	Effect.runPromise(
 		Scene.stream(
 			Scene.make(make as never, {
@@ -43,7 +41,9 @@ describe("headless Dawn rendering", () => {
 		const png = await Effect.runPromise(
 			Effect.scoped(
 				NodeRenderer.make({ width: 128, height: 64 }).pipe(
-					Effect.flatMap((renderer) => renderer.renderToPng(frame)),
+					Effect.flatMap((renderer) =>
+						NodeRenderer.renderToPng(renderer, frame),
+					),
 				),
 			) as Effect.Effect<Uint8Array, never, never>,
 		);
@@ -73,7 +73,7 @@ describe("headless Dawn rendering", () => {
 			Effect.scoped(
 				NodeRenderer.make({ width: 128, height: 64 }).pipe(
 					Effect.flatMap((renderer) =>
-						renderer.renderToPng(frame).pipe(
+						NodeRenderer.renderToPng(renderer, frame).pipe(
 							Effect.map(() => {
 								// sample the retained graph, not pixels: circle present
 								return {

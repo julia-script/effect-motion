@@ -1,4 +1,5 @@
 import { Line2 as FatLine, THREE, Tsl } from "@effect-motion/three";
+import { Effect } from "effect";
 import { Color, Shapes } from "effect-motion";
 import type * as Entity from "effect-motion/Entity";
 import { renderOpacity, renderSize } from "effect-motion/particles/overLife";
@@ -12,7 +13,8 @@ import type {
 	RenderContext,
 	Retained,
 } from "./EntityRenderer.js";
-import { makeTextMesh, type TextMesh } from "./text.js";
+import * as Images from "./Images.js";
+import * as Text from "./Text.js";
 
 /**
  * Built-in entity renderers: the retained (`build`/`update`/`dispose`) port
@@ -546,7 +548,7 @@ const disposePathChild = (child: THREE.Object3D): void => {
 	(mesh.material as THREE.Material).dispose();
 };
 
-// ── text: SDF glyphs (see text.ts) ───────────────────────────────────────
+// ── text: SDF glyphs (see Text.ts) ───────────────────────────────────────
 // Layout is async (typesetting + first-sight glyph SDF generation) and
 // registered with ctx.waitFor, so the render path never presents a
 // half-built string. The mesh billboards and scales with perspective like
@@ -554,7 +556,7 @@ const disposePathChild = (child: THREE.Object3D): void => {
 
 const text: EntityRenderer<typeof Shapes.Text> = {
 	build: (leaf, ctx) => {
-		const textMesh = makeTextMesh(ctx.text);
+		const textMesh = Text.makeMesh(ctx.text);
 		const retained: Retained = {
 			object: textMesh.mesh,
 			billboard: true,
@@ -565,7 +567,7 @@ const text: EntityRenderer<typeof Shapes.Text> = {
 		return retained;
 	},
 	update: (retained, leaf, ctx) => {
-		const textMesh = retained.object.userData.textMesh as TextMesh;
+		const textMesh = retained.object.userData.textMesh as Text.TextMesh;
 		const data = leaf.data;
 		const key = [
 			data.text,
@@ -577,15 +579,13 @@ const text: EntityRenderer<typeof Shapes.Text> = {
 		if (retained.object.userData.textKey !== key) {
 			retained.object.userData.textKey = key;
 			ctx.waitFor(
-				ctx.text
-					.layout({
-						text: data.text,
-						fontId: data.fontFamily.id,
-						fontSize: data.fontSize,
-						textAnchor: data.textAnchor,
-						baseline: data.baseline,
-					})
-					.then((quads) => textMesh.setQuads(quads)),
+				Text.layout(ctx.text, {
+					text: data.text,
+					fontId: data.fontFamily.id,
+					fontSize: data.fontSize,
+					textAnchor: data.textAnchor,
+					baseline: data.baseline,
+				}).pipe(Effect.map((quads) => textMesh.setQuads(quads))),
 			);
 		}
 		const { r, g, b, a } = Color.bytes(data.fill);
@@ -631,16 +631,20 @@ const image: EntityRenderer<typeof Shapes.Image> = {
 			mesh.userData.imageId = data.image.id;
 			mesh.visible = false;
 			ctx.waitFor(
-				ctx.images.ready(data.image.id).then((decoded) => {
-					material.map = decoded.texture;
-					material.needsUpdate = true;
-					mesh.userData.natural = {
-						width: decoded.width,
-						height: decoded.height,
-					};
-					applySize(mesh.userData.natural);
-					mesh.visible = material.opacity > 0;
-				}),
+				Images.ready(ctx.images, data.image.id).pipe(
+					Effect.flatMap((decoded) =>
+						Effect.sync(() => {
+							material.map = decoded.texture;
+							material.needsUpdate = true;
+							mesh.userData.natural = {
+								width: decoded.width,
+								height: decoded.height,
+							};
+							applySize(mesh.userData.natural);
+							mesh.visible = material.opacity > 0;
+						}),
+					),
+				),
 			);
 		} else if (mesh.userData.natural !== undefined) {
 			applySize(mesh.userData.natural as { width: number; height: number });
@@ -682,7 +686,7 @@ const particleField: EntityRenderer<typeof ParticleField> = {
 		const material = new THREE.MeshBasicNodeMaterial();
 		material.transparent = true;
 		material.side = THREE.DoubleSide;
-		// ponytail: TSL typing quarantined (see text.ts) — offset.xy shifts
+		// ponytail: TSL typing quarantined (see Text.ts) — offset.xy shifts
 		// the unit circle, offset.z scales it, color.a multiplies opacity
 		interface Node {
 			readonly x: Node;

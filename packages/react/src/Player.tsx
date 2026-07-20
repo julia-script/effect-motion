@@ -262,18 +262,18 @@ const useScene = (
 									sized.dpr !== dpr
 								) {
 									sized = { width: frame.width, height: frame.height, dpr };
-									sink.renderer.setPixelRatio(dpr);
-									sink.renderer.setSize(frame.width, frame.height, false);
+									sink.gpu.setPixelRatio(dpr);
+									sink.gpu.setSize(frame.width, frame.height, false);
 								}
 								// font loaders resolve from this runtime's context (the
 								// renderLayers merge); missing loaders defect loudly
-								yield* sink.resolveResources(frame);
-								yield* Effect.sync(() => sink.syncFrame(frame));
+								yield* FrameRenderer.resolveResources(sink, frame);
+								yield* Effect.sync(() => FrameRenderer.syncFrame(sink, frame));
 								if (!prewarmed) {
 									prewarmed = true;
-									yield* sink.prewarm();
+									yield* FrameRenderer.prewarm(sink);
 								}
-								yield* sink.render();
+								yield* FrameRenderer.render(sink);
 							}).pipe(Effect.mapError(PlayerError.of("Error rendering frame"))),
 						);
 

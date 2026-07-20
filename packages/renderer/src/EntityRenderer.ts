@@ -1,7 +1,9 @@
 import type { THREE } from "@effect-motion/three";
+import type { Effect } from "effect";
+import type { EffectMotionError } from "effect-motion";
 import type * as Entity from "effect-motion/Entity";
-import type { ImageStore } from "./images.js";
-import type { TextEngine } from "./text.js";
+import type * as Images from "./Images.js";
+import type * as Text from "./Text.js";
 
 /**
  * The retained entity render contract — the successor to the immediate-mode
@@ -32,13 +34,14 @@ export interface RenderContext {
 	/**
 	 * register async work (SDF layout, texture decode) the frame's render
 	 * must wait for — the render path drains these before presenting, so
-	 * export frames never ship half-built content.
+	 * export frames never ship half-built content. Failures reach the
+	 * render call's error channel.
 	 */
-	readonly waitFor: (work: Promise<unknown>) => void;
-	/** the renderer's SDF text engine (fonts, atlas, layout) */
-	readonly text: TextEngine;
+	readonly waitFor: (work: Effect.Effect<unknown, EffectMotionError>) => void;
+	/** the renderer's SDF text actor (fonts, atlas, layout) */
+	readonly text: Text.Text;
 	/** decoded image textures, cached per renderer scope */
-	readonly images: ImageStore;
+	readonly images: Images.Images;
 }
 
 /** One leaf instance as the frame walk hands it to an entity renderer. */

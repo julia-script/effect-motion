@@ -11,9 +11,7 @@ import { unreachable } from "./support/raise.js";
 
 const framesOf = (
 	make: () => Generator<Effect.Effect<any, any, any>, void, never>,
-): Promise<
-	Array<Parameters<NodeRenderer.NodeFrameRenderer["renderToPng"]>[0]>
-> =>
+): Promise<Array<Parameters<typeof NodeRenderer.renderToPng>[1]>> =>
 	Effect.runPromise(
 		Scene.stream(
 			Scene.make(make as never, {
@@ -45,7 +43,9 @@ describe("SDF text, headless", () => {
 		const png = await Effect.runPromise(
 			Effect.scoped(
 				NodeRenderer.make({ width: 256, height: 96 }).pipe(
-					Effect.flatMap((renderer) => renderer.renderToPng(frame)),
+					Effect.flatMap((renderer) =>
+						NodeRenderer.renderToPng(renderer, frame),
+					),
 				),
 			) as Effect.Effect<Uint8Array, never, never>,
 		);
@@ -68,7 +68,9 @@ describe("SDF text, headless", () => {
 		const exit = await Effect.runPromiseExit(
 			Effect.scoped(
 				NodeRenderer.make({ width: 256, height: 96 }).pipe(
-					Effect.flatMap((renderer) => renderer.renderToPng(frame)),
+					Effect.flatMap((renderer) =>
+						NodeRenderer.renderToPng(renderer, frame),
+					),
 				),
 			) as Effect.Effect<Uint8Array, unknown, never>,
 		);

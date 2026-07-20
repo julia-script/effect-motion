@@ -11,12 +11,14 @@ import {
 import * as NodeGpu from "@effect-motion/three/node";
 import type { Scope } from "effect";
 import { Effect } from "effect";
+import type { EffectMotionError } from "effect-motion";
 import type * as Entity from "effect-motion/Entity";
 import type { Frame } from "effect-motion/Scene";
-import { buildDofBlur, makeDofUniforms } from "./dof.js";
+import { builtinRegistry } from "./Builtins.js";
+import { buildDofBlur, type DofUniforms, makeDofUniforms } from "./Dof.js";
 import type { EntityRenderer } from "./EntityRenderer.js";
-import { FrameSync, renderCompTargets, resolveResources } from "./Renderer.js";
-import { builtinRegistry } from "./shapes.js";
+import { renderCompTargets } from "./Renderer.js";
+import * as Sync from "./Sync.js";
 
 /**
  * The Node adapter: render frames on a real GPU (Dawn) without a browser
@@ -120,88 +122,93 @@ export interface NodeRendererOptions {
 	readonly renderers?: Record<string, AnyEntityRenderer>;
 }
 
-export class NodeFrameRenderer {
-	constructor(
-		readonly sync: FrameSync,
-		readonly renderer: THREE.WebGPURenderer,
-		private readonly post: THREE.RenderPipeline,
-		private readonly postWithHud: THREE.RenderPipeline,
-		private readonly dofUniforms: {
-			readonly focus: { value: number };
-			readonly strength: { value: number };
-		},
-		private readonly target: THREE.RenderTarget,
-		private readonly width: number,
-		private readonly height: number,
-		private readonly pixelWidth: number,
-		private readonly pixelHeight: number,
-		private readonly pixelRatioValue: number,
-	) {}
-
-	/** Sync a frame into the retained scene, render, read back, PNG-encode. */
-	renderToPng(frame: AnyFrame): Effect.Effect<Uint8Array, ThreeException> {
-		const self = this;
-		return Effect.gen(function* () {
-			if (frame.width !== self.width || frame.height !== self.height) {
-				// deliberate defect: a mis-sized frame is a caller bug, not a
-				// recoverable condition
-				return yield* Effect.die(
-					new Error(
-						`NodeFrameRenderer: frame is ${frame.width}x${frame.height}, renderer was made for ${self.width}x${self.height}`,
-					),
-				);
-			}
-			yield* resolveResources(self.sync, frame);
-			yield* Effect.sync(() => self.sync.syncFrame(frame));
-			// glyph layouts registered during sync must land before readback —
-			// an export frame never ships half-built text
-			yield* Effect.promise(() => self.sync.whenReady());
-			// custom gather-blur DoF (see make): aperture 0 zeroes the CoC,
-			// so the blur is an arithmetic identity on sharp frames
-			if (self.sync.dof.on) {
-				self.dofUniforms.focus.value = self.sync.dof.focusDistance;
-				self.dofUniforms.strength.value = self.sync.dof.strengthUv;
-			} else {
-				self.dofUniforms.strength.value = 0;
-			}
-			// three advances nodeFrame.frameId only inside its rAF-driven
-			// animation loop (a 16ms setTimeout shim headless). Back-to-back
-			// exports outrun it, so FRAME-deduped nodes — the scene PassNode
-			// above all — skip their per-frame work and consecutive frames
-			// read a stale pass texture (pairwise-duplicated video frames).
-			// Drive it explicitly: one exported frame IS one three frame.
-			yield* Effect.sync(() =>
-				(
-					self.renderer as unknown as {
-						_nodes: { nodeFrame: { update(): void } };
-					}
-				)._nodes.nodeFrame.update(),
-			);
-			yield* renderCompTargets(self.renderer, self.sync, self.pixelRatioValue);
-			const pipeline =
-				self.sync.hudScene.children.length > 0 ? self.postWithHud : self.post;
-			yield* Interop.wrap("RenderPipeline.render", () => pipeline.render());
-			const rgba = yield* Gpu.readRenderTarget(
-				self.renderer,
-				self.target,
-				self.pixelWidth,
-				self.pixelHeight,
-			);
-			return encodePng(rgba, self.pixelWidth, self.pixelHeight);
-		});
-	}
+/**
+ * A `Sync` wired to a headless Dawn renderer and a readback target.
+ * Mostly data — the API is `renderToPng` and the encode helper.
+ */
+export interface NodeRenderer {
+	readonly sync: Sync.Sync;
+	readonly gpu: THREE.WebGPURenderer;
+	/** internal: plain pipeline (world + DoF blur) */
+	readonly post: THREE.RenderPipeline;
+	/** internal: pipeline with the HUD pass composited over the world */
+	readonly postWithHud: THREE.RenderPipeline;
+	readonly dofUniforms: DofUniforms;
+	/** internal: the readback render target */
+	readonly target: THREE.RenderTarget;
+	readonly width: number;
+	readonly height: number;
+	readonly pixelWidth: number;
+	readonly pixelHeight: number;
+	readonly pixelRatio: number;
 }
+
+/** Sync a frame into the retained scene, render, read back, PNG-encode. */
+export const renderToPng = Effect.fnUntraced(function* (
+	renderer: NodeRenderer,
+	frame: AnyFrame,
+): Effect.fn.Return<Uint8Array, ThreeException | EffectMotionError> {
+	if (frame.width !== renderer.width || frame.height !== renderer.height) {
+		// deliberate defect: a mis-sized frame is a caller bug, not a
+		// recoverable condition
+		return yield* Effect.die(
+			new Error(
+				`NodeRenderer: frame is ${frame.width}x${frame.height}, renderer was made for ${renderer.width}x${renderer.height}`,
+			),
+		);
+	}
+	yield* Sync.resolveResources(renderer.sync, frame);
+	yield* Effect.sync(() => Sync.syncFrame(renderer.sync, frame));
+	// glyph layouts registered during sync must land before readback —
+	// an export frame never ships half-built text
+	yield* Sync.whenReady(renderer.sync);
+	// custom gather-blur DoF (see make): aperture 0 zeroes the CoC,
+	// so the blur is an arithmetic identity on sharp frames
+	if (renderer.sync.dof.on) {
+		renderer.dofUniforms.focus.value = renderer.sync.dof.focusDistance;
+		renderer.dofUniforms.strength.value = renderer.sync.dof.strengthUv;
+	} else {
+		renderer.dofUniforms.strength.value = 0;
+	}
+	// three advances nodeFrame.frameId only inside its rAF-driven
+	// animation loop (a 16ms setTimeout shim headless). Back-to-back
+	// exports outrun it, so FRAME-deduped nodes — the scene PassNode
+	// above all — skip their per-frame work and consecutive frames
+	// read a stale pass texture (pairwise-duplicated video frames).
+	// Drive it explicitly: one exported frame IS one three frame.
+	yield* Effect.sync(() =>
+		(
+			renderer.gpu as unknown as {
+				_nodes: { nodeFrame: { update(): void } };
+			}
+		)._nodes.nodeFrame.update(),
+	);
+	yield* renderCompTargets(renderer.gpu, renderer.sync, renderer.pixelRatio);
+	const pipeline =
+		renderer.sync.hudScene.children.length > 0
+			? renderer.postWithHud
+			: renderer.post;
+	yield* Interop.wrap("RenderPipeline.render", () => pipeline.render());
+	const rgba = yield* Gpu.readRenderTarget(
+		renderer.gpu,
+		renderer.target,
+		renderer.pixelWidth,
+		renderer.pixelHeight,
+	);
+	return encodePng(rgba, renderer.pixelWidth, renderer.pixelHeight);
+});
 
 /**
  * Scoped Node renderer acquisition: Dawn device, headless WebGPU renderer
- * over a stub canvas, retained sync core, and the render-target pipeline.
+ * over a stub canvas, retained sync actor, and the render-target
+ * pipeline.
  *
- * DoF here is a custom gather blur (see the pipeline construction below) —
- * three's own TSL DoF node is broken under Dawn.
+ * DoF here is a custom gather blur (see the pipeline construction below)
+ * — three's own TSL DoF node is broken under Dawn.
  */
 export const make = Effect.fn("NodeRenderer.make")(function* (
 	options: NodeRendererOptions,
-): Effect.fn.Return<NodeFrameRenderer, ThreeException, Scope.Scope> {
+): Effect.fn.Return<NodeRenderer, ThreeException, Scope.Scope> {
 	const dpr = options.pixelRatio ?? 1;
 	const pixelWidth = Math.round(options.width * dpr);
 	const pixelHeight = Math.round(options.height * dpr);
@@ -209,10 +216,10 @@ export const make = Effect.fn("NodeRenderer.make")(function* (
 		...builtinRegistry,
 		...options.renderers,
 	};
-	const sync = new FrameSync(registry);
+	const sync = Sync.make(registry);
 	const device = yield* NodeGpu.makeDevice();
 	const { canvas, context } = NodeGpu.stubCanvas(pixelWidth, pixelHeight);
-	const renderer = yield* Gpu.make({
+	const gpu = yield* Gpu.make({
 		canvas: canvas as unknown as HTMLCanvasElement,
 		context: context as never,
 		antialias: true,
@@ -221,18 +228,18 @@ export const make = Effect.fn("NodeRenderer.make")(function* (
 		height: options.height,
 		pixelRatio: dpr,
 	});
-	yield* Effect.addFinalizer(() => Effect.sync(() => sync.disposeRetained()));
+	yield* Effect.addFinalizer(() => Effect.sync(() => Sync.dispose(sync)));
 	const scenePass = PostProcessing.pass(sync.scene, sync.camera);
-	// custom depth-of-field shared with the browser path (see dof.ts)
+	// custom depth-of-field shared with the browser path (see Dof.ts)
 	const dofUniforms = makeDofUniforms();
 	const blurred = buildDofBlur(scenePass, dofUniforms) as never;
-	const post = new PostProcessing.RenderPipeline(renderer);
+	const post = new PostProcessing.RenderPipeline(gpu);
 	post.outputNode = blurred;
 	// HUD composite variant: the HUD pass (identity camera, transparent
 	// background) blended over the world INSIDE the pipeline, so the sRGB
 	// output transform applies exactly once. Chosen per frame only when
 	// HUD content exists — the plain pipeline never pays for the pass.
-	// ponytail: TSL typing quarantined as in text.ts.
+	// ponytail: TSL typing quarantined as in Text.ts.
 	interface Node {
 		readonly rgb: Node;
 		readonly a: Node;
@@ -245,24 +252,24 @@ export const make = Effect.fn("NodeRenderer.make")(function* (
 		sync.hudCamera,
 	) as unknown as { getTextureNode(): Node };
 	const hudTex = hudScenePass.getTextureNode();
-	const postWithHud = new PostProcessing.RenderPipeline(renderer);
+	const postWithHud = new PostProcessing.RenderPipeline(gpu);
 	postWithHud.outputNode = (blurred as unknown as Node)
 		.mul(hudTex.a.oneMinus())
 		.add(hudTex.rgb.mul(hudTex.a)) as never;
 	const target = new THREE.RenderTarget(pixelWidth, pixelHeight);
 	yield* Effect.addFinalizer(() => Effect.sync(() => target.dispose()));
-	renderer.setRenderTarget(target);
-	return new NodeFrameRenderer(
+	gpu.setRenderTarget(target);
+	return {
 		sync,
-		renderer,
+		gpu,
 		post,
 		postWithHud,
 		dofUniforms,
 		target,
-		options.width,
-		options.height,
+		width: options.width,
+		height: options.height,
 		pixelWidth,
 		pixelHeight,
-		dpr,
-	);
+		pixelRatio: dpr,
+	};
 });

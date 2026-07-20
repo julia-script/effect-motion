@@ -5,6 +5,7 @@ import type * as Scope from "effect/Scope";
 import * as Sink from "effect/Sink";
 import * as Stream from "effect/Stream";
 import type { ChildProcessSpawner } from "effect/unstable/process";
+import type { EffectMotionError } from "effect-motion";
 import { type Resource, Scene } from "effect-motion";
 import * as Ffmpeg from "./Ffmpeg.js";
 
@@ -71,7 +72,8 @@ export interface VideoOptions {
  *
  * Fails with {@link Ffmpeg.EncodeError} on odd output dimensions (invalid for
  * `yuv420p`) — before any ffmpeg process is spawned — or on an ffmpeg failure;
- * a GPU render failure surfaces as `ThreeException`.
+ * a GPU render failure surfaces as `ThreeException`; a failed resource
+ * (font layout, image decode) as `EffectMotionError`.
  */
 export const render = <E = never, LoaderR = never>(
 	scene: Scene.Scene<E, SceneInternalR | LoaderR>,
@@ -79,7 +81,7 @@ export const render = <E = never, LoaderR = never>(
 	options: VideoOptions = {},
 ): Effect.Effect<
 	void,
-	E | Ffmpeg.EncodeError | ThreeException,
+	E | Ffmpeg.EncodeError | ThreeException | EffectMotionError,
 	// the scene is run to completion internally, so its Scope is discharged
 	// here; the GPU renderer is provided internally too. The scene's
 	// resource loaders stay the CALLER's requirement — provide them via
@@ -130,7 +132,7 @@ export const render = <E = never, LoaderR = never>(
 			// serial by construction: syncFrame mutates one retained scene, so
 			// concurrent renders would clobber each other's state
 			const pngStream = Stream.mapEffect(allFrames, (frame) =>
-				renderer.renderToPng(frame),
+				NodeRenderer.renderToPng(renderer, frame),
 			);
 
 			// writing a file implies its directory: create the output's parent
@@ -153,6 +155,6 @@ export const render = <E = never, LoaderR = never>(
 		// exactly it (loaders in, loaders out — everything else provided here)
 	) as Effect.Effect<
 		void,
-		E | Ffmpeg.EncodeError | ThreeException,
+		E | Ffmpeg.EncodeError | ThreeException | EffectMotionError,
 		ChildProcessSpawner.ChildProcessSpawner | Resource.ExtractLoaders<LoaderR>
 	>;

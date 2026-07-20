@@ -3,16 +3,16 @@ import { Effect } from "effect";
 import * as Stream from "effect/Stream";
 import { Camera, Color, Entity, Scene, Shapes } from "effect-motion";
 import { describe, expect, it } from "vitest";
+import { builtinRegistry } from "../src/Builtins.js";
 import type { Leaf, Retained } from "../src/EntityRenderer.js";
-import { FrameSync } from "../src/Renderer.js";
-import { builtinRenderers } from "../src/shapes.js";
+import * as Sync from "../src/Sync.js";
 import { unreachable } from "./support/raise.js";
 
 // Structural tests: frames sync into a retained THREE.Scene — assertions are
 // on the retained graph (objects, transforms, materials), never on pixels
 // (determinism stops at the frame stream; see AGENTS.md).
 
-type AnyFrame = Parameters<FrameSync["syncFrame"]>[0];
+type AnyFrame = Parameters<typeof Sync.syncFrame>[1];
 
 const framesOf = (
 	make: () => Generator<Effect.Effect<any, any, any>, void, never>,
@@ -29,8 +29,7 @@ const framesOf = (
 		>,
 	).then((chunk) => [...chunk]);
 
-const registry = () =>
-	builtinRenderers as unknown as ConstructorParameters<typeof FrameSync>[0];
+const registry = () => builtinRegistry;
 
 describe("coordinate mapping and the 2D identity invariant", () => {
 	it("z=0 content under the untouched camera lands where authored", async () => {
@@ -38,8 +37,8 @@ describe("coordinate mapping and the 2D identity invariant", () => {
 			yield* Scene.instantiate(Shapes.Circle, { x: 100, y: 50, radius: 7 });
 			yield* Scene.tick;
 		});
-		const sync = new FrameSync(registry());
-		sync.syncFrame(frames.at(-1) ?? unreachable());
+		const sync = Sync.make(registry());
+		Sync.syncFrame(sync, frames.at(-1) ?? unreachable());
 		expect(sync.scene.children).toHaveLength(1);
 		// a fill shape is a group (position/billboard) holding the fill mesh
 		const group = sync.scene.children[0] ?? unreachable();
@@ -56,8 +55,8 @@ describe("coordinate mapping and the 2D identity invariant", () => {
 			yield* Scene.instantiate(Shapes.Circle, {});
 			yield* Scene.tick;
 		});
-		const sync = new FrameSync(registry());
-		sync.syncFrame(frames.at(-1) ?? unreachable());
+		const sync = Sync.make(registry());
+		Sync.syncFrame(sync, frames.at(-1) ?? unreachable());
 		const focal = (500 * 50) / 36;
 		const expected = (2 * Math.atan(300 / (2 * focal)) * 180) / Math.PI;
 		expect(sync.camera.fov).toBeCloseTo(expected, 10);
@@ -74,8 +73,8 @@ describe("coordinate mapping and the 2D identity invariant", () => {
 			...frame,
 			backgroundColor: Color.rgba(255, 0, 0, 1),
 		} as AnyFrame;
-		const sync = new FrameSync(registry());
-		sync.syncFrame(withBg);
+		const sync = Sync.make(registry());
+		Sync.syncFrame(sync, withBg);
 		const bg = sync.scene.background;
 		expect(bg).not.toBeNull();
 	});
@@ -127,21 +126,21 @@ describe("retained diff through the entity render contract", () => {
 		});
 		expect(frames.length).toBeGreaterThanOrEqual(3);
 		const { counters, renderer } = makeProbeRenderer();
-		const sync = new FrameSync({
+		const sync = Sync.make({
 			...registry(),
 			"test/Probe": renderer,
 		});
 		const a = frames[0] ?? unreachable();
-		sync.syncFrame(a);
+		Sync.syncFrame(sync, a);
 		expect(counters).toMatchObject({ builds: 1, updates: 0 });
-		sync.syncFrame(a); // identical frame: retained object untouched
+		Sync.syncFrame(sync, a); // identical frame: retained object untouched
 		expect(counters).toMatchObject({ builds: 1, updates: 0 });
 		const b = frames.find((f) => probeData(f)?.x === 2) ?? unreachable();
-		sync.syncFrame(b);
+		Sync.syncFrame(sync, b);
 		expect(counters).toMatchObject({ builds: 1, updates: 1 });
 		const hidden =
 			frames.find((f) => probeData(f)?.["~visible"] === false) ?? unreachable();
-		sync.syncFrame(hidden);
+		Sync.syncFrame(sync, hidden);
 		expect(counters).toMatchObject({ builds: 1, updates: 1, disposes: 1 });
 		expect(sync.scene.children).toHaveLength(0);
 	});
@@ -157,8 +156,8 @@ describe("retained diff through the entity render contract", () => {
 			yield* Scene.tick;
 		});
 		const { worlds, renderer } = makeProbeRenderer();
-		const sync = new FrameSync({ ...registry(), "test/Probe": renderer });
-		sync.syncFrame(frames.at(-1) ?? unreachable());
+		const sync = Sync.make({ ...registry(), "test/Probe": renderer });
+		Sync.syncFrame(sync, frames.at(-1) ?? unreachable());
 		expect(worlds.at(-1)).toEqual({ x: 13, y: 24, z: 0 });
 	});
 
@@ -172,8 +171,8 @@ describe("retained diff through the entity render contract", () => {
 			yield* Scene.instantiate(Unknown, {});
 			yield* Scene.tick;
 		});
-		const sync = new FrameSync(registry());
-		expect(() => sync.syncFrame(frames.at(-1) ?? unreachable())).toThrow(
+		const sync = Sync.make(registry());
+		expect(() => Sync.syncFrame(sync, frames.at(-1) ?? unreachable())).toThrow(
 			/test\/Unregistered/,
 		);
 	});
@@ -185,8 +184,8 @@ describe("billboards and tilted planes", () => {
 			yield* Scene.instantiate(Shapes.Circle, { x: 10 });
 			yield* Scene.tick;
 		});
-		const sync = new FrameSync(registry());
-		sync.syncFrame(frames.at(-1) ?? unreachable());
+		const sync = Sync.make(registry());
+		Sync.syncFrame(sync, frames.at(-1) ?? unreachable());
 		const mesh = sync.scene.children[0] ?? unreachable();
 		expect(mesh.quaternion.equals(sync.camera.quaternion)).toBe(true);
 	});
@@ -196,8 +195,8 @@ describe("billboards and tilted planes", () => {
 			yield* Scene.instantiate(Shapes.Rect, { rotY: Math.PI / 4 });
 			yield* Scene.tick;
 		});
-		const sync = new FrameSync(registry());
-		sync.syncFrame(frames.at(-1) ?? unreachable());
+		const sync = Sync.make(registry());
+		Sync.syncFrame(sync, frames.at(-1) ?? unreachable());
 		const mesh = sync.scene.children[0] ?? unreachable();
 		expect(mesh.rotation.y).toBeCloseTo(Math.PI / 4, 10);
 	});
@@ -209,8 +208,8 @@ describe("depth of field request", () => {
 			yield* Scene.instantiate(Shapes.Circle, {});
 			yield* Scene.tick;
 		});
-		const sync = new FrameSync(registry());
-		sync.syncFrame(frames.at(-1) ?? unreachable());
+		const sync = Sync.make(registry());
+		Sync.syncFrame(sync, frames.at(-1) ?? unreachable());
 		expect(sync.dof.on).toBe(false);
 	});
 
@@ -224,8 +223,8 @@ describe("depth of field request", () => {
 			...frame,
 			camera: { ...frame.camera, aperture: 2 },
 		} as AnyFrame;
-		const sync = new FrameSync(registry());
-		sync.syncFrame(withDof);
+		const sync = Sync.make(registry());
+		Sync.syncFrame(sync, withDof);
 		expect(sync.dof.on).toBe(true);
 		expect(sync.dof.strengthUv).toBeCloseTo((2 * 2) / 300, 10);
 		expect(sync.dof.focusDistance).toBe(frame.camera.focusDistance);
@@ -240,8 +239,8 @@ describe("screen-space HUD tier", () => {
 			yield* Scene.instantiate(Shapes.Hud, { children: [pinned] });
 			yield* Scene.tick;
 		});
-		const sync = new FrameSync(registry());
-		sync.syncFrame(frames.at(-1) ?? unreachable());
+		const sync = Sync.make(registry());
+		Sync.syncFrame(sync, frames.at(-1) ?? unreachable());
 		expect(sync.scene.children).toHaveLength(1);
 		expect(sync.hudScene.children).toHaveLength(1);
 		// hud billboards face the identity camera, not the world camera
@@ -263,8 +262,8 @@ describe("sized-group sub-compositions", () => {
 			});
 			yield* Scene.tick;
 		});
-		const sync = new FrameSync(registry());
-		sync.syncFrame(frames.at(-1) ?? unreachable());
+		const sync = Sync.make(registry());
+		Sync.syncFrame(sync, frames.at(-1) ?? unreachable());
 		expect(sync.comps.size).toBe(1);
 		const comp = [...sync.comps.values()][0] ?? unreachable();
 		// the comp's subtree syncs into its own scene, comp-local
@@ -313,21 +312,25 @@ describe("traversal defects (hand-built frames)", () => {
 			{ g1: group(["c1"]), g2: group(["c1"]), c1: circle },
 			["g1", "g2"],
 		);
-		const sync = new FrameSync(registry());
-		expect(() => sync.syncFrame(frame)).toThrow(
+		const sync = Sync.make(registry());
+		expect(() => Sync.syncFrame(sync, frame)).toThrow(
 			/"c1" is referenced more than once/,
 		);
 	});
 
 	it("cycle dies as a duplicate reference", () => {
 		const frame = frameOf({ g1: group(["g2"]), g2: group(["g1"]) }, ["g1"]);
-		const sync = new FrameSync(registry());
-		expect(() => sync.syncFrame(frame)).toThrow(/referenced more than once/);
+		const sync = Sync.make(registry());
+		expect(() => Sync.syncFrame(sync, frame)).toThrow(
+			/referenced more than once/,
+		);
 	});
 
 	it("dangling reference dies naming the id", () => {
 		const frame = frameOf({ g1: group(["ghost"]) }, ["g1"]);
-		const sync = new FrameSync(registry());
-		expect(() => sync.syncFrame(frame)).toThrow(/unknown instance id "ghost"/);
+		const sync = Sync.make(registry());
+		expect(() => Sync.syncFrame(sync, frame)).toThrow(
+			/unknown instance id "ghost"/,
+		);
 	});
 });
