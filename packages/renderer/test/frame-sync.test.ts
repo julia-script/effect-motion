@@ -1,12 +1,24 @@
 import { ThreeRaw as THREE, Scene as ThreeScene } from "@effect-motion/three";
-import { Effect } from "effect";
+import { Effect, Exit } from "effect";
 import * as Stream from "effect/Stream";
 import { Camera, Color, Entity, Scene, Shapes } from "effect-motion";
 import { describe, expect, it } from "vitest";
 import { builtinRegistry } from "../src/Builtins.js";
 import type { Leaf, Retained } from "../src/EntityRenderer.js";
+import type { RenderException } from "../src/RenderException.js";
 import * as Sync from "../src/Sync.js";
 import { unreachable } from "./support/raise.js";
+
+/** The RenderException message from a failed sync, for defect assertions. */
+const failureMessage = (exit: Exit.Exit<void, RenderException>): string => {
+	if (!Exit.isFailure(exit)) {
+		return unreachable("expected a RenderException failure");
+	}
+	const reason = exit.cause.reasons.find((r) => r._tag === "Fail");
+	return reason === undefined
+		? unreachable("expected a Fail reason")
+		: reason.error.message;
+};
 
 // Structural tests: frames sync into a retained THREE.Scene — assertions are
 // on the retained graph (objects, transforms, materials), never on pixels
@@ -38,7 +50,7 @@ describe("coordinate mapping and the 2D identity invariant", () => {
 			yield* Scene.tick;
 		});
 		const sync = Sync.make(registry());
-		Sync.syncFrame(sync, frames.at(-1) ?? unreachable());
+		Effect.runSync(Sync.syncFrame(sync, frames.at(-1) ?? unreachable()));
 		expect(ThreeScene.children(sync.scene)).toHaveLength(1);
 		// a fill shape is a group (position/billboard) holding the fill mesh
 		const group = ThreeScene.children(sync.scene)[0] ?? unreachable();
@@ -56,7 +68,7 @@ describe("coordinate mapping and the 2D identity invariant", () => {
 			yield* Scene.tick;
 		});
 		const sync = Sync.make(registry());
-		Sync.syncFrame(sync, frames.at(-1) ?? unreachable());
+		Effect.runSync(Sync.syncFrame(sync, frames.at(-1) ?? unreachable()));
 		const focal = (500 * 50) / 36;
 		const expected = (2 * Math.atan(300 / (2 * focal)) * 180) / Math.PI;
 		expect(sync.camera.fov).toBeCloseTo(expected, 10);
@@ -74,7 +86,7 @@ describe("coordinate mapping and the 2D identity invariant", () => {
 			backgroundColor: Color.rgba(255, 0, 0, 1),
 		} as AnyFrame;
 		const sync = Sync.make(registry());
-		Sync.syncFrame(sync, withBg);
+		Effect.runSync(Sync.syncFrame(sync, withBg));
 		const bg = sync.scene["~three.scene"].background;
 		expect(bg).not.toBeNull();
 	});
@@ -131,16 +143,17 @@ describe("retained diff through the entity render contract", () => {
 			"test/Probe": renderer,
 		});
 		const a = frames[0] ?? unreachable();
-		Sync.syncFrame(sync, a);
+		Effect.runSync(Sync.syncFrame(sync, a));
 		expect(counters).toMatchObject({ builds: 1, updates: 0 });
-		Sync.syncFrame(sync, a); // identical frame: retained object untouched
+		// identical frame: retained object untouched
+		Effect.runSync(Sync.syncFrame(sync, a));
 		expect(counters).toMatchObject({ builds: 1, updates: 0 });
 		const b = frames.find((f) => probeData(f)?.x === 2) ?? unreachable();
-		Sync.syncFrame(sync, b);
+		Effect.runSync(Sync.syncFrame(sync, b));
 		expect(counters).toMatchObject({ builds: 1, updates: 1 });
 		const hidden =
 			frames.find((f) => probeData(f)?.["~visible"] === false) ?? unreachable();
-		Sync.syncFrame(sync, hidden);
+		Effect.runSync(Sync.syncFrame(sync, hidden));
 		expect(counters).toMatchObject({ builds: 1, updates: 1, disposes: 1 });
 		expect(ThreeScene.children(sync.scene)).toHaveLength(0);
 	});
@@ -157,7 +170,7 @@ describe("retained diff through the entity render contract", () => {
 		});
 		const { worlds, renderer } = makeProbeRenderer();
 		const sync = Sync.make({ ...registry(), "test/Probe": renderer });
-		Sync.syncFrame(sync, frames.at(-1) ?? unreachable());
+		Effect.runSync(Sync.syncFrame(sync, frames.at(-1) ?? unreachable()));
 		expect(worlds.at(-1)).toEqual({ x: 13, y: 24, z: 0 });
 	});
 
@@ -172,9 +185,11 @@ describe("retained diff through the entity render contract", () => {
 			yield* Scene.tick;
 		});
 		const sync = Sync.make(registry());
-		expect(() => Sync.syncFrame(sync, frames.at(-1) ?? unreachable())).toThrow(
-			/test\/Unregistered/,
+		const exit = Effect.runSyncExit(
+			Sync.syncFrame(sync, frames.at(-1) ?? unreachable()),
 		);
+		expect(exit._tag).toBe("Failure");
+		expect(failureMessage(exit)).toMatch(/test\/Unregistered/);
 	});
 });
 
@@ -185,7 +200,7 @@ describe("billboards and tilted planes", () => {
 			yield* Scene.tick;
 		});
 		const sync = Sync.make(registry());
-		Sync.syncFrame(sync, frames.at(-1) ?? unreachable());
+		Effect.runSync(Sync.syncFrame(sync, frames.at(-1) ?? unreachable()));
 		const mesh = ThreeScene.children(sync.scene)[0] ?? unreachable();
 		expect(mesh.quaternion.equals(sync.camera.quaternion)).toBe(true);
 	});
@@ -196,7 +211,7 @@ describe("billboards and tilted planes", () => {
 			yield* Scene.tick;
 		});
 		const sync = Sync.make(registry());
-		Sync.syncFrame(sync, frames.at(-1) ?? unreachable());
+		Effect.runSync(Sync.syncFrame(sync, frames.at(-1) ?? unreachable()));
 		const mesh = ThreeScene.children(sync.scene)[0] ?? unreachable();
 		expect(mesh.rotation.y).toBeCloseTo(Math.PI / 4, 10);
 	});
@@ -209,7 +224,7 @@ describe("depth of field request", () => {
 			yield* Scene.tick;
 		});
 		const sync = Sync.make(registry());
-		Sync.syncFrame(sync, frames.at(-1) ?? unreachable());
+		Effect.runSync(Sync.syncFrame(sync, frames.at(-1) ?? unreachable()));
 		expect(sync.dof.on).toBe(false);
 	});
 
@@ -224,7 +239,7 @@ describe("depth of field request", () => {
 			camera: { ...frame.camera, aperture: 2 },
 		} as AnyFrame;
 		const sync = Sync.make(registry());
-		Sync.syncFrame(sync, withDof);
+		Effect.runSync(Sync.syncFrame(sync, withDof));
 		expect(sync.dof.on).toBe(true);
 		expect(sync.dof.strengthUv).toBeCloseTo((2 * 2) / 300, 10);
 		expect(sync.dof.focusDistance).toBe(frame.camera.focusDistance);
@@ -240,7 +255,7 @@ describe("screen-space HUD tier", () => {
 			yield* Scene.tick;
 		});
 		const sync = Sync.make(registry());
-		Sync.syncFrame(sync, frames.at(-1) ?? unreachable());
+		Effect.runSync(Sync.syncFrame(sync, frames.at(-1) ?? unreachable()));
 		expect(ThreeScene.children(sync.scene)).toHaveLength(1);
 		expect(ThreeScene.children(sync.hudScene)).toHaveLength(1);
 		// hud billboards face the identity camera, not the world camera
@@ -263,7 +278,7 @@ describe("sized-group sub-compositions", () => {
 			yield* Scene.tick;
 		});
 		const sync = Sync.make(registry());
-		Sync.syncFrame(sync, frames.at(-1) ?? unreachable());
+		Effect.runSync(Sync.syncFrame(sync, frames.at(-1) ?? unreachable()));
 		expect(sync.comps.size).toBe(1);
 		const comp = [...sync.comps.values()][0] ?? unreachable();
 		// the comp's subtree syncs into its own scene, comp-local
@@ -313,24 +328,24 @@ describe("traversal defects (hand-built frames)", () => {
 			["g1", "g2"],
 		);
 		const sync = Sync.make(registry());
-		expect(() => Sync.syncFrame(sync, frame)).toThrow(
-			/"c1" is referenced more than once/,
-		);
+		const exit = Effect.runSyncExit(Sync.syncFrame(sync, frame));
+		expect(exit._tag).toBe("Failure");
+		expect(failureMessage(exit)).toMatch(/"c1" is referenced more than once/);
 	});
 
 	it("cycle dies as a duplicate reference", () => {
 		const frame = frameOf({ g1: group(["g2"]), g2: group(["g1"]) }, ["g1"]);
 		const sync = Sync.make(registry());
-		expect(() => Sync.syncFrame(sync, frame)).toThrow(
-			/referenced more than once/,
-		);
+		const exit = Effect.runSyncExit(Sync.syncFrame(sync, frame));
+		expect(exit._tag).toBe("Failure");
+		expect(failureMessage(exit)).toMatch(/referenced more than once/);
 	});
 
 	it("dangling reference dies naming the id", () => {
 		const frame = frameOf({ g1: group(["ghost"]) }, ["g1"]);
 		const sync = Sync.make(registry());
-		expect(() => Sync.syncFrame(sync, frame)).toThrow(
-			/unknown instance id "ghost"/,
-		);
+		const exit = Effect.runSyncExit(Sync.syncFrame(sync, frame));
+		expect(exit._tag).toBe("Failure");
+		expect(failureMessage(exit)).toMatch(/unknown instance id "ghost"/);
 	});
 });

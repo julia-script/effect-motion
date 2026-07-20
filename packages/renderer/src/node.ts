@@ -19,6 +19,7 @@ import type { Frame } from "effect-motion/Scene";
 import { builtinRegistry } from "./Builtins.js";
 import { buildDofBlur, type DofUniforms, makeDofUniforms } from "./Dof.js";
 import type { EntityRenderer } from "./EntityRenderer.js";
+import type { RenderException } from "./RenderException.js";
 import { renderCompTargets } from "./Renderer.js";
 import * as Sync from "./Sync.js";
 
@@ -149,7 +150,10 @@ export interface NodeRenderer {
 export const renderToPng = Effect.fnUntraced(function* (
 	renderer: NodeRenderer,
 	frame: AnyFrame,
-): Effect.fn.Return<Uint8Array, ThreeException | EffectMotionError> {
+): Effect.fn.Return<
+	Uint8Array,
+	ThreeException | EffectMotionError | RenderException
+> {
 	if (frame.width !== renderer.width || frame.height !== renderer.height) {
 		// deliberate defect: a mis-sized frame is a caller bug, not a
 		// recoverable condition
@@ -160,7 +164,7 @@ export const renderToPng = Effect.fnUntraced(function* (
 		);
 	}
 	yield* Sync.resolveResources(renderer.sync, frame);
-	yield* Effect.sync(() => Sync.syncFrame(renderer.sync, frame));
+	yield* Sync.syncFrame(renderer.sync, frame);
 	// glyph layouts registered during sync must land before readback —
 	// an export frame never ships half-built text
 	yield* Sync.whenReady(renderer.sync);

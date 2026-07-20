@@ -272,7 +272,7 @@ const useScene = (
 								// font loaders resolve from this runtime's context (the
 								// renderLayers merge); missing loaders defect loudly
 								yield* FrameRenderer.resolveResources(sink, frame);
-								yield* Effect.sync(() => FrameRenderer.syncFrame(sink, frame));
+								yield* FrameRenderer.syncFrame(sink, frame);
 								if (!prewarmed) {
 									prewarmed = true;
 									yield* FrameRenderer.prewarm(sink);

@@ -18,7 +18,9 @@ import type {
 	Retained,
 	World,
 } from "./EntityRenderer.js";
+import * as FrameData from "./FrameData.js";
 import * as Images from "./Images.js";
+import { RenderException } from "./RenderException.js";
 import * as Text from "./Text.js";
 
 /**
@@ -28,10 +30,15 @@ import * as Text from "./Text.js";
  *
  * The frame walk and retained diff are a documented hot path: they run
  * per frame over every instance, so the inner loops are raw sync
- * mutation. The module's surface — construction, readiness, resource
- * resolution — is effectful; walk invariant violations (duplicate ids,
- * unknown ids, misplaced Huds, unregistered entities) are deliberate
- * defects thrown from the kernel and surfaced by the effectful callers.
+ * mutation, split into phases (`syncCameras`, `walkTree`, `diffRetained`,
+ * `syncBillboards`) that `syncFrame` orchestrates.
+ *
+ * Scene-graph violations (duplicate ids, unknown ids, misplaced Huds,
+ * unregistered entities) THROW from inside the walk — threading a result
+ * type through a recursive descent would mean checking and re-propagating
+ * at every level for a case that always aborts. `syncFrame` contains that
+ * with a single `Effect.try` at the seam, mapping to `RenderException`,
+ * so callers see a typed channel and never a stray exception.
  */
 
 const NEAR = 1;
@@ -53,16 +60,6 @@ type AnyEntityRenderer = EntityRenderer<Entity.AnyEntity>;
 // unit plane with a TOP-LEFT origin (matches the Builtins module's anchor)
 const unitPlaneShared = new THREE.PlaneGeometry(1, 1);
 unitPlaneShared.translate(0.5, -0.5, 0);
-
-const childIdsOf = (data: unknown): ReadonlyArray<string> => {
-	const children = (data as { children?: unknown } | null)?.children;
-	return Array.isArray(children) ? children : [];
-};
-
-const isVisible = (frame: AnyFrame, id: string): boolean =>
-	(frame.instances[id]?.data as { "~visible"?: boolean } | undefined)?.[
-		"~visible"
-	] !== false;
 
 interface RetainedEntry {
 	readonly renderer: AnyEntityRenderer;
@@ -213,13 +210,14 @@ export const whenReady = (sync: Sync): Effect.Effect<void, EffectMotionError> =>
 				});
 	});
 
-/** Sync a frame into the retained scenes — the raw per-frame kernel. */
-export const syncFrame = (sync: Sync, frame: AnyFrame): void => {
-	const t0 = performance.now();
-	sync.width = frame.width;
-	sync.height = frame.height;
-
-	// camera: resolve POI aim, then conjugate into three's space
+/**
+ * Phase 1 — cameras, background, and the DoF request.
+ *
+ * The world camera resolves its point-of-interest aim and conjugates into
+ * three's space; the HUD camera is the identity view, so z=0 HUD content
+ * lands exactly where authored regardless of where the world camera went.
+ */
+const syncCameras = (sync: Sync, frame: AnyFrame): void => {
 	const origin = { x: frame.width / 2, y: frame.height / 2 };
 	const camera = Projection.resolveCamera(frame.camera, origin);
 	sync.camera.position.set(camera.x, -camera.y, camera.z);
@@ -229,8 +227,6 @@ export const syncFrame = (sync: Sync, frame: AnyFrame): void => {
 		(2 * Math.atan(frame.height / (2 * camera.focalLength)) * 180) / Math.PI;
 	sync.camera.updateProjectionMatrix();
 
-	// HUD tier: the identity camera — resting view, so z=0 HUD content
-	// lands exactly where authored regardless of the world camera
 	const hudFocal = Projection.defaultFocalLength(frame.width);
 	sync.hudCamera.position.set(0, 0, Projection.defaultCameraZ(hudFocal));
 	sync.hudCamera.rotation.set(0, 0, 0);
@@ -255,12 +251,27 @@ export const syncFrame = (sync: Sync, frame: AnyFrame): void => {
 	// curve (sigma = aperture·f·|d−F|/(d·F) ≈ aperture·|d−F|/F at rest):
 	// blur radius ≈ 2σ → strength = 2·aperture / viewport height.
 	sync.dof.strengthUv = (camera.aperture * 2) / frame.height;
+};
 
-	// walk the tree: containers contribute translation, leaves collect.
-	// HUD subtrees route to the screen-space tier (identity camera).
+/** What one pass of the tree walk produced. */
+interface WalkResult {
+	readonly leaves: ReadonlyArray<{ leaf: Leaf; hud: boolean }>;
+	/** comp ids seen this frame — anything absent is disposed */
+	readonly seenComps: ReadonlySet<string>;
+}
+
+/**
+ * Phase 2 — walk the instance tree, collecting leaves and syncing comps.
+ *
+ * Containers contribute translation and recurse; sized groups become
+ * comps; everything else is a leaf. HUD subtrees route to the screen-space
+ * tier. THROWS on scene-graph violations — see the module doc.
+ */
+const walkTree = (sync: Sync, frame: AnyFrame): WalkResult => {
 	const leaves: Array<{ leaf: Leaf; hud: boolean }> = [];
 	const visited = new Set<string>();
 	const seenComps = new Set<string>();
+
 	const walk = (
 		id: string,
 		offset: World,
@@ -277,7 +288,7 @@ export const syncFrame = (sync: Sync, frame: AnyFrame): void => {
 		if (entry === undefined) {
 			throw new Error(`Renderer: unknown instance id "${id}"`);
 		}
-		if (!isVisible(frame, id)) {
+		if (!FrameData.isVisible(entry.data)) {
 			return;
 		}
 		const isHud = entry.entity.name === Shapes.Hud.name;
@@ -287,19 +298,18 @@ export const syncFrame = (sync: Sync, frame: AnyFrame): void => {
 			);
 		}
 		const subtreeHud = hud || isHud;
-		const data = entry.data as Partial<World> & {
-			width?: unknown;
-			height?: unknown;
-		};
+		const local = FrameData.positionOf(entry.data);
 		const world: World = {
-			x: offset.x + (data.x ?? 0),
-			y: offset.y + (data.y ?? 0),
-			z: offset.z + (data.z ?? 0),
+			x: offset.x + local.x,
+			y: offset.y + local.y,
+			z: offset.z + local.z,
 		};
-		const childIds = childIdsOf(entry.data);
+		const childIds = FrameData.childIdsOf(entry.data);
 		if (childIds.length > 0 || isHud) {
-			if (typeof data.width === "number" && typeof data.height === "number") {
-				syncComp(sync, id, entry.data, world, subtreeHud, frame, seenComps);
+			const size = FrameData.sizeOf(entry.data);
+			if (size !== null) {
+				syncComp(sync, id, entry.data, size, world, subtreeHud, frame);
+				seenComps.add(id);
 				return;
 			}
 			// a pure container: contribute position, recurse, render
@@ -316,17 +326,26 @@ export const syncFrame = (sync: Sync, frame: AnyFrame): void => {
 			hud: subtreeHud,
 		});
 	};
+
 	const rootEntry = frame.instances[frame.root];
 	if (rootEntry !== undefined) {
 		visited.add(frame.root);
-		for (const childId of childIdsOf(rootEntry.data)) {
+		for (const childId of FrameData.childIdsOf(rootEntry.data)) {
 			walk(childId, { x: 0, y: 0, z: 0 }, false, false);
 		}
 	}
+	return { leaves, seenComps };
+};
 
-	// diff against the retained map
+/**
+ * Phase 3 — diff the walked leaves against the retained map: build what
+ * is new, update what changed (by reference equality on data and world
+ * position), dispose what left the frame. THROWS on an unregistered
+ * entity — see the module doc.
+ */
+const diffRetained = (sync: Sync, walked: WalkResult): void => {
 	const seen = new Set<string>();
-	for (const { leaf, hud } of leaves) {
+	for (const { leaf, hud } of walked.leaves) {
 		seen.add(leaf.id);
 		const existing = sync.retained.get(leaf.id);
 		if (existing === undefined) {
@@ -368,20 +387,24 @@ export const syncFrame = (sync: Sync, frame: AnyFrame): void => {
 		}
 	}
 	for (const [id, comp] of sync.comps) {
-		if (!seenComps.has(id)) {
+		if (!walked.seenComps.has(id)) {
 			ThreeScene.remove(comp.hud ? sync.hudScene : sync.scene, [comp.holder]);
 			disposeComp(comp);
 			sync.comps.delete(id);
 		}
 	}
+};
 
-	// billboards face their tier's view plane: copy the camera quaternion
-	// so a circle stays circular under any camera orbit.
-	// ponytail: transparent depth ties break by three's stable sort over
-	// deterministic creation order (identical across runs and platforms
-	// given the deterministic frame stream); switch to a custom
-	// transparent sort keyed by instance id if cross-version stability
-	// ever matters.
+/**
+ * Phase 4 — billboards face their tier's view plane: copy the camera
+ * quaternion so a circle stays circular under any camera orbit.
+ *
+ * ponytail: transparent depth ties break by three's stable sort over
+ * deterministic creation order (identical across runs and platforms given
+ * the deterministic frame stream); switch to a custom transparent sort
+ * keyed by instance id if cross-version stability ever matters.
+ */
+const syncBillboards = (sync: Sync): void => {
 	for (const entry of sync.retained.values()) {
 		if (entry.retained.billboard) {
 			entry.retained.object.quaternion.copy(
@@ -394,35 +417,54 @@ export const syncFrame = (sync: Sync, frame: AnyFrame): void => {
 			comp.hud ? sync.hudCamera.quaternion : sync.camera.quaternion,
 		);
 	}
+};
 
+/**
+ * The raw per-frame kernel: the four phases, unguarded. Internal — comps
+ * recurse through this, and their violations propagate to the outermost
+ * `syncFrame`'s single catch.
+ */
+const syncFrameUnsafe = (sync: Sync, frame: AnyFrame): void => {
+	const t0 = performance.now();
+	sync.width = frame.width;
+	sync.height = frame.height;
+	syncCameras(sync, frame);
+	diffRetained(sync, walkTree(sync, frame));
+	syncBillboards(sync);
 	sync.stats.objects = sync.retained.size;
 	sync.stats.lastSyncMs = performance.now() - t0;
 };
+
+/**
+ * Sync a frame into the retained scenes.
+ *
+ * The walk's throws are contained here — one `Effect.try` at the seam
+ * turns a scene-graph violation into a typed `RenderException` naming the
+ * offending instance, instead of an exception escaping into whatever
+ * Effect the caller happened to be inside.
+ */
+export const syncFrame = (
+	sync: Sync,
+	frame: AnyFrame,
+): Effect.Effect<void, RenderException> =>
+	Effect.try({
+		try: () => syncFrameUnsafe(sync, frame),
+		catch: (cause) =>
+			RenderException.of(
+				cause instanceof Error ? cause.message : "frame sync failed",
+				cause,
+			),
+	});
 
 const syncComp = (
 	sync: Sync,
 	id: string,
 	groupData: unknown,
+	size: FrameData.Size,
 	world: World,
 	hud: boolean,
 	frame: AnyFrame,
-	seenComps: Set<string>,
 ): void => {
-	seenComps.add(id);
-	const data = groupData as {
-		width: number;
-		height: number;
-		backgroundColor?: Color.Color;
-		opacity?: number;
-		transform?: {
-			a: number;
-			b: number;
-			c: number;
-			d: number;
-			e: number;
-			f: number;
-		};
-	};
 	let comp = sync.comps.get(id);
 	if (comp === undefined) {
 		const material = new THREE.MeshBasicNodeMaterial();
@@ -440,56 +482,47 @@ const syncComp = (
 			plane,
 			material,
 			rt: null,
-			width: data.width,
-			height: data.height,
+			width: size.width,
+			height: size.height,
 			hud,
 		};
 		sync.comps.set(id, comp);
 		ThreeScene.add(hud ? sync.hudScene : sync.scene, [holder]);
 	}
-	comp.width = data.width;
-	comp.height = data.height;
+	comp.width = size.width;
+	comp.height = size.height;
 	// inner sync: the comp's subtree in comp-local space under the
-	// identity camera, with the comp's own background (or transparent)
-	syncFrame(comp.sync, {
-		instances: frame.instances,
+	// identity camera, with the comp's own background (or transparent).
+	// Unsafe: violations inside a comp propagate to the outermost
+	// syncFrame's catch, which is the whole point of one seam per frame.
+	const background = FrameData.backgroundColorOf(groupData);
+	syncFrameUnsafe(comp.sync, {
+		...frame,
 		root: id,
-		frameRate: frame.frameRate,
-		width: data.width,
-		height: data.height,
-		backgroundColor: data.backgroundColor ?? Color.transparent,
-		camera: Camera.identity(data.width),
-	} as AnyFrame);
-	if (
-		data.backgroundColor === undefined ||
-		Color.bytes(data.backgroundColor).a === 0
-	) {
+		width: size.width,
+		height: size.height,
+		backgroundColor: background ?? Color.transparent,
+		camera: Camera.identity(size.width),
+	});
+	if (background === null || Color.bytes(background).a === 0) {
 		ThreeScene.setBackground(comp.sync.scene, null);
 	}
 	// outer placement: top-left-anchored plane, group opacity on the
 	// composite, 2D affine about the bounds center (y-down → y-up
 	// conjugation: negate b and c off-diagonals and the f translation)
 	comp.holder.position.copy(sync.ctx.toThree(world.x, world.y, world.z));
-	comp.plane.scale.set(data.width, data.height, 1);
-	comp.material.opacity = Math.max(0, Math.min(1, data.opacity ?? 1));
+	comp.plane.scale.set(size.width, size.height, 1);
+	comp.material.opacity = FrameData.opacityOf(groupData);
 	comp.holder.visible = comp.material.opacity > 0;
-	const m = data.transform;
-	const identity =
-		m === undefined ||
-		(m.a === 1 &&
-			m.b === 0 &&
-			m.c === 0 &&
-			m.d === 1 &&
-			m.e === 0 &&
-			m.f === 0);
-	if (identity) {
+	const m = FrameData.affineOf(groupData);
+	if (m === null) {
 		comp.transformHolder.matrixAutoUpdate = true;
 		comp.transformHolder.position.set(0, 0, 0);
 		comp.transformHolder.rotation.set(0, 0, 0);
 		comp.transformHolder.scale.set(1, 1, 1);
-	} else if (m !== undefined) {
-		const cx = data.width / 2;
-		const cy = -data.height / 2;
+	} else {
+		const cx = size.width / 2;
+		const cy = -size.height / 2;
 		const affine = new THREE.Matrix4().set(
 			m.a,
 			-m.c,
@@ -557,15 +590,14 @@ export const resolveResources = Effect.fnUntraced(function* (
 	const images = new Set<string>();
 	for (const entry of Object.values(frame.instances)) {
 		if (entry.entity.name === Shapes.Text.name) {
-			const family = (entry.data as { fontFamily?: { id?: unknown } })
-				.fontFamily?.id;
-			if (typeof family === "string" && !Text.hasFont(sync.text, family)) {
+			const family = FrameData.fontFamilyIdOf(entry.data);
+			if (family !== null && !Text.hasFont(sync.text, family)) {
 				fonts.add(family);
 			}
 		}
 		if (entry.entity.name === Shapes.Image.name) {
-			const id = (entry.data as { image?: { id?: unknown } }).image?.id;
-			if (typeof id === "string" && !Images.has(sync.images, id)) {
+			const id = FrameData.imageIdOf(entry.data);
+			if (id !== null && !Images.has(sync.images, id)) {
 				images.add(id);
 			}
 		}

@@ -15,6 +15,7 @@ import type { Frame } from "effect-motion/Scene";
 import { builtinRegistry } from "./Builtins.js";
 import { buildDofBlur, type DofUniforms, makeDofUniforms } from "./Dof.js";
 import type { EntityRenderer } from "./EntityRenderer.js";
+import type { RenderException } from "./RenderException.js";
 import * as Sync from "./Sync.js";
 
 /**
@@ -137,9 +138,14 @@ export const setViewport = (
 	Gpu.setSize(renderer.gpu, width, height);
 };
 
-/** sync a frame into the retained scene (raw three, hot path) */
-export const syncFrame = (renderer: Renderer, frame: AnyFrame): void =>
-	Sync.syncFrame(renderer.sync, frame);
+/**
+ * Sync a frame into the retained scene. Scene-graph violations arrive as
+ * a typed `RenderException` naming the offending instance.
+ */
+export const syncFrame = (
+	renderer: Renderer,
+	frame: AnyFrame,
+): Effect.Effect<void, RenderException> => Sync.syncFrame(renderer.sync, frame);
 
 /**
  * Resolve the frame's resources (font loaders, the auto-provided default
