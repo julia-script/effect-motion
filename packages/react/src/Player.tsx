@@ -262,8 +262,12 @@ const useScene = (
 									sized.dpr !== dpr
 								) {
 									sized = { width: frame.width, height: frame.height, dpr };
-									sink.gpu.setPixelRatio(dpr);
-									sink.gpu.setSize(frame.width, frame.height, false);
+									FrameRenderer.setViewport(
+										sink,
+										frame.width,
+										frame.height,
+										dpr,
+									);
 								}
 								// font loaders resolve from this runtime's context (the
 								// renderLayers merge); missing loaders defect loudly

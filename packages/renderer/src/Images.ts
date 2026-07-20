@@ -1,4 +1,4 @@
-import { THREE } from "@effect-motion/three";
+import { ThreeRaw as THREE } from "@effect-motion/three";
 import { Effect } from "effect";
 import { EffectMotionError } from "effect-motion";
 

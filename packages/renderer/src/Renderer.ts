@@ -3,7 +3,9 @@ import {
 	Renderer as Gpu,
 	Interop,
 	PostProcessing,
-	THREE,
+	RenderTarget,
+	type ThreeRaw as THREE,
+	Scene as ThreeScene,
 } from "@effect-motion/three";
 import type { Scope } from "effect";
 import { Effect } from "effect";
@@ -32,7 +34,7 @@ type AnyEntityRenderer = EntityRenderer<Entity.AnyEntity>;
  * call it before their main pass.
  */
 export const renderCompTargets = Effect.fnUntraced(function* (
-	renderer: THREE.WebGPURenderer,
+	renderer: Gpu.Renderer,
 	sync: Sync.Sync,
 	pixelRatio: number,
 ): Effect.fn.Return<void, ThreeException> {
@@ -40,18 +42,26 @@ export const renderCompTargets = Effect.fnUntraced(function* (
 		yield* renderCompTargets(renderer, comp.sync, pixelRatio);
 		const pw = Math.max(1, Math.round(comp.width * pixelRatio));
 		const ph = Math.max(1, Math.round(comp.height * pixelRatio));
-		if (comp.rt === null || comp.rt.width !== pw || comp.rt.height !== ph) {
-			comp.rt?.dispose();
-			comp.rt = new THREE.RenderTarget(pw, ph);
-			comp.material.map = comp.rt.texture;
+		if (
+			comp.rt === null ||
+			RenderTarget.width(comp.rt) !== pw ||
+			RenderTarget.height(comp.rt) !== ph
+		) {
+			// comp targets live as long as their comp, not the frame — the
+			// Sync owns them and disposes through disposeComp
+			comp.rt?.["~three.renderTarget"].dispose();
+			comp.rt = RenderTarget.makeUnsafe(pw, ph);
+			comp.material.map = RenderTarget.texture(comp.rt);
 			comp.material.needsUpdate = true;
 		}
-		const previous = renderer.getRenderTarget();
-		renderer.setRenderTarget(comp.rt);
+		const previous = Gpu.getRenderTarget(renderer);
+		Gpu.setRenderTarget(renderer, comp.rt);
 		// ensuring: the previous target comes back even when the render
 		// fails — the sync version silently skipped the restore on a throw
 		yield* Gpu.render(renderer, comp.sync.scene, comp.sync.camera).pipe(
-			Effect.ensuring(Effect.sync(() => renderer.setRenderTarget(previous))),
+			Effect.ensuring(
+				Effect.sync(() => Gpu.setRenderTarget(renderer, previous)),
+			),
 		);
 	}
 });
@@ -78,7 +88,7 @@ interface DofPipeline {
  */
 export interface Renderer {
 	readonly sync: Sync.Sync;
-	readonly gpu: THREE.WebGPURenderer;
+	readonly gpu: Gpu.Renderer;
 	/** internal: DoF uniforms shared across pipeline rebuilds */
 	readonly uniforms: DofUniforms;
 	/** internal: DoF pipeline, built lazily at the CURRENT drawing-buffer
@@ -91,15 +101,17 @@ export interface Renderer {
 }
 
 const ensureDofPipeline = (renderer: Renderer): THREE.RenderPipeline => {
-	const size = renderer.gpu.getDrawingBufferSize(new THREE.Vector2());
-	const key = `${size.x}x${size.y}`;
+	const size = Gpu.getDrawingBufferSize(renderer.gpu);
+	const key = `${size.width}x${size.height}`;
 	if (renderer.dofPipeline === null || renderer.dofPipeline.key !== key) {
 		renderer.dofPipeline?.pass.dispose?.();
 		const scenePass = PostProcessing.pass(
-			renderer.sync.scene,
+			renderer.sync.scene["~three.scene"],
 			renderer.sync.camera,
 		);
-		const post = new PostProcessing.RenderPipeline(renderer.gpu);
+		const post = new PostProcessing.RenderPipeline(
+			renderer.gpu["~three.renderer"],
+		);
 		post.outputNode = buildDofBlur(scenePass, renderer.uniforms) as never;
 		renderer.dofPipeline = {
 			post,
@@ -108,6 +120,21 @@ const ensureDofPipeline = (renderer: Renderer): THREE.RenderPipeline => {
 		};
 	}
 	return renderer.dofPipeline.post;
+};
+
+/**
+ * Resize the drawing buffer to a frame's logical size at a device pixel
+ * ratio. Infallible field bookkeeping, so sync — mirrors the wrapper's
+ * own rule.
+ */
+export const setViewport = (
+	renderer: Renderer,
+	width: number,
+	height: number,
+	pixelRatio: number,
+): void => {
+	Gpu.setPixelRatio(renderer.gpu, pixelRatio);
+	Gpu.setSize(renderer.gpu, width, height);
 };
 
 /** sync a frame into the retained scene (raw three, hot path) */
@@ -140,7 +167,7 @@ export const render = (
 			renderCompTargets(
 				renderer.gpu,
 				renderer.sync,
-				renderer.gpu.getPixelRatio(),
+				Gpu.getPixelRatio(renderer.gpu),
 			),
 		),
 		Effect.flatMap(() => {
@@ -158,12 +185,12 @@ export const render = (
 		}),
 		Effect.flatMap(() => {
 			// HUD overlay: identity camera, above everything, DoF-exempt
-			if (renderer.sync.hudScene.children.length === 0) {
+			if (ThreeScene.isEmpty(renderer.sync.hudScene)) {
 				return Effect.void;
 			}
 			return Effect.sync(() => {
-				renderer.gpu.autoClear = false;
-				renderer.gpu.clearDepth();
+				renderer.gpu["~three.renderer"].autoClear = false;
+				renderer.gpu["~three.renderer"].clearDepth();
 			}).pipe(
 				Effect.flatMap(() =>
 					Gpu.render(
@@ -175,7 +202,7 @@ export const render = (
 				// autoClear must come back on even when the hud render fails
 				Effect.ensuring(
 					Effect.sync(() => {
-						renderer.gpu.autoClear = true;
+						renderer.gpu["~three.renderer"].autoClear = true;
 					}),
 				),
 			);

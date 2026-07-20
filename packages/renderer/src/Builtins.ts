@@ -1,4 +1,4 @@
-import { Line2 as FatLine, THREE, Tsl } from "@effect-motion/three";
+import { Line2 as FatLine, ThreeRaw as THREE, Tsl } from "@effect-motion/three";
 import { Effect } from "effect";
 import { Color, Shapes } from "effect-motion";
 import type * as Entity from "effect-motion/Entity";

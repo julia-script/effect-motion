@@ -3,8 +3,10 @@ import {
 	Renderer as Gpu,
 	Interop,
 	PostProcessing,
-	THREE,
+	RenderTarget,
+	type ThreeRaw as THREE,
 	type ThreeException,
+	Scene as ThreeScene,
 } from "@effect-motion/three";
 // side effects first-class: installs navigator.gpu (Dawn), WebGPU globals,
 // and the rAF/`self` shims three needs — before any renderer is created
@@ -128,14 +130,14 @@ export interface NodeRendererOptions {
  */
 export interface NodeRenderer {
 	readonly sync: Sync.Sync;
-	readonly gpu: THREE.WebGPURenderer;
+	readonly gpu: Gpu.Renderer;
 	/** internal: plain pipeline (world + DoF blur) */
 	readonly post: THREE.RenderPipeline;
 	/** internal: pipeline with the HUD pass composited over the world */
 	readonly postWithHud: THREE.RenderPipeline;
 	readonly dofUniforms: DofUniforms;
 	/** internal: the readback render target */
-	readonly target: THREE.RenderTarget;
+	readonly target: RenderTarget.RenderTarget;
 	readonly width: number;
 	readonly height: number;
 	readonly pixelWidth: number;
@@ -178,16 +180,15 @@ export const renderToPng = Effect.fnUntraced(function* (
 	// Drive it explicitly: one exported frame IS one three frame.
 	yield* Effect.sync(() =>
 		(
-			renderer.gpu as unknown as {
+			renderer.gpu["~three.renderer"] as unknown as {
 				_nodes: { nodeFrame: { update(): void } };
 			}
 		)._nodes.nodeFrame.update(),
 	);
 	yield* renderCompTargets(renderer.gpu, renderer.sync, renderer.pixelRatio);
-	const pipeline =
-		renderer.sync.hudScene.children.length > 0
-			? renderer.postWithHud
-			: renderer.post;
+	const pipeline = ThreeScene.isEmpty(renderer.sync.hudScene)
+		? renderer.post
+		: renderer.postWithHud;
 	yield* Interop.wrap("RenderPipeline.render", () => pipeline.render());
 	const rgba = yield* Gpu.readRenderTarget(
 		renderer.gpu,
@@ -229,11 +230,14 @@ export const make = Effect.fn("NodeRenderer.make")(function* (
 		pixelRatio: dpr,
 	});
 	yield* Effect.addFinalizer(() => Effect.sync(() => Sync.dispose(sync)));
-	const scenePass = PostProcessing.pass(sync.scene, sync.camera);
+	const scenePass = PostProcessing.pass(
+		sync.scene["~three.scene"],
+		sync.camera,
+	);
 	// custom depth-of-field shared with the browser path (see Dof.ts)
 	const dofUniforms = makeDofUniforms();
 	const blurred = buildDofBlur(scenePass, dofUniforms) as never;
-	const post = new PostProcessing.RenderPipeline(gpu);
+	const post = new PostProcessing.RenderPipeline(gpu["~three.renderer"]);
 	post.outputNode = blurred;
 	// HUD composite variant: the HUD pass (identity camera, transparent
 	// background) blended over the world INSIDE the pipeline, so the sRGB
@@ -248,17 +252,16 @@ export const make = Effect.fn("NodeRenderer.make")(function* (
 		oneMinus(): Node;
 	}
 	const hudScenePass = PostProcessing.pass(
-		sync.hudScene,
+		sync.hudScene["~three.scene"],
 		sync.hudCamera,
 	) as unknown as { getTextureNode(): Node };
 	const hudTex = hudScenePass.getTextureNode();
-	const postWithHud = new PostProcessing.RenderPipeline(gpu);
+	const postWithHud = new PostProcessing.RenderPipeline(gpu["~three.renderer"]);
 	postWithHud.outputNode = (blurred as unknown as Node)
 		.mul(hudTex.a.oneMinus())
 		.add(hudTex.rgb.mul(hudTex.a)) as never;
-	const target = new THREE.RenderTarget(pixelWidth, pixelHeight);
-	yield* Effect.addFinalizer(() => Effect.sync(() => target.dispose()));
-	gpu.setRenderTarget(target);
+	const target = yield* RenderTarget.make(pixelWidth, pixelHeight);
+	Gpu.setRenderTarget(gpu, target);
 	return {
 		sync,
 		gpu,

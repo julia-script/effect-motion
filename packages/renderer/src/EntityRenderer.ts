@@ -1,4 +1,4 @@
-import type { THREE } from "@effect-motion/three";
+import type { ThreeRaw as THREE } from "@effect-motion/three";
 import type { Effect } from "effect";
 import type { EffectMotionError } from "effect-motion";
 import type * as Entity from "effect-motion/Entity";

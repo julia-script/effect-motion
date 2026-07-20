@@ -1,15 +1,43 @@
 import type { Scope } from "effect";
-import { Effect } from "effect";
+import { Effect, Predicate } from "effect";
+import * as Pipeable from "effect/Pipeable";
 import * as THREE from "three/webgpu";
 import { wrap, wrapPromise } from "./Interop.js";
+import type * as RenderTarget from "./RenderTarget.js";
+import * as RenderTargetModule from "./RenderTarget.js";
+import type * as Scene from "./Scene.js";
 import type { ThreeException } from "./ThreeException.js";
 
 /**
- * Scoped lifecycle over `THREE.WebGPURenderer`: construction plus async
- * initialization on acquire, `dispose` on scope close. The acquired value is
- * the raw `WebGPURenderer` — per-frame use (render loops, scene mutation)
- * stays plain three.
+ * The GPU renderer actor: a branded handle over `THREE.WebGPURenderer`,
+ * acquired with its async init awaited and disposed on scope close.
+ *
+ * Rendering, readback and compilation can fail or are async, so those are
+ * Effects; sizing is infallible field bookkeeping, so it stays sync and
+ * chains (see the wrapper conventions in AGENTS.md).
  */
+
+export const TypeId = "~three/Renderer" as const;
+
+export interface Renderer extends Pipeable.Pipeable {
+	readonly [TypeId]: typeof TypeId;
+	readonly "~three.renderer": THREE.WebGPURenderer;
+}
+
+export const isRenderer = (u: unknown): u is Renderer =>
+	Predicate.hasProperty(u, TypeId);
+
+const brand = (renderer: THREE.WebGPURenderer): Renderer => {
+	const self: Renderer = {
+		[TypeId]: TypeId,
+		"~three.renderer": renderer,
+		// see Scene.ts on the array-like cast
+		pipe(...fns: ReadonlyArray<(value: unknown) => unknown>) {
+			return Pipeable.pipeArguments(self, fns as unknown as IArguments);
+		},
+	};
+	return self;
+};
 
 type WebGPURendererParameters = NonNullable<
 	ConstructorParameters<typeof THREE.WebGPURenderer>[0]
@@ -39,7 +67,7 @@ const acquire = Effect.fnUntraced(function* (options: MakeOptions) {
 		renderer.setSize(width, height, false);
 	}
 	yield* wrapPromise("WebGPURenderer.init", () => renderer.init());
-	return renderer;
+	return brand(renderer);
 });
 
 // disposing destroys GPU textures immediately, but the backend's in-flight
@@ -48,8 +76,9 @@ const acquire = Effect.fnUntraced(function* (options: MakeOptions) {
 // pending work land while resources are alive, drain the queue, then
 // dispose. A release failure is logged, never thrown — teardown must not
 // mask the scope's real outcome.
-const release = (renderer: THREE.WebGPURenderer) =>
-	Effect.sleep("50 millis").pipe(
+const release = (self: Renderer) => {
+	const renderer = self["~three.renderer"];
+	return Effect.sleep("50 millis").pipe(
 		Effect.andThen(
 			wrapPromise("WebGPURenderer queue drain", async () => {
 				const device = (renderer.backend as { device?: GPUDevice }).device;
@@ -63,10 +92,11 @@ const release = (renderer: THREE.WebGPURenderer) =>
 			Effect.logWarning("WebGPURenderer dispose failed", cause),
 		),
 	);
+};
 
 export const make = (
 	options: MakeOptions = {},
-): Effect.Effect<THREE.WebGPURenderer, ThreeException, Scope.Scope> =>
+): Effect.Effect<Renderer, ThreeException, Scope.Scope> =>
 	Effect.acquireRelease(acquire(options), release);
 
 /**
@@ -74,11 +104,13 @@ export const make = (
  * awaited); failures still surface as typed errors.
  */
 export const render = (
-	renderer: THREE.WebGPURenderer,
-	scene: THREE.Scene,
+	self: Renderer,
+	scene: Scene.Scene,
 	camera: THREE.Camera,
 ): Effect.Effect<void, ThreeException> =>
-	wrap("WebGPURenderer.render", () => renderer.render(scene, camera));
+	wrap("WebGPURenderer.render", () =>
+		self["~three.renderer"].render(scene["~three.scene"], camera),
+	);
 
 /**
  * Read a render target back as tightly-packed, top-down RGBA rows.
@@ -88,13 +120,19 @@ export const render = (
  * (a raw render-target readback is linear).
  */
 export const readRenderTarget = (
-	renderer: THREE.WebGPURenderer,
-	target: THREE.RenderTarget,
+	self: Renderer,
+	target: RenderTarget.RenderTarget,
 	width: number,
 	height: number,
 ): Effect.Effect<Uint8Array, ThreeException> =>
 	wrapPromise("readRenderTargetPixelsAsync", () =>
-		renderer.readRenderTargetPixelsAsync(target, 0, 0, width, height),
+		self["~three.renderer"].readRenderTargetPixelsAsync(
+			target["~three.renderTarget"],
+			0,
+			0,
+			width,
+			height,
+		),
 	).pipe(
 		Effect.map((pixels) => {
 			const padded = new Uint8Array(
@@ -124,10 +162,60 @@ export const readRenderTarget = (
  * of playback.
  */
 export const compile = (
-	renderer: THREE.WebGPURenderer,
-	scene: THREE.Object3D,
+	self: Renderer,
+	scene: Scene.Scene,
 	camera: THREE.Camera,
 ): Effect.Effect<void, ThreeException> =>
 	wrapPromise("WebGPURenderer.compileAsync", () =>
-		renderer.compileAsync(scene, camera).then(() => undefined),
+		self["~three.renderer"]
+			.compileAsync(scene["~three.scene"], camera)
+			.then(() => undefined),
 	);
+
+/** Direct the renderer's output at a target, or `null` for the canvas. */
+export const setRenderTarget = (
+	self: Renderer,
+	target: RenderTarget.RenderTarget | null,
+): Renderer => {
+	self["~three.renderer"].setRenderTarget(
+		target === null ? null : target["~three.renderTarget"],
+	);
+	return self;
+};
+
+/** The current output target, or `null` when drawing to the canvas. */
+export const getRenderTarget = (
+	self: Renderer,
+): RenderTarget.RenderTarget | null => {
+	const target = self["~three.renderer"].getRenderTarget();
+	return target === null ? null : RenderTargetModule.fromRaw(target);
+};
+
+/** Logical size in CSS pixels; the drawing buffer is this × pixelRatio. */
+export const setSize = (
+	self: Renderer,
+	width: number,
+	height: number,
+	updateStyle = false,
+): Renderer => {
+	self["~three.renderer"].setSize(width, height, updateStyle);
+	return self;
+};
+
+export const setPixelRatio = (self: Renderer, pixelRatio: number): Renderer => {
+	self["~three.renderer"].setPixelRatio(pixelRatio);
+	return self;
+};
+
+export const getPixelRatio = (self: Renderer): number =>
+	self["~three.renderer"].getPixelRatio();
+
+/** Drawing-buffer size in device pixels (logical size × pixelRatio). */
+export const getDrawingBufferSize = (
+	self: Renderer,
+): { readonly width: number; readonly height: number } => {
+	const size = self["~three.renderer"].getDrawingBufferSize(
+		new THREE.Vector2(),
+	);
+	return { width: size.x, height: size.y };
+};

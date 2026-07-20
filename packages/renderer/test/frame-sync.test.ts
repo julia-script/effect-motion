@@ -1,4 +1,4 @@
-import { THREE } from "@effect-motion/three";
+import { ThreeRaw as THREE, Scene as ThreeScene } from "@effect-motion/three";
 import { Effect } from "effect";
 import * as Stream from "effect/Stream";
 import { Camera, Color, Entity, Scene, Shapes } from "effect-motion";
@@ -39,9 +39,9 @@ describe("coordinate mapping and the 2D identity invariant", () => {
 		});
 		const sync = Sync.make(registry());
 		Sync.syncFrame(sync, frames.at(-1) ?? unreachable());
-		expect(sync.scene.children).toHaveLength(1);
+		expect(ThreeScene.children(sync.scene)).toHaveLength(1);
 		// a fill shape is a group (position/billboard) holding the fill mesh
-		const group = sync.scene.children[0] ?? unreachable();
+		const group = ThreeScene.children(sync.scene)[0] ?? unreachable();
 		// 500x300 viewport: origin shifts to center, y flips
 		expect(group.position.x).toBe(100 - 250);
 		expect(group.position.y).toBe(-(50 - 150));
@@ -75,7 +75,7 @@ describe("coordinate mapping and the 2D identity invariant", () => {
 		} as AnyFrame;
 		const sync = Sync.make(registry());
 		Sync.syncFrame(sync, withBg);
-		const bg = sync.scene.background;
+		const bg = sync.scene["~three.scene"].background;
 		expect(bg).not.toBeNull();
 	});
 });
@@ -142,7 +142,7 @@ describe("retained diff through the entity render contract", () => {
 			frames.find((f) => probeData(f)?.["~visible"] === false) ?? unreachable();
 		Sync.syncFrame(sync, hidden);
 		expect(counters).toMatchObject({ builds: 1, updates: 1, disposes: 1 });
-		expect(sync.scene.children).toHaveLength(0);
+		expect(ThreeScene.children(sync.scene)).toHaveLength(0);
 	});
 
 	it("group translation composes into the child's world position", async () => {
@@ -186,7 +186,7 @@ describe("billboards and tilted planes", () => {
 		});
 		const sync = Sync.make(registry());
 		Sync.syncFrame(sync, frames.at(-1) ?? unreachable());
-		const mesh = sync.scene.children[0] ?? unreachable();
+		const mesh = ThreeScene.children(sync.scene)[0] ?? unreachable();
 		expect(mesh.quaternion.equals(sync.camera.quaternion)).toBe(true);
 	});
 
@@ -197,7 +197,7 @@ describe("billboards and tilted planes", () => {
 		});
 		const sync = Sync.make(registry());
 		Sync.syncFrame(sync, frames.at(-1) ?? unreachable());
-		const mesh = sync.scene.children[0] ?? unreachable();
+		const mesh = ThreeScene.children(sync.scene)[0] ?? unreachable();
 		expect(mesh.rotation.y).toBeCloseTo(Math.PI / 4, 10);
 	});
 });
@@ -241,10 +241,10 @@ describe("screen-space HUD tier", () => {
 		});
 		const sync = Sync.make(registry());
 		Sync.syncFrame(sync, frames.at(-1) ?? unreachable());
-		expect(sync.scene.children).toHaveLength(1);
-		expect(sync.hudScene.children).toHaveLength(1);
+		expect(ThreeScene.children(sync.scene)).toHaveLength(1);
+		expect(ThreeScene.children(sync.hudScene)).toHaveLength(1);
 		// hud billboards face the identity camera, not the world camera
-		const hudObject = sync.hudScene.children[0] ?? unreachable();
+		const hudObject = ThreeScene.children(sync.hudScene)[0] ?? unreachable();
 		expect(hudObject.quaternion.equals(sync.hudCamera.quaternion)).toBe(true);
 	});
 });
@@ -267,8 +267,8 @@ describe("sized-group sub-compositions", () => {
 		expect(sync.comps.size).toBe(1);
 		const comp = [...sync.comps.values()][0] ?? unreachable();
 		// the comp's subtree syncs into its own scene, comp-local
-		expect(comp.sync.scene.children).toHaveLength(1);
-		const inner = comp.sync.scene.children[0] ?? unreachable();
+		expect(ThreeScene.children(comp.sync.scene)).toHaveLength(1);
+		const inner = ThreeScene.children(comp.sync.scene)[0] ?? unreachable();
 		// comp-local coords: the child sits at its own (x, y) within 100x80
 		expect(inner.position.x).toBe(30 - 50);
 		expect(inner.position.y).toBe(-(20 - 40));

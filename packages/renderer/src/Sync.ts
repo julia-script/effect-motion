@@ -1,4 +1,8 @@
-import { THREE } from "@effect-motion/three";
+import {
+	type RenderTarget,
+	ThreeRaw as THREE,
+	Scene as ThreeScene,
+} from "@effect-motion/three";
 import { Context, Effect } from "effect";
 import { Color, type EffectMotionError, Shapes } from "effect-motion";
 import * as Camera from "effect-motion/Camera";
@@ -103,7 +107,7 @@ export interface CompState {
 	readonly plane: THREE.Mesh;
 	readonly material: THREE.MeshBasicNodeMaterial;
 	/** created/resized by the render path (GPU-side) */
-	rt: THREE.RenderTarget | null;
+	rt: RenderTarget.RenderTarget | null;
 	width: number;
 	height: number;
 	hud: boolean;
@@ -116,14 +120,15 @@ export interface CompState {
  * `resolveResources`, `dispose`).
  */
 export interface Sync {
-	readonly scene: THREE.Scene;
+	/** the world scene, branded — the render paths take the wrapper */
+	readonly scene: ThreeScene.Scene;
 	readonly camera: THREE.PerspectiveCamera;
 	/**
 	 * screen-space HUD tier: rendered through the identity camera, after
 	 * and above world content, exempt from DoF. Transparent background so
 	 * the render paths overlay it.
 	 */
-	readonly hudScene: THREE.Scene;
+	readonly hudScene: ThreeScene.Scene;
 	readonly hudCamera: THREE.PerspectiveCamera;
 	readonly stats: SyncStats;
 	/** per-frame DoF request, consumed by the render path */
@@ -154,9 +159,11 @@ export const make = (registry: Record<string, AnyEntityRenderer>): Sync => {
 	const camera = new THREE.PerspectiveCamera(50, 1, NEAR, FAR);
 	camera.rotation.order = "ZYX";
 	const base = {
-		scene: new THREE.Scene(),
+		// makeUnsafe: this Sync owns the scenes' lifetime through its own
+		// dispose, so they are not separately scope-registered
+		scene: ThreeScene.makeUnsafe(new THREE.Scene()),
 		camera,
-		hudScene: new THREE.Scene(),
+		hudScene: ThreeScene.makeUnsafe(new THREE.Scene()),
 		hudCamera: new THREE.PerspectiveCamera(50, 1, NEAR, FAR),
 		stats: { objects: 0, lastSyncMs: 0 },
 		dof: { on: false, focusDistance: 0, strengthUv: 0 },
@@ -231,7 +238,7 @@ export const syncFrame = (sync: Sync, frame: AnyFrame): void => {
 	sync.hudCamera.fov =
 		(2 * Math.atan(frame.height / (2 * hudFocal)) * 180) / Math.PI;
 	sync.hudCamera.updateProjectionMatrix();
-	sync.hudScene.background = null;
+	ThreeScene.setBackground(sync.hudScene, null);
 
 	const bg = Color.bytes(frame.backgroundColor);
 	sync.background.setRGB(
@@ -240,7 +247,7 @@ export const syncFrame = (sync: Sync, frame: AnyFrame): void => {
 		bg.b / 255,
 		THREE.SRGBColorSpace,
 	);
-	sync.scene.background = sync.background;
+	ThreeScene.setBackground(sync.scene, sync.background);
 
 	sync.dof.on = camera.aperture > 0 && camera.focusDistance > 0;
 	sync.dof.focusDistance = camera.focusDistance;
@@ -337,7 +344,7 @@ export const syncFrame = (sync: Sync, frame: AnyFrame): void => {
 				lastData: leaf.data,
 				lastWorld: leaf.world,
 			});
-			(hud ? sync.hudScene : sync.scene).add(retained.object);
+			ThreeScene.add(hud ? sync.hudScene : sync.scene, [retained.object]);
 			continue;
 		}
 		const sameData = existing.lastData === leaf.data;
@@ -353,14 +360,16 @@ export const syncFrame = (sync: Sync, frame: AnyFrame): void => {
 	}
 	for (const [id, entry] of sync.retained) {
 		if (!seen.has(id)) {
-			(entry.hud ? sync.hudScene : sync.scene).remove(entry.retained.object);
+			ThreeScene.remove(entry.hud ? sync.hudScene : sync.scene, [
+				entry.retained.object,
+			]);
 			entry.retained.dispose();
 			sync.retained.delete(id);
 		}
 	}
 	for (const [id, comp] of sync.comps) {
 		if (!seenComps.has(id)) {
-			(comp.hud ? sync.hudScene : sync.scene).remove(comp.holder);
+			ThreeScene.remove(comp.hud ? sync.hudScene : sync.scene, [comp.holder]);
 			disposeComp(comp);
 			sync.comps.delete(id);
 		}
@@ -436,7 +445,7 @@ const syncComp = (
 			hud,
 		};
 		sync.comps.set(id, comp);
-		(hud ? sync.hudScene : sync.scene).add(holder);
+		ThreeScene.add(hud ? sync.hudScene : sync.scene, [holder]);
 	}
 	comp.width = data.width;
 	comp.height = data.height;
@@ -455,7 +464,7 @@ const syncComp = (
 		data.backgroundColor === undefined ||
 		Color.bytes(data.backgroundColor).a === 0
 	) {
-		comp.sync.scene.background = null;
+		ThreeScene.setBackground(comp.sync.scene, null);
 	}
 	// outer placement: top-left-anchored plane, group opacity on the
 	// composite, 2D affine about the bounds center (y-down → y-up
@@ -512,18 +521,20 @@ const syncComp = (
 const disposeComp = (comp: CompState): void => {
 	dispose(comp.sync);
 	comp.material.dispose();
-	comp.rt?.dispose();
+	comp.rt?.["~three.renderTarget"].dispose();
 };
 
 /** dispose every retained object (scope teardown) */
 export const dispose = (sync: Sync): void => {
 	for (const entry of sync.retained.values()) {
-		(entry.hud ? sync.hudScene : sync.scene).remove(entry.retained.object);
+		ThreeScene.remove(entry.hud ? sync.hudScene : sync.scene, [
+			entry.retained.object,
+		]);
 		entry.retained.dispose();
 	}
 	sync.retained.clear();
 	for (const comp of sync.comps.values()) {
-		(comp.hud ? sync.hudScene : sync.scene).remove(comp.holder);
+		ThreeScene.remove(comp.hud ? sync.hudScene : sync.scene, [comp.holder]);
 		disposeComp(comp);
 	}
 	sync.comps.clear();

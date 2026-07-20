@@ -200,6 +200,71 @@ export const fetchBytes = (
 - Callers work with the wrapper; a `new Foo()` or `await` from an external
   package appearing outside its boundary module is the smell.
 
+### Wrapping a library that is already actor-shaped
+
+Some libraries are themselves organized by actor — three.js is the house
+example: a `Scene`, an `Object3D`, a `Material` each own their state and
+the operations over it. Wrapping those is **not** a redesign. The wrapper
+is a thin branding + lifecycle layer that re-cuts their methods into our
+call shape, and it is mostly free.
+
+A wrapped type is a branded handle holding the raw instance under a
+`~<lib>.<thing>` key, plus `Pipeable` — the same shape as `Instance.ts`
+and `Entity.ts` in the motion package:
+
+```ts
+export const TypeId = "~three/Scene" as const;
+
+export interface Scene extends Pipeable.Pipeable {
+	readonly [TypeId]: typeof TypeId;
+	readonly "~three.scene": THREE.Scene;
+}
+
+export const isScene = (u: unknown): u is Scene =>
+	Predicate.hasProperty(u, TypeId);
+
+// construction owns teardown
+export const make = Effect.fnUntraced(function* (): Effect.fn.Return<
+	Scene,
+	never,
+	Scope.Scope
+> {
+	const scene = new THREE.Scene();
+	yield* Effect.addFinalizer(() => Effect.sync(() => scene.clear()));
+	return makeUnsafe(scene);
+});
+
+// sync mutation: infallible, chains
+export const add = dual<
+	(objects: ReadonlyArray<Object3D.Object3D>) => (self: Scene) => Scene,
+	(self: Scene, objects: ReadonlyArray<Object3D.Object3D>) => Scene
+>(isScene, (self, objects) => {
+	self["~three.scene"].add(...objects);
+	return self;
+});
+```
+
+Three rules decide the shape:
+
+1. **Effect only where it earns it.** A call that can throw or is async
+   gets `Effect.try`/`tryPromise` with a tagged error. Everything else —
+   `add`, `remove`, `clear`, setting a transform — stays **sync**,
+   returns the handle, and chains through `.pipe`. Per-frame mutation
+   runs thousands of times per frame; do not make it allocate an Effect
+   to describe an infallible field write.
+2. **Brand where we hold lifecycle or a rich surface.** Anything with
+   `dispose`, async init, or a substantial method surface of its own
+   (`Scene`, `Renderer`, `RenderTarget`, materials, geometries) gets its
+   own module. Leaf value types with no lifecycle (`Object3D`,
+   `Vector3`, `Color`, `Euler`) stay plain type aliases to the library's:
+   `export type Object3D = THREE.Object3D;`
+3. **Dual dispatch is by type guard, never arity** — the same rule as
+   the animators. `dual(isScene, ...)`, not `dual((args) => args.length === 2, ...)`.
+
+The barrel does **not** re-export the wrapped library's own namespace. A
+consumer that can reach `THREE.*` will, and the boundary stops meaning
+anything; make reaching for the raw library an explicit, visible import.
+
 ### Prefer Effect's built-in modules over hand-wrapping
 
 Hand-wrapping (`tryPromise` + tagged error, as above) is for APIs that

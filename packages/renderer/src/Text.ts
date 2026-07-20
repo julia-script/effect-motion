@@ -1,4 +1,4 @@
-import { THREE, Tsl } from "@effect-motion/three";
+import { ThreeRaw as THREE, Tsl } from "@effect-motion/three";
 import { Effect } from "effect";
 import { EffectMotionError } from "effect-motion";
 import { typesetterWorkerModule } from "troika-three-text";
