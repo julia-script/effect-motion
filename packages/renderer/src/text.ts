@@ -1,10 +1,6 @@
 import { THREE, Tsl } from "@effect-motion/three";
 import { typesetterWorkerModule } from "troika-three-text";
 import createSdfGenerator from "webgl-sdf-generator";
-import * as Queue from "effect/Queue";
-import * as Stream from "effect/Stream";
-import { Effect } from "effect";
-
 
 /**
  * SDF text: troika's typesetter (font parsing + layout + glyph paths, run on

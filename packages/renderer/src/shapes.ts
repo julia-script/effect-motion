@@ -1,5 +1,6 @@
 import { Line2 as FatLine, THREE, Tsl } from "@effect-motion/three";
 import { Color, Shapes } from "effect-motion";
+import type * as Entity from "effect-motion/Entity";
 import { renderOpacity, renderSize } from "effect-motion/particles/overLife";
 import type { OverLife, Particle } from "effect-motion/particles/Particle";
 import { ParticleField } from "effect-motion/particles/ParticleField";
@@ -813,4 +814,19 @@ export const builtinRenderers = {
 	| typeof Shapes.Hud
 	| typeof Shapes.Image
 	| typeof ParticleField
+>;
+
+/**
+ * The manifest widened for registry use. The single variance cast lives
+ * here: `EntityRenderers` keys each renderer by its exact entity (so
+ * coverage stays a compile-time guarantee above), while a registry holds
+ * `EntityRenderer<AnyEntity>` — contravariant `build`/`update` parameters
+ * make that narrowing inexpressible without the cast.
+ */
+export const builtinRegistry: Record<
+	string,
+	EntityRenderer<Entity.AnyEntity>
+> = builtinRenderers as unknown as Record<
+	string,
+	EntityRenderer<Entity.AnyEntity>
 >;

@@ -26,40 +26,48 @@ export interface MakeOptions extends WebGPURendererParameters {
 	readonly pixelRatio?: number;
 }
 
-export const make = (
-	options: MakeOptions = {},
-): Effect.Effect<THREE.WebGPURenderer, ThreeException, Scope.Scope> =>
-	Effect.acquireRelease(
-		Effect.gen(function* () {
-			const { width, height, pixelRatio, ...parameters } = options;
-			const renderer = yield* wrap(
-				"WebGPURenderer",
-				() => new THREE.WebGPURenderer(parameters),
-			);
-			if (pixelRatio !== undefined) {
-				renderer.setPixelRatio(pixelRatio);
-			}
-			if (width !== undefined && height !== undefined) {
-				renderer.setSize(width, height, false);
-			}
-			yield* wrapPromise("WebGPURenderer.init", () => renderer.init());
-			return renderer;
-		}),
-		(renderer) =>
-			wrapPromise("WebGPURenderer.dispose", async () => {
-				// disposing destroys GPU textures immediately, but the backend's
-				// in-flight async chains (deferred submits, per-render resolves)
-				// can still submit afterwards — "Destroyed texture used in a
-				// submit" validation spam. Let pending work land while resources
-				// are alive, drain the queue, then dispose.
-				await new Promise((resolve) => setTimeout(resolve, 50));
+const acquire = Effect.fnUntraced(function* (options: MakeOptions) {
+	const { width, height, pixelRatio, ...parameters } = options;
+	const renderer = yield* wrap(
+		"WebGPURenderer",
+		() => new THREE.WebGPURenderer(parameters),
+	);
+	if (pixelRatio !== undefined) {
+		renderer.setPixelRatio(pixelRatio);
+	}
+	if (width !== undefined && height !== undefined) {
+		renderer.setSize(width, height, false);
+	}
+	yield* wrapPromise("WebGPURenderer.init", () => renderer.init());
+	return renderer;
+});
+
+// disposing destroys GPU textures immediately, but the backend's in-flight
+// async chains (deferred submits, per-render resolves) can still submit
+// afterwards — "Destroyed texture used in a submit" validation spam. Let
+// pending work land while resources are alive, drain the queue, then
+// dispose. A release failure is logged, never thrown — teardown must not
+// mask the scope's real outcome.
+const release = (renderer: THREE.WebGPURenderer) =>
+	Effect.sleep("50 millis").pipe(
+		Effect.andThen(
+			wrapPromise("WebGPURenderer queue drain", async () => {
 				const device = (renderer.backend as { device?: GPUDevice }).device;
 				if (device !== undefined) {
 					await device.queue.onSubmittedWorkDone();
 				}
-				renderer.dispose();
-			}).pipe(Effect.ignore),
+			}),
+		),
+		Effect.andThen(wrap("WebGPURenderer.dispose", () => renderer.dispose())),
+		Effect.catchCause((cause) =>
+			Effect.logWarning("WebGPURenderer dispose failed", cause),
+		),
 	);
+
+export const make = (
+	options: MakeOptions = {},
+): Effect.Effect<THREE.WebGPURenderer, ThreeException, Scope.Scope> =>
+	Effect.acquireRelease(acquire(options), release);
 
 /**
  * Render a scene through a camera. Sync-safe after `make` (init already

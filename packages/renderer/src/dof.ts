@@ -127,7 +127,10 @@ export const buildDofBlur = (
 		// a rejected tap falls back to the center color instead of dropping out
 		// of a renormalized sum — renormalizing boosts the few surviving taps
 		// near a sharp rim (MSAA-tinted edge texels) into visible speckle
-		const tap = color.sample(uv).mul(weight).add(centerColor.mul(weight.negate().add(1)));
+		const tap = color
+			.sample(uv)
+			.mul(weight)
+			.add(centerColor.mul(weight.negate().add(1)));
 		colorSum = colorSum === null ? tap : colorSum.add(tap);
 	}
 	return (colorSum as Node).div(OFFSETS.length);

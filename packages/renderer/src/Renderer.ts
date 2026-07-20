@@ -23,7 +23,7 @@ import type {
 	World,
 } from "./EntityRenderer.js";
 import { ImageStore } from "./images.js";
-import { builtinRenderers } from "./shapes.js";
+import { builtinRegistry } from "./shapes.js";
 import { TextEngine } from "./text.js";
 
 /**
@@ -520,60 +520,58 @@ export class FrameSync {
  * context; a missing loader dies with a defect naming the id (the
  * `font-loading` backstop).
  */
-export const resolveResources = (
+export const resolveResources = Effect.fnUntraced(function* (
 	sync: FrameSync,
 	frame: AnyFrame,
-): Effect.Effect<void> =>
-	Effect.gen(function* () {
-		const fonts = new Set<string>();
-		const images = new Set<string>();
-		for (const entry of Object.values(frame.instances)) {
-			if (entry.entity.name === Shapes.Text.name) {
-				const family = (entry.data as { fontFamily?: { id?: unknown } })
-					.fontFamily?.id;
-				if (typeof family === "string" && !sync.text.hasFont(family)) {
-					fonts.add(family);
-				}
-			}
-			if (entry.entity.name === Shapes.Image.name) {
-				const id = (entry.data as { image?: { id?: unknown } }).image?.id;
-				if (typeof id === "string" && !sync.images.has(id)) {
-					images.add(id);
-				}
+) {
+	const fonts = new Set<string>();
+	const images = new Set<string>();
+	for (const entry of Object.values(frame.instances)) {
+		if (entry.entity.name === Shapes.Text.name) {
+			const family = (entry.data as { fontFamily?: { id?: unknown } })
+				.fontFamily?.id;
+			if (typeof family === "string" && !sync.text.hasFont(family)) {
+				fonts.add(family);
 			}
 		}
-		if (fonts.size === 0 && images.size === 0) {
-			return;
-		}
-		// the caller's live context — loaders resolve from it by rebuilt tag
-		const context =
-			(yield* Effect.context<never>()) as Context.Context<unknown>;
-		for (const family of fonts) {
-			const provided = Context.getOption(context, Font.Loader(family));
-			if (provided._tag === "Some") {
-				sync.text.registerFont(family, provided.value.bytes);
-			} else if (family === Font.defaultFont.id) {
-				sync.text.registerFont(family, yield* Font.loadDefaultBytes);
-			} else {
-				return yield* Effect.die(
-					new Error(
-						`Renderer: no font loader provided for "${family}" — provide it via Font.layer(${JSON.stringify(family)}, ...)`,
-					),
-				);
+		if (entry.entity.name === Shapes.Image.name) {
+			const id = (entry.data as { image?: { id?: unknown } }).image?.id;
+			if (typeof id === "string" && !sync.images.has(id)) {
+				images.add(id);
 			}
 		}
-		for (const id of images) {
-			const provided = Context.getOption(context, Image.Loader(id));
-			if (provided._tag === "None") {
-				return yield* Effect.die(
-					new Error(
-						`Renderer: no image loader provided for "${id}" — provide it via Image.layer(${JSON.stringify(id)}, ...)`,
-					),
-				);
-			}
-			sync.images.register(id, provided.value.bytes);
+	}
+	if (fonts.size === 0 && images.size === 0) {
+		return;
+	}
+	// the caller's live context — loaders resolve from it by rebuilt tag
+	const context = (yield* Effect.context<never>()) as Context.Context<unknown>;
+	for (const family of fonts) {
+		const provided = Context.getOption(context, Font.Loader(family));
+		if (provided._tag === "Some") {
+			sync.text.registerFont(family, provided.value.bytes);
+		} else if (family === Font.defaultFont.id) {
+			sync.text.registerFont(family, yield* Font.loadDefaultBytes);
+		} else {
+			return yield* Effect.die(
+				new Error(
+					`Renderer: no font loader provided for "${family}" — provide it via Font.layer(${JSON.stringify(family)}, ...)`,
+				),
+			);
 		}
-	});
+	}
+	for (const id of images) {
+		const provided = Context.getOption(context, Image.Loader(id));
+		if (provided._tag === "None") {
+			return yield* Effect.die(
+				new Error(
+					`Renderer: no image loader provided for "${id}" — provide it via Image.layer(${JSON.stringify(id)}, ...)`,
+				),
+			);
+		}
+		sync.images.register(id, provided.value.bytes);
+	}
+});
 
 /**
  * Render every live sub-composition into its render target, depth-first
@@ -719,26 +717,25 @@ export class FrameRenderer {
  * disposed on scope close), the sync core, and the DoF post chain built
  * once. Retained objects are disposed with the scope.
  */
-export const make = (
+export const make = Effect.fn("Renderer.make")(function* (
 	options: MakeOptions,
-): Effect.Effect<FrameRenderer, ThreeException, Scope.Scope> =>
-	Effect.gen(function* () {
-		const registry: Record<string, AnyEntityRenderer> = {
-			...(builtinRenderers as unknown as Record<string, AnyEntityRenderer>),
-			...options.renderers,
-		};
-		const sync = new FrameSync(registry);
-		const renderer = yield* Gpu.make({
-			...(options.canvas !== undefined ? { canvas: options.canvas } : {}),
-			antialias: true,
-			width: options.width,
-			height: options.height,
-			...(options.pixelRatio !== undefined
-				? { pixelRatio: options.pixelRatio }
-				: {}),
-		});
-		yield* Effect.addFinalizer(() => Effect.sync(() => sync.disposeRetained()));
-		// the DoF pipeline is built lazily inside FrameRenderer at the real
-		// drawing-buffer size (see ensureDofPipeline)
-		return new FrameRenderer(sync, renderer);
+): Effect.fn.Return<FrameRenderer, ThreeException, Scope.Scope> {
+	const registry: Record<string, AnyEntityRenderer> = {
+		...builtinRegistry,
+		...options.renderers,
+	};
+	const sync = new FrameSync(registry);
+	const renderer = yield* Gpu.make({
+		...(options.canvas !== undefined ? { canvas: options.canvas } : {}),
+		antialias: true,
+		width: options.width,
+		height: options.height,
+		...(options.pixelRatio !== undefined
+			? { pixelRatio: options.pixelRatio }
+			: {}),
 	});
+	yield* Effect.addFinalizer(() => Effect.sync(() => sync.disposeRetained()));
+	// the DoF pipeline is built lazily inside FrameRenderer at the real
+	// drawing-buffer size (see ensureDofPipeline)
+	return new FrameRenderer(sync, renderer);
+});

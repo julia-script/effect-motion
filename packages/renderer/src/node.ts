@@ -16,7 +16,7 @@ import type { Frame } from "effect-motion/Scene";
 import { buildDofBlur, makeDofUniforms } from "./dof.js";
 import type { EntityRenderer } from "./EntityRenderer.js";
 import { FrameSync, renderCompTargets, resolveResources } from "./Renderer.js";
-import { builtinRenderers } from "./shapes.js";
+import { builtinRegistry } from "./shapes.js";
 
 /**
  * The Node adapter: render frames on a real GPU (Dawn) without a browser
@@ -143,8 +143,12 @@ export class NodeFrameRenderer {
 		const self = this;
 		return Effect.gen(function* () {
 			if (frame.width !== self.width || frame.height !== self.height) {
-				throw new Error(
-					`NodeFrameRenderer: frame is ${frame.width}x${frame.height}, renderer was made for ${self.width}x${self.height}`,
+				// deliberate defect: a mis-sized frame is a caller bug, not a
+				// recoverable condition
+				return yield* Effect.die(
+					new Error(
+						`NodeFrameRenderer: frame is ${frame.width}x${frame.height}, renderer was made for ${self.width}x${self.height}`,
+					),
 				);
 			}
 			yield* resolveResources(self.sync, frame);
@@ -197,71 +201,70 @@ export class NodeFrameRenderer {
  * DoF here is a custom gather blur (see the pipeline construction below) —
  * three's own TSL DoF node is broken under Dawn.
  */
-export const make = (
+export const make = Effect.fn("NodeRenderer.make")(function* (
 	options: NodeRendererOptions,
-): Effect.Effect<NodeFrameRenderer, ThreeException, Scope.Scope> =>
-	Effect.gen(function* () {
-		const dpr = options.pixelRatio ?? 1;
-		const pixelWidth = Math.round(options.width * dpr);
-		const pixelHeight = Math.round(options.height * dpr);
-		const registry: Record<string, AnyEntityRenderer> = {
-			...(builtinRenderers as unknown as Record<string, AnyEntityRenderer>),
-			...options.renderers,
-		};
-		const sync = new FrameSync(registry);
-		const device = yield* NodeGpu.makeDevice();
-		const { canvas, context } = NodeGpu.stubCanvas(pixelWidth, pixelHeight);
-		const renderer = yield* Gpu.make({
-			canvas: canvas as unknown as HTMLCanvasElement,
-			context: context as never,
-			antialias: true,
-			device,
-			width: options.width,
-			height: options.height,
-			pixelRatio: dpr,
-		});
-		yield* Effect.addFinalizer(() => Effect.sync(() => sync.disposeRetained()));
-		const scenePass = PostProcessing.pass(sync.scene, sync.camera);
-		// custom depth-of-field shared with the browser path (see dof.ts)
-		const dofUniforms = makeDofUniforms();
-		const blurred = buildDofBlur(scenePass, dofUniforms) as never;
-		const post = new PostProcessing.RenderPipeline(renderer);
-		post.outputNode = blurred;
-		// HUD composite variant: the HUD pass (identity camera, transparent
-		// background) blended over the world INSIDE the pipeline, so the sRGB
-		// output transform applies exactly once. Chosen per frame only when
-		// HUD content exists — the plain pipeline never pays for the pass.
-		// ponytail: TSL typing quarantined as in text.ts.
-		interface Node {
-			readonly rgb: Node;
-			readonly a: Node;
-			mul(v: unknown): Node;
-			add(v: unknown): Node;
-			oneMinus(): Node;
-		}
-		const hudScenePass = PostProcessing.pass(
-			sync.hudScene,
-			sync.hudCamera,
-		) as unknown as { getTextureNode(): Node };
-		const hudTex = hudScenePass.getTextureNode();
-		const postWithHud = new PostProcessing.RenderPipeline(renderer);
-		postWithHud.outputNode = (blurred as unknown as Node)
-			.mul(hudTex.a.oneMinus())
-			.add(hudTex.rgb.mul(hudTex.a)) as never;
-		const target = new THREE.RenderTarget(pixelWidth, pixelHeight);
-		yield* Effect.addFinalizer(() => Effect.sync(() => target.dispose()));
-		renderer.setRenderTarget(target);
-		return new NodeFrameRenderer(
-			sync,
-			renderer,
-			post,
-			postWithHud,
-			dofUniforms,
-			target,
-			options.width,
-			options.height,
-			pixelWidth,
-			pixelHeight,
-			dpr,
-		);
+): Effect.fn.Return<NodeFrameRenderer, ThreeException, Scope.Scope> {
+	const dpr = options.pixelRatio ?? 1;
+	const pixelWidth = Math.round(options.width * dpr);
+	const pixelHeight = Math.round(options.height * dpr);
+	const registry: Record<string, AnyEntityRenderer> = {
+		...builtinRegistry,
+		...options.renderers,
+	};
+	const sync = new FrameSync(registry);
+	const device = yield* NodeGpu.makeDevice();
+	const { canvas, context } = NodeGpu.stubCanvas(pixelWidth, pixelHeight);
+	const renderer = yield* Gpu.make({
+		canvas: canvas as unknown as HTMLCanvasElement,
+		context: context as never,
+		antialias: true,
+		device,
+		width: options.width,
+		height: options.height,
+		pixelRatio: dpr,
 	});
+	yield* Effect.addFinalizer(() => Effect.sync(() => sync.disposeRetained()));
+	const scenePass = PostProcessing.pass(sync.scene, sync.camera);
+	// custom depth-of-field shared with the browser path (see dof.ts)
+	const dofUniforms = makeDofUniforms();
+	const blurred = buildDofBlur(scenePass, dofUniforms) as never;
+	const post = new PostProcessing.RenderPipeline(renderer);
+	post.outputNode = blurred;
+	// HUD composite variant: the HUD pass (identity camera, transparent
+	// background) blended over the world INSIDE the pipeline, so the sRGB
+	// output transform applies exactly once. Chosen per frame only when
+	// HUD content exists — the plain pipeline never pays for the pass.
+	// ponytail: TSL typing quarantined as in text.ts.
+	interface Node {
+		readonly rgb: Node;
+		readonly a: Node;
+		mul(v: unknown): Node;
+		add(v: unknown): Node;
+		oneMinus(): Node;
+	}
+	const hudScenePass = PostProcessing.pass(
+		sync.hudScene,
+		sync.hudCamera,
+	) as unknown as { getTextureNode(): Node };
+	const hudTex = hudScenePass.getTextureNode();
+	const postWithHud = new PostProcessing.RenderPipeline(renderer);
+	postWithHud.outputNode = (blurred as unknown as Node)
+		.mul(hudTex.a.oneMinus())
+		.add(hudTex.rgb.mul(hudTex.a)) as never;
+	const target = new THREE.RenderTarget(pixelWidth, pixelHeight);
+	yield* Effect.addFinalizer(() => Effect.sync(() => target.dispose()));
+	renderer.setRenderTarget(target);
+	return new NodeFrameRenderer(
+		sync,
+		renderer,
+		post,
+		postWithHud,
+		dofUniforms,
+		target,
+		options.width,
+		options.height,
+		pixelWidth,
+		pixelHeight,
+		dpr,
+	);
+});
