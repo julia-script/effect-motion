@@ -70,11 +70,26 @@ export type GroupInstance = Instance.Of<typeof Group.Group>;
  * an already-created `Instance`, or an `Effect` that resolves to one (a
  * not-yet-yielded `instantiate` — yielded internally so JSX children need
  * no `yield*`). Normalized to a stored child id in list order.
+ * `AnyInstance` on purpose: concrete (and branded, e.g. particle-field)
+ * instances must pass without variance fights.
  */
 export type Child =
 	| string
-	| Instance.Instance
-	| Effect.Effect<Instance.Instance, never, Runner>;
+	| Instance.AnyInstance
+	| Effect.Effect<Instance.AnyInstance, never, Runner>;
+
+/**
+ * The input `instantiate` accepts: the entity's own make-input, except that
+ * a `children` field (stored as `Array<string>` of ids) is authored as the
+ * polymorphic {@link Child} list — the runner normalizes it to ids in list
+ * order. Entities without a `children` field take their make-input as-is.
+ */
+export type InstantiateProps<Data extends Schema.Struct.Fields> =
+	"children" extends keyof Entity.EntityData<Data>["~type.make.in"]
+		? Omit<Entity.EntityData<Data>["~type.make.in"], "children"> & {
+				readonly children?: ReadonlyArray<Child>;
+			}
+		: Entity.EntityData<Data>["~type.make.in"];
 
 /**
  * The ambient mount parent for `instantiate` — provided per scene
@@ -408,10 +423,10 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 				Traits extends Entity.PartialTraits<Data>,
 			>(
 				entity: Entity.Entity<Name, Data, Traits>,
-				// make-input: the runner makes the stored data itself (via the
-				// tree entry), so raw props — including polymorphic children —
-				// arrive un-validated
-				props: Entity.EntityData<Data>["~type.make.in"],
+				// make-input with polymorphic children: the runner makes the
+				// stored data itself (via the tree entry), so raw props arrive
+				// un-validated and children are normalized to ids here
+				props: InstantiateProps<Data>,
 			): Effect.fn.Return<
 				Instance.Instance<Name, Data, Traits>,
 				never,

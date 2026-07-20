@@ -119,7 +119,7 @@ export const instantiate = Effect.fnUntraced(function* <
 	Traits extends Entity.PartialTraits<Data>,
 >(
 	entity: Entity.Entity<Name, Data, Traits>,
-	props: Entity.EntityData<Data>["~type.make.in"],
+	props: Runner.InstantiateProps<Data>,
 ): Effect.fn.Return<
 	Instance.Instance<Name, Data, Traits>,
 	never,
