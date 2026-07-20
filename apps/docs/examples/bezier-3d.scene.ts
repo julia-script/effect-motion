@@ -10,10 +10,10 @@ import { Camera, Color, Scene, Shapes } from "effect-motion";
 // there is no orientation math in the scene at all.
 
 // control points, local to the path anchor — z spreads them through depth
-const P0 = { x: 40, y: 210, z: 100 };
-const P1 = { x: 0, y: 40, z: -200 };
-const P2 = { x: 240, y: 170, z: -100 };
-const P3 = { x: 300, y: 10, z: -800 };
+const P0 = { x: 0, y: 0, z: 0 };
+const P1 = { x: 0, y: -100, z: 100 };
+const P2 = { x: 100, y: -200, z: -100 };
+const P3 = { x: 10, y: -300, z: 0 };
 
 const bezier = (t: number) => {
 	const u = 1 - t;
@@ -39,11 +39,19 @@ const curveCommands: [{ _tag: "M" } & Point3, ...({ _tag: "L" } & Point3)[]] = [
 	})),
 ];
 
-const ANCHOR = { x: 100, y: 30 };
+const ANCHOR = { x: 0, y: 0 };
 const noFill = Color.rgba(0, 0, 0, 0);
 
 // the axes-box volume around the curve, in world coordinates
-const BOX = { x0: 80, x1: 420, y0: 20, y1: 250, z0: 120, z1: -850 };
+const BOX = {
+	x0: 200,
+	y0: 0,
+	z0: 200,
+	
+	x1: -200,
+	y1: -300,
+	z1: -200,
+};
 // its 12 edges as Line endpoints: 4 along each axis
 const boxEdges = (): Array<[Point3, Point3]> => {
 	const { x0, x1, y0, y1, z0, z1 } = BOX;
@@ -76,6 +84,7 @@ const boxEdges = (): Array<[Point3, Point3]> => {
 };
 
 export const scene = Scene.make(
+	'bezier-3d',
 	function* () {
 		// the wireframe box: each edge is a skeletal Line, both endpoints at
 		// their own depth
@@ -86,7 +95,8 @@ export const scene = Scene.make(
 				y2: b.y,
 				z2: b.z,
 				stroke: Color.hex("#3d4266"),
-				strokeWidth: 1,
+				strokeWidth: 2,
+				opacity: 1,
 			});
 		}
 
@@ -94,8 +104,8 @@ export const scene = Scene.make(
 		yield* Scene.instantiate(Shapes.Path, {
 			...ANCHOR,
 			fill: noFill,
-			stroke: Color.hex("#b8c1ec"),
-			strokeWidth: 1.5,
+			stroke: Color.tw("gray", "400"),
+			strokeWidth: 2,
 			commands: [
 				{ _tag: "M", ...P0 },
 				{ _tag: "L", ...P1 },
@@ -108,7 +118,7 @@ export const scene = Scene.make(
 		yield* Scene.instantiate(Shapes.Path, {
 			...ANCHOR,
 			fill: noFill,
-			stroke: Color.hex("#e53170"),
+			stroke: Color.tw("pink", "500"),
 			strokeWidth: 3,
 			commands: curveCommands,
 		});
@@ -120,8 +130,8 @@ export const scene = Scene.make(
 				x: ANCHOR.x + p.x,
 				y: ANCHOR.y + p.y,
 				z: p.z,
-				radius: 4,
-				fill: Color.hex("#7f5af0"),
+				radius: 5,
+				fill: Color.tw("violet", "500"),
 			});
 			yield* Scene.instantiate(Shapes.Text, {
 				x: ANCHOR.x + p.x + 12,
@@ -129,23 +139,28 @@ export const scene = Scene.make(
 				z: p.z,
 				text: `P${i}`,
 				fontSize: 14,
-				fill: Color.hex("#b8c1ec"),
+				fill: Color.tw("gray", "400"),
 			});
 		}
 
 		// aim at the box center, then turntable around it — the point of
 		// interest keeps the camera locked on while only its position moves
 		const cam = yield* Scene.camera;
+		yield* Scene.update(cam, (props) => ({
+			...props,
+			y: -1500,
+			// focusDistance: 100000,
+			focalLength: 5000,
+		}));
 		yield* cam.pipe(
 			Camera.lookAt({
 				x: (BOX.x0 + BOX.x1) / 2,
 				y: (BOX.y0 + BOX.y1) / 2,
 				z: (BOX.z0 + BOX.z1) / 2,
 			}),
-			Camera.orbitTo(0.45, "2.5 seconds", "easeInOutCubic"),
-			Camera.orbitTo(-0.35, "3 seconds", "easeInOutCubic"),
-			Camera.orbitTo(0, "2 seconds", "easeInOutCubic"),
+			Camera.orbitTo(2, "5 seconds", "easeInOutCubic"),
+			Camera.orbitTo(-2, "5 seconds", "easeInOutCubic"),
 		);
 	},
-	{ width: 500, height: 300, backgroundColor: Color.rgba(22, 22, 29) },
+	{ backgroundColor: Color.tw("gray", "800") },
 );
