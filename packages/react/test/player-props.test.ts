@@ -23,7 +23,7 @@ declare const loaderScene: LoaderScene;
 declare const robotoLayer: Layer.Layer<Font.FontLoader<"Roboto">>;
 
 // never invoked — compile-time assertions only
-export const _cases = () => {
+const _cases = () => {
 	// a loader-free scene compiles without renderLayers
 	const plainOk: PlayerProps<PlainScene> = { scene: plainScene };
 

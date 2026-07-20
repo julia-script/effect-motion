@@ -90,5 +90,11 @@ const _renderDemandsLoaders = (
 	return eff;
 };
 
-export type _keep = [_resources];
-export const _keepValues = [_renderDemandsLoaders];
+type _keep = [_resources];
+
+describe("type-level assertions", () => {
+	it("stay referenced for the typechecker", () => {
+		const keep: [_keep | null, unknown] = [null, _renderDemandsLoaders];
+		expect(keep).toHaveLength(2);
+	});
+});
