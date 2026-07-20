@@ -63,6 +63,14 @@ export const makeUnsafe = (width: number, height: number): RenderTarget =>
 export const fromRaw = (target: THREE.RenderTarget): RenderTarget =>
 	brand(target);
 
+/**
+ * Release the target's GPU allocation. Only for targets created with
+ * `makeUnsafe`/`fromRaw` — a scoped `make` disposes itself.
+ */
+export const dispose = (self: RenderTarget): void => {
+	self["~three.renderTarget"].dispose();
+};
+
 /** The color attachment, for sampling the rendered result. */
 export const texture = (self: RenderTarget): THREE.Texture =>
 	self["~three.renderTarget"].texture;

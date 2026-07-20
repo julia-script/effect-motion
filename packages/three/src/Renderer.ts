@@ -201,6 +201,42 @@ export const getRenderTarget = (
 	return target === null ? null : RenderTargetModule.fromRaw(target);
 };
 
+/**
+ * Whether the renderer clears before each render. Turning it off is how
+ * an overlay pass (a HUD tier) draws above already-rendered content.
+ */
+export const setAutoClear: {
+	(autoClear: boolean): (self: Renderer) => Renderer;
+	(self: Renderer, autoClear: boolean): Renderer;
+} = dual(firstArgIsRenderer, (self: Renderer, autoClear: boolean) => {
+	self["~three.renderer"].autoClear = autoClear;
+	return self;
+});
+
+/** Clear the depth buffer, so a following pass draws over what is there. */
+export const clearDepth = (self: Renderer): Renderer => {
+	self["~three.renderer"].clearDepth();
+	return self;
+};
+
+/**
+ * Advance three's node-graph frame counter.
+ *
+ * three only ticks this inside its rAF-driven animation loop, which a
+ * headless export outruns — FRAME-deduped nodes (the scene pass above
+ * all) then skip their per-frame work and consecutive frames sample a
+ * stale texture. An export drives it explicitly: one exported frame IS
+ * one three frame. `_nodes` is private, hence the cast.
+ */
+export const advanceFrame = (self: Renderer): Renderer => {
+	(
+		self["~three.renderer"] as unknown as {
+			_nodes: { nodeFrame: { update(): void } };
+		}
+	)._nodes.nodeFrame.update();
+	return self;
+};
+
 /** Logical size in CSS pixels; the drawing buffer is this × pixelRatio. */
 export const setSize: {
 	(

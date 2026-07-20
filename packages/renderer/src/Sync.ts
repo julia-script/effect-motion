@@ -1,5 +1,5 @@
 import {
-	type RenderTarget,
+	RenderTarget,
 	ThreeRaw as THREE,
 	Scene as ThreeScene,
 } from "@effect-motion/three";
@@ -554,7 +554,9 @@ const syncComp = (
 const disposeComp = (comp: CompState): void => {
 	dispose(comp.sync);
 	comp.material.dispose();
-	comp.rt?.["~three.renderTarget"].dispose();
+	if (comp.rt !== null) {
+		RenderTarget.dispose(comp.rt);
+	}
 };
 
 /** dispose every retained object (scope teardown) */

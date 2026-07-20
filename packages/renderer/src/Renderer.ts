@@ -1,14 +1,13 @@
 import type { ThreeException } from "@effect-motion/three";
 import {
 	Renderer as Gpu,
-	Interop,
 	PostProcessing,
 	RenderTarget,
-	type ThreeRaw as THREE,
 	Scene as ThreeScene,
 } from "@effect-motion/three";
 import type { Scope } from "effect";
 import { Effect } from "effect";
+import { dual } from "effect/Function";
 import type { EffectMotionError } from "effect-motion";
 import type * as Entity from "effect-motion/Entity";
 import type { Frame } from "effect-motion/Scene";
@@ -50,7 +49,9 @@ export const renderCompTargets = Effect.fnUntraced(function* (
 		) {
 			// comp targets live as long as their comp, not the frame — the
 			// Sync owns them and disposes through disposeComp
-			comp.rt?.["~three.renderTarget"].dispose();
+			if (comp.rt !== null) {
+				RenderTarget.dispose(comp.rt);
+			}
 			comp.rt = RenderTarget.makeUnsafe(pw, ph);
 			comp.material.map = RenderTarget.texture(comp.rt);
 			comp.material.needsUpdate = true;
@@ -76,9 +77,24 @@ export interface MakeOptions {
 	readonly renderers?: Record<string, AnyEntityRenderer>;
 }
 
+/**
+ * `dual`'s predicate gets the whole `arguments` object — dispatch on
+ * args[0]. Renderer is a plain interface (not branded), so this is a
+ * structural check on the two fields every Renderer carries.
+ */
+const firstArgIsRenderer = (args: IArguments): boolean => {
+	const first: unknown = args[0];
+	return (
+		typeof first === "object" &&
+		first !== null &&
+		"sync" in first &&
+		"gpu" in first
+	);
+};
+
 interface DofPipeline {
-	readonly post: THREE.RenderPipeline;
-	readonly pass: { dispose?: () => void };
+	readonly post: PostProcessing.RenderPipeline;
+	readonly pass: PostProcessing.Pass;
 	readonly key: string;
 }
 
@@ -101,24 +117,24 @@ export interface Renderer {
 	dofPipeline: DofPipeline | null;
 }
 
-const ensureDofPipeline = (renderer: Renderer): THREE.RenderPipeline => {
+const ensureDofPipeline = (
+	renderer: Renderer,
+): PostProcessing.RenderPipeline => {
 	const size = Gpu.getDrawingBufferSize(renderer.gpu);
 	const key = `${size.width}x${size.height}`;
 	if (renderer.dofPipeline === null || renderer.dofPipeline.key !== key) {
-		renderer.dofPipeline?.pass.dispose?.();
+		if (renderer.dofPipeline !== null) {
+			PostProcessing.disposePass(renderer.dofPipeline.pass);
+		}
 		const scenePass = PostProcessing.pass(
-			renderer.sync.scene["~three.scene"],
+			renderer.sync.scene,
 			renderer.sync.camera,
 		);
-		const post = new PostProcessing.RenderPipeline(
-			renderer.gpu["~three.renderer"],
+		const post = PostProcessing.makePipeline(
+			renderer.gpu,
+			buildDofBlur(scenePass, renderer.uniforms),
 		);
-		post.outputNode = buildDofBlur(scenePass, renderer.uniforms) as never;
-		renderer.dofPipeline = {
-			post,
-			pass: scenePass as unknown as { dispose?: () => void },
-			key,
-		};
+		renderer.dofPipeline = { post, pass: scenePass, key };
 	}
 	return renderer.dofPipeline.post;
 };
@@ -128,15 +144,26 @@ const ensureDofPipeline = (renderer: Renderer): THREE.RenderPipeline => {
  * ratio. Infallible field bookkeeping, so sync — mirrors the wrapper's
  * own rule.
  */
-export const setViewport = (
-	renderer: Renderer,
-	width: number,
-	height: number,
-	pixelRatio: number,
-): void => {
-	Gpu.setPixelRatio(renderer.gpu, pixelRatio);
-	Gpu.setSize(renderer.gpu, width, height);
-};
+export const setViewport: {
+	(
+		width: number,
+		height: number,
+		pixelRatio: number,
+	): (renderer: Renderer) => Renderer;
+	(
+		renderer: Renderer,
+		width: number,
+		height: number,
+		pixelRatio: number,
+	): Renderer;
+} = dual(
+	firstArgIsRenderer,
+	(renderer: Renderer, width: number, height: number, pixelRatio: number) => {
+		Gpu.setPixelRatio(renderer.gpu, pixelRatio);
+		Gpu.setSize(renderer.gpu, width, height);
+		return renderer;
+	},
+);
 
 /**
  * Sync a frame into the retained scene. Scene-graph violations arrive as
@@ -180,8 +207,7 @@ export const render = (
 			if (renderer.sync.dof.on) {
 				renderer.uniforms.focus.value = renderer.sync.dof.focusDistance;
 				renderer.uniforms.strength.value = renderer.sync.dof.strengthUv;
-				const post = ensureDofPipeline(renderer);
-				return Interop.wrap("RenderPipeline.render", () => post.render());
+				return PostProcessing.render(ensureDofPipeline(renderer));
 			}
 			return Gpu.render(
 				renderer.gpu,
@@ -195,8 +221,8 @@ export const render = (
 				return Effect.void;
 			}
 			return Effect.sync(() => {
-				renderer.gpu["~three.renderer"].autoClear = false;
-				renderer.gpu["~three.renderer"].clearDepth();
+				Gpu.setAutoClear(renderer.gpu, false);
+				Gpu.clearDepth(renderer.gpu);
 			}).pipe(
 				Effect.flatMap(() =>
 					Gpu.render(
@@ -208,7 +234,7 @@ export const render = (
 				// autoClear must come back on even when the hud render fails
 				Effect.ensuring(
 					Effect.sync(() => {
-						renderer.gpu["~three.renderer"].autoClear = true;
+						Gpu.setAutoClear(renderer.gpu, true);
 					}),
 				),
 			);

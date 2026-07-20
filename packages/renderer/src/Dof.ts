@@ -72,7 +72,7 @@ const FEATHER = 0.002;
  * scene. `uniforms.strength` is the CoC scale in uv units (0 = off).
  */
 export const buildDofBlur = (
-	scenePass: ReturnType<typeof PostProcessing.pass>,
+	scenePass: PostProcessing.Pass,
 	uniforms: DofUniforms,
 ): unknown => {
 	const t = Tsl as unknown as {
@@ -87,21 +87,17 @@ export const buildDofBlur = (
 		screenCoordinate: { xy: Node };
 		screenUV: Node;
 	};
-	// _cameraNear/_cameraFar are the pass's auto-updated near/far uniforms —
-	// private, but the only route to per-tap depth linearization (the public
-	// getViewZNode is fixed at screenUV).
-	const internals = scenePass as unknown as {
-		_cameraNear: Node;
-		_cameraFar: Node;
-		getTextureNode(name: string): Node;
-	};
-	const color = scenePass.getTextureNode() as unknown as Node;
-	const depth = internals.getTextureNode("depth");
+	// the wrapper exposes the pass's near/far uniforms; per-tap depth
+	// linearization needs them (the public viewZ node is fixed at screenUV)
+	const cameraNear = scenePass.cameraNear as Node;
+	const cameraFar = scenePass.cameraFar as Node;
+	const color = scenePass.getTextureNode() as Node;
+	const depth = scenePass.getTextureNode("depth") as Node;
 	const focus = uniforms.focus as unknown as Node;
 	const strength = uniforms.strength as unknown as Node;
 	const cocOf = (viewZ: Node): Node =>
 		viewZ.negate().sub(focus).abs().div(focus).mul(strength).clamp(0, 0.05);
-	const centerCoc = cocOf(scenePass.getViewZNode() as unknown as Node);
+	const centerCoc = cocOf(scenePass.getViewZNode() as Node);
 	const centerColor = color.sample(t.screenUV);
 	const angle = t
 		.interleavedGradientNoise(t.screenCoordinate.xy)
@@ -117,11 +113,7 @@ export const buildDofBlur = (
 		);
 		const uv = t.screenUV.add(rotated.mul(centerCoc));
 		const tapCoc = cocOf(
-			t.perspectiveDepthToViewZ(
-				depth.sample(uv),
-				internals._cameraNear,
-				internals._cameraFar,
-			),
+			t.perspectiveDepthToViewZ(depth.sample(uv), cameraNear, cameraFar),
 		);
 		const weight = t.smoothstep(dist.sub(FEATHER), dist.add(FEATHER), tapCoc);
 		// a rejected tap falls back to the center color instead of dropping out
