@@ -1,5 +1,13 @@
 # @effect-motion/cli
 
+## 0.4.1
+
+### Patch Changes
+
+- Updated dependencies [3ee8e30]
+  - effect-motion@0.4.1
+  - @effect-motion/export@0.4.1
+
 ## 0.4.0
 
 ### Minor Changes
