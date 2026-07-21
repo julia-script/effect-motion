@@ -16,7 +16,8 @@
 			"!**/dist",
 			"!**/next-env.d.ts",
 			"!apps/docs/app/global.css",
-			"!.claude"
+			"!.claude",
+			"!**/test/__baseline__"
 		]
 	},
 	"formatter": {

@@ -20,19 +20,26 @@ Ordering follows the migration plan in `design.md`: capture a determinism baseli
 - [x] 1.4 Inventory every consumer of `Entity`, `Instance`, and trait exports across all packages, so section 8 can verify nothing was missed
   - **33 files**: motion/src 21 (8 core + 11 shapes + 3 particles), renderer/src 7, tests 5. `packages/react` has **zero** references — it only follows public types.
   - **Found an 11th entity the plan missed:** `ParticleField` (`Entity.make`, 744 lines under `src/particles/`, own renderer + animator + PRNG, exported as `Particles`, used by 6 example scenes and a test). Resolved as **scoped out** — see design D10.
-  - **Open question surfaced:** `Square.ts` is a 16-line Rect variant. No artifact decides whether it stays its own tag or collapses into `Rect`. Decide at task 2.1.
+  - **Surfaced and resolved:** `Square.ts` is a 16-line Rect variant. **Removed** — see design D11. Deleting it also removes its renderer (`Builtins.ts:274`), its `Shapes`/`all.ts` exports, and migrates 5 example scenes (`groups`, `camera-parallax` ×2, `the-box`, `camera-shake`) plus one MDX mention to `Rect` with equal width/height.
   - Full checklist in scratchpad `baseline/INVENTORY.md` — task 8.4 works through it.
 
 ## 2. Schema foundation
 
-- [ ] 2.1 Finalize `packages/motion/src/schemas.ts`: entity union, `EntityMap`, `EntityByTag`, `getEntityDefinitionByTag`, `Entry`
-- [ ] 2.2 Add the shared mixins: `transformMixin` (`position`/`rotation` as `Vec3`) and an appearance mixin (`scale` as `Vec3` default `(1,1,1)`, `opacity` default `1`, `visible` default `true`), applied to every paintable member so no entity can omit or rename them
-- [ ] 2.3 Give `Camera` `position` and `rotation` ONLY — no scale, opacity, or visible. It is the single non-paintable entity, already omitted from the frame's instance map (design D9)
-- [ ] 2.4 Confirm `opacity` is present on every paintable member. The current code has it on every shape via `Shape2D.filled` or an explicit spread; the schema sketch dropped it, so this restores existing behavior uniformly rather than adding a field
-- [ ] 2.5 Make geometry relative to `position`: `Line.start`/`Line.end` as `Vec3` offsets (drop `x2`/`y2`/`z2`); add `position` to `Path` with commands as offsets from it
-- [ ] 2.6 Define `Instance<Tag>` with the phantom tag parameter (design D1) — `{ _tag, id, kind }`, one string-literal parameter, not the three-parameter generic
-- [ ] 2.7 Confirm `Image` and `Text` still carry resource references as plain `{ _tag, id }` schema fields — resources are out of scope and must not be touched
-- [ ] 2.8 Nothing consumes the new schema yet; `pnpm check` should be no worse than the 1.1 baseline
+- [x] 2.1 Finalize `packages/motion/src/schemas.ts`: entity union, `EntityMap`, `EntityByTag`, `getEntityDefinitionByTag`, `Entry`. Field-set decisions from design D13: **drop** `Rect.rx`/`ry`; **restore** `Text.fillColor`, `Image.width`/`height` (optional/undefaulted, lone dimension ignored), and `Path`'s first-command-must-be-`M` filter; **keep** the sketch's `Ellipse.radiusX`/`radiusY` rename; **remove** `Group`'s `width`/`height`/`backgroundColor` (see 4.9)
+- [x] 2.2 Add the shared mixins: `transformMixin` (`position`/`rotation` as `Vec3`) and an appearance mixin (`scale` as `Vec3` default `(1,1,1)`, `opacity` default `1`, `visible` default `true`), applied to every paintable member so no entity can omit or rename them
+  - Verified by `test/schemas.test.ts`: every paintable entity carries position/rotation/scale/opacity/visible from the mixins.
+- [x] 2.3 Give `Camera` `position` and `rotation` ONLY — no scale, opacity, or visible. It is the single non-paintable entity, already omitted from the frame's instance map (design D9)
+  - Verified: Camera has position+rotation, and NOT scale/opacity/visible.
+- [x] 2.4 Confirm `opacity` is present on every paintable member. The current code has it on every shape via `Shape2D.filled` or an explicit spread; the schema sketch dropped it, so this restores existing behavior uniformly rather than adding a field
+  - Verified: all 9 paintable entities carry it; `TagsWith<"opacity">` excludes Camera (a `@ts-expect-error` proves `fade(camera)` will not compile).
+- [x] 2.5 Make geometry relative to `position`: `Line.start`/`Line.end` as `Vec3` offsets (drop `x2`/`y2`/`z2`); add `position` to `Path` with commands as offsets from it
+  - Verified: a Line spanning (50,20,300) keeps that span when moved to (100,100,100); a moved Path keeps its `commands` identical.
+- [x] 2.6 Define `Instance<Tag>` with the phantom tag parameter (design D1) — `{ _tag, id, kind }`, one string-literal parameter, not the three-parameter generic
+  - Verified: `{_tag,id,kind}` only; `isInstanceOf` compares tags; `DataOf<Instance<"Circle">>` narrows to Circle data (a `@ts-expect-error` proves `circle.text` is rejected).
+- [x] 2.7 Confirm `Image` and `Text` still carry resource references as plain `{ _tag, id }` schema fields — resources are out of scope and must not be touched
+  - Verified: both carry resource references as plain schema fields; `Resource.ts`/`Font.ts`/`Image.ts` untouched.
+- [x] 2.8 Nothing consumes the new schema yet; `pnpm check` should be no worse than the 1.1 baseline
+  - Confirmed: **exactly 15** TS errors, unchanged from the baseline — the new schema and its 14 tests add zero. Full suite 244 pass (was 230). Lint clean after `lint:fix`; added `!**/test/__baseline__` to `biome.json` so the 1.6 MB temporary baseline JSON stops tripping the file-size warning (revert with the harness at 8.6).
 
 ## 3. Prove the trait-removal argument (gate)
 
@@ -49,6 +56,7 @@ Ordering follows the migration plan in `design.md`: capture a determinism baseli
 - [ ] 4.4 Keep children normalization behavior exactly as specified by `instance-children` (no delta was written for it); retype against the union
 - [ ] 4.5 Retype `Scene.instantiate`, `Scene.data`, `Scene.update` against `Instance<Tag>`
 - [ ] 4.6 Update `Runner.state` to emit typed union data per entry, with `visible` as an ordinary field
+- [ ] 4.9 Stop `Scene.play` copying `scene.width`/`height`/`backgroundColor` onto its mount group (design D13) — it is the only writer of those fields, and a `Scene` has owned them since `Scene.ts:42`. The mount group becomes an ordinary group; the bounds must reach the renderer from the scene instead. **Pairs with 7.8 — do not land one without the other**
 - [ ] 4.7 Keep `Camera` an ordinary tree entry — do NOT collapse it into a dedicated runner field or singleton while simplifying. Multiple cameras must still be able to coexist, with `activeCameraId` selecting the frame's view (design: multiple simultaneous cameras)
 - [ ] 4.8 Add a `ponytail:` comment at the frame-contract seam recording the ceiling: one active camera per frame; upgrade path is a frame carrying a list of views. Cross-reference the existing precomp camera marker in `Sync.ts`. Comment only — build no view abstraction
 
@@ -69,7 +77,8 @@ Ordering follows the migration plan in `design.md`: capture a determinism baseli
 - [ ] 6.2 Remove `positionLens`/`opacityLens` from `Shape2D.ts` and every per-entity lens declaration under `shapes/`
 - [ ] 6.3 Remove `Entity.make`, `AnyEntity`, `EntityData`, `is`, `isEntity`; delete `Entity.ts` and `Instance.ts` if nothing remains
 - [ ] 6.4 Delete `packages/motion/test/traits.test.ts` — its scenarios now live in the section 3 transform tests
-- [ ] 6.5 Remove `Group`'s `TransformMatrix`, `TransformOperation`, `identityTransform`, `multiplyTransforms`, and the transform-operation DSL
+- [ ] 6.5 Remove `Group`'s `TransformMatrix`, `TransformOperation`, `identityTransform`, `multiplyTransforms`, and the transform-operation DSL. Dead code — nothing constructs it and the renderer never threaded it (1.3); also delete the `it.skip` ops-transform test in `group.test.ts`
+- [ ] 6.7 Delete `Square` (design D11): `shapes/Square.ts`, its exports from `Shapes.ts`/`shapes/Shapes.ts`/`shapes/all.ts`, and its renderer + registry entry + union member in `Builtins.ts`
 - [ ] 6.6 Grep for `~position`, `~opacity`, `~visible`, `$visible`, `~transform3d` across all packages — zero hits outside archived specs
 
 ## 7. Renderer
@@ -79,12 +88,14 @@ Ordering follows the migration plan in `design.md`: capture a determinism baseli
 - [ ] 7.3 Delete `packages/renderer/src/FrameData.ts` and replace each reader with direct or narrowed field access
 - [ ] 7.4 Update the `visible` read at the renderer seam — the rename from `~visible` is small and easily lost in a large diff (design D6)
 - [ ] 7.5 Update Group/Hud handling to compose the uniform transform instead of consuming an affine matrix
-- [ ] 7.6 Confirm `Hud` still dispatches distinctly from `Group` despite identical data
+- [ ] 7.6 Confirm `Hud` still dispatches distinctly from `Group`, placing its subtree in the screen-space tier
+- [ ] 7.8 Replace the renderer's comp detection (design D13). Today `Sync.walk` infers a comp from `sizeOf(entry.data) !== null` — field presence on a Group. A comp is a render-to-texture boundary (own scene + render target + identity camera), and the audit found **no user-facing code creates one**: only `Scene.play` and one hand-built renderer test. So this is narrow — let `Scene.play` tell the renderer about the boundary it creates, carrying the bounds from the scene. **Do NOT introduce a general user-facing comp/clipping concept** — that is a separate change. **Pairs with 4.9.** Verify nested scenes still clip, size, composite opacity, and paint their background correctly
+- [ ] 7.7 Let a `Hud`'s `position.z` flow into the HUD walk's accumulated offset, as world content already does (design D12). HUD content already renders through a real perspective `hudCamera` into `hudScene`, so z-ordering works via the existing z-buffer — no new sorting. **Verify a HUD example with no `z` set renders identically to before**, since 0 is what the old lens fabricated
 
 ## 8. Consumers and verification
 
 - [ ] 8.1 Update `packages/react` public types
-- [ ] 8.2 Port every `apps/docs/examples/*.scene.ts` to the new field vocabulary. Required, not optional: `apps/docs` runs `tsc --noEmit` in `pnpm check`, so all 34 scenes must compile for the 8.5 gate. No shear-dependent scene exists (1.3). The 6 particles scenes (`particles`, `particle-field`, `snow`, `floating-motes`, `floating-field`, `camera-parallax`) must keep working unchanged — particles are scoped out (design D10)
+- [ ] 8.2 Port every `apps/docs/examples/*.scene.ts` to the new field vocabulary, including migrating the 5 `Shapes.Square` uses to `Rect` with equal width/height (D11). Required, not optional: `apps/docs` runs `tsc --noEmit` in `pnpm check`, so all 34 scenes must compile for the 8.5 gate. No shear-dependent scene exists (1.3). The 6 particles scenes (`particles`, `particle-field`, `snow`, `floating-motes`, `floating-field`, `camera-parallax`) must keep working unchanged — particles are scoped out (design D10)
 - [ ] 8.3 MDX prose in `apps/docs/content/` (5 files reference entity/trait vocabulary): **do the minimum to keep the build green, no prose rewriting.** The docs site is slated for a full rewrite, so investing in wording here is throwaway. Fix only what breaks compilation or is actively wrong; leave stale phrasing for the rewrite
 - [ ] 8.4 Work through the 1.4 inventory and confirm every consumer is ported
 - [ ] 8.5 Run `pnpm check`, `pnpm test`, `pnpm lint` against the 1.1 baseline: test must stay at **0 failures**, lint at **0 errors**, and check must go **15 → 0**. The 15 pre-existing TS2352 errors are opaque-`{}` casts this change removes; a survivor is a finding, not an accepted baseline

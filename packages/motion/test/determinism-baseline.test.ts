@@ -146,7 +146,11 @@ const capture = (frames: ReadonlyArray<unknown>) =>
 		};
 	});
 
-const comp = { width: 500, height: 300, backgroundColor: Color.rgba(22, 22, 29) };
+const comp = {
+	width: 500,
+	height: 300,
+	backgroundColor: Color.rgba(22, 22, 29),
+};
 
 // Scenes chosen to cover every concern design.md names: springs (settle-exact),
 // eased tweens (exact final frame), groups (subtree), a Line (rigid
@@ -170,8 +174,16 @@ const scenes = {
 
 	// eased tweens across several timing curves + fade
 	easing: Scene.make(function* () {
-		const a = yield* Scene.instantiate(Shapes.Circle, { x: 40, y: 60, radius: 12 });
-		const b = yield* Scene.instantiate(Shapes.Circle, { x: 40, y: 140, radius: 12 });
+		const a = yield* Scene.instantiate(Shapes.Circle, {
+			x: 40,
+			y: 60,
+			radius: 12,
+		});
+		const b = yield* Scene.instantiate(Shapes.Circle, {
+			x: 40,
+			y: 140,
+			radius: 12,
+		});
 		yield* Scene.all([
 			a.pipe(Motion.moveTo({ x: 440 }, "1 second", "easeInOutCubic")),
 			b.pipe(Motion.moveTo({ x: 440 }, "1 second", "easeOutBounce")),
@@ -181,8 +193,16 @@ const scenes = {
 
 	// group subtree motion — the trait-removal gate's third scenario
 	groups: Scene.make(function* () {
-		const c1 = yield* Scene.instantiate(Shapes.Circle, { x: 20, y: 0, radius: 10 });
-		const c2 = yield* Scene.instantiate(Shapes.Circle, { x: -20, y: 0, radius: 10 });
+		const c1 = yield* Scene.instantiate(Shapes.Circle, {
+			x: 20,
+			y: 0,
+			radius: 10,
+		});
+		const c2 = yield* Scene.instantiate(Shapes.Circle, {
+			x: -20,
+			y: 0,
+			radius: 10,
+		});
 		const g = yield* Scene.instantiate(Shapes.Group, {
 			x: 100,
 			y: 150,
@@ -217,7 +237,9 @@ const scenes = {
 				{ _tag: "L", x: 120, y: 0 },
 			],
 		});
-		yield* p.pipe(Motion.moveTo({ x: 300, y: 200 }, "600 millis", "easeInOutSine"));
+		yield* p.pipe(
+			Motion.moveTo({ x: 300, y: 200 }, "600 millis", "easeInOutSine"),
+		);
 	}, comp),
 
 	// seeded randomness must reproduce exactly across the port

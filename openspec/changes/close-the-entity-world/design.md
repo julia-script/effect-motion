@@ -200,6 +200,62 @@ This is a **behavioral invariant with existing test coverage**, not a new capabi
 
 None blocking. The four questions this design opened are resolved in D8 and D9.
 
+### D13: Field-set corrections, and comp bounds move to the scene
+
+Task 2.1 compared the sketch against the ten live entity definitions. Resolved:
+
+- **`Rect.rx`/`ry` (corner radii) — dropped.** Deliberate removal, not an oversight. The `shapes` spec's "Rect corner radii" requirement is therefore removed by this change rather than left as pre-existing drift.
+- **`Text.fillColor` — restored.** Dropping it from the sketch was a mistake; text needs a fill.
+- **`Ellipse` keeps the sketch's `radiusX`/`radiusY`**, renaming from the current `rx`/`ry`. This also removes the collision with `Rect`'s (now deleted) corner-radius `rx`/`ry`, so `rx` no longer means two different things on two shapes.
+- **`Image.width`/`height` — restored**, optional and undefaulted. Both present draws at that size; both absent draws at natural size; a lone dimension is deliberately ignored, because aspect math needs the natural size and frame data never sees it.
+- **`Path`'s first-command-must-be-`M` filter — restored.** Loud failure at instantiation, as today.
+
+**Comp bounds: removed from `Group`, sourced from the scene.**
+
+`Group` currently carries optional `width`/`height`/`backgroundColor` — the AE precomp mechanism. These are **pure duplication** predating scenes owning their own dimensions: `Scene.play` is the only writer, and it copies `scene.width`, `scene.height`, `scene.backgroundColor` straight onto the mount group it creates. A `Scene` has carried those three since `Scene.ts:42-44`; the group copy is a leftover.
+
+They are removed from the entity. The values reach the renderer from the scene that owns them.
+
+**Consequence that must not be missed:** the renderer currently *detects* a comp by the group having a size (`sizeOf(entry.data) !== null`), and `syncComp` uses those bounds for real work — sizing the render-target plane, clipping the subtree, and painting the comp background. Removing the fields removes the detection signal, so the port must give the renderer another way to know a subtree is a mounted comp and what its bounds are. This is a `Scene.play` + renderer change, not a schema-only edit.
+
+**What a comp actually is, and why it exists.** Worth stating, because the name suggests "container" and it is not one. A comp is a **render-to-texture boundary**: `syncComp` gives the subtree its own `THREE.Scene` and render target, renders it to a texture, and maps that texture onto a plane placed in the parent scene. An ordinary group, by contrast, just recurses — its children become peers of their uncles in one flat scene.
+
+That isolation buys exactly four things: **clipping** (content outside the bounds is cropped, because the render target is that size); **group opacity that composites correctly** (fading the flattened result, rather than fading overlapping shapes individually and revealing the overlaps); **its own background**; and **its own camera** (the subtree renders under `Camera.identity`, so a nested scene looks like itself rather than like something viewed through the parent's camera).
+
+**Every one of those is something a nested scene needs, and nothing else asks for.** An audit of all 34 example scenes and both test suites found **no user-facing code that creates a comp** — no scene passes `width`/`height` to a `Group`. The only creators are `Scene.play` internally and one hand-constructed renderer test.
+
+Comps are therefore an implementation detail of `Scene.play` that leaked into `Group`'s public schema. This reframes the work: task 7.8 is not "design a general comp-marking mechanism", it is "let `Scene.play` tell the renderer about the boundary it creates". A general user-facing comp concept SHOULD NOT be introduced — if one is ever wanted (clipping or flatten-then-fade on an arbitrary group), it is a separate change with its own justification.
+
+**Alternative considered:** keep the three fields on `Group` as the transport. Rejected — it preserves a duplicated source of truth inside the very change that closes the entity model, and "a Group that happens to have a size is a comp" is exactly the kind of implicit, field-presence-driven typing that the tagged union exists to replace.
+
+### D12: `Hud` gets a real `z`, meaning depth within the HUD tier
+
+**Decision:** `Hud` carries the full uniform transform like every other paintable entity. Its `position.z` means depth **within screen space**, not world depth. No exception.
+
+Task 2.1 found a **third** custom trait lens the plan had not accounted for. Unlike `Line` and `Group` — whose lenses compensate for absolute coordinates and are fixed by D3's relative geometry — `Hud`'s lens compensates for a *missing field*: `Hud` has no `z` at all, so the lens fabricates `z: 0` on read and silently discards `z` on write.
+
+Under the uniform transform `Hud` gains a real `position.z`, which forces a semantics decision the earlier design did not answer. The chosen reading makes `z` mean the same thing everywhere: **depth within whatever coordinate space the entity lives in** — world depth for world content, screen depth for HUD content. `Hud` needs no carve-out, and `moveTo(hud, { z })` is meaningful rather than a silent no-op.
+
+**Renderer cost is small, contrary to first appearances.** HUD content already renders into a separate `hudScene` through a real perspective `hudCamera` positioned at a real z (`Sync.ts`), so depth ordering within the HUD tier already works via the GPU z-buffer. `Hud` simply never had a `z` to contribute to the world offset the walk accumulates. Letting `local.z` flow through the existing uniform path is the whole change; no new sorting, no new tier logic.
+
+**Also corrected:** `Hud` today carries only `x`, `y`, and `children` — no opacity, no fill. The earlier spec claim that "`Hud` carries the same field set as `Group`" was factually wrong. Under the appearance mixin it now gains `opacity`, `scale`, and `visible` like every paintable entity, which is a small capability gain (a HUD tier can fade as a unit) and removes the discrepancy.
+
+**Verification:** an existing HUD example scene must render identically when no `z` is set, since the default is 0 and 0 is what the lens fabricated. That identity check is the guard against this becoming an unintended behavior change.
+
+### D11: `Square` is removed; `Rect` covers it
+
+**Decision:** `Square` does not become a union member. It is deleted, and its uses migrate to `Rect` with equal `width`/`height`.
+
+`Square` today carries `size` (one number) where `Rect` carries `width`/`height`, and its source comments defend it as "its own entity, not Rect sugar: the schema IS the width === height constraint, which a Rect can't enforce through updates."
+
+That argument is real but not worth its price. Enforcing squareness through updates costs a full union member, a full entity renderer (`Builtins.ts`), a `Shapes` export, and a permanent branch in every exhaustive match — to prevent an author from writing an unequal width and height on a shape they chose to call a square. The closed union makes every member a fixed tax on all downstream matches, which shifts this trade: in an open world an extra entity was nearly free, and now it is not.
+
+**Migration:** `Shapes.Square({ size: n })` → `Shapes.Rect({ width: n, height: n })`. Five example scenes are affected (`groups`, `camera-parallax` ×2, `the-box`, `camera-shake`) plus one MDX mention.
+
+**Consequence:** the union is **nine** members, not ten — `Line`, `Path`, `Rect`, `Circle`, `Ellipse`, `Text`, `Group`, `Hud`, `Image`, `Camera` minus `Square`. (Ten including `Camera`.) The `Square` entity, its renderer, and its `all.ts` registration are deleted.
+
+**Alternative considered:** keep it as a member for the squareness guarantee — rejected; the guarantee is weak (nothing stops a Rect from being square, and nothing needs a type-level proof that one is) and the per-member cost is now permanent rather than incidental.
+
 ### D10: Particles are scoped out, behind a narrow escape hatch
 
 **Decision:** `ParticleField` does NOT join the entity union. The particle system keeps working unchanged through this port and is excluded from the closed world, because it is slated for a full rewrite in a later change.
