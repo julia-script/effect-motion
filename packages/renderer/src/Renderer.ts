@@ -174,9 +174,8 @@ export const render = (
 			),
 		),
 		Effect.flatMap(() =>
-			// ponytail: depth of field is being rebuilt (see the
-			// layered-depth-of-field change) — every frame renders sharp,
-			// and Sync still derives the camera's DoF state for it.
+			// ponytail: no depth of field — every frame renders sharp, and
+			// Sync still derives the camera's DoF state for a future rebuild.
 			Gpu.render(renderer.gpu, renderer.sync.scene, renderer.sync.camera),
 		),
 		Effect.flatMap(() => {

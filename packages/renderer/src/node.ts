@@ -224,9 +224,8 @@ export const make = Effect.fn("NodeRenderer.make")(function* (
 	});
 	yield* Effect.addFinalizer(() => Sync.dispose(sync));
 	const scenePass = PostProcessing.pass(sync.scene, sync.camera);
-	// ponytail: depth of field is being rebuilt (see the
-	// layered-depth-of-field change) — the pipeline draws the scene pass
-	// straight through until it lands.
+	// ponytail: no depth of field — the pipeline draws the scene pass
+	// straight through.
 	const sceneColor = scenePass.getTextureNode();
 	const post = PostProcessing.makePipeline(gpu, sceneColor);
 	// HUD composite variant: the HUD pass (identity camera, transparent
