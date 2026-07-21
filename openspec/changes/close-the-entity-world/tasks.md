@@ -57,58 +57,98 @@ Ordering follows the migration plan in `design.md`: capture a determinism baseli
 
 ## 4. Core plumbing
 
-- [ ] 4.1 Rewrite `Runner`'s `Entry`/`RunnerTree` to store `{ id, state }` with the union as state; resolve definitions by tag from `EntityMap` (design D4)
-- [ ] 4.2 Retype `Runner.instantiate`, `getDataUnsafe`, `setDataUnsafe` against `Instance<Tag>` and the union; drop the `Schema.Struct.Fields` generics
-- [ ] 4.3 Convert the camera default-filling special-case to a `props._tag === "Camera"` discriminant check (design D7) — keep the behavior, drop the cast
-- [ ] 4.4 Keep children normalization behavior exactly as specified by `instance-children` (no delta was written for it); retype against the union
-- [ ] 4.5 Retype `Scene.instantiate`, `Scene.data`, `Scene.update` against `Instance<Tag>`
-- [ ] 4.6 Update `Runner.state` to emit typed union data per entry, with `visible` as an ordinary field
-- [ ] 4.9 Stop `Scene.play` copying `scene.width`/`height`/`backgroundColor` onto its mount group (design D13) — it is the only writer of those fields, and a `Scene` has owned them since `Scene.ts:42`. The mount group becomes an ordinary group; the bounds must reach the renderer from the scene instead. **Pairs with 7.8 — do not land one without the other**
-- [ ] 4.7 Keep `Camera` an ordinary tree entry — do NOT collapse it into a dedicated runner field or singleton while simplifying. Multiple cameras must still be able to coexist, with `activeCameraId` selecting the frame's view (design: multiple simultaneous cameras)
-- [ ] 4.8 Add a `ponytail:` comment at the frame-contract seam recording the ceiling: one active camera per frame; upgrade path is a frame carrying a list of views. Cross-reference the existing precomp camera marker in `Sync.ts`. Comment only — build no view abstraction
+- [x] 4.1 Rewrite `Runner`'s `Entry`/`RunnerTree` to store `{ id, state }` with the union as state; resolve definitions by tag from `EntityMap` (design D4)
+  - union-backed Tree.ts, zero casts
+- [x] 4.2 Retype `Runner.instantiate`, `getDataUnsafe`, `setDataUnsafe` against `Instance<Tag>` and the union; drop the `Schema.Struct.Fields` generics
+  - Instance<Tag>, generics dropped
+- [x] 4.3 Convert the camera default-filling special-case to a `props._tag === "Camera"` discriminant check (design D7) — keep the behavior, drop the cast
+  - props._tag === "Camera"
+- [x] 4.4 Keep children normalization behavior exactly as specified by `instance-children` (no delta was written for it); retype against the union
+  - behavior preserved, retyped
+- [x] 4.5 Retype `Scene.instantiate`, `Scene.data`, `Scene.update` against `Instance<Tag>`
+  - done
+- [x] 4.6 Update `Runner.state` to emit typed union data per entry, with `visible` as an ordinary field
+  - typed union data, visible ordinary field
+- [x] 4.9 Stop `Scene.play` copying `scene.width`/`height`/`backgroundColor` onto its mount group (design D13) — it is the only writer of those fields, and a `Scene` has owned them since `Scene.ts:42`. The mount group becomes an ordinary group; the bounds must reach the renderer from the scene instead. **Pairs with 7.8 — do not land one without the other**
+  - comps declared via registerComp
+- [x] 4.7 Keep `Camera` an ordinary tree entry — do NOT collapse it into a dedicated runner field or singleton while simplifying. Multiple cameras must still be able to coexist, with `activeCameraId` selecting the frame's view (design: multiple simultaneous cameras)
+  - multiple cameras coexist
+- [x] 4.8 Add a `ponytail:` comment at the frame-contract seam recording the ceiling: one active camera per frame; upgrade path is a frame carrying a list of views. Cross-reference the existing precomp camera marker in `Sync.ts`. Comment only — build no view abstraction
+  - frame-contract ceiling marked
 
 ## 5. Animators
 
-- [ ] 5.1 Collapse `animatePosition`'s lens into direct field access: read `data.position`, flatten to `{x,y,z}`, rebuild on write (design D2). Do NOT make `interpolate` nested-aware
-- [ ] 5.2 Collapse `animateOpacity` the same way against `data.opacity`
-- [ ] 5.3 Verify channel-level sparseness survives nesting: `moveTo(rect, { x: 100 })` animates x and holds y/z; a partial `Vec3` must never reach `interpolate` (design D8)
-- [ ] 5.4 Verify the `startValues` loud-failure guard still fires for a channel with no current value — it is what prevents NaN frames
-- [ ] 5.5 Verify field-level sparseness: a target naming only `width` leaves `scale` untouched, and vice versa (design D8)
-- [ ] 5.6 Replace trait constraints with tag constraints on `move`/`moveTo`, `fade`/`fadeTo`. With `opacity` universal across paintable entities, `Camera` is the only instance the gate must reject — verify `fade(camera, …)` fails compilation naming the missing field
-- [ ] 5.7 Do the same for `Physics.spring`/`springTo`; confirm spring settle frames are unchanged against the 1.2 baseline
-- [ ] 5.8 Confirm dual call forms (`Instance.isInstance` dispatch on the first argument) still work for every animator
+- [x] 5.1 Collapse `animatePosition`'s lens into direct field access: read `data.position`, flatten to `{x,y,z}`, rebuild on write (design D2). Do NOT make `interpolate` nested-aware
+  - readPosition/writePosition, flat interpolate
+- [x] 5.2 Collapse `animateOpacity` the same way against `data.opacity`
+  - readOpacity structural
+- [x] 5.3 Verify channel-level sparseness survives nesting: `moveTo(rect, { x: 100 })` animates x and holds y/z; a partial `Vec3` must never reach `interpolate` (design D8)
+  - moveTo({x}) holds y/z — tested
+- [x] 5.4 Verify the `startValues` loud-failure guard still fires for a channel with no current value — it is what prevents NaN frames
+  - NaN guard survives
+- [x] 5.5 Verify field-level sparseness: a target naming only `width` leaves `scale` untouched, and vice versa (design D8)
+  - unnamed fields untouched
+- [x] 5.6 Replace trait constraints with tag constraints on `move`/`moveTo`, `fade`/`fadeTo`. With `opacity` universal across paintable entities, `Camera` is the only instance the gate must reject — verify `fade(camera, …)` fails compilation naming the missing field
+  - TagsWith gating; fade(camera) fails compile
+- [x] 5.7 Do the same for `Physics.spring`/`springTo`; confirm spring settle frames are unchanged against the 1.2 baseline
+  - spring settle frames unchanged vs baseline; Physics uses the same field collapse
+- [x] 5.8 Confirm dual call forms (`Instance.isInstance` dispatch on the first argument) still work for every animator
+  - Pipeable restored, 65 pipe sites work
 
 ## 6. Delete the trait system
 
-- [ ] 6.1 Remove `TraitLens`, `EntityTraits`, `PartialTraits`, `TraitKey`, `traitOrDie`, `Position` from `Entity.ts`
-- [ ] 6.2 Remove `positionLens`/`opacityLens` from `Shape2D.ts` and every per-entity lens declaration under `shapes/`
-- [ ] 6.3 Remove `Entity.make`, `AnyEntity`, `EntityData`, `is`, `isEntity`; delete `Entity.ts` and `Instance.ts` if nothing remains
-- [ ] 6.4 Delete `packages/motion/test/traits.test.ts` — its scenarios now live in the section 3 transform tests
-- [ ] 6.5 Remove `Group`'s `TransformMatrix`, `TransformOperation`, `identityTransform`, `multiplyTransforms`, and the transform-operation DSL. Dead code — nothing constructs it and the renderer never threaded it (1.3); also delete the `it.skip` ops-transform test in `group.test.ts`
-- [ ] 6.7 Delete `Square` (design D11): `shapes/Square.ts`, its exports from `Shapes.ts`/`shapes/Shapes.ts`/`shapes/all.ts`, and its renderer + registry entry + union member in `Builtins.ts`
-- [ ] 6.6 Grep for `~position`, `~opacity`, `~visible`, `$visible`, `~transform3d` across all packages — zero hits outside archived specs
+- [x] 6.1 Remove `TraitLens`, `EntityTraits`, `PartialTraits`, `TraitKey`, `traitOrDie`, `Position` from `Entity.ts`
+  - done
+- [x] 6.2 Remove `positionLens`/`opacityLens` from `Shape2D.ts` and every per-entity lens declaration under `shapes/`
+  - done
+- [x] 6.3 Remove `Entity.make`, `AnyEntity`, `EntityData`, `is`, `isEntity`; delete `Entity.ts` and `Instance.ts` if nothing remains
+  - Entity.ts/Instance.ts deleted
+- [x] 6.4 Delete `packages/motion/test/traits.test.ts` — its scenarios now live in the section 3 transform tests
+  - deleted
+- [x] 6.5 Remove `Group`'s `TransformMatrix`, `TransformOperation`, `identityTransform`, `multiplyTransforms`, and the transform-operation DSL. Dead code — nothing constructs it and the renderer never threaded it (1.3); also delete the `it.skip` ops-transform test in `group.test.ts`
+  - dead DSL removed + skip test deleted
+- [x] 6.7 Delete `Square` (design D11): `shapes/Square.ts`, its exports from `Shapes.ts`/`shapes/Shapes.ts`/`shapes/all.ts`, and its renderer + registry entry + union member in `Builtins.ts`
+  - entity + renderer + exports gone
+- [x] 6.6 Grep for `~position`, `~opacity`, `~visible`, `$visible`, `~transform3d` across all packages — zero hits outside archived specs
+  - zero hits outside particles remnant
 
 ## 7. Renderer
 
-- [ ] 7.1 Change `Sync.ts` dispatch from `entry.entity.name` to `_tag` narrowing
-- [ ] 7.2 Key the entity-renderer registry on the tag union so an unregistered entity fails the build rather than throwing at runtime
-- [ ] 7.3 Delete `packages/renderer/src/FrameData.ts` and replace each reader with direct or narrowed field access
-- [ ] 7.4 Update the `visible` read at the renderer seam — the rename from `~visible` is small and easily lost in a large diff (design D6)
-- [ ] 7.5 Update Group/Hud handling to compose the uniform transform instead of consuming an affine matrix
-- [ ] 7.6 Confirm `Hud` still dispatches distinctly from `Group`, placing its subtree in the screen-space tier
-- [ ] 7.8 Replace the renderer's comp detection (design D13). Today `Sync.walk` infers a comp from `sizeOf(entry.data) !== null` — field presence on a Group. A comp is a render-to-texture boundary (own scene + render target + identity camera), and the audit found **no user-facing code creates one**: only `Scene.play` and one hand-built renderer test. So this is narrow — let `Scene.play` tell the renderer about the boundary it creates, carrying the bounds from the scene. **Do NOT introduce a general user-facing comp/clipping concept** — that is a separate change. **Pairs with 4.9.** Verify nested scenes still clip, size, composite opacity, and paint their background correctly
-- [ ] 7.7 Let a `Hud`'s `position.z` flow into the HUD walk's accumulated offset, as world content already does (design D12). HUD content already renders through a real perspective `hudCamera` into `hudScene`, so z-ordering works via the existing z-buffer — no new sorting. **Verify a HUD example with no `z` set renders identically to before**, since 0 is what the old lens fabricated
+- [x] 7.1 Change `Sync.ts` dispatch from `entry.entity.name` to `_tag` narrowing
+  - _tag narrowing
+- [x] 7.2 Key the entity-renderer registry on the tag union so an unregistered entity fails the build rather than throwing at runtime
+  - exhaustive — missing Hud fails build (verified)
+- [x] 7.3 Delete `packages/renderer/src/FrameData.ts` and replace each reader with direct or narrowed field access
+  - deleted, readers narrowed
+- [x] 7.4 Update the `visible` read at the renderer seam — the rename from `~visible` is small and easily lost in a large diff (design D6)
+  - done
+- [x] 7.5 Update Group/Hud handling to compose the uniform transform instead of consuming an affine matrix
+  - uniform transform, no affine
+- [x] 7.6 Confirm `Hud` still dispatches distinctly from `Group`, placing its subtree in the screen-space tier
+  - screen-space tier
+- [x] 7.8 Replace the renderer's comp detection (design D13). Today `Sync.walk` infers a comp from `sizeOf(entry.data) !== null` — field presence on a Group. A comp is a render-to-texture boundary (own scene + render target + identity camera), and the audit found **no user-facing code creates one**: only `Scene.play` and one hand-built renderer test. So this is narrow — let `Scene.play` tell the renderer about the boundary it creates, carrying the bounds from the scene. **Do NOT introduce a general user-facing comp/clipping concept** — that is a separate change. **Pairs with 4.9.** Verify nested scenes still clip, size, composite opacity, and paint their background correctly
+  - frame.comps registry, not sizeOf
+- [x] 7.7 Let a `Hud`'s `position.z` flow into the HUD walk's accumulated offset, as world content already does (design D12). HUD content already renders through a real perspective `hudCamera` into `hudScene`, so z-ordering works via the existing z-buffer — no new sorting. **Verify a HUD example with no `z` set renders identically to before**, since 0 is what the old lens fabricated
+  - z flows into HUD offset
 
 ## 8. Consumers and verification
 
-- [ ] 8.1 Update `packages/react` public types
-- [ ] 8.2 Port every `apps/docs/examples/*.scene.ts` to the new field vocabulary, including migrating the 5 `Shapes.Square` uses to `Rect` with equal width/height (D11). Required, not optional: `apps/docs` runs `tsc --noEmit` in `pnpm check`, so all 34 scenes must compile for the 8.5 gate. No shear-dependent scene exists (1.3). The 6 particles scenes (`particles`, `particle-field`, `snow`, `floating-motes`, `floating-field`, `camera-parallax`) must keep working unchanged — particles are scoped out (design D10)
-- [ ] 8.3 MDX prose in `apps/docs/content/` (5 files reference entity/trait vocabulary): **do the minimum to keep the build green, no prose rewriting.** The docs site is slated for a full rewrite, so investing in wording here is throwaway. Fix only what breaks compilation or is actively wrong; leave stale phrasing for the rewrite
-- [ ] 8.4 Work through the 1.4 inventory and confirm every consumer is ported
-- [ ] 8.5 Run `pnpm check`, `pnpm test`, `pnpm lint` against the 1.1 baseline: test must stay at **0 failures**, lint at **0 errors**, and check must go **15 → 0**. The 15 pre-existing TS2352 errors are opaque-`{}` casts this change removes; a survivor is a finding, not an accepted baseline
-- [ ] 8.6 Diff determinism against the 1.2 baseline; any per-frame value change other than a field rename is a regression to investigate, not to accept
-- [ ] 8.7 Run `pnpm lint:fix`; confirm no non-null assertions and no biome-ignore suppressions were introduced (repo convention — use the `unreachable` helper)
-- [ ] 8.8 Review the full diff for out-of-scope changes, especially to `Resource.ts`/`Font.ts`/`Image.ts` — resources must be untouched (design Non-Goals)
+- [x] 8.1 Update `packages/react` public types
+  - no changes needed (follows types)
+- [x] 8.2 Port every `apps/docs/examples/*.scene.ts` to the new field vocabulary, including migrating the 5 `Shapes.Square` uses to `Rect` with equal width/height (D11). Required, not optional: `apps/docs` runs `tsc --noEmit` in `pnpm check`, so all 34 scenes must compile for the 8.5 gate. No shear-dependent scene exists (1.3). The 6 particles scenes (`particles`, `particle-field`, `snow`, `floating-motes`, `floating-field`, `camera-parallax`) must keep working unchanged — particles are scoped out (design D10)
+  - all 34 example scenes + scratchpad ported (hand + agents); 6 particles scenes unchanged
+- [x] 8.3 MDX prose in `apps/docs/content/` (5 files reference entity/trait vocabulary): **do the minimum to keep the build green, no prose rewriting.** The docs site is slated for a full rewrite, so investing in wording here is throwaway. Fix only what breaks compilation or is actively wrong; leave stale phrasing for the rewrite
+  - no build breakage; text left for the rewrite
+- [x] 8.4 Work through the 1.4 inventory and confirm every consumer is ported
+  - all consumers ported; export/cli/thorvg also found+fixed
+- [x] 8.5 Run `pnpm check`, `pnpm test`, `pnpm lint` against the 1.1 baseline: test must stay at **0 failures**, lint at **0 errors**, and check must go **15 → 0**. The 15 pre-existing TS2352 errors are opaque-`{}` casts this change removes; a survivor is a finding, not an accepted baseline
+  - test 0 fail, lint 0, check 15->0
+- [x] 8.6 Diff determinism against the 1.2 baseline; any per-frame value change other than a field rename is a regression to investigate, not to accept
+  - 3117 frames IDENTICAL modulo id renaming
+- [x] 8.7 Run `pnpm lint:fix`; confirm no non-null assertions and no biome-ignore suppressions were introduced (repo convention — use the `unreachable` helper)
+  - no NEW non-null/biome-ignore (Pipeable one is preserved from old Instance.ts)
+- [x] 8.8 Review the full diff for out-of-scope changes, especially to `Resource.ts`/`Font.ts`/`Image.ts` — resources must be untouched (design Non-Goals)
+  - Resource/Font/Image untouched (git diff empty)
 
 ## 9. Specs
 
