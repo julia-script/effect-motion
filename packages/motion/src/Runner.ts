@@ -3,20 +3,15 @@ import type * as Cause from "effect/Cause";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import type * as Fiber from "effect/Fiber";
-import type * as Schema from "effect/Schema";
-import * as Camera from "./Camera.js";
 import * as Color from "./Color.js";
-import * as Entity from "./Entity.js";
-import * as Instance from "./Instance.js";
 import * as Phaser from "./Phaser.js";
 import * as Projection from "./Projection.js";
-import * as Group from "./shapes/Group.js";
-import * as Text from "./shapes/Text.js";
+import * as S from "./schemas.js";
+import { ROOT_ID, Tree } from "./Tree.js";
 
 export const TypeId = "~motion/SceneRunner" as const;
 
-/** conventional id of the implicit root group every instance attaches to */
-export const ROOT_ID = "root";
+export { ROOT_ID };
 
 export type Seed = number | string;
 
@@ -63,33 +58,33 @@ export const defaultComp: CompConfig = {
 	backgroundColor: Color.transparent,
 };
 
-export type GroupInstance = Instance.Of<typeof Group.Group>;
+/** a container instance — the only thing children may be mounted under */
+export type GroupInstance = S.Instance<S.ContainerTag>;
 
 /**
  * A child in a polymorphic `children` list: a plain string (→ a `Text`),
  * an already-created `Instance`, or an `Effect` that resolves to one (a
  * not-yet-yielded `instantiate` — yielded internally so JSX children need
  * no `yield*`). Normalized to a stored child id in list order.
- * `AnyInstance` on purpose: concrete (and branded, e.g. particle-field)
- * instances must pass without variance fights.
  */
 export type Child =
 	| string
-	| Instance.AnyInstance
-	| Effect.Effect<Instance.AnyInstance, never, Runner>;
+	| S.Instance
+	| Effect.Effect<S.Instance, never, Runner>;
 
 /**
  * The input `instantiate` accepts: the entity's own make-input, except that
  * a `children` field (stored as `Array<string>` of ids) is authored as the
  * polymorphic {@link Child} list — the runner normalizes it to ids in list
- * order. Entities without a `children` field take their make-input as-is.
+ * order.
  */
-export type InstantiateProps<Data extends Schema.Struct.Fields> =
-	"children" extends keyof Entity.EntityData<Data>["~type.make.in"]
-		? Omit<Entity.EntityData<Data>["~type.make.in"], "children"> & {
-				readonly children?: ReadonlyArray<Child>;
-			}
-		: Entity.EntityData<Data>["~type.make.in"];
+export type InstantiateProps<Tag extends S.EntityTag> = Omit<
+	S.MakeInput<Tag>,
+	"children"
+> &
+	(Tag extends S.ContainerTag
+		? { readonly children?: ReadonlyArray<Child> }
+		: Record<never, never>);
 
 /**
  * The ambient mount parent for `instantiate` — provided per scene
@@ -110,191 +105,55 @@ export interface BranchEntry {
 	readonly finished: Effect.Effect<void>;
 }
 
-const getChildren = (props: Record<string, unknown>): ReadonlyArray<Child> => {
-	if ("children" in props) {
-		return props.children as ReadonlyArray<Child>;
-	}
-	return [];
+const nodeNotFound = (id: string): never => {
+	throw new Error(`Runner: node "${id}" not found`);
 };
 
-class Entry<
-	Entity extends Entity.Entity<string, any, any> = Entity.Entity<
-		string,
-		any,
-		any
-	>,
-> {
-	parentId: string | null = null;
-	constructor(
-		public readonly id: string,
-		public readonly entity: Entity,
-		public data: Entity["data"]["Type"],
-	) {}
+/**
+ * The entity → view bridge. `Projection.CameraView` is flat (x/y/z,
+ * rotX/rotY/rotZ) while the Camera entity nests position/rotation, so the
+ * conversion happens HERE, once, at the frame boundary — the renderer and
+ * the projection math keep the contract they already had.
+ */
+const toCameraView = (
+	camera: S.EntityByTag<"Camera">,
+): Projection.CameraView & Projection.PointOfInterest => ({
+	x: camera.position.x,
+	y: camera.position.y,
+	z: camera.position.z,
+	rotX: camera.rotation.x,
+	rotY: camera.rotation.y,
+	rotZ: camera.rotation.z,
+	focalLength: camera.focalLength,
+	focusDistance: camera.focusDistance,
+	aperture: camera.aperture,
+	...(camera.poi === null
+		? {}
+		: { poiX: camera.poi.x, poiY: camera.poi.y, poiZ: camera.poi.z }),
+});
 
-	static make = <Entity extends Entity.Entity<string, any, any>>(
-		id: string,
-		entity: Entity,
-		data: Entity["data"]["~type.make.in"],
-	): Entry<Entity> => {
-		const entry = new Entry(id, entity, {});
-		entry.setData(data);
-		return entry;
-	};
-
-	getChildren = (): ReadonlyArray<string> | null => {
-		return this.data.children ?? null;
-	};
-
-	setData = (data: Entity["data"]["~type.make.in"]): void => {
-		this.data = this.entity.data.make(data);
-	};
-	static is = <Entity extends Entity.Entity<string, any, any>>(
-		entity: Entity,
-		entry: Entry<any>,
-	): entry is Entry<Entity> => {
-		return entry.entity === entity;
-	};
-}
-
-type Entryish = Entry<Entity.Entity<string, any, any>> | string;
-const nodeNotFound = (entry: Entryish): never => {
-	throw new Error(
-		`Runner: node "${typeof entry === "string" ? entry : entry.id}" not found`,
-	);
+/**
+ * The resting camera for a comp of the given width: width-relative focal
+ * length (AE's 50mm equivalent), positioned so the z=0 plane projects at
+ * scale 1 and is in focus.
+ */
+export const identityCamera = (width: number): S.EntityByTag<"Camera"> => {
+	const focalLength = Projection.defaultFocalLength(width);
+	const z = Projection.defaultCameraZ(focalLength);
+	return S.Camera.make({
+		position: S.vec3({ x: 0, y: 0, z }),
+		focalLength,
+		focusDistance: z,
+		aperture: 0,
+	});
 };
-class RunnerTree {
-	idCounter = 0;
-	map: Record<string, Entry<any>> = {
-		[ROOT_ID]: Entry.make(ROOT_ID, Group.Group, {}),
-	};
 
-	createNode = <
-		Entity extends Entity.Entity<string, any, any> = Entity.Entity<
-			string,
-			any,
-			any
-		>,
-	>(
-		entity: Entity,
-		data: Entity["data"]["~type.make.in"],
-		// engine-owned singletons (the built-in camera) claim a fixed id
-		id: string = `${entity.name}_${this.idCounter++}`,
-	): Entry<Entity> => {
-		const entry = Entry.make<Entity>(id, entity, data);
-		this.map[entry.id] = entry;
-		return entry;
-	};
-
-	getEntry = (id: Entryish): Entry<Entity.Entity<string, any, any>> | null => {
-		const entry = this.map[typeof id === "string" ? id : id.id];
-		return entry ?? null;
-	};
-
-	// frames snapshot `entry.data` by reference, so child-list updates must
-	// go through setData (fresh object) — mutating data in place would
-	// rewrite already-emitted frames.
-	private setChildren = (
-		parentEntry: Entry<Entity.Entity<string, any, any>>,
-		children: ReadonlyArray<string>,
-	): void => {
-		parentEntry.setData({ ...parentEntry.data, children });
-	};
-
-	removeFromParent = (entryish: Entryish): void => {
-		const entry = this.getEntry(entryish) ?? nodeNotFound(entryish);
-		if (entry.parentId === null) {
-			return;
-		}
-		// a parent that was itself removed: nothing to filter, just detach
-		const parentEntry = this.getEntry(entry.parentId);
-		if (parentEntry !== null) {
-			const children = parentEntry.getChildren();
-			if (children === null) {
-				throw new Error(
-					`Runner: parent "${parentEntry.id}" cannot have children`,
-				);
-			}
-			this.setChildren(
-				parentEntry,
-				children.filter((childId) => childId !== entry.id),
-			);
-		}
-		entry.parentId = null;
-	};
-
-	appendChild = (parent: Entryish, child: Entryish) => {
-		const childEntry = this.getEntry(child) ?? nodeNotFound(child);
-		this.removeFromParent(childEntry);
-		const parentEntry = this.getEntry(parent) ?? nodeNotFound(parent);
-		const parentChildren = parentEntry.getChildren();
-		if (parentChildren === null) {
-			throw new Error(
-				`Runner: parent "${parentEntry.id}" cannot have children`,
-			);
-		}
-		this.setChildren(parentEntry, [...parentChildren, childEntry.id]);
-		childEntry.parentId = parentEntry.id;
-	};
-
-	insertBefore = (childish: Entryish, beforeish: Entryish) => {
-		const child = this.getEntry(childish) ?? nodeNotFound(childish);
-		const beforeEntry = this.getEntry(beforeish) ?? nodeNotFound(beforeish);
-		this.removeFromParent(child);
-		if (beforeEntry.parentId === null) {
-			throw new Error(`Runner: before "${beforeEntry.id}" is not a child`);
-		}
-		const parentEntry =
-			this.getEntry(beforeEntry.parentId) ?? nodeNotFound(beforeEntry.parentId);
-		const parentChildren = parentEntry.getChildren();
-		if (parentChildren === null) {
-			throw new Error(
-				`Runner: parent "${parentEntry.id}" cannot have children`,
-			);
-		}
-		const children: string[] = [];
-		let inserted = false;
-		for (const childId of parentChildren) {
-			if (childId === beforeEntry.id) {
-				children.push(child.id);
-				inserted = true;
-			}
-			children.push(childId);
-		}
-		if (!inserted) children.push(child.id);
-
-		this.setChildren(parentEntry, children);
-		child.parentId = parentEntry.id;
-	};
-
-	remove = (entryish: Entryish): void => {
-		const entry = this.getEntry(entryish) ?? nodeNotFound(entryish);
-		this.removeFromParent(entry);
-		delete this.map[entry.id];
-		// orphan its children, and backstop-scan child lists: stays correct
-		// even after manual reparenting via raw data updates (which bypass
-		// parentId tracking)
-		for (const other of Object.values(this.map)) {
-			if (other.parentId === entry.id) {
-				other.parentId = null;
-			}
-			const children = other.getChildren();
-			if (children?.includes(entry.id)) {
-				this.setChildren(
-					other,
-					children.filter((childId) => childId !== entry.id),
-				);
-			}
-		}
-	};
-}
-
-//
 export class Runner extends Context.Service<Runner>()("Runner", {
 	make: Effect.fnUntraced(function* (
 		settings: Partial<Settings> = {},
 		comp: CompConfig = defaultComp,
 	) {
-		const tree = new RunnerTree();
+		const tree = new Tree();
 		const phaser = yield* Phaser.Phaser.make;
 		// concurrent branches spawned by Scene.fork / Scene.play /
 		// Scene.background. `forks` hold the scene's end hostage until their
@@ -311,30 +170,24 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 		// Scene.finish) are deliberately not reported
 		let failure: Cause.Cause<unknown> | undefined;
 
-		const setDataUnsafe = <
-			Name extends string,
-			Data extends Schema.Struct.Fields,
-			Traits extends Entity.PartialTraits<Data>,
-		>(
-			instance: Instance.Instance<Name, Data, Traits>,
-			data: Entity.EntityData<Data>["Type"],
+		const setDataUnsafe = <Tag extends S.EntityTag>(
+			instance: S.Instance<Tag>,
+			state: S.EntityByTag<Tag>,
 		): void => {
 			const entry = tree.getEntry(instance.id) ?? nodeNotFound(instance.id);
-			entry.setData(data);
+			entry.state = state;
 		};
 
-		const getDataUnsafe = <
-			Name extends string,
-			Data extends Schema.Struct.Fields,
-			Traits extends Entity.PartialTraits<Data>,
-		>(
-			instance: Instance.Instance<Name, Data, Traits>,
-		): Entity.EntityData<Data>["Type"] | null => {
+		const getDataUnsafe = <Tag extends S.EntityTag>(
+			instance: S.Instance<Tag>,
+		): S.EntityByTag<Tag> | null => {
 			const entry = tree.getEntry(instance.id);
 			if (entry === null) {
 				return null;
 			}
-			return entry.data as Entity.EntityData<Data>["Type"];
+			// the instance's tag names the entry's state; the tree stores mixed
+			// tags, so this is the one place the two are reconciled
+			return entry.state as S.EntityByTag<Tag>;
 		};
 
 		const resolvedSettings = {
@@ -346,33 +199,29 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 
 		// the root group: never rendered itself, holds the top level. Its
 		// entry is created by the tree itself.
-		const root: GroupInstance = Instance.make(Group.Group, ROOT_ID);
+		const root: GroupInstance = S.makeInstance(ROOT_ID, "Group");
 
 		// the active camera: an ordinary tree node (so the animators drive it),
-		// never registered with a sink so it never draws. A default identity
-		// camera is present from the start, so `depth`/zoom work with no author
-		// ceremony; `setCamera` swaps which instance is active.
-		tree.createNode(Camera.Camera, Camera.identity(comp.width), "camera");
-		const camera: Instance.Of<typeof Camera.Camera> = Instance.make(
-			Camera.Camera,
-			"camera",
-		);
+		// never rendered. A default resting camera is present from the start,
+		// so depth/zoom work with no author ceremony; `setCamera` swaps which
+		// instance is active.
+		tree.createNode(identityCamera(comp.width), "camera");
+		const camera: S.Instance<"Camera"> = S.makeInstance("camera", "Camera");
 		let activeCameraId = camera.id;
-		const cameraState = (): Camera.CameraState => {
-			const data = tree.getEntry(activeCameraId)?.data as
-				| Camera.CameraState
-				| undefined;
-			// a destroyed active camera falls back to identity rather than dying:
-			// the view is not scene-critical state
-			return data ?? Camera.identity(comp.width);
+		const cameraState = (): Projection.CameraView &
+			Projection.PointOfInterest => {
+			const entry = tree.getEntry(activeCameraId);
+			// a destroyed (or swapped-to-non-camera) active camera falls back to
+			// the resting view rather than dying: the view is not scene-critical
+			if (entry === null || entry.state._tag !== "Camera") {
+				return toCameraView(identityCamera(comp.width));
+			}
+			return toCameraView(entry.state);
 		};
 
 		// move `child` under `parent`: the tree detaches it from its current
 		// parent first, so it is never double-referenced.
-		const appendChild = (
-			parent: GroupInstance,
-			child: Instance.Instance,
-		): void => {
+		const appendChild = (parent: GroupInstance, child: S.Instance): void => {
 			const childEntry = tree.getEntry(child.id);
 			if (childEntry === null) {
 				throw new Error(`Runner: child "${child.id}" was destroyed`);
@@ -380,10 +229,7 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 			tree.appendChild(parent.id, childEntry);
 		};
 
-		const removeChild = (
-			parent: GroupInstance,
-			child: Instance.Instance,
-		): void => {
+		const removeChild = (parent: GroupInstance, child: S.Instance): void => {
 			const entry = tree.getEntry(child.id);
 			if (entry !== null && entry.parentId === parent.id) {
 				tree.removeFromParent(entry);
@@ -395,17 +241,14 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 		// Effect<Instance> yielded here (JSX children need no yield*).
 		const normalizeChildren = (
 			children: ReadonlyArray<Child>,
-		): Effect.Effect<string[], never, Runner> =>
+		): Effect.Effect<Array<string>, never, Runner> =>
 			Effect.gen(function* () {
-				const ids: string[] = [];
+				const ids: Array<string> = [];
 				for (const child of children) {
 					if (typeof child === "string") {
-						const child$ = yield* self.instantiate(
-							Text.Text,
-							Text.Text.data.make({ text: child }),
-						);
-						ids.push(child$.id);
-					} else if (Instance.isInstance(child)) {
+						const text = yield* self.instantiate("Text", { text: child });
+						ids.push(text.id);
+					} else if (S.isInstance(child)) {
 						ids.push(child.id);
 					} else {
 						const resolved = yield* child;
@@ -417,62 +260,40 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 
 		const self = {
 			root,
-			instantiate: Effect.fnUntraced(function* <
-				Name extends string,
-				Data extends Schema.Struct.Fields,
-				Traits extends Entity.PartialTraits<Data>,
-			>(
-				entity: Entity.Entity<Name, Data, Traits>,
-				// make-input with polymorphic children: the runner makes the
-				// stored data itself (via the tree entry), so raw props arrive
-				// un-validated and children are normalized to ids here
-				props: InstantiateProps<Data>,
-			): Effect.fn.Return<
-				Instance.Instance<Name, Data, Traits>,
-				never,
-				Runner
-			> {
-				const children = getChildren(props);
+			instantiate: Effect.fnUntraced(function* <Tag extends S.EntityTag>(
+				kind: Tag,
+				props: InstantiateProps<Tag>,
+			): Effect.fn.Return<S.Instance<Tag>, never, Runner> {
+				const raw = props as Record<string, unknown>;
+				const children = Array.isArray(raw.children)
+					? (raw.children as ReadonlyArray<Child>)
+					: [];
 				const childIds =
 					children.length > 0 ? yield* normalizeChildren(children) : undefined;
 
 				// cameras get width-relative z/focalLength defaults filled here
-				// (AE's 50mm equivalent — see Camera.ts): the schema can't default
-				// them because only the Runner knows the scene width. Filling for
-				// EVERY Camera instance (not just the built-in one) keeps a
-				// setCamera swap from jumping zoom.
-				const cameraDefaults = (() => {
-					if (!Entity.isEntity(Camera.Camera, entity)) {
-						return undefined;
-					}
-					const p = props as (typeof Camera.Camera)["data"]["Type"];
-					const focalLength =
-						p.focalLength ?? Projection.defaultFocalLength(comp.width);
-					return {
-						focalLength,
-						z: p.z ?? focalLength,
-						// depth of field: focus at the resting distance by default,
-						// so the z=0 plane is sharp for an untouched camera
-						focusDistance: p.focusDistance ?? focalLength,
-					};
-				})();
+				// (AE's 50mm equivalent): the schema cannot default them because
+				// only the Runner knows the comp width. Filled for EVERY Camera,
+				// not just the built-in one, so a setCamera swap never jumps zoom.
+				const defaults =
+					kind === "Camera" ? cameraDefaults(raw, comp.width) : undefined;
+
 				// raw children never reach stored data: normalized ids are
 				// appended through the tree below, in list order
-				const { children: _children, ...rest } = props as Record<
-					string,
-					unknown
-				>;
-				const entry = tree.createNode(
-					entity as Entity.Entity<string, any, any>,
-					{ ...rest, ...cameraDefaults },
-				);
-				const instance = Instance.make(entity, entry.id);
+				const { children: _children, ...rest } = raw;
+				const definition = S.getEntityDefinitionByTag(kind);
+				const state = definition.make({
+					...rest,
+					...defaults,
+				} as never) as S.Entity;
+
+				const entry = tree.createNode(state);
+				const instance = S.makeInstance(entry.id, kind);
+
 				// cameras are view state, not scene content: they live in the tree
 				// so the animators drive them, but must NOT be mounted under a
-				// group (no sink renders a Camera — the renderer would die on the
-				// unknown entity). Everything else mounts under the ambient parent
-				// (Scene.play), defaulting to root.
-				if (entity.name !== Camera.Camera.name) {
+				// group. Everything else mounts under the ambient parent.
+				if (kind !== "Camera") {
 					const ambient = yield* CurrentParent;
 					tree.appendChild((ambient ?? root).id, entry);
 				}
@@ -502,26 +323,17 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 
 			state: Effect.sync(() => {
 				// the active camera lives in the tree so the animators drive it,
-				// but it is view state, not a renderable instance — omit it from the
-				// frame's instance map (its data is surfaced separately as `camera`)
-				const renderable: Record<
-					string,
-					{
-						data: {
-							readonly "~visible": boolean;
-							readonly [key: string]: unknown;
-						};
-						entity: Entity.Entity<string, any, any>;
-					}
-				> = {};
+				// but it is view state, not a renderable instance — omit it from
+				// the frame's instance map (its data is surfaced as `camera`)
+				const instances: Record<string, { data: S.Entity }> = {};
 				for (const [id, entry] of Object.entries(tree.map)) {
 					if (id === activeCameraId) {
 						continue;
 					}
-					renderable[id] = { data: entry.data, entity: entry.entity };
+					instances[id] = { data: entry.state };
 				}
 				return {
-					instances: renderable,
+					instances,
 					root: ROOT_ID,
 					frameRate: resolvedSettings.frameRate,
 					width: comp.width,
@@ -531,17 +343,15 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 				};
 			}),
 
-			// the default identity camera (animate it, or swap via setCamera)
+			// the default resting camera (animate it, or swap via setCamera)
 			camera,
 			// swap the active camera to another instance; its live data becomes
 			// the view on every subsequent frame
-			setCamera: (instance: Instance.Instance): void => {
+			setCamera: (instance: S.Instance<"Camera">): void => {
 				activeCameraId = instance.id;
 			},
 
-			destroy: <Name extends string, Data extends Schema.Struct.Fields>(
-				instance: Instance.Instance<Name, Data>,
-			): void => {
+			destroy: (instance: S.Instance): void => {
 				// double-destroy is a no-op, like the old map-based delete
 				if (tree.getEntry(instance.id) === null) {
 					return;
@@ -563,5 +373,35 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 		return self;
 	}),
 }) {}
+
+/**
+ * Width-relative camera defaults the schema cannot express, since only the
+ * Runner knows the comp width. Applied to any Camera at instantiate.
+ */
+const cameraDefaults = (
+	props: Record<string, unknown>,
+	width: number,
+): Record<string, unknown> => {
+	const position = props.position as S.Vec3 | undefined;
+	const focalLength =
+		typeof props.focalLength === "number" && props.focalLength !== 0
+			? props.focalLength
+			: Projection.defaultFocalLength(width);
+	const restingZ = Projection.defaultCameraZ(focalLength);
+	return {
+		focalLength,
+		position: S.vec3({
+			x: position?.x ?? 0,
+			y: position?.y ?? 0,
+			z: position?.z ?? restingZ,
+		}),
+		// depth of field: focus at the resting distance by default, so the
+		// z=0 plane is sharp for an untouched camera
+		focusDistance:
+			typeof props.focusDistance === "number" && props.focusDistance !== 0
+				? props.focusDistance
+				: restingZ,
+	};
+};
 
 export const layer = Layer.effect(Runner, Runner.make());

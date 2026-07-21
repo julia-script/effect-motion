@@ -293,6 +293,14 @@ export const getEntityDefinitionByTag = <Tag extends EntityTag>(
 ): EntityDefinitionByTag<Tag> => EntityMap[tag];
 
 /**
+ * The constructor input for one entity: what `make` accepts, with defaulted
+ * fields optional. This is the authoring surface — `instantiate` widens
+ * `children` on top of it (see Runner.InstantiateProps).
+ */
+export type MakeInput<Tag extends EntityTag> =
+	EntityDefinitionByTag<Tag>["~type.make.in"];
+
+/**
  * Tags whose entity carries a given field — how animators state their
  * requirements now that traits are gone. `TagsWith<"opacity">` is every
  * paintable entity; `fade` constrains on it, so fading a Camera is a
