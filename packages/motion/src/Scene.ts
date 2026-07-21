@@ -7,17 +7,14 @@ import * as Exit from "effect/Exit";
 import * as Fiber from "effect/Fiber";
 import * as Random from "effect/Random";
 import type * as Schedule from "effect/Schedule";
-import type * as Schema from "effect/Schema";
 import type * as Scope from "effect/Scope";
 import * as Stream from "effect/Stream";
-import type * as Camera from "./Camera.js";
 import type * as Color from "./Color.js";
-import type * as Entity from "./Entity.js";
-import type * as Instance from "./Instance.js";
 import * as Phaser from "./Phaser.js";
+import type * as Projection from "./Projection.js";
 import type * as Resource from "./Resource.js";
 import * as Runner from "./Runner.js";
-import { Group } from "./shapes/Group.js";
+import * as S from "./schemas.js";
 import * as Time from "./Time.js";
 
 export const TypeId = "~motion/Scene" as const;
@@ -114,20 +111,14 @@ const makeScene = <E = never, R = never>(
 });
 
 export const instantiate = Effect.fnUntraced(function* <
-	Name extends string,
-	Data extends Schema.Struct.Fields,
-	Traits extends Entity.PartialTraits<Data>,
+	Tag extends S.EntityTag,
 >(
-	entity: Entity.Entity<Name, Data, Traits>,
-	props: Runner.InstantiateProps<Data>,
-): Effect.fn.Return<
-	Instance.Instance<Name, Data, Traits>,
-	never,
-	Runner.Runner
-> {
+	kind: Tag,
+	props: Runner.InstantiateProps<Tag>,
+): Effect.fn.Return<S.Instance<Tag>, never, Runner.Runner> {
 	const runner = yield* Runner.Runner;
 
-	return yield* runner.instantiate(entity, props);
+	return yield* runner.instantiate(kind, props);
 });
 
 export const tick = Effect.gen(function* () {
@@ -149,9 +140,13 @@ export const sleep = (duration: Duration.Input) =>
 		}
 	});
 
+/**
+ * One instance as a frame carries it. The entity DEFINITION is gone: `data`
+ * is a member of the closed union, so `data._tag` is the identity and the
+ * renderer narrows on it instead of dispatching on an entity object.
+ */
 export interface FrameEntry {
-	data: Entity.AnyEntity["data"]["Type"];
-	entity: Entity.AnyEntity;
+	data: S.Entity;
 }
 
 export interface Frame<out Resources = never> {
@@ -170,8 +165,15 @@ export interface Frame<out Resources = never> {
 	width: number;
 	height: number;
 	backgroundColor: Color.Color;
-	/** the active camera's view; Camera.IDENTITY when unused */
-	camera: Camera.CameraState;
+	/** the active camera's view; the resting view when unused */
+	camera: Projection.CameraView & Projection.PointOfInterest;
+	/**
+	 * Mounted scenes (`Scene.play`), keyed by the id of the group they mount
+	 * under. Each is a render-to-texture boundary: the renderer draws the
+	 * subtree to its own target at these bounds, under an identity camera,
+	 * and composites the result. An id absent here is a plain group.
+	 */
+	comps: Record<string, Runner.CompConfig>;
 }
 // R is never: everything step touches is bound to the runningScene value
 // (runner instance, phaser, fiber) — no ambient service is read
@@ -359,13 +361,7 @@ const isUpdaterFn = <Data>(
 	props: Updater<Data>,
 ): props is (data: Data) => Data => typeof props === "function";
 
-export const data = <
-	Name extends string,
-	Data extends Schema.Struct.Fields,
-	Traits extends Entity.PartialTraits<Data>,
->(
-	instance: Instance.Instance<Name, Data, Traits>,
-) =>
+export const data = <Tag extends S.EntityTag>(instance: S.Instance<Tag>) =>
 	Effect.gen(function* () {
 		const runner = yield* Runner.Runner;
 		const current = runner.getDataUnsafe(instance);
@@ -376,13 +372,9 @@ export const data = <
 		}
 		return current;
 	});
-export const update = <
-	Name extends string,
-	Data extends Schema.Struct.Fields,
-	Traits extends Entity.PartialTraits<Data>,
->(
-	instance: Instance.Instance<Name, Data, Traits>,
-	props: Updater<Entity.EntityData<Data>["Type"]>,
+export const update = <Tag extends S.EntityTag>(
+	instance: S.Instance<Tag>,
+	props: Updater<S.EntityByTag<Tag>>,
 ) =>
 	Effect.gen(function* () {
 		const runner = yield* Runner.Runner;
@@ -403,20 +395,14 @@ export const update = <
  * ambient parent; `appendChild` is the explicit reparent — the door to
  * placing a lazily-created node into an existing group.
  */
-export const appendChild = (
-	parent: Runner.GroupInstance,
-	child: Instance.Instance,
-) =>
+export const appendChild = (parent: Runner.GroupInstance, child: S.Instance) =>
 	Effect.gen(function* () {
 		const runner = yield* Runner.Runner;
 		runner.appendChild(parent, child);
 	});
 
 /** Detach `child` from `parent` (no-op unless it is currently its child). */
-export const removeChild = (
-	parent: Runner.GroupInstance,
-	child: Instance.Instance,
-) =>
+export const removeChild = (parent: Runner.GroupInstance, child: S.Instance) =>
 	Effect.gen(function* () {
 		const runner = yield* Runner.Runner;
 		runner.removeChild(parent, child);
@@ -450,7 +436,7 @@ export const camera = Effect.gen(function* () {
 });
 
 /** Swap the active camera to `instance`; its live data becomes the view. */
-export const setCamera = (instance: Instance.Instance) =>
+export const setCamera = (instance: S.Instance<"Camera">) =>
 	Effect.gen(function* () {
 		const runner = yield* Runner.Runner;
 		runner.setCamera(instance);
@@ -708,31 +694,29 @@ export const play = <E, R>(
 		// sized group, the movie's comp at the root. An unsized parent
 		// group has no bounds to center in; the child mounts at its origin.
 		const ambient = options?.parent ?? (yield* Runner.CurrentParent);
-		const enclosing = (() => {
-			if (ambient === null) {
-				return runner.comp;
-			}
-			const data = runner.getDataUnsafe(ambient) as {
-				width?: number;
-				height?: number;
-			} | null;
-			return data !== null &&
-				typeof data.width === "number" &&
-				typeof data.height === "number"
-				? { width: data.width, height: data.height }
-				: null;
-		})();
-		// the child's comp bounds ride on the mount group: the renderer clips
-		// the subtree to them and paints the child's background within them
+		// the bounds to center in: the enclosing comp's when the ambient parent
+		// is itself a mounted scene, the movie's comp at the root. A parent
+		// that is a plain group has no bounds; the child mounts at its origin.
+		const enclosing =
+			ambient === null ? runner.comp : runner.compBounds(ambient.id);
+		// A mounted scene is a render-to-texture boundary: the renderer clips
+		// its subtree to the child's bounds and paints the child's background
+		// within them. Those bounds are the SCENE's, so they are registered
+		// against the mount group's id rather than copied onto it as fields —
+		// a Group that happens to carry a size is not what makes a comp.
 		const group = yield* runner
-			.instantiate(Group, {
-				x: enclosing === null ? 0 : (enclosing.width - scene.width) / 2,
-				y: enclosing === null ? 0 : (enclosing.height - scene.height) / 2,
-				width: scene.width,
-				height: scene.height,
-				backgroundColor: scene.backgroundColor,
+			.instantiate("Group", {
+				position: S.vec3({
+					x: enclosing === null ? 0 : (enclosing.width - scene.width) / 2,
+					y: enclosing === null ? 0 : (enclosing.height - scene.height) / 2,
+				}),
 			})
 			.pipe(Effect.provideService(Runner.CurrentParent, ambient));
+		runner.registerComp(group.id, {
+			width: scene.width,
+			height: scene.height,
+			backgroundColor: scene.backgroundColor,
+		});
 		const body = scene.runner.pipe(
 			Effect.scoped,
 			// the child's instances mount under its bounds group

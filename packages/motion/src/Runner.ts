@@ -170,6 +170,17 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 		// Scene.finish) are deliberately not reported
 		let failure: Cause.Cause<unknown> | undefined;
 
+		/**
+		 * Mounted scenes, by the id of the group they mount under.
+		 *
+		 * A comp is a render-to-texture boundary — its own scene, render
+		 * target, and identity camera — created ONLY by `Scene.play`. It used
+		 * to be inferred from a Group carrying width/height, which duplicated
+		 * what the child Scene already owned and made "is this a comp" a
+		 * question about field presence. It is now declared here explicitly.
+		 */
+		const comps = new Map<string, CompConfig>();
+
 		const setDataUnsafe = <Tag extends S.EntityTag>(
 			instance: S.Instance<Tag>,
 			state: S.EntityByTag<Tag>,
@@ -340,8 +351,21 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 					height: comp.height,
 					backgroundColor: comp.backgroundColor,
 					camera: cameraState(),
+					// mounted scenes, by mount-group id: the renderer reads this
+					// to know a subtree is a render-to-texture boundary, instead
+					// of inferring it from a group carrying a size
+					comps: Object.fromEntries(comps),
 				};
 			}),
+
+			// declare the group at `id` to be a mounted scene with these bounds
+			// (see `comps`); called by Scene.play, never by authors
+			registerComp: (id: string, config: CompConfig): void => {
+				comps.set(id, config);
+			},
+			// the bounds of the mounted scene at `id`, or null if it is a plain
+			// group. Never inferred from fields — a comp is declared.
+			compBounds: (id: string): CompConfig | null => comps.get(id) ?? null,
 
 			// the default resting camera (animate it, or swap via setCamera)
 			camera,
