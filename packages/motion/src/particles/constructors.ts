@@ -1,8 +1,7 @@
-import type * as Effect from "effect/Effect";
+import * as Effect from "effect/Effect";
 import type * as Color from "../Color.js";
 import type * as Instance from "../Instance.js";
-import type * as Runner from "../Runner.js";
-import * as Scene from "../Scene.js";
+import * as Runner from "../Runner.js";
 import type { Range } from "./Particle.js";
 import { ParticleField } from "./ParticleField.js";
 
@@ -78,11 +77,11 @@ export const emitter = (
 ): Effect.Effect<EmitterField, never, Runner.Runner> =>
 	// the entity schema is one struct with defaults; the branded return type
 	// is a compile-time cast, runtime data is a plain ParticleField
-	Scene.instantiate(ParticleField, props) as Effect.Effect<
-		EmitterField,
-		never,
-		Runner.Runner
-	>;
+	// ponytail: particles are outside the entity union (design D10) — this
+	// goes through the escape hatch until the particle system is rewritten
+	Effect.flatMap(Runner.Runner, (runner) =>
+		Runner.particlesEscapeInstantiate(runner, ParticleField.data.make(props)),
+	) as unknown as Effect.Effect<EmitterField, never, Runner.Runner>;
 
 /**
  * Create a floating field: particles spread evenly across the region,
@@ -91,8 +90,7 @@ export const emitter = (
 export const field = (
 	props: FieldInput,
 ): Effect.Effect<FloatField, never, Runner.Runner> =>
-	Scene.instantiate(ParticleField, props) as Effect.Effect<
-		FloatField,
-		never,
-		Runner.Runner
-	>;
+	// ponytail: see `emitter` above — the same D10 escape hatch
+	Effect.flatMap(Runner.Runner, (runner) =>
+		Runner.particlesEscapeInstantiate(runner, ParticleField.data.make(props)),
+	) as unknown as Effect.Effect<FloatField, never, Runner.Runner>;

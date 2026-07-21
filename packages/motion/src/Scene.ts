@@ -420,7 +420,7 @@ export const comp = Effect.fnUntraced(function* () {
 });
 
 /**
- * The active camera instance — an ordinary instance carrying `~position`
+ * The active camera instance — an ordinary instance carrying `position`
  * (world x/y/z), Euler orientation (`rotX`/`rotY`/`rotZ`), and
  * `focalLength` (perspective strength — see Projection.defaultFocalLength),
  * so the existing animators drive it: `Scene.make(function* () { const cam

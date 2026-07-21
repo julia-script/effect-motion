@@ -2,9 +2,9 @@ import type * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import { dual } from "effect/Function";
 import * as Random from "effect/Random";
-import * as Instance from "../Instance.js";
 import * as Runner from "../Runner.js";
 import * as Scene from "../Scene.js";
+import * as S from "../schemas.js";
 import * as Time from "../Time.js";
 import type { EmitterField, FloatField } from "./constructors.js";
 import type { EmitterConfig, Particle } from "./Particle.js";
@@ -12,7 +12,9 @@ import type { ParticleField } from "./ParticleField.js";
 import * as Prng from "./Prng.js";
 import { step } from "./step.js";
 
-type Field = Instance.Of<typeof ParticleField>;
+// ponytail: particles ride S.Instance untagged — ParticleField is not a
+// union member (design D10), so there is no tag to parameterize on
+type Field = S.Instance;
 
 /**
  * Emission model for a single `simulate` call:
@@ -45,8 +47,12 @@ const birthsForFrame = (emission: Emission, i: number, fps: number): number => {
 	return now - before;
 };
 
-// the field's decoded data shape (what Scene.data / the updater see)
+// the field's decoded data shape (what the escape-hatch read/write see)
 type FieldData = typeof ParticleField.data.Type;
+
+const unreachableField = (id: string): never => {
+	throw new Error(`Particles: field "${id}" was destroyed mid-simulation`);
+};
 
 // read the field's current config out of its data. `region` is the fill
 // area (defaulted to the frame by the caller); particles are positioned in
@@ -82,7 +88,11 @@ const run = Effect.fnUntraced(function* (
 	const dt = 1 / fps;
 	const mode = "fill" in emission ? "fill" : "emit";
 	// fill spreads across a region: the field's own if set, else the frame
-	const current = yield* Scene.data(instance);
+	// ponytail: particles are outside the entity union (design D10) — read
+	// and write go through the escape hatch until the system is rewritten
+	const current =
+		Runner.particlesEscapeRead<FieldData>(runner, instance) ??
+		unreachableField(instance.id);
 	const region = {
 		w: current.region?.w ?? runner.comp.width,
 		h: current.region?.h ?? runner.comp.height,
@@ -96,21 +106,24 @@ const run = Effect.fnUntraced(function* (
 		for (let s = 0; s < n; s++) {
 			seeds.push(Prng.seedFrom(yield* Random.next));
 		}
-		yield* Scene.update(instance, (data) => {
+		yield* Effect.sync(() => {
+			const data =
+				Runner.particlesEscapeRead<FieldData>(runner, instance) ??
+				unreachableField(instance.id);
 			// buffer is the field's private mutable representation; clone the
 			// array reference so setDataUnsafe stores a fresh value
 			const buffer = [
 				...(data.buffer as ReadonlyArray<Particle>),
 			] as Particle[];
 			step(buffer, data.capacity, dt, seeds, configOf(data, region), mode);
-			return { ...data, buffer };
+			Runner.particlesEscapeWrite(runner, instance, { ...data, buffer });
 		});
 		yield* Scene.tick;
 	}
 	return instance;
 });
 
-const firstArgIsInstance = (args: IArguments) => Instance.isInstance(args[0]);
+const firstArgIsInstance = (args: IArguments) => S.isInstance(args[0]);
 
 // the untyped runtime dual; the public `simulate` below narrows it per brand
 const simulateImpl = dual<

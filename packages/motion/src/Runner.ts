@@ -358,6 +358,19 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 				};
 			}),
 
+			/**
+			 * ponytail: create a tree node for an entity that is NOT in the
+			 * union — the particle system only (design D10). Mounts under the
+			 * ambient parent like any instance. Delete with the particles
+			 * rewrite; see `particlesEscapeInstantiate`.
+			 */
+			instantiateEscape: Effect.fnUntraced(function* (state: S.Entity) {
+				const entry = tree.createNode(state);
+				const ambient = yield* CurrentParent;
+				tree.appendChild((ambient ?? root).id, entry);
+				return S.makeInstance(entry.id, state._tag);
+			}),
+
 			// declare the group at `id` to be a mounted scene with these bounds
 			// (see `comps`); called by Scene.play, never by authors
 			registerComp: (id: string, config: CompConfig): void => {
@@ -429,3 +442,51 @@ const cameraDefaults = (
 };
 
 export const layer = Layer.effect(Runner, Runner.make());
+
+// ── the particles escape hatch (design D10) ──────────────────────────────
+//
+// ponytail: the particle system is NOT a member of the entity union. It is
+// slated for a full rewrite, so porting its 744 lines to a model it will not
+// keep would be throwaway work — but six example scenes depend on it, so it
+// cannot simply be deleted either.
+//
+// These three functions are the entire seam. They are deliberately ugly and
+// deliberately greppable: every one names ParticleField, so `grep -r
+// particlesEscape` finds all of it. Upgrade path: fold ParticleField into
+// the union (or justify its exclusion) as part of the particles rewrite, then
+// delete this block.
+
+/** the shape particles store — opaque, as far as the union is concerned */
+type ParticlesState = Record<string, unknown>;
+
+/** the tag particle fields are stored under; never a union member */
+export const PARTICLE_FIELD_TAG = "particles/ParticleField";
+
+/** instantiate a non-union entity. Particles only. */
+export const particlesEscapeInstantiate = (
+	runner: Runner["Service"],
+	state: ParticlesState,
+): Effect.Effect<S.Instance, never, Runner> =>
+	// bypasses the tag→EntityMap lookup, which by construction has no
+	// ParticleField. The state is stored verbatim; only particles read it.
+	runner.instantiateEscape({
+		...state,
+		_tag: PARTICLE_FIELD_TAG,
+	} as unknown as S.Entity);
+
+/** read a non-union entity's state. Particles only. */
+export const particlesEscapeRead = <T>(
+	runner: Runner["Service"],
+	instance: S.Instance,
+): T | null => runner.getDataUnsafe(instance) as unknown as T | null;
+
+/** write a non-union entity's state. Particles only. */
+export const particlesEscapeWrite = <T>(
+	runner: Runner["Service"],
+	instance: S.Instance,
+	state: T,
+): void =>
+	runner.setDataUnsafe(
+		instance,
+		state as unknown as S.EntityByTag<S.EntityTag>,
+	);

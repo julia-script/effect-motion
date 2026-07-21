@@ -1,14 +1,11 @@
 import { Effect } from "effect";
 import * as Duration from "effect/Duration";
 import * as Function from "effect/Function";
-import * as Schema from "effect/Schema";
-import * as Entity from "./Entity.js";
-import * as Instance from "./Instance.js";
 import * as Motion from "./Motion.js";
-import * as Projection from "./Projection.js";
+import type * as Projection from "./Projection.js";
 import * as Runner from "./Runner.js";
 import * as Scene from "./Scene.js";
-import * as Shape2D from "./shapes/Shape2D.js";
+import * as S from "./schemas.js";
 import * as Time from "./Time.js";
 import * as Timing from "./Timing.js";
 
@@ -18,8 +15,8 @@ import * as Timing from "./Timing.js";
  * animators drive it for free: `camera.pipe(moveTo({ z: -800 }))`,
  * `tween("rotY", ...)`, `spring`, `Scene.fork`, etc.
  *
- * `~position` (now x/y/z) is the camera's world position; `rotX/rotY/rotZ`
- * are its Euler orientation; `focalLength` sets the field of view. At rest
+ * `position` is the camera's world position, `rotation` its Euler
+ * orientation, and `focalLength` sets the field of view. At rest
  * the camera sits a focal-length back on +z looking down world -z, so a
  * world point at z=0 projects to plain-2D screen coordinates — see
  * `Projection.ts`. The sink reads these off `FrameMeta.camera` and projects
@@ -33,76 +30,7 @@ import * as Timing from "./Timing.js";
  * instance, so by the time animators or the renderer read the data they are
  * always concrete.
  */
-const fields = {
-	x: Shape2D.defaultedNumber(0),
-	y: Shape2D.defaultedNumber(0),
-	z: Schema.Number.pipe(Schema.withConstructorDefault(Effect.succeed(0))),
-	rotX: Shape2D.defaultedNumber(0),
-	rotY: Shape2D.defaultedNumber(0),
-	rotZ: Shape2D.defaultedNumber(0),
-	focalLength: Schema.Number.pipe(
-		Schema.withConstructorDefault(Effect.succeed(0)),
-	),
-	// depth of field: view-space distance to the sharp plane, and blur
-	// strength. Like z/focalLength, focusDistance's right default is
-	// width-relative (the resting distance, so z=0 is in focus) — the Runner
-	// fills it. aperture 0 = pinhole = DoF off (explicit opt-in).
-	focusDistance: Schema.Number.pipe(
-		Schema.withConstructorDefault(Effect.succeed(0)),
-	),
-	aperture: Shape2D.defaultedNumber(0),
-	// Optional point of interest (world coordinates): when present the camera
-	// auto-orients toward it and explicit Euler composes AFTER the aim (the
-	// AE two-node model — see Projection.resolveCamera). Flat numeric fields
-	// so tween/spring drive the aim like any other field. NOT Runner-filled:
-	// absent = today's one-node camera, byte-identical (explicit opt-in).
-	poiX: Schema.optionalKey(Schema.Number),
-	poiY: Schema.optionalKey(Schema.Number),
-	poiZ: Schema.optionalKey(Schema.Number),
-};
-
-type CameraData = Entity.EntityData<typeof fields>["Type"];
-
-export const Camera = Entity.make("Camera", fields, {
-	// x/y/z is the camera position; rotation + focalLength are raw numeric
-	// fields animated via tween. Inlined (not positionLens()) so the data
-	// type flows into the lens.
-	"~position": {
-		// z is filled by the Runner at instantiate; the ?? 0 is unreachable,
-		// it only satisfies the optional schema type
-		get: (data: CameraData) => ({ x: data.x, y: data.y, z: data.z ?? 0 }),
-		set: (data: CameraData, value: Entity.Position): CameraData => ({
-			...data,
-			x: value.x,
-			y: value.y,
-			z: value.z,
-		}),
-	},
-});
-
-/**
- * The identity view for a comp of the given width: resting camera, no
- * rotation, the width-relative default focal length (AE's 50mm equivalent).
- * Projects z=0 content to its plain-2D screen position at scale 1.
- */
-export const identity = (width: number) => {
-	const focalLength = Projection.defaultFocalLength(width);
-
-	return Camera.data.make({
-		x: 0,
-		y: 0,
-		z: Projection.defaultCameraZ(focalLength),
-		rotX: 0,
-		rotY: 0,
-		rotZ: 0,
-		focalLength,
-		// the z=0 plane in focus, no depth of field
-		focusDistance: Projection.defaultCameraZ(focalLength),
-		aperture: 0,
-	});
-};
-
-/** The camera view carried on each frame (POI rides along when set). */
+/** the camera view as a frame carries it */
 export type CameraState = Projection.CameraView & Projection.PointOfInterest;
 
 /**
@@ -111,28 +39,24 @@ export type CameraState = Projection.CameraView & Projection.PointOfInterest;
  * plain position (inherently fixed — the no-entity escape hatch).
  */
 export type CameraTarget =
-	| Instance.AnyInstance
-	| Effect.Effect<Instance.AnyInstance, never, Runner.Runner>
-	| Partial<Entity.Position>;
+	| S.Instance
+	| Effect.Effect<S.Instance, never, Runner.Runner>
+	| Partial<Motion.Position>;
 
-type CamData = typeof fields;
-type CamTraits = (typeof Camera)["traits"];
 // R defaults to Runner so helper outputs pipe straight into helper inputs
-type CamOrEffect<E = never, R = Runner.Runner> = Instance.InstanceOrEffect<
+type CamOrEffect<E = never, R = Runner.Runner> = S.InstanceOrEffect<
 	"Camera",
-	CamData,
-	CamTraits,
 	E,
 	R
 >;
-type CamInstance = Instance.Instance<"Camera", CamData, CamTraits>;
+type CamInstance = S.Instance<"Camera">;
 type CamEffect = Effect.Effect<CamInstance, never, Runner.Runner>;
 
 // a target argument (vs a duration/timing in the same slot): instances,
 // effects, or a position-like object — Durations are objects too, so
 // exclude them explicitly
 const isTargetArg = (v: unknown): boolean =>
-	Instance.isInstance(v) ||
+	S.isInstance(v) ||
 	Effect.isEffect(v) ||
 	(typeof v === "object" &&
 		v !== null &&
@@ -143,7 +67,7 @@ const isTargetArg = (v: unknown): boolean =>
 // plain firstArgIsInstance would misread `cam.pipe`-less pipeable calls
 // whose TARGET is an instance (`lookAt(hero, "1 second")`)
 const dataFirst = (args: IArguments) =>
-	Instance.isInstance(args[0]) && isTargetArg(args[1]);
+	S.isInstance(args[0]) && isTargetArg(args[1]);
 
 /**
  * Resolve a target once (Effects yield their Instance), returning a
@@ -152,36 +76,26 @@ const dataFirst = (args: IArguments) =>
  */
 const targetReader = Effect.fnUntraced(function* (
 	target: CameraTarget,
-	offset: Partial<Entity.Position> | undefined,
+	offset: Partial<Motion.Position> | undefined,
 ) {
 	const ox = offset?.x ?? 0;
 	const oy = offset?.y ?? 0;
 	const oz = offset?.z ?? 0;
-	if (Instance.isInstance(target) || Effect.isEffect(target)) {
-		const instance = yield* Instance.flatten(
-			target as Instance.InstanceOrEffect<
-				string,
-				any,
-				any,
-				never,
-				Runner.Runner
-			>,
-		);
-		const lens = Entity.traitOrDie<unknown, Entity.Position>(
-			instance.entity,
-			"~position",
+	if (S.isInstance(target) || Effect.isEffect(target)) {
+		const instance = yield* S.flattenInstance(
+			target as S.InstanceOrEffect<S.EntityTag, never, Runner.Runner>,
 		);
 		return Scene.data(instance).pipe(
 			Effect.map((data) => {
-				const p = lens.get(data);
+				const p = data.position;
 				return { x: p.x + ox, y: p.y + oy, z: p.z + oz };
 			}),
 		);
 	}
 	// AnyInstance's `any` params defeat narrowing — the guards above
 	// returned for instances/effects, so this is a plain position
-	const point = target as Partial<Entity.Position>;
-	const fixed: Entity.Position = {
+	const point = target as Partial<Motion.Position>;
+	const fixed: Motion.Position = {
 		x: (point.x ?? 0) + ox,
 		y: (point.y ?? 0) + oy,
 		z: (point.z ?? 0) + oz,
@@ -189,26 +103,24 @@ const targetReader = Effect.fnUntraced(function* (
 	return Effect.succeed(fixed);
 });
 
-type CameraShape = {
-	x: number;
-	y: number;
-	z?: number;
-	poiX?: number;
-	poiY?: number;
-	poiZ?: number;
-};
+// the camera's own data, straight from the union — CameraShape (a
+// hand-written duplicate this module cast to at six sites) is gone with the
+// open world that made it necessary
+type CameraShape = S.EntityByTag<"Camera">;
 
-const setPoi = (data: object, p: Entity.Position) =>
-	Object.assign({}, data, { poiX: p.x, poiY: p.y, poiZ: p.z });
+const setPoi = (data: CameraShape, p: Motion.Position): CameraShape => ({
+	...data,
+	poi: S.vec3(p),
+});
 
 // the camera's WORLD position: x/y are pan-from-viewport-center
 const worldPosition = Effect.fnUntraced(function* (cam: CamInstance) {
 	const { comp } = yield* Runner.Runner;
-	const data = (yield* Scene.data(cam)) as CameraShape;
+	const data = yield* Scene.data(cam);
 	return {
-		x: comp.width / 2 + data.x,
-		y: comp.height / 2 + data.y,
-		z: data.z ?? 0,
+		x: comp.width / 2 + data.position.x,
+		y: comp.height / 2 + data.position.y,
+		z: data.position.z,
 	};
 });
 
@@ -217,13 +129,13 @@ const lookAtImpl = Effect.fnUntraced(function* (
 	target: CameraTarget,
 	duration?: Duration.Input,
 	timing?: Timing.TimingInput,
-	offset?: Partial<Entity.Position>,
+	offset?: Partial<Motion.Position>,
 ) {
-	const cam = yield* Instance.flatten(camOrEffect);
+	const cam = yield* S.flattenInstance(camOrEffect);
 	const read = yield* targetReader(target, offset);
 	if (duration === undefined) {
 		const p = yield* read;
-		yield* Scene.update(cam, (d) => setPoi(d as object, p) as typeof d);
+		yield* Scene.update(cam, (d) => setPoi(d, p));
 		return cam;
 	}
 	// eased re-aim: a RETARGETED tween — each frame interpolates from the
@@ -233,14 +145,10 @@ const lookAtImpl = Effect.fnUntraced(function* (
 	// rather than Motion.drive (whose callback is pure).
 	const runner = yield* Runner.Runner;
 	const timingFn = Timing.resolve(timing ?? "linear");
-	const data = (yield* Scene.data(cam)) as CameraShape;
-	let start: Entity.Position;
-	if (
-		data.poiX !== undefined &&
-		data.poiY !== undefined &&
-		data.poiZ !== undefined
-	) {
-		start = { x: data.poiX, y: data.poiY, z: data.poiZ };
+	const data = yield* Scene.data(cam);
+	let start: Motion.Position;
+	if (data.poi !== null) {
+		start = data.poi;
 	} else {
 		// no POI yet: seed on the camera's UNAIMED axis (straight down world
 		// -z) at the target's distance. resolveCamera derives zero aim for
@@ -266,7 +174,7 @@ const lookAtImpl = Effect.fnUntraced(function* (
 		yield* Scene.update(
 			cam,
 			(d) =>
-				setPoi(d as object, {
+				setPoi(d, {
 					x: start.x + (p.x - start.x) * t,
 					y: start.y + (p.y - start.y) * t,
 					z: start.z + (p.z - start.z) * t,
@@ -289,14 +197,14 @@ export const lookAt = Function.dual<
 		target: CameraTarget,
 		duration?: Duration.Input,
 		timing?: Timing.TimingInput,
-		offset?: Partial<Entity.Position>,
+		offset?: Partial<Motion.Position>,
 	) => (cam: CamOrEffect) => CamEffect,
 	(
 		cam: CamOrEffect,
 		target: CameraTarget,
 		duration?: Duration.Input,
 		timing?: Timing.TimingInput,
-		offset?: Partial<Entity.Position>,
+		offset?: Partial<Motion.Position>,
 	) => CamEffect
 >(dataFirst, lookAtImpl as never);
 
@@ -313,13 +221,13 @@ export const follow = Function.dual<
 	(
 		target: CameraTarget,
 		duration: Duration.Input,
-		offset?: Partial<Entity.Position>,
+		offset?: Partial<Motion.Position>,
 	) => (cam: CamOrEffect) => CamEffect,
 	(
 		cam: CamOrEffect,
 		target: CameraTarget,
 		duration: Duration.Input,
-		offset?: Partial<Entity.Position>,
+		offset?: Partial<Motion.Position>,
 	) => CamEffect
 >(
 	dataFirst,
@@ -327,9 +235,9 @@ export const follow = Function.dual<
 		camOrEffect: CamOrEffect,
 		target: CameraTarget,
 		duration: Duration.Input,
-		offset?: Partial<Entity.Position>,
+		offset?: Partial<Motion.Position>,
 	) {
-		const cam = yield* Instance.flatten(camOrEffect);
+		const cam = yield* S.flattenInstance(camOrEffect);
 		const read = yield* targetReader(target, offset);
 		const runner = yield* Runner.Runner;
 		const frames = Math.max(
@@ -338,7 +246,7 @@ export const follow = Function.dual<
 		);
 		for (let i = 1; i <= frames; i++) {
 			const p = yield* read;
-			yield* Scene.update(cam, (d) => setPoi(d as object, p) as typeof d);
+			yield* Scene.update(cam, (d) => setPoi(d, p));
 			yield* Scene.tick;
 		}
 		return cam;
@@ -346,17 +254,13 @@ export const follow = Function.dual<
 );
 
 // orbit/dolly are defined relative to the POI — die loudly without one
-const poiOrDie = (data: CameraShape): Entity.Position => {
-	if (
-		data.poiX === undefined ||
-		data.poiY === undefined ||
-		data.poiZ === undefined
-	) {
+const poiOrDie = (data: CameraShape): Motion.Position => {
+	if (data.poi === null) {
 		throw new Error(
 			"Camera: orbit/dolly need a point of interest — set one first (Camera.lookAt(target))",
 		);
 	}
-	return { x: data.poiX, y: data.poiY, z: data.poiZ };
+	return data.poi;
 };
 
 const orbitImpl = Effect.fnUntraced(function* (
@@ -366,21 +270,21 @@ const orbitImpl = Effect.fnUntraced(function* (
 	duration: Duration.Input,
 	timing?: Timing.TimingInput,
 ) {
-	const cam = yield* Instance.flatten(camOrEffect);
+	const cam = yield* S.flattenInstance(camOrEffect);
 	const { comp } = yield* Runner.Runner;
 	const origin = { x: comp.width / 2, y: comp.height / 2 };
-	const startData = (yield* Scene.data(cam)) as CameraShape;
+	const startData = yield* Scene.data(cam);
 	const poi = poiOrDie(startData);
 	const world = {
-		x: origin.x + startData.x,
-		z: startData.z ?? 0,
+		x: origin.x + startData.position.x,
+		z: startData.position.z,
 	};
 	// azimuth 0 = directly +z of the POI (the resting side); radius = the
 	// current horizontal distance, preserved through the arc; height too
 	const radius = Math.hypot(world.x - poi.x, world.z - poi.z);
 	const startAzimuth = from ?? Math.atan2(world.x - poi.x, world.z - poi.z);
 	return yield* Motion.drive(cam, duration, timing ?? "linear", (t, d) => {
-		const data = d as CameraShape;
+		const data = d;
 		// POI read from live data: orbiting a moving POI stays centered on it
 		const p = poiOrDie(data);
 		const angle = startAzimuth + (to - startAzimuth) * t;
@@ -410,7 +314,7 @@ export const orbitTo = Function.dual<
 		duration: Duration.Input,
 		timing?: Timing.TimingInput,
 	) => CamEffect
->((args) => Instance.isInstance(args[0]), ((
+>((args) => S.isInstance(args[0]), ((
 	cam: CamOrEffect,
 	azimuth: number,
 	duration: Duration.Input,
@@ -432,7 +336,7 @@ export const orbit = Function.dual<
 		duration: Duration.Input,
 		timing?: Timing.TimingInput,
 	) => CamEffect
->((args) => Instance.isInstance(args[0]), orbitImpl as never);
+>((args) => S.isInstance(args[0]), orbitImpl as never);
 
 const dollyImpl = Effect.fnUntraced(function* (
 	camOrEffect: CamOrEffect,
@@ -441,15 +345,15 @@ const dollyImpl = Effect.fnUntraced(function* (
 	duration: Duration.Input,
 	timing?: Timing.TimingInput,
 ) {
-	const cam = yield* Instance.flatten(camOrEffect);
+	const cam = yield* S.flattenInstance(camOrEffect);
 	const { comp } = yield* Runner.Runner;
 	const origin = { x: comp.width / 2, y: comp.height / 2 };
-	const startData = (yield* Scene.data(cam)) as CameraShape;
+	const startData = yield* Scene.data(cam);
 	const poi = poiOrDie(startData);
 	const world = {
-		x: origin.x + startData.x,
-		y: origin.y + startData.y,
-		z: startData.z ?? 0,
+		x: origin.x + startData.position.x,
+		y: origin.y + startData.position.y,
+		z: startData.position.z,
 	};
 	const startDistance = Math.hypot(
 		world.x - poi.x,
@@ -470,7 +374,7 @@ const dollyImpl = Effect.fnUntraced(function* (
 	};
 	const d0 = from ?? startDistance;
 	return yield* Motion.drive(cam, duration, timing ?? "linear", (t, d) => {
-		const data = d as CameraShape;
+		const data = d;
 		const p = poiOrDie(data);
 		const dist = d0 + (to - d0) * t;
 		return Object.assign({}, d, {
@@ -498,7 +402,7 @@ export const dollyTo = Function.dual<
 		duration: Duration.Input,
 		timing?: Timing.TimingInput,
 	) => CamEffect
->((args) => Instance.isInstance(args[0]), ((
+>((args) => S.isInstance(args[0]), ((
 	cam: CamOrEffect,
 	distance: number,
 	duration: Duration.Input,
@@ -520,4 +424,4 @@ export const dolly = Function.dual<
 		duration: Duration.Input,
 		timing?: Timing.TimingInput,
 	) => CamEffect
->((args) => Instance.isInstance(args[0]), dollyImpl as never);
+>((args) => S.isInstance(args[0]), dollyImpl as never);
