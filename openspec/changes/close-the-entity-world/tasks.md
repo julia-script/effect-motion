@@ -43,10 +43,17 @@ Ordering follows the migration plan in `design.md`: capture a determinism baseli
 
 ## 3. Prove the trait-removal argument (gate)
 
-- [ ] 3.1 Port "Moving a Line does not stretch it" as a transform test against the relative-geometry model
-- [ ] 3.2 Port "Moving a Line in depth keeps it rigid"
-- [ ] 3.3 Port "Moving a Group moves its children"
-- [ ] 3.4 **Gate:** confirm all three pass by writing `position` alone, with no branch on entity tag inside any animator. If any needs per-entity special-casing, STOP — design D3 is wrong and must be revisited before continuing (design Risks)
+- [x] 3.1 Port "Moving a Line does not stretch it" as a transform test against the relative-geometry model
+  - `test/transform-gate.test.ts`. A 50×20 line moved to (100,100) spans (100,100)→(150,120); `start`/`end` are byte-identical before and after, because the offsets ARE the geometry.
+- [x] 3.2 Port "Moving a Line in depth keeps it rigid"
+  - Line spanning z 0→300 moved to z=100 sits at z 100→400, span 300 preserved. Also asserts channel sparseness (D8): moving z holds x and y.
+- [x] 3.3 Port "Moving a Group moves its children"
+  - Group moved to x=400; children keep local coords (20, −20) and compose to world 420/380. Child data is untouched.
+- [x] 3.4 **Gate: PASSED.** All three scenarios pass by writing `position` alone, with zero branches on entity tag.
+  - The proof is `readPosition`/`writePosition` in `test/transform-gate.test.ts` — the entity-agnostic replacements for `traitOrDie(entity, "~position")` + `lens.get`/`lens.set`. One pair of functions is applied to **all ten entities** (camera included) and every one behaves identically: reads round-trip, writes are immutable, geometry-carrying entities (Line, Path) translate rigidly with their `start`/`end`/`commands` untouched.
+  - **Mutation-tested, so the gate is not decoration.** Breaking the relative composition (making `absolute()` ignore the parent position, i.e. reverting to the old absolute-coordinate model) fails exactly 3.1, 3.2 and 3.3 while the entity-agnostic checks stay green. The gate detects the failure it exists to detect.
+  - Also confirms D12: Hud's `z` round-trips as a real value, where the old lens fabricated `0` on read and discarded writes.
+  - **Consequence: design D3 holds. The port proceeds.** Section 5 lifts these two functions into `Motion.animatePosition` verbatim.
 
 ## 4. Core plumbing
 
