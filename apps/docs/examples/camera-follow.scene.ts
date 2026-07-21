@@ -13,15 +13,27 @@ export const scene = Scene.make(
 		for (let i = 0; i < 24; i++) {
 			const col = i % 6;
 			const row = Math.floor(i / 6);
-			yield* Scene.instantiate("Circle", { position: S.vec3({
+			yield* Scene.instantiate("Circle", {
+				position: S.vec3({
 					x: 40 + col * 84,
 					y: 40 + row * 74,
 					z: -150 - ((i * 137) % 500),
-				}), radius: 3, fillColor: Color.hex("#3d4266") });
+				}),
+				radius: 3,
+				fillColor: Color.hex("#3d4266"),
+			});
 		}
 
-		const a = yield* Scene.instantiate("Circle", { position: S.vec3({ x: 80, y: 120 }), radius: 14, fillColor: Color.hex("#e53170") });
-		const b = yield* Scene.instantiate("Circle", { position: S.vec3({ x: 380, y: 210, z: -400 }), radius: 14, fillColor: Color.hex("#ff8906") });
+		const a = yield* Scene.instantiate("Circle", {
+			position: S.vec3({ x: 80, y: 120 }),
+			radius: 14,
+			fillColor: Color.hex("#e53170"),
+		});
+		const b = yield* Scene.instantiate("Circle", {
+			position: S.vec3({ x: 380, y: 210, z: -400 }),
+			radius: 14,
+			fillColor: Color.hex("#ff8906"),
+		});
 
 		const cam = yield* Scene.camera;
 		// phase 1: a drifts away into depth, the camera tracking it (camera

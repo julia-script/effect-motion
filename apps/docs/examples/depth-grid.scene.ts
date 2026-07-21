@@ -13,11 +13,22 @@ export const scene = Scene.make(
 		// stroke is thick because a segment's width scales by its MIDPOINT
 		// perspective scale (one width per line — see the camera docs).
 		for (let x = -1750; x <= 1750; x += 250) {
-			yield* Scene.instantiate("Line", { end: S.vec3({ x: x, y: floorY, z: horizon }), position: S.vec3({ y: floorY, z: 300 }), x, strokeColor: Color.hex("#ff2975"), strokeWidth: 5 });
+			yield* Scene.instantiate("Line", {
+				position: S.vec3({ x, y: floorY, z: 300 }),
+				end: S.vec3({ z: horizon - 300 }),
+				strokeColor: Color.hex("#ff2975"),
+				strokeWidth: 5,
+			});
 		}
 		// cross lines: each fully at one depth, marching toward the horizon
 		for (let z = 300; z >= horizon; z -= 200) {
-			yield* Scene.instantiate("Line", { end: S.vec3({ x: 1750, y: floorY, z: z }), position: S.vec3({ x: -1750, y: floorY }), z, strokeColor: Color.hex("#f9c80e"), strokeWidth: 2, opacity: 0.8 });
+			yield* Scene.instantiate("Line", {
+				position: S.vec3({ x: -1750, y: floorY, z }),
+				end: S.vec3({ x: 3500 }),
+				strokeColor: Color.hex("#f9c80e"),
+				strokeWidth: 2,
+				opacity: 0.8,
+			});
 		}
 
 		const camera = yield* Scene.instantiate("Camera", { aperture: 2.5 });
@@ -37,7 +48,7 @@ export const scene = Scene.make(
 		// blur bands shift with the camera. The resting z comes from the
 		// identity camera (the Runner fills it; only it knows the width).
 		const restZ = Runner.identityCameraView((yield* Scene.comp()).width).z;
-		yield* Motion.tweenTo(
+		yield* Motion.moveTo(
 			camera,
 			{ z: restZ - 500 },
 			"3 seconds",

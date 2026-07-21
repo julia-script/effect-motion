@@ -1,4 +1,4 @@
-import { Color, Motion, Runner, Scene } from "effect-motion";
+import { Color, Motion, Runner, Entities as S, Scene } from "effect-motion";
 
 // A punch-in, the 3D-camera way: there is no `zoom` scalar any more. Grow the
 // camera's `focalLength` to narrow the field of view (an optical zoom) while
@@ -14,7 +14,11 @@ export const scene = Scene.make(
 			[350, 90, Color.hex("#e53170")],
 			[410, 220, Color.hex("#ff8906")],
 		] as const) {
-			yield* Scene.instantiate("Circle", { x, y, radius: 16, fill });
+			yield* Scene.instantiate("Circle", {
+				position: S.vec3({ x, y }),
+				radius: 16,
+				fillColor: fill,
+			});
 		}
 
 		const cam = yield* Scene.camera;

@@ -7,21 +7,28 @@ import { Color, Motion, Entities as S, Scene } from "effect-motion";
 export const scene = Scene.make(
 	function* () {
 		// an instance created up front, to hand into the children list by value
-		const badge = yield* Scene.instantiate("Circle", { position: S.vec3({ x: 0, y: -34 }), radius: 10, fillColor: Color.hex("#2cb67d") });
+		const badge = yield* Scene.instantiate("Circle", {
+			position: S.vec3({ x: 0, y: -34 }),
+			radius: 10,
+			fillColor: Color.hex("#2cb67d"),
+		});
 
-		const card = yield* Scene.instantiate("Group", { position: S.vec3({ x: 120, y: 150 }), children: [
+		const card = yield* Scene.instantiate("Group", {
+			position: S.vec3({ x: 120, y: 150 }),
+			children: [
 				// a bare string → a Text
 				"effect-motion",
 				// a nested instantiate, NOT yielded — resolved by the children list
-				Scene.instantiate(S.Text, {
+				Scene.instantiate("Text", {
 					text: "composed from children",
-					y: 22,
+					position: S.vec3({ y: 22 }),
 					fontSize: 11,
-					fill: Color.hex("#a1a1aa"),
+					fillColor: Color.hex("#a1a1aa"),
 				}),
 				// an instance passed by value → reparented into this group
 				badge,
-			] });
+			],
+		});
 
 		// moving the group carries every child with it
 		yield* card.pipe(

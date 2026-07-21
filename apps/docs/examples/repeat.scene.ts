@@ -5,7 +5,11 @@ import { Color, Motion, Entities as S, Scene } from "effect-motion";
 // run is immediate, the schedule paces the gaps after each run
 export const scene = Scene.make(
 	function* () {
-		const ball = yield* Scene.instantiate("Circle", { position: S.vec3({ x: 70, y: 150 }), radius: 16, fillColor: Color.hex("#7f5af0") });
+		const ball = yield* Scene.instantiate("Circle", {
+			position: S.vec3({ x: 70, y: 150 }),
+			radius: 16,
+			fillColor: Color.hex("#7f5af0"),
+		});
 
 		// three round-trips, resting 400ms between them
 		yield* Scene.repeat(

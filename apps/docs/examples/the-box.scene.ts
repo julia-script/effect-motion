@@ -14,12 +14,33 @@ const R = 16; // the ball at rest
 export const scene = Scene.make(
 	function* () {
 		// ── the world ──
-		yield* Scene.instantiate("Rect", { position: S.vec3({ x: 0, y: GROUND }), width: 500, height: 40, fillColor: Color.hex("#efeeea") });
-		yield* Scene.instantiate("Rect", { position: S.vec3({ x: LEDGE_X, y: LEDGE_TOP }), width: 160, height: GROUND - LEDGE_TOP, fillColor: Color.hex("#c9d1e5") });
-		const star = yield* Scene.instantiate("Circle", { position: S.vec3({ x: 430, y: LEDGE_TOP - 12 }), radius: 8, fillColor: Color.hex("#ff8906") });
-		const box = yield* Scene.instantiate("Square", { position: S.vec3({ x: -90 }), // waiting in the wings
-			y: GROUND - 56, size: 56, fillColor: Color.hex("#2cb67d") });
-		const ball = yield* Scene.instantiate("Ellipse", { position: S.vec3({ x: -30, y: GROUND - R }), fillColor: Color.hex("#7f5af0") });
+		yield* Scene.instantiate("Rect", {
+			position: S.vec3({ x: 0, y: GROUND }),
+			width: 500,
+			height: 40,
+			fillColor: Color.hex("#efeeea"),
+		});
+		yield* Scene.instantiate("Rect", {
+			position: S.vec3({ x: LEDGE_X, y: LEDGE_TOP }),
+			width: 160,
+			height: GROUND - LEDGE_TOP,
+			fillColor: Color.hex("#c9d1e5"),
+		});
+		const star = yield* Scene.instantiate("Circle", {
+			position: S.vec3({ x: 430, y: LEDGE_TOP - 12 }),
+			radius: 8,
+			fillColor: Color.hex("#ff8906"),
+		});
+		const box = yield* Scene.instantiate("Rect", {
+			position: S.vec3({ x: -90, y: GROUND - 56 }), // waiting in the wings
+			width: 56,
+			height: 56,
+			fillColor: Color.hex("#2cb67d"),
+		});
+		const ball = yield* Scene.instantiate("Ellipse", {
+			position: S.vec3({ x: -30, y: GROUND - R }),
+			fillColor: Color.hex("#7f5af0"),
+		});
 
 		// squash & stretch, sole planted on a surface: y follows ry
 		const squash = (
@@ -36,7 +57,12 @@ export const scene = Scene.make(
 					`${ms} millis`,
 					timing as never,
 				),
-				Motion.moveTo(ball, { y: surface - ry }, `${ms} millis`, timing as never),
+				Motion.moveTo(
+					ball,
+					{ y: surface - ry },
+					`${ms} millis`,
+					timing as never,
+				),
 			]);
 		const landOn = (surface: number) =>
 			Effect.gen(function* () {
@@ -93,13 +119,27 @@ export const scene = Scene.make(
 
 		// dejection: it stays squashed and thinks about its life
 		yield* squash(GROUND, R + 4, R - 5, 450);
-		const dots = yield* Scene.instantiate("Text", { position: S.vec3({ x: LEDGE_X - R, y: 205 }), text: "…", fontSize: 22, fillColor: Color.hex("#9490a6"), opacity: 0, textAnchor: "middle" });
+		const dots = yield* Scene.instantiate("Text", {
+			position: S.vec3({ x: LEDGE_X - R, y: 205 }),
+			text: "…",
+			fontSize: 22,
+			fillColor: Color.hex("#9490a6"),
+			opacity: 0,
+			textAnchor: "middle",
+		});
 		yield* Motion.fadeTo(dots, 1, "350 millis");
 		yield* Motion.wait("700 millis");
 		yield* Motion.fadeTo(dots, 0, "250 millis");
 
 		// ── act III: the idea ──
-		const idea = yield* Scene.instantiate("Text", { position: S.vec3({ x: LEDGE_X - R, y: 200 }), text: "!", fontSize: 6, fillColor: Color.hex("#ff8906"), opacity: 0, textAnchor: "middle" });
+		const idea = yield* Scene.instantiate("Text", {
+			position: S.vec3({ x: LEDGE_X - R, y: 200 }),
+			text: "!",
+			fontSize: 6,
+			fillColor: Color.hex("#ff8906"),
+			opacity: 0,
+			textAnchor: "middle",
+		});
 		yield* Scene.all([
 			Motion.fadeTo(idea, 1, "150 millis"),
 			Motion.tweenTo(idea, { fontSize: 26 }, "400 millis", "easeOutBack"),
@@ -137,7 +177,11 @@ export const scene = Scene.make(
 		// the star celebrates — and so does everything around it
 		const sparkle = (angle: number) =>
 			Effect.gen(function* () {
-				const s = yield* Scene.instantiate("Circle", { position: S.vec3({ x: 430, y: LEDGE_TOP - 12 }), radius: 3, fillColor: Color.hex("#ff8906") });
+				const s = yield* Scene.instantiate("Circle", {
+					position: S.vec3({ x: 430, y: LEDGE_TOP - 12 }),
+					radius: 3,
+					fillColor: Color.hex("#ff8906"),
+				});
 				yield* Scene.all([
 					Motion.moveTo(
 						s,
@@ -170,7 +214,15 @@ export const scene = Scene.make(
 		yield* arc(414, LEDGE_TOP - R - 12, LEDGE_TOP - R, 240);
 
 		// ── the moral ──
-		const caption = yield* Scene.instantiate("Text", { position: S.vec3({ x: 250, y: 70 }), text: "persistence < tooling", fontSize: 6, fillColor: Color.hex("#232946"), opacity: 0, textAnchor: "middle", baseline: "middle" });
+		const caption = yield* Scene.instantiate("Text", {
+			position: S.vec3({ x: 250, y: 70 }),
+			text: "persistence < tooling",
+			fontSize: 6,
+			fillColor: Color.hex("#232946"),
+			opacity: 0,
+			textAnchor: "middle",
+			baseline: "middle",
+		});
 		yield* Scene.all([
 			Motion.fadeTo(caption, 1, "400 millis"),
 			Motion.tweenTo(caption, { fontSize: 24 }, "600 millis", "easeOutBack"),
