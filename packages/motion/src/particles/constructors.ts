@@ -1,7 +1,7 @@
 import * as Effect from "effect/Effect";
 import type * as Color from "../Color.js";
-import type * as Instance from "../Instance.js";
 import * as Runner from "../Runner.js";
+import type * as S from "../schemas.js";
 import type { Range } from "./Particle.js";
 import { ParticleField } from "./ParticleField.js";
 
@@ -18,7 +18,7 @@ import { ParticleField } from "./ParticleField.js";
 declare const EmitterBrand: unique symbol;
 declare const FloatBrand: unique symbol;
 
-type BaseField = Instance.Of<typeof ParticleField>;
+type BaseField = S.Instance;
 
 /** an emitter (source) field — simulate with `{ burst }` or `{ rate }` */
 export type EmitterField = BaseField & { readonly [EmitterBrand]: true };

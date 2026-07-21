@@ -1,8 +1,7 @@
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import * as Color from "../Color.js";
-import * as Entity from "../Entity.js";
-import * as Shape2D from "../shapes/Shape2D.js";
+import * as Legacy from "./legacy.js";
 
 /**
  * A ParticleField is ONE entity/instance backing many particles. Its data
@@ -48,13 +47,13 @@ const ParticleSchema = Schema.Struct({
 	wrap: Schema.Boolean,
 });
 
-export const ParticleField = Entity.make(
+export const ParticleField = Legacy.make(
 	"particles/ParticleField",
 	{
 		// emitter origin doubles as the field's position (x/y), so the field
 		// participates in the position trait like any shape
-		...Shape2D.position,
-		...Shape2D.opacity,
+		...Legacy.position,
+		...Legacy.opacity,
 		// emitter config. speed/angle/life are emitter-mode props; the typed
 		// `emitter()`/`field()` constructors gate which an author may set, but
 		// the underlying schema defaults them so ONE struct serves both modes.
@@ -66,7 +65,7 @@ export const ParticleField = Entity.make(
 		// opacity curve multiplies it. Named distinctly from the field's own
 		// `opacity` (the ~opacity trait above, which fades the whole field).
 		opacityRange: defaultedRange([1, 1]),
-		gravity: Shape2D.defaultedNumber(0),
+		gravity: Legacy.defaultedNumber(0),
 		palette: Schema.Array(Color.Color).pipe(
 			Schema.withConstructorDefault(Effect.sync(() => [Color.white])),
 		),
@@ -79,13 +78,13 @@ export const ParticleField = Entity.make(
 		sizeOverLife: Schema.optionalKey(OverLifeSchema),
 		opacityOverLife: Schema.optionalKey(OverLifeSchema),
 		// lifecycle state
-		capacity: Shape2D.defaultedNumber(1024),
+		capacity: Legacy.defaultedNumber(1024),
 		buffer: Schema.Array(ParticleSchema).pipe(
 			Schema.withConstructorDefault(Effect.sync(() => [])),
 		),
 	},
 	{
-		"~position": Shape2D.positionLens(),
-		"~opacity": Shape2D.opacityLens(),
+		"~position": Legacy.positionLens(),
+		"~opacity": Legacy.opacityLens(),
 	},
 );
