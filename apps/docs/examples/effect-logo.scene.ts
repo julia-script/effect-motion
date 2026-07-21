@@ -31,13 +31,7 @@ export const scene = Scene.make(
 			stroke?: Color.Color;
 			strokeWidth?: number;
 		}) =>
-			Scene.instantiate("Rect", {
-				position: S.vec3({ x: CENTER_X - HALF, y: CENTER_Y - 340 }),
-				rotation: S.vec3({ x: Math.PI / 2, y: Math.PI / 4 }),
-				width: SIZE,
-				height: SIZE,
-				...style,
-			});
+			Scene.instantiate("Rect", { position: S.vec3({ x: CENTER_X - HALF, y: CENTER_Y - 340 }), rotation: S.vec3({ x: Math.PI / 2, y: Math.PI / 4 }), width: SIZE, height: SIZE, ...style });
 		const outline = {
 			fill: Color.hex("transparent"),
 			stroke: Color.hex("white"),
@@ -69,19 +63,8 @@ export const scene = Scene.make(
 		);
 
 		// the wordmark rides the HUD: screen-space, immune to the camera
-		const wordmark = yield* Scene.instantiate("Text", {
-			position: S.vec3({ x: 250, y: 226 }),
-			text: "effect",
-			fontSize: 42,
-			fillColor: Color.hex("white"),
-			textAnchor: "middle",
-			baseline: "middle",
-			opacity: 0,
-		});
-		const hud = yield* Scene.instantiate("Hud", {
-			position: S.vec3({ y: 14 }),
-			children: [wordmark],
-		});
+		const wordmark = yield* Scene.instantiate("Text", { position: S.vec3({ x: 250, y: 226 }), text: "effect", fontSize: 42, fillColor: Color.hex("white"), textAnchor: "middle", baseline: "middle", opacity: 0 });
+		const hud = yield* Scene.instantiate("Hud", { position: S.vec3({ y: 14 }), children: [wordmark] });
 		yield* Scene.all([
 			wordmark.pipe(Motion.fadeTo(1, "600 millis")),
 			hud.pipe(Motion.moveTo({ y: 0 }, "600 millis", "easeOutCubic")),

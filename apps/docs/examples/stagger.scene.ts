@@ -14,11 +14,7 @@ export const scene = Scene.make(
 		const dots = [];
 		for (const [i, fill] of colors.entries()) {
 			dots.push(
-				yield* Scene.instantiate("Circle", {
-					position: S.vec3({ x: 60, y: 60 + i * 60 }),
-					radius: 14,
-					fill,
-				}),
+				yield* Scene.instantiate("Circle", { position: S.vec3({ x: 60, y: 60 + i * 60 }), radius: 14, fill }),
 			);
 		}
 

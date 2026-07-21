@@ -89,58 +89,29 @@ export const scene = Scene.make(
 		// the wireframe box: each edge is a skeletal Line, both endpoints at
 		// their own depth
 		for (const [a, b] of boxEdges()) {
-			yield* Scene.instantiate("Line", {
-				...a,
-				x2: b.x,
-				y2: b.y,
-				z2: b.z,
-				strokeColor: Color.hex("#3d4266"),
-				strokeWidth: 2,
-				opacity: 1,
-			});
+			yield* Scene.instantiate("Line", { end: S.vec3({ x: b.x, y: b.y, z: b.z }), ...a, strokeColor: Color.hex("#3d4266"), strokeWidth: 2, opacity: 1 });
 		}
 
 		// the control polygon: straight rails between the control points
-		yield* Scene.instantiate("Path", {
-			...ANCHOR,
-			fillColor: noFill,
-			strokeColor: Color.tw("gray", "400"),
-			strokeWidth: 2,
-			commands: [
+		yield* Scene.instantiate("Path", { ...ANCHOR, fillColor: noFill, strokeColor: Color.tw("gray", "400"), strokeWidth: 2, commands: [
 				{ _tag: "M", ...P0 },
 				{ _tag: "L", ...P1 },
 				{ _tag: "L", ...P2 },
 				{ _tag: "L", ...P3 },
-			],
-		});
+			] });
 
 		// the curve itself — one Path, every sample at its own depth
-		yield* Scene.instantiate("Path", {
-			...ANCHOR,
-			fillColor: noFill,
-			strokeColor: Color.tw("pink", "500"),
-			strokeWidth: 3,
-			commands: curveCommands,
-		});
+		yield* Scene.instantiate("Path", { ...ANCHOR, fillColor: noFill, strokeColor: Color.tw("pink", "500"), strokeWidth: 3, commands: curveCommands });
 
 		// markers + labels at the control points (world = anchor + local)
 		const points = [P0, P1, P2, P3];
 		for (const [i, p] of points.entries()) {
-			yield* Scene.instantiate("Circle", {
-				position: S.vec3({ x: ANCHOR.x + p.x, y: ANCHOR.y + p.y, z: p.z }),
-				radius: 5,
-				fillColor: Color.tw("violet", "500"),
-			});
-			yield* Scene.instantiate("Text", {
-				position: S.vec3({
+			yield* Scene.instantiate("Circle", { position: S.vec3({ x: ANCHOR.x + p.x, y: ANCHOR.y + p.y, z: p.z }), radius: 5, fillColor: Color.tw("violet", "500") });
+			yield* Scene.instantiate("Text", { position: S.vec3({
 					x: ANCHOR.x + p.x + 12,
 					y: ANCHOR.y + p.y - 8,
 					z: p.z,
-				}),
-				text: `P${i}`,
-				fontSize: 14,
-				fillColor: Color.tw("gray", "400"),
-			});
+				}), text: `P${i}`, fontSize: 14, fillColor: Color.tw("gray", "400") });
 		}
 
 		// aim at the box center, then turntable around it — the point of

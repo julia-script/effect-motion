@@ -7,16 +7,8 @@ import { Color, Motion, Runner, Entities as S, Scene } from "effect-motion";
 // B eases back out to the wide shot.
 export const scene = Scene.make(
 	function* () {
-		const left = yield* Scene.instantiate("Circle", {
-			position: S.vec3({ x: 130, y: 150 }),
-			radius: 24,
-			fillColor: Color.hex("#e53170"),
-		});
-		const right = yield* Scene.instantiate("Circle", {
-			position: S.vec3({ x: 370, y: 150 }),
-			radius: 24,
-			fillColor: Color.hex("#2cb67d"),
-		});
+		const left = yield* Scene.instantiate("Circle", { position: S.vec3({ x: 130, y: 150 }), radius: 24, fillColor: Color.hex("#e53170") });
+		const right = yield* Scene.instantiate("Circle", { position: S.vec3({ x: 370, y: 150 }), radius: 24, fillColor: Color.hex("#2cb67d") });
 
 		const camA = yield* Scene.camera;
 		// the resting view (focal length + z) is width-relative — read it off the
@@ -45,12 +37,7 @@ export const scene = Scene.make(
 		// CUT: swap to camera B, pre-framed on the RIGHT subject at the same FOV.
 		// z stays at the resting distance so B's framing matches A's push-in (an
 		// unset z would default to a focal-length back — the wide resting view).
-		const camB = yield* Scene.instantiate("Camera", {
-			x: 120,
-			y: 0,
-			z: rest.z,
-			focalLength: tight,
-		});
+		const camB = yield* Scene.instantiate("Camera", { position: S.vec3({ x: 120, y: 0, z: rest.z }), focalLength: tight });
 		yield* Scene.setCamera(camB);
 		// the right subject reacts, so the cut clearly lands on a different subject
 		yield* right.pipe(

@@ -4,9 +4,7 @@ import { Color, Motion, Physics, Entities as S, Scene } from "effect-motion";
 // structure is defined by the children list, not a parent argument.
 export const scene = Scene.make(
 	function* () {
-		const duo = yield* Scene.instantiate("Group", {
-			position: S.vec3({ x: 70, y: 200 }),
-			children: [
+		const duo = yield* Scene.instantiate("Group", { position: S.vec3({ x: 70, y: 200 }), children: [
 				Scene.instantiate(S.Circle, {
 					x: 0,
 					y: 0,
@@ -19,8 +17,7 @@ export const scene = Scene.make(
 					size: 28,
 					fill: Color.hex("#a786df"),
 				}),
-			],
-		});
+			] });
 
 		// every animator accepts the previous step's result, so motions chain
 		yield* duo.pipe(

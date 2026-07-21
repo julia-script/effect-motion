@@ -13,28 +13,11 @@ export const scene = Scene.make(
 		// stroke is thick because a segment's width scales by its MIDPOINT
 		// perspective scale (one width per line — see the camera docs).
 		for (let x = -1750; x <= 1750; x += 250) {
-			yield* Scene.instantiate("Line", {
-				position: S.vec3({ y: floorY, z: 300 }),
-				x,
-				x2: x,
-				y2: floorY,
-				z2: horizon,
-				strokeColor: Color.hex("#ff2975"),
-				strokeWidth: 5,
-			});
+			yield* Scene.instantiate("Line", { end: S.vec3({ x: x, y: floorY, z: horizon }), position: S.vec3({ y: floorY, z: 300 }), x, strokeColor: Color.hex("#ff2975"), strokeWidth: 5 });
 		}
 		// cross lines: each fully at one depth, marching toward the horizon
 		for (let z = 300; z >= horizon; z -= 200) {
-			yield* Scene.instantiate("Line", {
-				position: S.vec3({ x: -1750, y: floorY }),
-				z,
-				x2: 1750,
-				y2: floorY,
-				z2: z,
-				strokeColor: Color.hex("#f9c80e"),
-				strokeWidth: 2,
-				opacity: 0.8,
-			});
+			yield* Scene.instantiate("Line", { end: S.vec3({ x: 1750, y: floorY, z: z }), position: S.vec3({ x: -1750, y: floorY }), z, strokeColor: Color.hex("#f9c80e"), strokeWidth: 2, opacity: 0.8 });
 		}
 
 		const camera = yield* Scene.instantiate("Camera", { aperture: 2.5 });

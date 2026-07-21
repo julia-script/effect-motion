@@ -18,34 +18,16 @@ export const scene = Scene.make(
 
 		// floor rails running into depth (skeletal Lines: per-endpoint z)
 		for (const x of [150, 350]) {
-			yield* Scene.instantiate("Line", {
-				position: S.vec3({ y: 260, z: 120 }),
-				x,
-				x2: x,
-				y2: 260,
-				z2: FAR,
-				strokeColor: Color.hex("#3d4266"),
-				strokeWidth: 2,
-			});
+			yield* Scene.instantiate("Line", { end: S.vec3({ x: x, y: 260, z: FAR }), position: S.vec3({ y: 260, z: 120 }), x, strokeColor: Color.hex("#3d4266"), strokeWidth: 2 });
 		}
 		// pillar pairs marching toward the far end
 		for (let k = 0; k < 5; k++) {
 			for (const x of [130, 350]) {
-				yield* Scene.instantiate("Rect", {
-					position: S.vec3({ y: 60, z: -120 - k * 260 }),
-					x,
-					width: 20,
-					height: 200,
-					fillColor: Color.hex("#544f80"),
-				});
+				yield* Scene.instantiate("Rect", { position: S.vec3({ y: 60, z: -120 - k * 260 }), x, width: 20, height: 200, fillColor: Color.hex("#544f80") });
 			}
 		}
 		// the subject at the end of the corridor
-		yield* Scene.instantiate("Circle", {
-			position: S.vec3({ x: 250, y: 160, z: FAR }),
-			radius: 30,
-			fillColor: Color.hex("#ff8906"),
-		});
+		yield* Scene.instantiate("Circle", { position: S.vec3({ x: 250, y: 160, z: FAR }), radius: 30, fillColor: Color.hex("#ff8906") });
 
 		// the resting camera sits a focal-length back on +z, so its distance
 		// to the far end is that plus |FAR| — derived, never hardcoded

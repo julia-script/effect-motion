@@ -20,18 +20,13 @@ export const scene = Scene.make(
 			],
 			capacity: 90,
 		});
-		yield* Scene.instantiate("Group", {
-			position: S.vec3({ z: -1600 }),
-			children: [stars],
-		});
+		yield* Scene.instantiate("Group", { position: S.vec3({ z: -1600 }), children: [stars] });
 		yield* Scene.background(
 			Particles.simulate(stars, "10 seconds", { fill: 90 }),
 		);
 
 		// mid band: halfway back
-		yield* Scene.instantiate("Group", {
-			position: S.vec3({ z: -600 }),
-			children: [
+		yield* Scene.instantiate("Group", { position: S.vec3({ z: -600 }), children: [
 				Scene.instantiate(S.Rect, {
 					x: 120,
 					y: 150,
@@ -44,20 +39,11 @@ export const scene = Scene.make(
 					size: 32,
 					fill: Color.hex("#a786df"),
 				}),
-			],
-		});
+			] });
 
 		// near foreground: on the z=0 plane, tracks the camera fully
-		yield* Scene.instantiate("Circle", {
-			position: S.vec3({ x: 100, y: 240 }),
-			radius: 22,
-			fillColor: Color.hex("#e53170"),
-		});
-		yield* Scene.instantiate("Circle", {
-			position: S.vec3({ x: 280, y: 250 }),
-			radius: 18,
-			fillColor: Color.hex("#ff8906"),
-		});
+		yield* Scene.instantiate("Circle", { position: S.vec3({ x: 100, y: 240 }), radius: 22, fillColor: Color.hex("#e53170") });
+		yield* Scene.instantiate("Circle", { position: S.vec3({ x: 280, y: 250 }), radius: 18, fillColor: Color.hex("#ff8906") });
 
 		// pan the camera right and back; depth separates the layers
 		const cam = yield* Scene.camera;

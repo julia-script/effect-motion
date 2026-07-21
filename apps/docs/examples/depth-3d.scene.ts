@@ -7,13 +7,7 @@ import { Color, Motion, Runner, Entities as S, Scene } from "effect-motion";
 export const scene = Scene.make(
 	function* () {
 		// a floor: a big Rect tilted back so it recedes toward the horizon
-		yield* Scene.instantiate("Rect", {
-			position: S.vec3({ x: -300, y: 180, z: -200 }),
-			rotation: S.vec3({ x: Math.PI / 2.3 }),
-			width: 900,
-			height: 900,
-			fillColor: Color.hex("#232946"),
-		});
+		yield* Scene.instantiate("Rect", { position: S.vec3({ x: -300, y: 180, z: -200 }), rotation: S.vec3({ x: Math.PI / 2.3 }), width: 900, height: 900, fillColor: Color.hex("#232946") });
 
 		// a scatter of cards at varied depths and colours. Same size in world
 		// units — perspective makes the near ones large and the far ones small.
@@ -27,15 +21,12 @@ export const scene = Scene.make(
 		for (let i = 0; i < 18; i++) {
 			const col = i % 6;
 			const row = Math.floor(i / 6);
-			yield* Scene.instantiate("Circle", {
-				position: S.vec3({
+			yield* Scene.instantiate("Circle", { position: S.vec3({
 					x: 40 + col * 80,
 					y: 90 + row * 20,
 					z: -100 - i * 90,
 				}), // each card deeper than the last
-				radius: 26,
-				fillColor: palette[i % palette.length],
-			});
+				radius: 26, fillColor: palette[i % palette.length] });
 		}
 
 		// fly the camera: dolly forward (z toward the cards) while orbiting (rotY)
