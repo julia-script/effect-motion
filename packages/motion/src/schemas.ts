@@ -303,6 +303,34 @@ export type TagsWith<Field extends string> = Extract<
 	Record<Field, unknown>
 >["_tag"];
 
+/** the entities that hold children: containers */
+export type ContainerTag = TagsWith<"children">;
+
+/** entity data narrowed to a container */
+export type ContainerEntity = Extract<
+	Entity,
+	{ children: ReadonlyArray<string> }
+>;
+
+/**
+ * Every container tag, exhaustively. `Record<ContainerTag, true>` (not
+ * `satisfies Array<ContainerTag>`) is deliberate: an array only checks its
+ * members are valid tags, so a newly-added container would silently miss
+ * this set. A Record demands every key, so omitting one fails the build.
+ */
+const containerTags: Record<ContainerTag, true> = {
+	Group: true,
+	Hud: true,
+};
+
+/**
+ * Whether an entity can hold children. Previously this was "does its data
+ * have a `children` field", answerable only at runtime because entity shapes
+ * were unknowable; now it is a property of the tag.
+ */
+export const isContainer = (entity: Entity): entity is ContainerEntity =>
+	entity._tag in containerTags;
+
 // ── instances ────────────────────────────────────────────────────────────
 
 /**
