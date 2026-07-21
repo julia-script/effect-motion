@@ -4,7 +4,9 @@
 
 The library SHALL define its entities as a closed `Schema.TaggedUnion` whose members are exactly: `Line`, `Path`, `Rect`, `Circle`, `Ellipse`, `Text`, `Group`, `Hud`, `Image`, and `Camera`. Each member SHALL be a `Schema.TaggedStruct` whose `_tag` is its entity name. An entity's complete field set SHALL be statically derivable from its `_tag` alone.
 
-There SHALL be no public API for defining an entity outside the library. The generic `Entity<Name, Data, Traits>` interface, `Entity.make`, and `AnyEntity` are removed.
+There SHALL be no public API for defining an entity outside the library. The generic `Entity<Name, Data, Traits>` interface, `Entity.make`, and `AnyEntity` SHALL be removed from the public API.
+
+**One documented exception:** the particle system (`ParticleField`) is excluded from the union pending a planned rewrite of that subsystem. The generic entity constructor and its trait plumbing MAY survive as private internals reachable only from `packages/motion/src/particles/`, and SHALL NOT be exported or reachable from any other module. The exception SHALL be explicitly named at the one place it is honored (the renderer registry), never expressed as an open extension point.
 
 #### Scenario: Tag determines the full shape
 
@@ -15,6 +17,11 @@ There SHALL be no public API for defining an entity outside the library. The gen
 
 - **WHEN** a consumer attempts to define a custom entity
 - **THEN** no public API exists to do so — the union is closed at the library boundary
+
+#### Scenario: The particles exception is private and named
+
+- **WHEN** the generic entity constructor is looked for outside `particles/`
+- **THEN** it is not exported and not reachable, and the only consumer of the exception is a single explicitly-named registry entry
 
 #### Scenario: Exhaustive matching over entities
 

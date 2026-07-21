@@ -139,7 +139,7 @@ Same shape for the `children` normalization special-case. Both stay; both get ty
 ## Risks / Trade-offs
 
 - **A custom lens turns out to encode semantics the transform model cannot express** → D3 makes this falsifiable up front: port the two `traits` scenarios first, before touching the animators. If they cannot pass without `_tag` special-casing in `moveTo`, stop and revisit. Cheap to check, and it invalidates the design early rather than at the end of a large port.
-- **Shear loss breaks an existing scene** → No migration path by design. Audit `apps/docs/examples/*.scene.ts` for `transform/matrix` usage during the port; the TRS-only model is a deliberate trade (three.js `Object3D` is TRS-native, so this maps 1:1).
+- ~~**Shear loss breaks an existing scene**~~ → **Retired by the task 1.3 audit: there is nothing to break.** No scene, doc, or test constructs a Group transform. The ops→affine DSL was never wired up (its only test is `it.skip`, annotated "the ops→affine normalization was never implemented", and carries a `@ts-expect-error` because the schema does not accept the ops list). The renderer half is likewise unfinished — `Sync.ts` carries a `ponytail:` stating the affine "is not yet threaded into child world coords", honoring it only for sized comps. Removing the affine deletes dead code, not a capability.
 - **Frame values drift silently during the port** → Determinism is the project's core invariant, and a large refactor is exactly where it erodes unnoticed. Capture frame output for a set of representative scenes **before** the port; diff after. Field renames make a naive byte-diff useless, so compare rendered/derived values, not raw frame JSON.
 - **No incremental seam; the tree is broken mid-port** → Accepted. `Entity`/`Instance` are load-bearing for every consumer and a compatibility shim costs more than the port. Mitigated by task ordering (schema → core → animators → renderer → docs) so breakage moves in one direction and `pnpm check` is the progress metric.
 - **The phantom-tag gating turns out to be awkward in practice** (D1) → It is one type parameter and can be dropped to the flat `Instance` at any point without touching runtime behavior, at the cost of the compile-time gate. Reversible; not a one-way door.
@@ -199,6 +199,27 @@ This is a **behavioral invariant with existing test coverage**, not a new capabi
 ## Open Questions
 
 None blocking. The four questions this design opened are resolved in D8 and D9.
+
+### D10: Particles are scoped out, behind a narrow escape hatch
+
+**Decision:** `ParticleField` does NOT join the entity union. The particle system keeps working unchanged through this port and is excluded from the closed world, because it is slated for a full rewrite in a later change.
+
+The task 1.4 inventory found an eleventh entity no artifact mentioned: `ParticleField`, built with `Entity.make`, carrying `Shape2D.position`/`opacity` traits, across 744 lines in `packages/motion/src/particles/`. It has its own renderer, animator (`simulate`), PRNG, and typed constructors, and is publicly exported as `Particles`.
+
+Porting it would be wasted work — the subsystem is being rewritten. But it cannot simply be deleted either: six example scenes (`particles`, `particle-field`, `snow`, `floating-motes`, `floating-field`, `camera-parallax`) and `test/particles.test.ts` depend on it.
+
+**Mechanism — what "scoped out" concretely means:**
+
+- The entity union stays **ten members**. `ParticleField` is not one of them.
+- `Entity.make` and the minimal trait plumbing `ParticleField` needs survive as **private, particles-only** internals. They are removed from the public API and from every other consumer, so no new code can reach them.
+- The renderer registry (D5) is exhaustive over the ten tags **plus one explicitly-named escape entry** for `ParticleField`, keyed by its name string as today. The exhaustiveness guarantee holds for the union; the escape entry is a single, greppable exception rather than an open registry.
+- Particles keep their current flat `x`/`y` coordinates and trait-based access internally. D3's relative-geometry rule does not apply to them, and no attempt is made to give them a uniform transform.
+
+**Cost, stated honestly:** this change does not fully achieve "delete the trait system" — a vestigial copy survives inside `particles/`. That is a deliberate trade: the alternative is porting ~744 lines plus a renderer to a model they will not keep. The debt is time-boxed by the planned rewrite, not open-ended.
+
+**Follow-up obligation:** the particles rewrite MUST either fold `ParticleField` into the union or justify its exclusion. Until then the escape hatch is marked with a `ponytail:` comment naming the ceiling and this change as its origin, so it does not silently become permanent.
+
+**Alternatives considered:** (a) add `ParticleField` as an 11th member — rejected by the author; the subsystem is being rewritten, so porting it is throwaway work, and its particle buffer shares almost nothing with the shapes. (b) delete particles in this change — rejected; six examples and a test depend on it, and deleting a working feature is out of scope for a refactor.
 
 ### Multiple simultaneous cameras (deferred, groundwork only)
 

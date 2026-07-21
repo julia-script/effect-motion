@@ -2,10 +2,26 @@ Ordering follows the migration plan in `design.md`: capture a determinism baseli
 
 ## 1. Baseline and guardrails
 
-- [ ] 1.1 Record the pre-existing failure baseline: run `pnpm test`, `pnpm check`, `pnpm lint` on a clean tree and save the output — the port is judged by no NEW failures, and the repo has known pre-existing breakage
-- [ ] 1.2 Capture determinism baselines: pick a representative set of scenes (springs, eased tweens, groups, a Line, a Path, seeded randomness) and save their derived/rendered frame values. Compare values, not raw frame JSON — field renames make a byte-diff useless
-- [ ] 1.3 Audit `apps/docs/examples/*.scene.ts` for `transform/matrix` usage and record any scene relying on shear; these have no migration path (design Risks)
-- [ ] 1.4 Inventory every consumer of `Entity`, `Instance`, and trait exports across all packages, so section 8 can verify nothing was missed
+- [x] 1.1 Record the pre-existing failure baseline: run `pnpm test`, `pnpm check`, `pnpm lint` on a clean tree and save the output — the port is judged by no NEW failures, and the repo has known pre-existing breakage
+  - **Result:** test CLEAN (248 pass, 0 fail). lint CLEAN (0 errors). check: 15 errors, ALL `TS2352` in test files (`group` 10, `random` 2, `camera` 2, `schedule` 1), all casting from `~visible`-typed opaque `{}` data.
+  - The 15 are a **symptom of this change's target**, not a baseline to preserve — they exist because open-world entity data types as `{}`. Target after the port is **0**, not "no worse than 15"; a survivor means the union isn't reaching test call sites.
+  - Baseline saved to scratchpad `baseline/BASELINE.md`. Measured with the untracked `schemas.ts` sketch moved out of the tree — leaving it in contaminated the first run with 2 TS + 2 lint errors belonging to the WIP.
+- [x] 1.2 Capture determinism baselines: pick a representative set of scenes (springs, eased tweens, groups, a Line, a Path, seeded randomness) and save their derived/rendered frame values. Compare values, not raw frame JSON — field renames make a byte-diff useless
+  - Harness: `packages/motion/test/determinism-baseline.test.ts` (TEMPORARY — delete at 8.6). Writes `test/__baseline__/determinism.json`; re-running compares instead of rewriting. Readers normalize old AND new field shapes (`x/y/z` ↔ `position.x`, `~visible` ↔ `visible`, `x2/y2/z2` ↔ `start`/`end` offsets) so the same numbers are expected either side of the port.
+  - Line endpoints are normalized to **absolute world coordinates** in both representations — the representation may change, the rendered geometry may not.
+  - Captured: springs 2805 frames (settle-driven), easing 91, groups 73, line 61, path 37, seeded 50.
+  - Already encodes the 3.4 gate as ground truth: the Line goes `(3.3,3.3,0)→(53.3,23.3,300)` then `(100,100,100)→(150,120,400)` — span `(50,20,300)` preserved, i.e. rigid in all three axes.
+  - Backup copy in scratchpad `baseline/determinism.json` (1.7 MB; not committed).
+- [x] 1.3 Audit `apps/docs/examples/*.scene.ts` for `transform/matrix` usage and record any scene relying on shear; these have no migration path (design Risks)
+  - **Zero scenes use it. The shear risk is hypothetical — downgrade it.** No example, doc, or test constructs a Group transform. The single `transform` hit across all 34 example scenes is a code comment.
+  - The transform-operation DSL was **never wired up**: its only test (`test/group.test.ts:69` "structure is defined by children") is `it.skip`, annotated "the ops→affine normalization was never implemented". It carries a `@ts-expect-error` because the ops-list input the test passes is not even accepted by the Group schema.
+  - The renderer half is equally unfinished: `Sync.ts:316` carries a `ponytail:` marker stating a Group's 2D affine "is not yet threaded into child world coords" — the affine is honored only for **sized comps** (`syncComp`), never for plain containers.
+  - **Consequence:** removing `TransformMatrix`/`TransformOperation` (task 6.5) deletes dead code, not a capability. No migration path is needed because nothing can be migrated. The skipped test is deleted rather than ported.
+- [x] 1.4 Inventory every consumer of `Entity`, `Instance`, and trait exports across all packages, so section 8 can verify nothing was missed
+  - **33 files**: motion/src 21 (8 core + 11 shapes + 3 particles), renderer/src 7, tests 5. `packages/react` has **zero** references — it only follows public types.
+  - **Found an 11th entity the plan missed:** `ParticleField` (`Entity.make`, 744 lines under `src/particles/`, own renderer + animator + PRNG, exported as `Particles`, used by 6 example scenes and a test). Resolved as **scoped out** — see design D10.
+  - **Open question surfaced:** `Square.ts` is a 16-line Rect variant. No artifact decides whether it stays its own tag or collapses into `Rect`. Decide at task 2.1.
+  - Full checklist in scratchpad `baseline/INVENTORY.md` — task 8.4 works through it.
 
 ## 2. Schema foundation
 
@@ -68,10 +84,10 @@ Ordering follows the migration plan in `design.md`: capture a determinism baseli
 ## 8. Consumers and verification
 
 - [ ] 8.1 Update `packages/react` public types
-- [ ] 8.2 Port every `apps/docs/examples/*.scene.ts` to the new field vocabulary; handle any shear-dependent scene found in 1.3
-- [ ] 8.3 Update MDX docs in `apps/docs/content/` that reference traits, `x`/`y`/`z` fields, or transform operations
+- [ ] 8.2 Port every `apps/docs/examples/*.scene.ts` to the new field vocabulary. Required, not optional: `apps/docs` runs `tsc --noEmit` in `pnpm check`, so all 34 scenes must compile for the 8.5 gate. No shear-dependent scene exists (1.3). The 6 particles scenes (`particles`, `particle-field`, `snow`, `floating-motes`, `floating-field`, `camera-parallax`) must keep working unchanged — particles are scoped out (design D10)
+- [ ] 8.3 MDX prose in `apps/docs/content/` (5 files reference entity/trait vocabulary): **do the minimum to keep the build green, no prose rewriting.** The docs site is slated for a full rewrite, so investing in wording here is throwaway. Fix only what breaks compilation or is actively wrong; leave stale phrasing for the rewrite
 - [ ] 8.4 Work through the 1.4 inventory and confirm every consumer is ported
-- [ ] 8.5 Run `pnpm check`, `pnpm test`, `pnpm lint` — no NEW failures against the 1.1 baseline
+- [ ] 8.5 Run `pnpm check`, `pnpm test`, `pnpm lint` against the 1.1 baseline: test must stay at **0 failures**, lint at **0 errors**, and check must go **15 → 0**. The 15 pre-existing TS2352 errors are opaque-`{}` casts this change removes; a survivor is a finding, not an accepted baseline
 - [ ] 8.6 Diff determinism against the 1.2 baseline; any per-frame value change other than a field rename is a regression to investigate, not to accept
 - [ ] 8.7 Run `pnpm lint:fix`; confirm no non-null assertions and no biome-ignore suppressions were introduced (repo convention — use the `unreachable` helper)
 - [ ] 8.8 Review the full diff for out-of-scope changes, especially to `Resource.ts`/`Font.ts`/`Image.ts` — resources must be untouched (design Non-Goals)
