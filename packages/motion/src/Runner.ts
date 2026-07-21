@@ -137,6 +137,11 @@ const toCameraView = (
  * length (AE's 50mm equivalent), positioned so the z=0 plane projects at
  * scale 1 and is in focus.
  */
+export const identityCameraView = (
+	width: number,
+): Projection.CameraView & Projection.PointOfInterest =>
+	toCameraView(identityCamera(width));
+
 export const identityCamera = (width: number): S.EntityByTag<"Camera"> => {
 	const focalLength = Projection.defaultFocalLength(width);
 	const z = Projection.defaultCameraZ(focalLength);

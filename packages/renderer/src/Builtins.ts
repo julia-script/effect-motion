@@ -1,10 +1,9 @@
 import { Line2 as FatLine, ThreeRaw as THREE, Tsl } from "@effect-motion/three";
 import { Effect } from "effect";
-import { Color, Shapes } from "effect-motion";
-import type * as Entity from "effect-motion/Entity";
+import { Color, type Entities, Runner } from "effect-motion";
 import { renderOpacity, renderSize } from "effect-motion/particles/overLife";
 import type { OverLife, Particle } from "effect-motion/particles/Particle";
-import { ParticleField } from "effect-motion/particles/ParticleField";
+import type { ParticleField } from "effect-motion/particles/ParticleField";
 import type { PathCommand } from "effect-motion/shapes/Path";
 import type {
 	EntityRenderer,
@@ -101,10 +100,10 @@ const setFillGeometry = (
 /** stroke outline from a closed local-space polyline, or none */
 const setOutline = (
 	parts: FillParts,
-	data: { stroke?: Color.Color; strokeWidth?: number; opacity: number },
+	data: { strokeColor?: Color.Color; strokeWidth?: number; opacity: number },
 	points: ReadonlyArray<readonly [number, number]> | null,
 ): void => {
-	if (data.stroke === undefined || points === null) {
+	if (data.strokeColor === undefined || points === null) {
 		if (parts.outline !== null) {
 			parts.group.remove(parts.outline);
 			disposeFatLine(parts.outline);
@@ -117,7 +116,7 @@ const setOutline = (
 		parts.group.add(parts.outline);
 	}
 	const material = parts.outline.material as THREE.Line2NodeMaterial;
-	setColor(material, data.stroke, data.opacity);
+	setColor(material, data.strokeColor, data.opacity);
 	material.linewidth = data.strokeWidth ?? 1;
 	const positions: Array<number> = [];
 	for (const [x, y] of points) {
@@ -183,7 +182,7 @@ const rectPoints = (
 	return points;
 };
 
-const polygonGeometry = (
+const _polygonGeometry = (
 	points: ReadonlyArray<readonly [number, number]>,
 ): THREE.BufferGeometry => {
 	const contour = points.map(([x, y]) => new THREE.Vector2(x, y));
@@ -219,7 +218,7 @@ const placeFillGroup = (
 	return parts;
 };
 
-const circle: EntityRenderer<typeof Shapes.Circle> = {
+const circle: EntityRenderer<Entities.EntityByTag<"Circle">> = {
 	build: (leaf, ctx) => {
 		const { retained, parts } = buildFillGroup();
 		parts.mesh.geometry = unitCircle;
@@ -231,21 +230,21 @@ const circle: EntityRenderer<typeof Shapes.Circle> = {
 			retained,
 			leaf,
 			ctx,
-			leaf.data.fill,
+			leaf.data.fillColor,
 			leaf.data.opacity,
 		);
 		parts.mesh.scale.set(leaf.data.radius, leaf.data.radius, 1);
 		setOutline(
 			parts,
 			leaf.data,
-			leaf.data.stroke !== undefined
+			leaf.data.strokeColor !== undefined
 				? ellipsePoints(leaf.data.radius, leaf.data.radius)
 				: null,
 		);
 	},
 };
 
-const ellipse: EntityRenderer<typeof Shapes.Ellipse> = {
+const ellipse: EntityRenderer<Entities.EntityByTag<"Ellipse">> = {
 	build: (leaf, ctx) => {
 		const { retained, parts } = buildFillGroup();
 		parts.mesh.geometry = unitCircle;
@@ -257,46 +256,21 @@ const ellipse: EntityRenderer<typeof Shapes.Ellipse> = {
 			retained,
 			leaf,
 			ctx,
-			leaf.data.fill,
+			leaf.data.fillColor,
 			leaf.data.opacity,
 		);
-		parts.mesh.scale.set(leaf.data.rx, leaf.data.ry, 1);
+		parts.mesh.scale.set(leaf.data.radiusX, leaf.data.radiusY, 1);
 		setOutline(
 			parts,
 			leaf.data,
-			leaf.data.stroke !== undefined
-				? ellipsePoints(leaf.data.rx, leaf.data.ry)
+			leaf.data.strokeColor !== undefined
+				? ellipsePoints(leaf.data.radiusX, leaf.data.radiusY)
 				: null,
 		);
 	},
 };
 
-const square: EntityRenderer<typeof Shapes.Square> = {
-	build: (leaf, ctx) => {
-		const { retained } = buildFillGroup();
-		square.update(retained, leaf, ctx);
-		return retained;
-	},
-	update: (retained, leaf, ctx) => {
-		const parts = placeFillGroup(
-			retained,
-			leaf,
-			ctx,
-			leaf.data.fill,
-			leaf.data.opacity,
-		);
-		parts.mesh.scale.set(leaf.data.size, leaf.data.size, 1);
-		setOutline(
-			parts,
-			leaf.data,
-			leaf.data.stroke !== undefined
-				? rectPoints(leaf.data.size, leaf.data.size, 0, 0)
-				: null,
-		);
-	},
-};
-
-const rect: EntityRenderer<typeof Shapes.Rect> = {
+const rect: EntityRenderer<Entities.EntityByTag<"Rect">> = {
 	build: (leaf, ctx) => {
 		const { retained } = buildFillGroup();
 		rect.update(retained, leaf, ctx);
@@ -307,39 +281,22 @@ const rect: EntityRenderer<typeof Shapes.Rect> = {
 			retained,
 			leaf,
 			ctx,
-			leaf.data.fill,
+			leaf.data.fillColor,
 			leaf.data.opacity,
 		);
 		const data = leaf.data;
-		// SVG lone-radius semantics: one set radius applies to both axes
-		const rx = data.rx ?? data.ry ?? 0;
-		const ry = data.ry ?? data.rx ?? 0;
-		const rounded = rx > 0 && ry > 0;
-		const key = `${data.width}|${data.height}|${rx}|${ry}`;
-		if (rounded) {
-			// per-instance rounded geometry, rebuilt when the params change
-			// (rounding radii tween like any numerics)
-			if (parts.mesh.userData.rectKey !== key) {
-				parts.mesh.userData.rectKey = key;
-				setFillGeometry(
-					parts,
-					polygonGeometry(rectPoints(data.width, data.height, rx, ry)),
-				);
-			}
-			parts.mesh.scale.set(1, 1, 1);
-		} else {
-			parts.mesh.userData.rectKey = key;
-			setFillGeometry(parts, unitPlane);
-			parts.mesh.scale.set(data.width, data.height, 1);
-		}
+		// corner radii are gone with the entity-model rewrite (design D13):
+		// rects render sharp
+		setFillGeometry(parts, unitPlane);
+		parts.mesh.scale.set(data.width, data.height, 1);
 		setOutline(
 			parts,
 			data,
-			data.stroke !== undefined
-				? rectPoints(data.width, data.height, rx, ry)
+			data.strokeColor !== undefined
+				? rectPoints(data.width, data.height, 0, 0)
 				: null,
 		);
-		const { rotX, rotY, rotZ } = data;
+		const { x: rotX, y: rotY, z: rotZ } = data.rotation;
 		const tilted = rotX !== 0 || rotY !== 0 || rotZ !== 0;
 		retained.billboard = !tilted;
 		if (tilted) {
@@ -371,7 +328,7 @@ const disposeFatLine = (line: FatLine.Line2): void => {
 	(line.material as THREE.Material).dispose();
 };
 
-const line: EntityRenderer<typeof Shapes.Line> = {
+const line: EntityRenderer<Entities.EntityByTag<"Line">> = {
 	build: (leaf, ctx) => {
 		const fatLine = makeFatLine();
 		const retained: Retained = {
@@ -385,19 +342,19 @@ const line: EntityRenderer<typeof Shapes.Line> = {
 	update: (retained, leaf, ctx) => {
 		const fatLine = retained.object as FatLine.Line2;
 		const material = fatLine.material as THREE.Line2NodeMaterial;
-		setColor(material, leaf.data.stroke, leaf.data.opacity);
+		setColor(material, leaf.data.strokeColor, leaf.data.opacity);
 		material.linewidth = leaf.data.strokeWidth;
 		fatLine.visible = material.opacity > 0;
 		const a = ctx.toThree(leaf.world.x, leaf.world.y, leaf.world.z);
 		// x2/y2/z2 compose the same ancestor offset as the anchor: recover
 		// the offset from world - local, then apply it to the endpoint
-		const ox = leaf.world.x - leaf.data.x;
-		const oy = leaf.world.y - leaf.data.y;
-		const oz = leaf.world.z - leaf.data.z;
+		const ox = leaf.world.x - leaf.data.position.x;
+		const oy = leaf.world.y - leaf.data.position.y;
+		const oz = leaf.world.z - leaf.data.position.z;
 		const b = ctx.toThree(
-			ox + leaf.data.x2,
-			oy + leaf.data.y2,
-			oz + leaf.data.z2,
+			ox + leaf.data.end.x,
+			oy + leaf.data.end.y,
+			oz + leaf.data.end.z,
 		);
 		fatLine.geometry.setPositions([a.x, a.y, a.z, b.x, b.y, b.z]);
 		fatLine.computeLineDistances();
@@ -458,7 +415,7 @@ const pathSubpaths = (
 // (earcut only uses the input vertices, so mildly non-planar subpaths keep
 // their depths). Holes are not supported — each closed subpath fills
 // independently (winding analysis is a later concern).
-const path: EntityRenderer<typeof Shapes.Path> = {
+const path: EntityRenderer<Entities.EntityByTag<"Path">> = {
 	build: (leaf, ctx) => {
 		const group = new THREE.Group();
 		const retained: Retained = {
@@ -479,7 +436,7 @@ const path: EntityRenderer<typeof Shapes.Path> = {
 			group.remove(child);
 			disposePathChild(child);
 		}
-		const { stroke, fill, opacity } = leaf.data;
+		const { strokeColor: stroke, fillColor: fill, opacity } = leaf.data;
 		const strokeWidth = leaf.data.strokeWidth ?? 1;
 		const subpaths = pathSubpaths(leaf.data.commands, leaf.world);
 		for (const subpath of subpaths) {
@@ -554,7 +511,7 @@ const disposePathChild = (child: THREE.Object3D): void => {
 // half-built string. The mesh billboards and scales with perspective like
 // the other billboard shapes.
 
-const text: EntityRenderer<typeof Shapes.Text> = {
+const text: EntityRenderer<Entities.EntityByTag<"Text">> = {
 	build: (leaf, ctx) => {
 		const textMesh = Text.makeMesh(ctx.text);
 		const retained: Retained = {
@@ -588,7 +545,7 @@ const text: EntityRenderer<typeof Shapes.Text> = {
 				}).pipe(Effect.map((quads) => textMesh.setQuads(quads))),
 			);
 		}
-		const { r, g, b, a } = Color.bytes(data.fill);
+		const { r, g, b, a } = Color.bytes(data.fillColor);
 		textMesh.setColor(r, g, b, (a / 255) * data.opacity);
 		retained.object.position.copy(
 			ctx.toThree(leaf.world.x, leaf.world.y, leaf.world.z),
@@ -597,10 +554,10 @@ const text: EntityRenderer<typeof Shapes.Text> = {
 };
 
 // ── images: decoded once per renderer scope, billboard planes ────────────
-// (data.x, data.y) is the top-left like Rect; both dimensions set draw at
+// (data.position.x, data.position.y) is the top-left like Rect; both dimensions set draw at
 // that size, else the natural decoded size; a lone dimension is ignored.
 
-const image: EntityRenderer<typeof Shapes.Image> = {
+const image: EntityRenderer<Entities.EntityByTag<"Image">> = {
 	build: (leaf, ctx) => {
 		const material = new THREE.MeshBasicNodeMaterial();
 		material.transparent = true;
@@ -662,7 +619,11 @@ const image: EntityRenderer<typeof Shapes.Image> = {
 // ThorVG billboard semantics); per-particle position/size/color/alpha ride
 // on instanced attributes. Capacity fixed at build from the buffer length.
 
-const particleField: EntityRenderer<typeof ParticleField> = {
+// ponytail: particles are outside the entity union (design D10) — their
+// renderer reads the legacy data shape until the system is rewritten
+type ParticleFieldData = typeof ParticleField.data.Type;
+
+const particleField: EntityRenderer<ParticleFieldData> = {
 	build: (leaf, ctx) => {
 		const capacity = Math.max(
 			1,
@@ -770,8 +731,8 @@ const particleField: EntityRenderer<typeof ParticleField> = {
 
 // ── staged gaps: loud, never silent ──────────────────────────────────────
 
-const _notPorted = (what: string, stage: string): EntityRenderer<never> => ({
-	build: (leaf: Leaf) => {
+const _notPorted = <T>(what: string, stage: string): EntityRenderer<T> => ({
+	build: (leaf: Leaf<T>) => {
 		throw new Error(
 			`${what} is not yet ported to the three renderer (${stage}) — instance "${leaf.id}"`,
 		);
@@ -780,8 +741,8 @@ const _notPorted = (what: string, stage: string): EntityRenderer<never> => ({
 });
 
 // containers never reach leaf rendering — the frame walk composes them
-const container = (name: string): EntityRenderer<never> => ({
-	build: (leaf: Leaf) => {
+const container = <T>(name: string): EntityRenderer<T> => ({
+	build: (leaf: Leaf<T>) => {
 		throw new Error(
 			`${name} is a container and must be composed by the frame walk, not rendered as a leaf — instance "${leaf.id}" (renderer walk bug)`,
 		);
@@ -794,43 +755,51 @@ const container = (name: string): EntityRenderer<never> => ({
  * `EntityRenderers<...>` so a missing built-in fails to type-check — the
  * same coverage-manifest guarantee `builtinPaints` gives the ThorVG path.
  */
-export const builtinRenderers = {
-	[Shapes.Circle.name]: circle,
-	[Shapes.Ellipse.name]: ellipse,
-	[Shapes.Square.name]: square,
-	[Shapes.Rect.name]: rect,
-	[Shapes.Line.name]: line,
-	[Shapes.Path.name]: path,
-	[Shapes.Text.name]: text,
-	[Shapes.Group.name]: container("Group"),
-	[Shapes.Hud.name]: container("Hud"),
-	[Shapes.Image.name]: image,
-	[ParticleField.name]: particleField,
-} as EntityRenderers<
-	| typeof Shapes.Circle
-	| typeof Shapes.Ellipse
-	| typeof Shapes.Square
-	| typeof Shapes.Rect
-	| typeof Shapes.Line
-	| typeof Shapes.Path
-	| typeof Shapes.Text
-	| typeof Shapes.Group
-	| typeof Shapes.Hud
-	| typeof Shapes.Image
-	| typeof ParticleField
->;
+/**
+ * A renderer slot for an entity that never reaches the walk. Dying loudly
+ * beats a silent no-op: if one of these is ever invoked, the frame contract
+ * changed and we want to hear about it.
+ */
+const neverRendered = <T>(tag: string): EntityRenderer<T> =>
+	({
+		build: () => {
+			throw new Error(`Renderer: ${tag} is not renderable`);
+		},
+		update: () => {
+			throw new Error(`Renderer: ${tag} is not renderable`);
+		},
+		dispose: () => {},
+	}) as unknown as EntityRenderer<T>;
+
+export const builtinRenderers: EntityRenderers = {
+	Circle: circle,
+	Ellipse: ellipse,
+	Rect: rect,
+	Line: line,
+	Path: path,
+	Text: text,
+	Group: container("Group"),
+	Hud: container("Hud"),
+	Image: image,
+	// the camera is view state and never painted; it is omitted from the
+	// frame's instance map, so this entry is unreachable by construction —
+	// it exists only to satisfy exhaustiveness over the tag union
+	Camera: neverRendered("Camera"),
+};
 
 /**
  * The manifest widened for registry use. The single variance cast lives
- * here: `EntityRenderers` keys each renderer by its exact entity (so
- * coverage stays a compile-time guarantee above), while a registry holds
- * `EntityRenderer<AnyEntity>` — contravariant `build`/`update` parameters
+ * here: `EntityRenderers` keys each renderer by its exact entity data (so
+ * coverage over the tag union stays a compile-time guarantee above), while
+ * a registry is keyed by string — contravariant `build`/`update` parameters
  * make that narrowing inexpressible without the cast.
+ *
+ * ponytail: the ParticleField entry is the D10 escape hatch. It is the ONE
+ * key here that is not a member of the entity union, added explicitly rather
+ * than by leaving the registry open. Delete it with the particles rewrite.
  */
-export const builtinRegistry: Record<
-	string,
-	EntityRenderer<Entity.AnyEntity>
-> = builtinRenderers as unknown as Record<
-	string,
-	EntityRenderer<Entity.AnyEntity>
->;
+export const builtinRegistry: Record<string, EntityRenderer<never>> = {
+	...(builtinRenderers as unknown as Record<string, EntityRenderer<never>>),
+	[Runner.PARTICLE_FIELD_TAG]:
+		particleField as unknown as EntityRenderer<never>,
+};

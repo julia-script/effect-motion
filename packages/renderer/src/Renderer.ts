@@ -7,7 +7,6 @@ import {
 import { Effect, Scope } from "effect";
 import { dual } from "effect/Function";
 import type { EffectMotionError } from "effect-motion";
-import type * as Entity from "effect-motion/Entity";
 import type { Frame } from "effect-motion/Scene";
 import { builtinRegistry } from "./Builtins.js";
 import type { EntityRenderer } from "./EntityRenderer.js";
@@ -22,7 +21,8 @@ import * as Sync from "./Sync.js";
  */
 
 type AnyFrame = Frame<unknown>;
-type AnyEntityRenderer = EntityRenderer<Entity.AnyEntity>;
+// contravariant registry element type — see Sync.AnyEntityRenderer
+type AnyEntityRenderer = EntityRenderer<never>;
 
 /**
  * Render every live sub-composition into its render target, depth-first

@@ -11,7 +11,6 @@ import {
 import * as NodeGpu from "@effect-motion/three/node";
 import { Effect, Scope } from "effect";
 import type { EffectMotionError } from "effect-motion";
-import type * as Entity from "effect-motion/Entity";
 import type { Frame } from "effect-motion/Scene";
 import { builtinRegistry } from "./Builtins.js";
 import type { EntityRenderer } from "./EntityRenderer.js";
@@ -27,7 +26,8 @@ import * as Sync from "./Sync.js";
  */
 
 type AnyFrame = Frame<unknown>;
-type AnyEntityRenderer = EntityRenderer<Entity.AnyEntity>;
+// contravariant registry element type — see Sync.AnyEntityRenderer
+type AnyEntityRenderer = EntityRenderer<never>;
 
 // ── minimal RGBA → PNG encoder (filter 0 + zlib), lifted from the ThorVG
 // package's node PNG path; node:zlib does the compression ────────────────

@@ -1,7 +1,6 @@
 import type { ThreeRaw as THREE } from "@effect-motion/three";
 import type { Effect } from "effect";
-import type { EffectMotionError } from "effect-motion";
-import type * as Entity from "effect-motion/Entity";
+import type { EffectMotionError, Entities } from "effect-motion";
 import type * as Images from "./Images.js";
 import type * as Text from "./Text.js";
 
@@ -45,10 +44,9 @@ export interface RenderContext {
 }
 
 /** One leaf instance as the frame walk hands it to an entity renderer. */
-export interface Leaf<Ent extends Entity.AnyEntity = Entity.AnyEntity> {
+export interface Leaf<Ent = Entities.Entity> {
 	readonly id: string;
-	readonly entity: Ent;
-	readonly data: Ent["data"]["Type"];
+	readonly data: Ent;
 	readonly world: World;
 }
 
@@ -65,7 +63,7 @@ export interface Retained {
 	readonly dispose: () => void;
 }
 
-export interface EntityRenderer<Ent extends Entity.AnyEntity> {
+export interface EntityRenderer<Ent> {
 	readonly build: (leaf: Leaf<Ent>, ctx: RenderContext) => Retained;
 	readonly update: (
 		retained: Retained,
@@ -80,6 +78,8 @@ export interface EntityRenderer<Ent extends Entity.AnyEntity> {
  * is a type error, not a runtime surprise (the same coverage-manifest
  * guarantee `PaintFunctions` gives the ThorVG path).
  */
-export type EntityRenderers<Entities extends Entity.AnyEntity> = {
-	readonly [K in Entities as K["name"]]: EntityRenderer<K>;
+export type EntityRenderers = {
+	readonly [Tag in Entities.EntityTag]: EntityRenderer<
+		Entities.EntityByTag<Tag>
+	>;
 };

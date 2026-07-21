@@ -4,9 +4,12 @@ import {
 	Scene as ThreeScene,
 } from "@effect-motion/three";
 import { Context, Effect } from "effect";
-import { Color, type EffectMotionError, Shapes } from "effect-motion";
-import * as Camera from "effect-motion/Camera";
-import type * as Entity from "effect-motion/Entity";
+import {
+	Color,
+	type EffectMotionError,
+	type Entities,
+	Runner,
+} from "effect-motion";
 import * as Font from "effect-motion/Font";
 import * as ImageResource from "effect-motion/Image";
 import * as Projection from "effect-motion/Projection";
@@ -18,7 +21,6 @@ import type {
 	Retained,
 	World,
 } from "./EntityRenderer.js";
-import * as FrameData from "./FrameData.js";
 import * as Images from "./Images.js";
 import { RenderException } from "./RenderException.js";
 import * as Text from "./Text.js";
@@ -45,7 +47,19 @@ const NEAR = 1;
 const FAR = 1_000_000;
 
 type AnyFrame = Frame<unknown>;
-type AnyEntityRenderer = EntityRenderer<Entity.AnyEntity>;
+/**
+ * A renderer as the REGISTRY holds it. Each concrete renderer accepts only
+ * its own entity's data, so a heterogeneous registry is contravariant and
+ * cannot be read at any single entity type. The walk has already matched the
+ * leaf's `_tag` to its registry key by the time it dispatches, so the pairing
+ * is correct by construction — `dispatch` below is where that fact is
+ * asserted, once, rather than at each call site.
+ */
+type AnyEntityRenderer = EntityRenderer<never>;
+
+/** the renderer for a leaf, with the tag↔renderer pairing asserted once */
+const dispatch = (renderer: AnyEntityRenderer) =>
+	renderer as unknown as EntityRenderer<Entities.Entity>;
 
 // ── coordinate mapping ────────────────────────────────────────────────────
 // Scene space: x right, y down, origin top-left, +z toward the viewer,
@@ -288,25 +302,31 @@ const walkTree = (sync: Sync, frame: AnyFrame): WalkResult => {
 		if (entry === undefined) {
 			throw new Error(`Renderer: unknown instance id "${id}"`);
 		}
-		if (!FrameData.isVisible(entry.data)) {
+		// `visible` is an ordinary field on every paintable entity now; the
+		// camera is the one member without it, and never reaches the walk
+		if ("visible" in entry.data && !entry.data.visible) {
 			return;
 		}
-		const isHud = entry.entity.name === Shapes.Hud.name;
+		const isHud = entry.data._tag === "Hud";
 		if (isHud && inWorldContainer) {
 			throw new Error(
 				`Renderer: Hud "${id}" is nested inside world content — a Hud must be a top-level child of the root (or of another Hud)`,
 			);
 		}
 		const subtreeHud = hud || isHud;
-		const local = FrameData.positionOf(entry.data);
+		const local = entry.data.position;
 		const world: World = {
 			x: offset.x + local.x,
 			y: offset.y + local.y,
+			// a Hud's z is depth WITHIN the screen-space tier (design D12); it
+			// composes exactly like world depth, just in the HUD scene
 			z: offset.z + local.z,
 		};
-		const childIds = FrameData.childIdsOf(entry.data);
+		const childIds = childIdsOf(entry.data);
 		if (childIds.length > 0 || isHud) {
-			const size = FrameData.sizeOf(entry.data);
+			// a comp is DECLARED by Scene.play, not inferred from a group
+			// carrying a size (design D13)
+			const size = frame.comps[id] ?? null;
 			if (size !== null) {
 				syncComp(sync, id, entry.data, size, world, subtreeHud, frame);
 				seenComps.add(id);
@@ -322,7 +342,7 @@ const walkTree = (sync: Sync, frame: AnyFrame): WalkResult => {
 			return;
 		}
 		leaves.push({
-			leaf: { id, entity: entry.entity, data: entry.data, world },
+			leaf: { id, data: entry.data, world },
 			hud: subtreeHud,
 		});
 	};
@@ -330,7 +350,7 @@ const walkTree = (sync: Sync, frame: AnyFrame): WalkResult => {
 	const rootEntry = frame.instances[frame.root];
 	if (rootEntry !== undefined) {
 		visited.add(frame.root);
-		for (const childId of FrameData.childIdsOf(rootEntry.data)) {
+		for (const childId of childIdsOf(rootEntry.data)) {
 			walk(childId, { x: 0, y: 0, z: 0 }, false, false);
 		}
 	}
@@ -349,13 +369,13 @@ const diffRetained = (sync: Sync, walked: WalkResult): void => {
 		seen.add(leaf.id);
 		const existing = sync.retained.get(leaf.id);
 		if (existing === undefined) {
-			const renderer = sync.registry[leaf.entity.name];
+			const renderer = sync.registry[leaf.data._tag];
 			if (renderer === undefined) {
 				throw new Error(
-					`no entity renderer registered for "${leaf.entity.name}" — instance "${leaf.id}"`,
+					`no entity renderer registered for "${leaf.data._tag}" — instance "${leaf.id}"`,
 				);
 			}
-			const retained = renderer.build(leaf, sync.ctx);
+			const retained = dispatch(renderer).build(leaf, sync.ctx);
 			sync.retained.set(leaf.id, {
 				renderer,
 				retained,
@@ -372,7 +392,7 @@ const diffRetained = (sync: Sync, walked: WalkResult): void => {
 			existing.lastWorld.y === leaf.world.y &&
 			existing.lastWorld.z === leaf.world.z;
 		if (!sameData || !sameWorld) {
-			existing.renderer.update(existing.retained, leaf, sync.ctx);
+			dispatch(existing.renderer).update(existing.retained, leaf, sync.ctx);
 			existing.lastData = leaf.data;
 			existing.lastWorld = leaf.world;
 		}
@@ -456,11 +476,19 @@ export const syncFrame = (
 			),
 	});
 
+/** child ids, or none — containers are the only entities with children */
+const childIdsOf = (data: Entities.Entity): ReadonlyArray<string> =>
+	"children" in data ? data.children : [];
+
 const syncComp = (
 	sync: Sync,
 	id: string,
-	groupData: unknown,
-	size: FrameData.Size,
+	groupData: Entities.Entity,
+	compConfig: {
+		readonly width: number;
+		readonly height: number;
+		readonly backgroundColor: Color.Color;
+	},
 	world: World,
 	hud: boolean,
 	frame: AnyFrame,
@@ -482,27 +510,27 @@ const syncComp = (
 			plane,
 			material,
 			rt: null,
-			width: size.width,
-			height: size.height,
+			width: compConfig.width,
+			height: compConfig.height,
 			hud,
 		};
 		sync.comps.set(id, comp);
 		ThreeScene.add(hud ? sync.hudScene : sync.scene, [holder]);
 	}
-	comp.width = size.width;
-	comp.height = size.height;
+	comp.width = compConfig.width;
+	comp.height = compConfig.height;
 	// inner sync: the comp's subtree in comp-local space under the
 	// identity camera, with the comp's own background (or transparent).
 	// Unsafe: violations inside a comp propagate to the outermost
 	// syncFrame's catch, which is the whole point of one seam per frame.
-	const background = FrameData.backgroundColorOf(groupData);
+	const background = compConfig.backgroundColor ?? null;
 	syncFrameUnsafe(comp.sync, {
 		...frame,
 		root: id,
-		width: size.width,
-		height: size.height,
+		width: compConfig.width,
+		height: compConfig.height,
 		backgroundColor: background ?? Color.transparent,
-		camera: Camera.identity(size.width),
+		camera: Runner.identityCameraView(compConfig.width),
 	});
 	if (background === null || Color.bytes(background).a === 0) {
 		ThreeScene.setBackground(comp.sync.scene, null);
@@ -511,44 +539,18 @@ const syncComp = (
 	// composite, 2D affine about the bounds center (y-down → y-up
 	// conjugation: negate b and c off-diagonals and the f translation)
 	comp.holder.position.copy(sync.ctx.toThree(world.x, world.y, world.z));
-	comp.plane.scale.set(size.width, size.height, 1);
-	comp.material.opacity = FrameData.opacityOf(groupData);
+	comp.plane.scale.set(compConfig.width, compConfig.height, 1);
+	comp.material.opacity = Math.max(
+		0,
+		Math.min(1, "opacity" in groupData ? groupData.opacity : 1),
+	);
 	comp.holder.visible = comp.material.opacity > 0;
-	const m = FrameData.affineOf(groupData);
-	if (m === null) {
-		comp.transformHolder.matrixAutoUpdate = true;
-		comp.transformHolder.position.set(0, 0, 0);
-		comp.transformHolder.rotation.set(0, 0, 0);
-		comp.transformHolder.scale.set(1, 1, 1);
-	} else {
-		const cx = size.width / 2;
-		const cy = -size.height / 2;
-		const affine = new THREE.Matrix4().set(
-			m.a,
-			-m.c,
-			0,
-			m.e,
-			-m.b,
-			m.d,
-			0,
-			-m.f,
-			0,
-			0,
-			1,
-			0,
-			0,
-			0,
-			0,
-			1,
-		);
-		const toCenter = new THREE.Matrix4().makeTranslation(cx, cy, 0);
-		const fromCenter = new THREE.Matrix4().makeTranslation(-cx, -cy, 0);
-		comp.transformHolder.matrixAutoUpdate = false;
-		comp.transformHolder.matrix
-			.copy(toCenter)
-			.multiply(affine)
-			.multiply(fromCenter);
-	}
+	// Group's 2D affine is gone (task 1.3 found the ops→affine DSL was never
+	// wired up). A comp's own transform composes like any entity's.
+	comp.transformHolder.matrixAutoUpdate = true;
+	comp.transformHolder.position.set(0, 0, 0);
+	comp.transformHolder.rotation.set(0, 0, 0);
+	comp.transformHolder.scale.set(1, 1, 1);
 };
 
 const disposeComp = Effect.fnUntraced(function* (comp: CompState) {
@@ -594,14 +596,15 @@ export const resolveResources = Effect.fnUntraced(function* (
 	const fonts = new Set<string>();
 	const images = new Set<string>();
 	for (const entry of Object.values(frame.instances)) {
-		if (entry.entity.name === Shapes.Text.name) {
-			const family = FrameData.fontFamilyIdOf(entry.data);
+		if (entry.data._tag === "Text") {
+			const family =
+				entry.data._tag === "Text" ? entry.data.fontFamily.id : null;
 			if (family !== null && !Text.hasFont(sync.text, family)) {
 				fonts.add(family);
 			}
 		}
-		if (entry.entity.name === Shapes.Image.name) {
-			const id = FrameData.imageIdOf(entry.data);
+		if (entry.data._tag === "Image") {
+			const id = entry.data._tag === "Image" ? entry.data.image.id : null;
 			if (id !== null && !Images.has(sync.images, id)) {
 				images.add(id);
 			}
