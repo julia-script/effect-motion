@@ -1,25 +1,23 @@
 import { Schedule } from "effect";
-import { Color, Motion, Physics, Scene, Shapes } from "effect-motion";
+import { Color, Motion, Physics, Entities as S, Scene } from "effect-motion";
 
 const finalCaption = "Some lights meet you halfway.";
 
 export const scene = Scene.make(
 	function* () {
 		// A quiet room, one closed window, and a very ambitious moth.
-		yield* Scene.instantiate(Shapes.Rect, {
-			x: 0,
-			y: 0,
+		yield* Scene.instantiate("Rect", {
+			position: S.vec3({ x: 0, y: 0 }),
 			width: 500,
 			height: 300,
-			fill: Color.hex("#101522"),
+			fillColor: Color.hex("#101522"),
 		});
-		yield* Scene.instantiate(Shapes.Rect, {
-			x: 350,
-			y: 22,
+		yield* Scene.instantiate("Rect", {
+			position: S.vec3({ x: 350, y: 22 }),
 			width: 130,
 			height: 190,
-			fill: Color.hex("#17213a"),
-			stroke: Color.hex("#64748b"),
+			fillColor: Color.hex("#17213a"),
+			strokeColor: Color.hex("#64748b"),
 			strokeWidth: 2,
 		});
 		for (const [x, y, radius] of [
@@ -28,51 +26,47 @@ export const scene = Scene.make(
 			[454, 126, 2],
 			[383, 168, 1],
 		] as const) {
-			yield* Scene.instantiate(Shapes.Circle, {
+			yield* Scene.instantiate("Circle", {
 				x,
 				y,
 				radius,
-				fill: Color.hex("#dbeafe"),
+				fillColor: Color.hex("#dbeafe"),
 				opacity: 0.75,
 			});
 		}
-		yield* Scene.instantiate(Shapes.Line, {
-			x: 350,
-			y: 22,
+		yield* Scene.instantiate("Line", {
+			position: S.vec3({ x: 350, y: 22 }),
 			x2: 350,
 			y2: 212,
-			stroke: Color.hex("#94a3b8"),
+			strokeColor: Color.hex("#94a3b8"),
 			strokeWidth: 3,
 		});
-		yield* Scene.instantiate(Shapes.Rect, {
-			x: 0,
-			y: 255,
+		yield* Scene.instantiate("Rect", {
+			position: S.vec3({ x: 0, y: 255 }),
 			width: 500,
 			height: 45,
-			fill: Color.hex("#252d3a"),
+			fillColor: Color.hex("#252d3a"),
 		});
 
 		// instantiate children that need handles first, then group them via the
 		// children list — the group adopts them (reparents out of the root)
-		const halo = yield* Scene.instantiate(Shapes.Circle, {
-			x: 0,
-			y: 0,
+		const halo = yield* Scene.instantiate("Circle", {
+			position: S.vec3({ x: 0, y: 0 }),
 			radius: 42,
-			fill: Color.hex("#fde68a"),
+			fillColor: Color.hex("#fde68a"),
 			opacity: 0.14,
 		});
-		const moon = yield* Scene.instantiate(Shapes.Group, {
-			x: 424,
-			y: 72,
+		const moon = yield* Scene.instantiate("Group", {
+			position: S.vec3({ x: 424, y: 72 }),
 			children: [
 				halo,
-				Scene.instantiate(Shapes.Circle, {
+				Scene.instantiate(S.Circle, {
 					x: 0,
 					y: 0,
 					radius: 29,
 					fill: Color.hex("#fef3c7"),
 				}),
-				Scene.instantiate(Shapes.Circle, {
+				Scene.instantiate(S.Circle, {
 					x: -9,
 					y: -7,
 					radius: 4,
@@ -82,45 +76,35 @@ export const scene = Scene.make(
 			],
 		});
 
-		const leftWing = yield* Scene.instantiate(Shapes.Ellipse, {
-			x: -8,
-			y: -1,
-			rx: 11,
-			ry: 7,
-			fill: Color.hex("#f9a8d4"),
+		const leftWing = yield* Scene.instantiate("Ellipse", {
+			position: S.vec3({ x: -8, y: -1 }),
+			fillColor: Color.hex("#f9a8d4"),
 			opacity: 0.85,
 		});
-		const rightWing = yield* Scene.instantiate(Shapes.Ellipse, {
-			x: 8,
-			y: -1,
-			rx: 11,
-			ry: 7,
-			fill: Color.hex("#c4b5fd"),
+		const rightWing = yield* Scene.instantiate("Ellipse", {
+			position: S.vec3({ x: 8, y: -1 }),
+			fillColor: Color.hex("#c4b5fd"),
 			opacity: 0.85,
 		});
-		const moth = yield* Scene.instantiate(Shapes.Group, {
-			x: 48,
-			y: 224,
+		const moth = yield* Scene.instantiate("Group", {
+			position: S.vec3({ x: 48, y: 224 }),
 			opacity: 0,
 			children: [
 				leftWing,
 				rightWing,
-				Scene.instantiate(Shapes.Ellipse, {
+				Scene.instantiate(S.Ellipse, {
 					x: 0,
 					y: 1,
-					rx: 7,
-					ry: 4,
 					fill: Color.hex("#fbbf24"),
 				}),
 			],
 		});
 
-		const caption = yield* Scene.instantiate(Shapes.Text, {
+		const caption = yield* Scene.instantiate("Text", {
+			position: S.vec3({ x: 250, y: 32 }),
 			text: "ONE TINY MOTH. ONE VERY LARGE MOON.",
-			x: 250,
-			y: 32,
 			fontSize: 14,
-			fill: Color.hex("#f8fafc"),
+			fillColor: Color.hex("#f8fafc"),
 			opacity: 0,
 			textAnchor: "middle",
 		});

@@ -25,7 +25,7 @@ import * as Color from "../src/Color";
 import * as Motion from "../src/Motion";
 import * as Physics from "../src/Physics";
 import * as Scene from "../src/Scene";
-import * as Shapes from "../src/Shapes";
+import * as S from "../src/schemas";
 
 const OUT = join(__dirname, "__baseline__", "determinism.json");
 
@@ -158,11 +158,10 @@ const comp = {
 const scenes = {
 	// mirrors examples/springs.scene.ts — no durations, settle-driven
 	springs: Scene.make(function* () {
-		const ball = yield* Scene.instantiate(Shapes.Circle, {
-			x: 250,
-			y: 150,
+		const ball = yield* Scene.instantiate("Circle", {
+			position: S.vec3({ x: 250, y: 150 }),
 			radius: 1,
-			fill: Color.hex("#ff8906"),
+			fillColor: Color.hex("#ff8906"),
 		});
 		yield* ball.pipe(
 			Motion.tweenTo({ radius: 24 }, "700 millis", "easeOutElastic"),
@@ -174,14 +173,12 @@ const scenes = {
 
 	// eased tweens across several timing curves + fade
 	easing: Scene.make(function* () {
-		const a = yield* Scene.instantiate(Shapes.Circle, {
-			x: 40,
-			y: 60,
+		const a = yield* Scene.instantiate("Circle", {
+			position: S.vec3({ x: 40, y: 60 }),
 			radius: 12,
 		});
-		const b = yield* Scene.instantiate(Shapes.Circle, {
-			x: 40,
-			y: 140,
+		const b = yield* Scene.instantiate("Circle", {
+			position: S.vec3({ x: 40, y: 140 }),
 			radius: 12,
 		});
 		yield* Scene.all([
@@ -193,19 +190,16 @@ const scenes = {
 
 	// group subtree motion — the trait-removal gate's third scenario
 	groups: Scene.make(function* () {
-		const c1 = yield* Scene.instantiate(Shapes.Circle, {
-			x: 20,
-			y: 0,
+		const c1 = yield* Scene.instantiate("Circle", {
+			position: S.vec3({ x: 20, y: 0 }),
 			radius: 10,
 		});
-		const c2 = yield* Scene.instantiate(Shapes.Circle, {
-			x: -20,
-			y: 0,
+		const c2 = yield* Scene.instantiate("Circle", {
+			position: S.vec3({ x: -20, y: 0 }),
 			radius: 10,
 		});
-		const g = yield* Scene.instantiate(Shapes.Group, {
-			x: 100,
-			y: 150,
+		const g = yield* Scene.instantiate("Group", {
+			position: S.vec3({ x: 100, y: 150 }),
 			children: [c1, c2],
 		});
 		yield* g.pipe(Motion.moveTo({ x: 400 }, "800 millis", "easeInOutQuad"));
@@ -214,13 +208,10 @@ const scenes = {
 
 	// Line rigid translation — the gate's first two scenarios
 	line: Scene.make(function* () {
-		const l = yield* Scene.instantiate(Shapes.Line, {
-			x: 0,
-			y: 0,
-			z: 0,
-			x2: 50,
-			y2: 20,
-			z2: 300,
+		const l = yield* Scene.instantiate("Line", {
+			position: S.vec3({ x: 0, y: 0, z: 0 }),
+			start: S.vec3({ x: 0, y: 0, z: 0 }),
+			end: S.vec3({ x: 50, y: 20, z: 300 }),
 		});
 		yield* l.pipe(Motion.moveTo({ x: 100, y: 100 }, "500 millis"));
 		yield* l.pipe(Motion.moveTo({ z: 100 }, "500 millis"));
@@ -228,9 +219,8 @@ const scenes = {
 
 	// Path — anchor moves, commands untouched
 	path: Scene.make(function* () {
-		const p = yield* Scene.instantiate(Shapes.Path, {
-			x: 50,
-			y: 50,
+		const p = yield* Scene.instantiate("Path", {
+			position: S.vec3({ x: 50, y: 50 }),
 			commands: [
 				{ _tag: "M", x: 0, y: 0 },
 				{ _tag: "L", x: 60, y: 40, z: 120 },
@@ -248,9 +238,8 @@ const scenes = {
 		for (let i = 0; i < 6; i++) {
 			const r = yield* Random.nextBetween(20, 420);
 			dots.push(
-				yield* Scene.instantiate(Shapes.Circle, {
-					x: r,
-					y: 40 + i * 40,
+				yield* Scene.instantiate("Circle", {
+					position: S.vec3({ x: r, y: 40 + i * 40 }),
 					radius: 6,
 				}),
 			);
@@ -289,8 +278,25 @@ describe("determinism baseline", () => {
 			return;
 		}
 
-		expect(JSON.parse(serialized)).toEqual(
-			JSON.parse(readFileSync(OUT, "utf8")),
-		);
+		// Instance ids lost their `shapes/` prefix when entity names became
+		// tags, which changes BOTH the id strings and their sort order. That
+		// is a naming change, not a behavioral one, so it is normalized away
+		// here — every remaining difference is a real per-frame value change.
+		const canon = (raw: string) => {
+			const parsed = JSON.parse(raw.replaceAll("shapes/", "")) as Record<
+				string,
+				{
+					frameCount: number;
+					frames: Array<{ entities: Array<{ id: string }> }>;
+				}
+			>;
+			for (const scene of Object.values(parsed)) {
+				for (const frame of scene.frames) {
+					frame.entities.sort((a, b) => a.id.localeCompare(b.id));
+				}
+			}
+			return parsed;
+		};
+		expect(canon(serialized)).toEqual(canon(readFileSync(OUT, "utf8")));
 	});
 });

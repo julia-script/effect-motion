@@ -1,4 +1,11 @@
-import { Camera, Color, Motion, Scene, Shapes } from "effect-motion";
+import {
+	Camera,
+	Color,
+	Motion,
+	Runner,
+	Entities as S,
+	Scene,
+} from "effect-motion";
 
 // A dolly is a move along the VIEW axis — not a z tween (those only
 // coincide when the camera is unrotated). Aim at the glowing end of a
@@ -11,42 +18,38 @@ export const scene = Scene.make(
 
 		// floor rails running into depth (skeletal Lines: per-endpoint z)
 		for (const x of [150, 350]) {
-			yield* Scene.instantiate(Shapes.Line, {
+			yield* Scene.instantiate("Line", {
+				position: S.vec3({ y: 260, z: 120 }),
 				x,
-				y: 260,
-				z: 120,
 				x2: x,
 				y2: 260,
 				z2: FAR,
-				stroke: Color.hex("#3d4266"),
+				strokeColor: Color.hex("#3d4266"),
 				strokeWidth: 2,
 			});
 		}
 		// pillar pairs marching toward the far end
 		for (let k = 0; k < 5; k++) {
 			for (const x of [130, 350]) {
-				yield* Scene.instantiate(Shapes.Rect, {
+				yield* Scene.instantiate("Rect", {
+					position: S.vec3({ y: 60, z: -120 - k * 260 }),
 					x,
-					y: 60,
-					z: -120 - k * 260,
 					width: 20,
 					height: 200,
-					fill: Color.hex("#544f80"),
+					fillColor: Color.hex("#544f80"),
 				});
 			}
 		}
 		// the subject at the end of the corridor
-		yield* Scene.instantiate(Shapes.Circle, {
-			x: 250,
-			y: 160,
-			z: FAR,
+		yield* Scene.instantiate("Circle", {
+			position: S.vec3({ x: 250, y: 160, z: FAR }),
 			radius: 30,
-			fill: Color.hex("#ff8906"),
+			fillColor: Color.hex("#ff8906"),
 		});
 
 		// the resting camera sits a focal-length back on +z, so its distance
 		// to the far end is that plus |FAR| — derived, never hardcoded
-		const rest = Camera.identity((yield* Scene.comp()).width).z;
+		const rest = Runner.identityCameraView((yield* Scene.comp()).width).z;
 		const startDistance = rest - FAR;
 
 		const cam = yield* Scene.camera;

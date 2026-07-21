@@ -1,4 +1,4 @@
-import { Color, Motion, Scene, Shapes } from "effect-motion";
+import { Color, Motion, Entities as S, Scene } from "effect-motion";
 
 // Path in 3D: commands are M/L/Z points local to the anchor, and every
 // point can carry its own z — the renderer projects each point with its
@@ -9,10 +9,9 @@ import { Color, Motion, Scene, Shapes } from "effect-motion";
 export const scene = Scene.make(
 	function* () {
 		// a flat closed diamond, filled — plain-2D under the resting camera
-		yield* Scene.instantiate(Shapes.Path, {
-			x: 120,
-			y: 160,
-			fill: Color.hex("#7f5af0"),
+		yield* Scene.instantiate("Path", {
+			position: S.vec3({ x: 120, y: 160 }),
+			fillColor: Color.hex("#7f5af0"),
 			commands: [
 				{ _tag: "M", x: 0, y: -60 },
 				{ _tag: "L", x: 50, y: 0 },
@@ -25,11 +24,10 @@ export const scene = Scene.make(
 		// an open trace whose alternating points recede into depth: the far
 		// spans foreshorten toward the vanishing point while the near ones stay
 		// full size
-		const trace = yield* Scene.instantiate(Shapes.Path, {
-			x: 280,
-			y: 160,
-			fill: Color.rgba(0, 0, 0, 0),
-			stroke: Color.hex("#ff8906"),
+		const trace = yield* Scene.instantiate("Path", {
+			position: S.vec3({ x: 280, y: 160 }),
+			fillColor: Color.rgba(0, 0, 0, 0),
+			strokeColor: Color.hex("#ff8906"),
 			strokeWidth: 4,
 			commands: [
 				{ _tag: "M", x: 0, y: 0 },

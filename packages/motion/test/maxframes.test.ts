@@ -4,13 +4,15 @@ import { describe, expect, it } from "vitest";
 import * as Motion from "../src/Motion";
 import type * as Runner from "../src/Runner";
 import * as Scene from "../src/Scene";
-import * as Shapes from "../src/Shapes";
+import * as S from "../src/schemas";
 
 const infiniteScene = () =>
 	Scene.make(function* () {
-		const circle = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
+		const circle = yield* Scene.instantiate("Circle", {
+			position: S.vec3({ x: 0 }),
+		});
 		yield* Scene.repeat(
-			Motion.tween(circle, { x: 0 }, { x: 100 }, "100 millis") as never,
+			Motion.move(circle, { x: 0 }, { x: 100 }, "100 millis") as never,
 			Schedule.forever,
 		);
 	} as never);
@@ -36,8 +38,10 @@ describe("maxFrames", () => {
 
 	it("finite scenes under the default cap are unaffected", async () => {
 		const scene = Scene.make(function* () {
-			const circle = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
-			yield* Motion.tween(circle, { x: 0 }, { x: 100 }, "0.5 seconds");
+			const circle = yield* Scene.instantiate("Circle", {
+				position: S.vec3({ x: 0 }),
+			});
+			yield* Motion.move(circle, { x: 0 }, { x: 100 }, "0.5 seconds");
 		} as never);
 		const frames = [...(await collect(scene, {}))];
 		expect(frames).toHaveLength(31);

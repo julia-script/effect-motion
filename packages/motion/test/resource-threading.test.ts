@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import * as Font from "../src/Font";
 import type * as Resource from "../src/Resource";
 import * as Scene from "../src/Scene";
-import * as Shapes from "../src/Shapes";
+import * as S from "../src/schemas";
 import { unreachable } from "./support/raise";
 
 type Equal<A, B> =
@@ -17,7 +17,10 @@ const RobotoFont = Font.Font("Roboto");
 
 const scene = Scene.make(function* () {
 	const font = yield* RobotoFont;
-	yield* Scene.instantiate(Shapes.Circle, { x: 10, y: 10, radius: 5 });
+	yield* Scene.instantiate("Circle", {
+		position: S.vec3({ x: 10, y: 10 }),
+		radius: 5,
+	});
 	// the font value is plain data for props; nothing dereferences bytes here
 	expect(font.id).toBe("Roboto");
 	yield* Scene.tick;

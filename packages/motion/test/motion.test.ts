@@ -3,7 +3,7 @@ import * as Stream from "effect/Stream";
 import { describe, expect, it } from "vitest";
 import * as Motion from "../src/Motion";
 import * as Scene from "../src/Scene";
-import * as Shapes from "../src/Shapes";
+import * as S from "../src/schemas";
 import type * as Timing from "../src/Timing";
 import { unreachable } from "./support/raise";
 
@@ -30,15 +30,17 @@ const runScene = async <A>(
 const moveXScene = (timing?: Timing.TimingInput) =>
 	runScene(
 		function* () {
-			const circle = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
-			yield* Motion.tweenTo(
+			const circle = yield* Scene.instantiate("Circle", {
+				position: S.vec3({ x: 0 }),
+			});
+			yield* Motion.moveTo(
 				circle,
 				{ x: 100 },
 				"1 second",
 				timing as Timing.TimingInput,
 			);
 		},
-		(data) => data.x as number,
+		(data) => data.position.x as number,
 	);
 
 describe("timing on motion combinators", () => {
@@ -64,12 +66,12 @@ describe("timing on motion combinators", () => {
 	it("data-last form applies timing identically", async () => {
 		const track = await runScene(
 			function* () {
-				const circle = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
-				yield* circle.pipe(
-					Motion.tweenTo({ x: 100 }, "1 second", "easeInQuad"),
-				);
+				const circle = yield* Scene.instantiate("Circle", {
+					position: S.vec3({ x: 0 }),
+				});
+				yield* circle.pipe(Motion.moveTo({ x: 100 }, "1 second", "easeInQuad"));
 			},
-			(data) => data.x as number,
+			(data) => data.position.x as number,
 		);
 		expect(track[29]).toBeCloseTo(25, 6);
 		expect(track[59]).toBe(100);
@@ -78,8 +80,10 @@ describe("timing on motion combinators", () => {
 	it("tween with explicit start and timing", async () => {
 		const track = await runScene(
 			function* () {
-				const circle = yield* Scene.instantiate(Shapes.Circle, { x: 500 });
-				yield* Motion.tween(
+				const circle = yield* Scene.instantiate("Circle", {
+					position: S.vec3({ x: 500 }),
+				});
+				yield* Motion.move(
 					circle,
 					{ x: 0 },
 					{ x: 100 },
@@ -87,7 +91,7 @@ describe("timing on motion combinators", () => {
 					"easeOutBounce",
 				);
 			},
-			(data) => data.x as number,
+			(data) => data.position.x as number,
 		);
 		// explicit start: first frame is near 0, not 500
 		expect(track[0] ?? unreachable()).toBeLessThan(50);
@@ -99,11 +103,13 @@ describe("Scene.sleep", () => {
 	it("holds the scene for the duration's frame count", async () => {
 		const track = await runScene(
 			function* () {
-				const circle = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
+				const circle = yield* Scene.instantiate("Circle", {
+					position: S.vec3({ x: 0 }),
+				});
 				yield* Scene.sleep("500 millis"); // 30 frames at 60fps
-				yield* Motion.tweenTo(circle, { x: 100 }, "1 second");
+				yield* Motion.moveTo(circle, { x: 100 }, "1 second");
 			},
-			(data) => data.x as number,
+			(data) => data.position.x as number,
 		);
 		// 30 sleep frames + 60 move frames + 1 scene-completion settle frame
 		expect(track).toHaveLength(91);
@@ -115,11 +121,13 @@ describe("Scene.sleep", () => {
 	it("zero duration is a no-op", async () => {
 		const track = await runScene(
 			function* () {
-				const circle = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
+				const circle = yield* Scene.instantiate("Circle", {
+					position: S.vec3({ x: 0 }),
+				});
 				yield* Scene.sleep("0 seconds");
-				yield* Motion.tweenTo(circle, { x: 100 }, "1 second");
+				yield* Motion.moveTo(circle, { x: 100 }, "1 second");
 			},
-			(data) => data.x as number,
+			(data) => data.position.x as number,
 		);
 		expect(track).toHaveLength(61); // 60 move + settle frame, none from sleep
 	});
@@ -129,12 +137,14 @@ describe("Motion.wait", () => {
 	it("yields standalone as a frame-based sleep", async () => {
 		const track = await runScene(
 			function* () {
-				const circle = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
+				const circle = yield* Scene.instantiate("Circle", {
+					position: S.vec3({ x: 0 }),
+				});
 				yield* Scene.tick;
 				yield* Motion.wait("100 millis");
-				yield* Motion.tweenTo(circle, { x: 10 }, "50 millis");
+				yield* Motion.moveTo(circle, { x: 10 }, "50 millis");
 			},
-			(data) => data.x as number,
+			(data) => data.position.x as number,
 		);
 		// 1 tick + 6 held frames (100ms at 60fps) + 3 tween + 1 final frame
 		expect(track).toHaveLength(11);
@@ -145,14 +155,19 @@ describe("Motion.wait", () => {
 	it("chains in pipe: holds after the previous step, instance flows on", async () => {
 		const track = await runScene(
 			function* () {
-				const circle = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
+				const circle = yield* Scene.instantiate("Circle", {
+					position: S.vec3({ x: 0 }),
+				});
 				yield* circle.pipe(
-					Motion.tweenTo({ x: 10 }, "50 millis"),
+					Motion.moveTo({ x: 10 }, "50 millis"),
 					Motion.wait("100 millis"),
 					Motion.fadeTo(0.5, "50 millis"),
 				);
 			},
-			(data) => ({ x: data.x as number, opacity: data.opacity as number }),
+			(data) => ({
+				x: data.position.x as number,
+				opacity: data.opacity as number,
+			}),
 		);
 		// 3 tween + 6 held + 3 fade + 1 final frame
 		expect(track).toHaveLength(13);

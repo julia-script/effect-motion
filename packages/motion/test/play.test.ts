@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import * as Motion from "../src/Motion";
 import * as Runner from "../src/Runner";
 import * as Scene from "../src/Scene";
-import * as Shapes from "../src/Shapes";
+import * as S from "../src/schemas";
 import { unreachable } from "./support/raise";
 
 const collectRaw = async (
@@ -29,8 +29,10 @@ const dataFrames = (frames: any[]): Array<Array<Record<string, any>>> =>
 
 const riser = () =>
 	Scene.make(function* () {
-		const c = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
-		yield* Motion.tween(c, { x: 0 }, { x: 100 }, "0.5 seconds");
+		const c = yield* Scene.instantiate("Circle", {
+			position: S.vec3({ x: 0 }),
+		});
+		yield* Motion.move(c, { x: 0 }, { x: 100 }, "0.5 seconds");
 	} as never);
 
 describe("Scene.play", () => {
@@ -43,12 +45,12 @@ describe("Scene.play", () => {
 		} as never);
 		const frames = dataFrames(await collectRaw(movie));
 		const last = frames.at(-1) ?? unreachable();
-		expect(last[0]?.x).toBe(100);
-		expect(last[1]?.x).toBe(100);
+		expect(last[0]?.position.x).toBe(100);
+		expect(last[1]?.position.x).toBe(100);
 		// B exists only after A finished, and starts from 0 then
 		const bBirth = frames.findIndex((f) => f.length === 2);
 		expect(bBirth).toBeGreaterThanOrEqual(30);
-		expect(frames[bBirth]?.[0]?.x).toBe(100); // A already done
+		expect(frames[bBirth]?.[0]?.position.x).toBe(100); // A already done
 	});
 
 	it("concurrent nesting: scenes share frames; the movie awaits both", async () => {
@@ -59,17 +61,19 @@ describe("Scene.play", () => {
 		} as never);
 		const frames = dataFrames(await collectRaw(movie));
 		expect(frames).toHaveLength(31);
-		expect(frames[15]?.[0]?.x).toBeGreaterThan(0);
-		expect(frames[15]?.[1]?.x).toBeGreaterThan(0);
-		expect(frames.at(-1)?.every((d) => d.x === 100)).toBe(true);
+		expect(frames[15]?.[0]?.position.x).toBeGreaterThan(0);
+		expect(frames[15]?.[1]?.position.x).toBeGreaterThan(0);
+		expect(frames.at(-1)?.every((d) => d.position.x === 100)).toBe(true);
 	});
 
 	it("nested finish targets the inner scene: crossfade", async () => {
 		const fadeOut = Scene.make(function* () {
-			const c = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
-			yield* Motion.tween(c, { x: 0 }, { x: 50 }, "0.5 seconds");
+			const c = yield* Scene.instantiate("Circle", {
+				position: S.vec3({ x: 0 }),
+			});
+			yield* Motion.move(c, { x: 0 }, { x: 50 }, "0.5 seconds");
 			yield* Scene.finish;
-			yield* Motion.tweenTo(c, { x: 500 }, "10 seconds"); // tail
+			yield* Motion.moveTo(c, { x: 500 }, "10 seconds"); // tail
 		} as never);
 		const movie = Scene.make(function* () {
 			const a = yield* Scene.play(fadeOut as never);
@@ -79,25 +83,27 @@ describe("Scene.play", () => {
 		} as never);
 		const frames = dataFrames(await collectRaw(movie));
 		// overlap window: B animates while A's tail still moves
-		expect(frames[45]?.[1]?.x).toBeGreaterThan(0);
-		expect(frames[45]?.[1]?.x).toBeLessThan(100);
-		expect(frames[45]?.[0]?.x).toBeGreaterThan(50);
+		expect(frames[45]?.[1]?.position.x).toBeGreaterThan(0);
+		expect(frames[45]?.[1]?.position.x).toBeLessThan(100);
+		expect(frames[45]?.[0]?.position.x).toBeGreaterThan(50);
 		// A's tail was cut at movie end, far from its 500 target
-		expect(frames.at(-1)?.[0]?.x).toBeLessThan(200);
-		expect(frames.at(-1)?.[1]?.x).toBe(100);
+		expect(frames.at(-1)?.[0]?.position.x).toBeLessThan(200);
+		expect(frames.at(-1)?.[1]?.position.x).toBe(100);
 	});
 
 	it("child finalizers run at the child's end, not the movie's", async () => {
 		let finalizedAt = -1;
 		const child = Scene.make(function* () {
 			const runner = yield* Runner.Runner;
-			const c = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
+			const c = yield* Scene.instantiate("Circle", {
+				position: S.vec3({ x: 0 }),
+			});
 			yield* Effect.addFinalizer(() =>
 				Effect.sync(() => {
 					finalizedAt = runner.phaser.snapshotUnsafe().phase;
 				}),
 			);
-			yield* Motion.tween(c, { x: 0 }, { x: 100 }, "0.5 seconds");
+			yield* Motion.move(c, { x: 0 }, { x: 100 }, "0.5 seconds");
 		} as never);
 		const movie = Scene.make(function* () {
 			const h = yield* Scene.play(child as never);
@@ -112,7 +118,9 @@ describe("Scene.play", () => {
 	it("seed stability: nested playback equals a standalone run with the movie's seed", async () => {
 		const rand = () =>
 			Scene.make(function* () {
-				const c = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
+				const c = yield* Scene.instantiate("Circle", {
+					position: S.vec3({ x: 0 }),
+				});
 				for (let i = 0; i < 3; i++) {
 					const x = yield* Random.nextBetween(0, 400);
 					yield* Motion.moveTo(c, { x }, "100 millis");
@@ -120,21 +128,23 @@ describe("Scene.play", () => {
 			} as never);
 		const standalone = dataFrames(
 			await collectRaw(rand(), { seed: "stability" }),
-		).map((f) => f[0]?.x);
+		).map((f) => f[0]?.position.x);
 		const movie = Scene.make(function* () {
 			const h = yield* Scene.play(rand() as never);
 			yield* h.finished;
 		} as never);
 		const nested = dataFrames(
 			await collectRaw(movie, { seed: "stability" }),
-		).map((f) => f[0]?.x);
+		).map((f) => f[0]?.position.x);
 		expect(nested.slice(0, standalone.length)).toEqual(standalone);
 	});
 
 	it("per-mount seed override diverges reproducibly", async () => {
 		const rand = () =>
 			Scene.make(function* () {
-				const c = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
+				const c = yield* Scene.instantiate("Circle", {
+					position: S.vec3({ x: 0 }),
+				});
 				const x = yield* Random.nextBetween(0, 400);
 				yield* Motion.moveTo(c, { x }, "100 millis");
 			} as never);
@@ -145,14 +155,16 @@ describe("Scene.play", () => {
 			yield* b.finished;
 		} as never);
 		const last = dataFrames(await collectRaw(movie)).at(-1) ?? unreachable();
-		expect(last[0]?.x).not.toBe(last[1]?.x);
+		expect(last[0]?.position.x).not.toBe(last[1]?.position.x);
 	});
 
 	it("movie-global maxFrames reaches nested scenes", async () => {
 		const infinite = Scene.make(function* () {
-			const c = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
+			const c = yield* Scene.instantiate("Circle", {
+				position: S.vec3({ x: 0 }),
+			});
 			yield* Scene.repeat(
-				Motion.tween(c, { x: 0 }, { x: 100 }, "100 millis") as never,
+				Motion.move(c, { x: 0 }, { x: 100 }, "100 millis") as never,
 				Schedule.forever,
 			);
 		} as never);
@@ -174,7 +186,9 @@ describe("Scene.play mounting", () => {
 
 	it("a mounted scene's instances attach under the mount group (via its bounds group)", async () => {
 		const movie = Scene.make(function* () {
-			const g = yield* Scene.instantiate(Shapes.Group, { x: 10, y: 0 });
+			const g = yield* Scene.instantiate("Group", {
+				position: S.vec3({ x: 10, y: 0 }),
+			});
 			const h = yield* Scene.play(riser() as never, { parent: g as never });
 			yield* h.finished;
 		} as never);
@@ -194,15 +208,16 @@ describe("Scene.play mounting", () => {
 		const child = Scene.make(function* () {
 			// the group mounts under the ambient parent; its child circle is
 			// defined via the children list (structure, not a parent argument)
-			const inner = yield* Scene.instantiate(Shapes.Group, {
-				x: 0,
-				y: 0,
-				children: [Scene.instantiate(Shapes.Circle, { x: 0 })],
+			const inner = yield* Scene.instantiate("Group", {
+				position: S.vec3({ x: 0, y: 0 }),
+				children: [Scene.instantiate("Circle", { position: S.vec3({ x: 0 }) })],
 			});
-			yield* Motion.tween(inner, { x: 0 }, { x: 100 }, "100 millis");
+			yield* Motion.move(inner, { x: 0 }, { x: 100 }, "100 millis");
 		} as never);
 		const movie = Scene.make(function* () {
-			const mount = yield* Scene.instantiate(Shapes.Group, { x: 0, y: 0 });
+			const mount = yield* Scene.instantiate("Group", {
+				position: S.vec3({ x: 0, y: 0 }),
+			});
 			const h = yield* Scene.play(child as never, { parent: mount as never });
 			yield* h.finished;
 		} as never);
@@ -220,8 +235,12 @@ describe("Scene.play mounting", () => {
 	it("one scene value, two independent mounts", async () => {
 		const scene = riser();
 		const movie = Scene.make(function* () {
-			const g1 = yield* Scene.instantiate(Shapes.Group, { x: 0, y: 0 });
-			const g2 = yield* Scene.instantiate(Shapes.Group, { x: 0, y: 100 });
+			const g1 = yield* Scene.instantiate("Group", {
+				position: S.vec3({ x: 0, y: 0 }),
+			});
+			const g2 = yield* Scene.instantiate("Group", {
+				position: S.vec3({ x: 0, y: 100 }),
+			});
 			yield* Scene.play(scene as never, { parent: g1 as never });
 			yield* Scene.play(scene as never, { parent: g2 as never });
 		} as never);
@@ -231,7 +250,7 @@ describe("Scene.play mounting", () => {
 		);
 		expect(circles).toHaveLength(2);
 		for (const [, entry] of circles as any[]) {
-			expect(entry.data.x).toBe(100);
+			expect(entry.data.position.x).toBe(100);
 		}
 	});
 });

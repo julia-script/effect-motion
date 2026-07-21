@@ -1,4 +1,11 @@
-import { Color, Font, Motion, Resource, Scene, Shapes } from "effect-motion";
+import {
+	Color,
+	Font,
+	Motion,
+	Resource,
+	Entities as S,
+	Scene,
+} from "effect-motion";
 
 // Fonts are typed scene dependencies: yielding the constant puts
 // `FontLoader<"Pacifico">` into the scene's requirements, and the player
@@ -10,25 +17,23 @@ const Pacifico = Font.Font("Pacifico");
 export const scene = Scene.make(
 	function* () {
 		const pacifico = yield* Pacifico;
-		const custom = yield* Scene.instantiate(Shapes.Text, {
+		const custom = yield* Scene.instantiate("Text", {
+			position: S.vec3({ x: 250, y: 120 }),
 			text: "Custom fonts",
-			x: 250,
-			y: 120,
 			fontSize: 48,
 			fontFamily: pacifico,
-			fill: Color.hex("#7f5af0"),
+			fillColor: Color.hex("#7f5af0"),
 			textAnchor: "middle",
 			baseline: "middle",
 			opacity: 0,
 		});
 		// no fontFamily: the built-in default font (reserved id "sans-serif",
 		// auto-provided by the render path) — zero ceremony, no requirement
-		const plain = yield* Scene.instantiate(Shapes.Text, {
+		const plain = yield* Scene.instantiate("Text", {
+			position: S.vec3({ x: 250, y: 190 }),
 			text: "vs the default sans-serif",
-			x: 250,
-			y: 190,
 			fontSize: 20,
-			fill: Color.hex("#94a3b8"),
+			fillColor: Color.hex("#94a3b8"),
 			textAnchor: "middle",
 			baseline: "middle",
 			opacity: 0,

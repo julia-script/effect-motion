@@ -1,15 +1,14 @@
 import { Random } from "effect";
-import { Color, Motion, Scene, Shapes } from "effect-motion";
+import { Color, Motion, Entities as S, Scene } from "effect-motion";
 
 // effect's Random is seeded per scene: every run of this scene —
 // including every replay in this player — is byte-identical
 export const scene = Scene.make(
 	function* () {
-		const walker = yield* Scene.instantiate(Shapes.Circle, {
-			x: 250,
-			y: 150,
+		const walker = yield* Scene.instantiate("Circle", {
+			position: S.vec3({ x: 250, y: 150 }),
 			radius: 12,
-			fill: Color.hex("#7f5af0"),
+			fillColor: Color.hex("#7f5af0"),
 		});
 
 		for (let i = 0; i < 6; i++) {

@@ -1,4 +1,4 @@
-import { Color, Motion, Particles, Scene, Shapes } from "effect-motion";
+import { Color, Motion, Particles, Entities as S, Scene } from "effect-motion";
 
 // Parallax falls out of perspective for free: give objects a world `z` and a
 // panning camera separates them by depth automatically — far things drift
@@ -20,22 +20,25 @@ export const scene = Scene.make(
 			],
 			capacity: 90,
 		});
-		yield* Scene.instantiate(Shapes.Group, { z: -1600, children: [stars] });
+		yield* Scene.instantiate("Group", {
+			position: S.vec3({ z: -1600 }),
+			children: [stars],
+		});
 		yield* Scene.background(
 			Particles.simulate(stars, "10 seconds", { fill: 90 }),
 		);
 
 		// mid band: halfway back
-		yield* Scene.instantiate(Shapes.Group, {
-			z: -600,
+		yield* Scene.instantiate("Group", {
+			position: S.vec3({ z: -600 }),
 			children: [
-				Scene.instantiate(Shapes.Square, {
+				Scene.instantiate(S.Rect, {
 					x: 120,
 					y: 150,
 					size: 40,
 					fill: Color.hex("#a786df"),
 				}),
-				Scene.instantiate(Shapes.Square, {
+				Scene.instantiate(S.Rect, {
 					x: 300,
 					y: 130,
 					size: 32,
@@ -45,17 +48,15 @@ export const scene = Scene.make(
 		});
 
 		// near foreground: on the z=0 plane, tracks the camera fully
-		yield* Scene.instantiate(Shapes.Circle, {
-			x: 100,
-			y: 240,
+		yield* Scene.instantiate("Circle", {
+			position: S.vec3({ x: 100, y: 240 }),
 			radius: 22,
-			fill: Color.hex("#e53170"),
+			fillColor: Color.hex("#e53170"),
 		});
-		yield* Scene.instantiate(Shapes.Circle, {
-			x: 280,
-			y: 250,
+		yield* Scene.instantiate("Circle", {
+			position: S.vec3({ x: 280, y: 250 }),
 			radius: 18,
-			fill: Color.hex("#ff8906"),
+			fillColor: Color.hex("#ff8906"),
 		});
 
 		// pan the camera right and back; depth separates the layers

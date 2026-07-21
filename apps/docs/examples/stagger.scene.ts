@@ -1,5 +1,5 @@
 import { Schedule } from "effect";
-import { Color, Motion, Scene, Shapes } from "effect-motion";
+import { Color, Motion, Entities as S, Scene } from "effect-motion";
 
 // Scene.stagger is the explicit overlap opt-in: starts are staggered by
 // the schedule and the released animations run concurrently
@@ -14,9 +14,8 @@ export const scene = Scene.make(
 		const dots = [];
 		for (const [i, fill] of colors.entries()) {
 			dots.push(
-				yield* Scene.instantiate(Shapes.Circle, {
-					x: 60,
-					y: 60 + i * 60,
+				yield* Scene.instantiate("Circle", {
+					position: S.vec3({ x: 60, y: 60 + i * 60 }),
 					radius: 14,
 					fill,
 				}),
@@ -27,7 +26,7 @@ export const scene = Scene.make(
 		// concurrently once released
 		yield* Scene.stagger(
 			dots.map((dot) =>
-				Motion.tweenTo(dot, { x: 440 }, "1 second", "easeInOutCubic"),
+				Motion.moveTo(dot, { x: 440 }, "1 second", "easeInOutCubic"),
 			),
 			Schedule.spaced("250 millis"),
 		);

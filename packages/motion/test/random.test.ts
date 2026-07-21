@@ -6,7 +6,7 @@ import * as Motion from "../src/Motion";
 import * as Phaser from "../src/Phaser";
 import type * as Runner from "../src/Runner";
 import * as Scene from "../src/Scene";
-import * as Shapes from "../src/Shapes";
+import * as S from "../src/schemas";
 import { unreachable } from "./support/raise";
 
 const collectX = async (
@@ -23,25 +23,32 @@ const collectX = async (
 		const entry = Object.entries(frame.instances).find(
 			([id]) => id !== frame.root,
 		)?.[1];
-		return ((entry ?? unreachable()).data as { x: number }).x;
+		return (entry ?? unreachable()).data.position.x;
 	});
 };
 
 const randomWalk = function* () {
-	const circle = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
+	const circle = yield* Scene.instantiate("Circle", {
+		position: S.vec3({ x: 0 }),
+	});
 	for (let i = 0; i < 3; i++) {
 		const target = yield* Random.nextBetween(0, 100);
-		yield* Motion.tweenTo(circle, { x: target }, "100 millis");
+		yield* Motion.moveTo(circle, { x: target }, "100 millis");
 	}
 };
 
 describe("deterministic scenes", () => {
 	it("effect combinators work with zero layer plumbing", async () => {
 		const track = await collectX(function* () {
-			const circle = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
+			const circle = yield* Scene.instantiate("Circle", {
+				position: S.vec3({ x: 0 }),
+			});
 			const x = yield* Random.nextBetween(10, 50);
 			const bump = yield* Random.choice([1, 2, 3] as const);
-			yield* Scene.update(circle, (data) => ({ ...data, x: x + bump }));
+			yield* Scene.update(circle, (data) => ({
+				...data,
+				position: S.vec3({ x: x + bump }),
+			}));
 			yield* Scene.tick;
 		});
 		expect(track[0]).toBeGreaterThanOrEqual(11);
@@ -66,16 +73,20 @@ describe("deterministic scenes", () => {
 
 describe("parallel lanes stay reproducible", () => {
 	const parallelScene = function* () {
-		const a = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
-		const b = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
+		const a = yield* Scene.instantiate("Circle", {
+			position: S.vec3({ x: 0 }),
+		});
+		const b = yield* Scene.instantiate("Circle", {
+			position: S.vec3({ x: 0 }),
+		});
 		yield* Phaser.all([
 			Effect.gen(function* () {
 				const target = yield* Random.nextBetween(0, 100);
-				yield* Motion.tweenTo(a, { x: target }, "100 millis");
+				yield* Motion.moveTo(a, { x: target }, "100 millis");
 			}),
 			Effect.gen(function* () {
 				const target = yield* Random.nextBetween(100, 200);
-				yield* Motion.tweenTo(b, { x: target }, "100 millis");
+				yield* Motion.moveTo(b, { x: target }, "100 millis");
 			}),
 		]);
 	};
@@ -90,7 +101,7 @@ describe("parallel lanes stay reproducible", () => {
 		return [...frames].map((frame) =>
 			Object.entries(frame.instances)
 				.filter(([id]) => id !== frame.root)
-				.map(([, entry]) => (entry.data as { x: number }).x),
+				.map(([, entry]) => entry.data.position.x),
 		);
 	};
 

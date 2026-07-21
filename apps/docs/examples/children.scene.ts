@@ -1,4 +1,4 @@
-import { Color, Motion, Scene, Shapes } from "effect-motion";
+import { Color, Motion, Entities as S, Scene } from "effect-motion";
 
 // A Group's `children` list is polymorphic: a bare string becomes a Text, a
 // not-yet-yielded `instantiate` is resolved internally, and an already-created
@@ -7,21 +7,19 @@ import { Color, Motion, Scene, Shapes } from "effect-motion";
 export const scene = Scene.make(
 	function* () {
 		// an instance created up front, to hand into the children list by value
-		const badge = yield* Scene.instantiate(Shapes.Circle, {
-			x: 0,
-			y: -34,
+		const badge = yield* Scene.instantiate("Circle", {
+			position: S.vec3({ x: 0, y: -34 }),
 			radius: 10,
-			fill: Color.hex("#2cb67d"),
+			fillColor: Color.hex("#2cb67d"),
 		});
 
-		const card = yield* Scene.instantiate(Shapes.Group, {
-			x: 120,
-			y: 150,
+		const card = yield* Scene.instantiate("Group", {
+			position: S.vec3({ x: 120, y: 150 }),
 			children: [
 				// a bare string → a Text
 				"effect-motion",
 				// a nested instantiate, NOT yielded — resolved by the children list
-				Scene.instantiate(Shapes.Text, {
+				Scene.instantiate(S.Text, {
 					text: "composed from children",
 					y: 22,
 					fontSize: 11,

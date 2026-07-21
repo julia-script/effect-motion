@@ -1,4 +1,4 @@
-import { Camera, Color, Motion, Scene, Shapes } from "effect-motion";
+import { Color, Motion, Entities as S, Scene } from "effect-motion";
 
 // Depth of field: aperture > 0 opts in, focusDistance picks the sharp
 // plane. Both are plain camera fields, so a rack focus — the classic
@@ -6,29 +6,23 @@ import { Camera, Color, Motion, Scene, Shapes } from "effect-motion";
 export const scene = Scene.make(
 	function* () {
 		// three subjects at three depths
-		yield* Scene.instantiate(Shapes.Circle, {
-			x: 130,
-			y: 150,
-			z: 300, // near (in front of the z=0 plane)
+		yield* Scene.instantiate("Circle", {
+			position: S.vec3({ x: 130, y: 150, z: 300 }), // near (in front of the z=0 plane)
 			radius: 40,
-			fill: Color.hex("#7f5af0"),
+			fillColor: Color.hex("#7f5af0"),
 		});
-		yield* Scene.instantiate(Shapes.Circle, {
-			x: 250,
-			y: 150,
-			z: 0, // the resting focus plane
+		yield* Scene.instantiate("Circle", {
+			position: S.vec3({ x: 250, y: 150, z: 0 }), // the resting focus plane
 			radius: 40,
-			fill: Color.hex("#2cb67d"),
+			fillColor: Color.hex("#2cb67d"),
 		});
-		yield* Scene.instantiate(Shapes.Circle, {
-			x: 400,
-			y: 150,
-			z: -600, // far
+		yield* Scene.instantiate("Circle", {
+			position: S.vec3({ x: 400, y: 150, z: -600 }), // far
 			radius: 40,
-			fill: Color.hex("#ff8906"),
+			fillColor: Color.hex("#ff8906"),
 		});
 
-		const camera = yield* Scene.instantiate(Camera.Camera, {
+		const camera = yield* Scene.instantiate("Camera", {
 			aperture: 14,
 		});
 		yield* Scene.setCamera(camera);

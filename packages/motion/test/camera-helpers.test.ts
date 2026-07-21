@@ -3,9 +3,9 @@ import * as Stream from "effect/Stream";
 import { describe, expect, it } from "vitest";
 import * as Camera from "../src/Camera";
 import * as Motion from "../src/Motion";
-import type * as Runner from "../src/Runner";
+import * as Runner from "../src/Runner";
 import * as Scene from "../src/Scene";
-import * as Shapes from "../src/Shapes";
+import * as S from "../src/schemas";
 import { unreachable } from "./support/raise";
 
 type Frame = Scene.Frame<any>;
@@ -42,16 +42,14 @@ const poiOf = (frame: Frame) => ({
 });
 
 // default settings: 500 wide → origin (250, 150), resting z from identity
-const REST = Camera.identity(500);
+const REST = Runner.identityCameraView(500);
 const ORIGIN = { x: 250, y: 150 };
 
 describe("lookAt", () => {
 	it("instant: sets the POI from this frame on", async () => {
 		const frames = await framesOf(function* () {
-			const hero = yield* Scene.instantiate(Shapes.Circle, {
-				x: 400,
-				y: 80,
-				z: -200,
+			const hero = yield* Scene.instantiate("Circle", {
+				position: S.vec3({ x: 400, y: 80, z: -200 }),
 			});
 			const cam = yield* Scene.camera;
 			yield* cam.pipe(Camera.lookAt(hero));
@@ -66,7 +64,9 @@ describe("lookAt", () => {
 
 	it("offset shifts the aim", async () => {
 		const frames = await framesOf(function* () {
-			const hero = yield* Scene.instantiate(Shapes.Circle, { x: 100, y: 200 });
+			const hero = yield* Scene.instantiate("Circle", {
+				position: S.vec3({ x: 100, y: 200 }),
+			});
 			const cam = yield* Scene.camera;
 			yield* Camera.lookAt(cam, hero, undefined, undefined, { y: -40 });
 			yield* Scene.tick;
@@ -85,7 +85,9 @@ describe("lookAt", () => {
 			yield* Scene.tick;
 			// an Effect target: instantiation happens inside the helper
 			yield* cam.pipe(
-				Camera.lookAt(Scene.instantiate(Shapes.Circle, { x: 77, z: -5 })),
+				Camera.lookAt(
+					Scene.instantiate("Circle", { position: S.vec3({ x: 77, z: -5 }) }),
+				),
 			);
 			yield* Scene.tick;
 		});
@@ -99,7 +101,9 @@ describe("lookAt", () => {
 
 	it("eased re-aim retargets onto a moving target and lands exactly", async () => {
 		const frames = await framesOf(function* () {
-			const hero = yield* Scene.instantiate(Shapes.Circle, { x: 0, y: 0 });
+			const hero = yield* Scene.instantiate("Circle", {
+				position: S.vec3({ x: 0, y: 0 }),
+			});
 			const cam = yield* Scene.camera;
 			yield* cam.pipe(Camera.lookAt(hero)); // engage POI at the start pos
 			yield* Scene.all([
@@ -113,9 +117,9 @@ describe("lookAt", () => {
 		const mid = frames[29] ?? unreachable();
 		const heroMidX = (
 			Object.values(mid.instances).find(
-				(e: any) => e.entity?.name === "shapes/Circle",
+				(e: any) => e.data._tag === "Circle",
 			) as any
-		).data.x as number;
+		).data.position.x as number;
 		expect(poiOf(mid).x).toBeGreaterThan(0);
 		expect(poiOf(mid).x).toBeLessThan(heroMidX);
 	});
@@ -140,19 +144,21 @@ describe("lookAt", () => {
 describe("follow", () => {
 	it("camera after target: POI matches the target same-frame", async () => {
 		const frames = await framesOf(function* () {
-			const hero = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
+			const hero = yield* Scene.instantiate("Circle", {
+				position: S.vec3({ x: 0 }),
+			});
 			const cam = yield* Scene.camera;
 			yield* Scene.all([
-				hero.pipe(Motion.tweenTo({ x: 120 }, "1 second")),
+				hero.pipe(Motion.moveTo({ x: 120 }, "1 second")),
 				cam.pipe(Camera.follow(hero, "1 second")),
 			]);
 		});
 		for (const [i, frame] of frames.slice(0, 60).entries()) {
 			const heroX = (
 				Object.values(frame.instances).find(
-					(e: any) => e.entity?.name === "shapes/Circle",
+					(e: any) => e.data._tag === "Circle",
 				) as any
-			).data.x as number;
+			).data.position.x as number;
 			expect(poiOf(frame).x, `frame ${i}`).toBe(heroX);
 		}
 	});
@@ -160,11 +166,13 @@ describe("follow", () => {
 	it("camera before target: a deterministic one-frame trail", async () => {
 		const run = () =>
 			framesOf(function* () {
-				const hero = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
+				const hero = yield* Scene.instantiate("Circle", {
+					position: S.vec3({ x: 0 }),
+				});
 				const cam = yield* Scene.camera;
 				yield* Scene.all([
 					cam.pipe(Camera.follow(hero, "1 second")),
-					hero.pipe(Motion.tweenTo({ x: 120 }, "1 second")),
+					hero.pipe(Motion.moveTo({ x: 120 }, "1 second")),
 				]);
 			});
 		const a = await run();
@@ -172,9 +180,9 @@ describe("follow", () => {
 			(f) =>
 				(
 					Object.values(f.instances).find(
-						(e: any) => e.entity?.name === "shapes/Circle",
+						(e: any) => e.data._tag === "Circle",
 					) as any
-				).data.x as number,
+				).data.position.x as number,
 		);
 		// trails by exactly one frame...
 		for (let i = 1; i < 60; i++) {
@@ -187,8 +195,12 @@ describe("follow", () => {
 
 	it("pipes into sequential phases: follow → lookAt → follow", async () => {
 		const frames = await framesOf(function* () {
-			const a = yield* Scene.instantiate(Shapes.Circle, { x: 50, y: 10 });
-			const b = yield* Scene.instantiate(Shapes.Circle, { x: 350, y: 90 });
+			const a = yield* Scene.instantiate("Circle", {
+				position: S.vec3({ x: 50, y: 10 }),
+			});
+			const b = yield* Scene.instantiate("Circle", {
+				position: S.vec3({ x: 350, y: 90 }),
+			});
 			const cam = yield* Scene.camera;
 			yield* cam.pipe(
 				Camera.follow(a, "500 millis"),

@@ -1,4 +1,4 @@
-import { Color, Motion, Physics, Scene, Shapes } from "effect-motion";
+import { Color, Motion, Physics, Entities as S, Scene } from "effect-motion";
 
 // A Hud's subtree is projected through the IDENTITY camera: while the real
 // camera dollies and shakes through the world, HUD content stays bolted to
@@ -6,32 +6,27 @@ import { Color, Motion, Physics, Scene, Shapes } from "effect-motion";
 export const scene = Scene.make(
 	function* () {
 		// world content at three depths
-		yield* Scene.instantiate(Shapes.Rect, {
-			x: 60,
-			y: 90,
-			z: -400,
+		yield* Scene.instantiate("Rect", {
+			position: S.vec3({ x: 60, y: 90, z: -400 }),
 			width: 120,
 			height: 120,
-			fill: Color.hex("#3b3a5a"),
+			fillColor: Color.hex("#3b3a5a"),
 		});
-		yield* Scene.instantiate(Shapes.Circle, {
-			x: 250,
-			y: 160,
+		yield* Scene.instantiate("Circle", {
+			position: S.vec3({ x: 250, y: 160 }),
 			radius: 45,
-			fill: Color.hex("#2cb67d"),
+			fillColor: Color.hex("#2cb67d"),
 		});
-		yield* Scene.instantiate(Shapes.Circle, {
-			x: 380,
-			y: 120,
-			z: 200,
+		yield* Scene.instantiate("Circle", {
+			position: S.vec3({ x: 380, y: 120, z: 200 }),
 			radius: 30,
-			fill: Color.hex("#7f5af0"),
+			fillColor: Color.hex("#7f5af0"),
 		});
 
 		// HUD: a fixed title, and a lower-third parked off-screen below
-		yield* Scene.instantiate(Shapes.Hud, {
+		yield* Scene.instantiate("Hud", {
 			children: [
-				Scene.instantiate(Shapes.Text, {
+				Scene.instantiate(S.Text, {
 					text: "LIVE",
 					x: 460,
 					y: 30,
@@ -40,20 +35,19 @@ export const scene = Scene.make(
 				}),
 			],
 		});
-		const lowerThird = yield* Scene.instantiate(Shapes.Hud, {
-			y: 90, // parked below the frame; slides up to 0
+		const lowerThird = yield* Scene.instantiate("Hud", {
+			position: S.vec3({ y: 90 }), // parked below the frame; slides up to 0
 			children: [
-				Scene.instantiate(Shapes.Rect, {
+				Scene.instantiate(S.Rect, {
 					x: 20,
 					y: 240,
 					width: 280,
 					height: 40,
-					rx: 12,
 					fill: Color.hex("#16161d"),
 					stroke: Color.hex("#7f5af0"),
 					strokeWidth: 2,
 				}),
-				Scene.instantiate(Shapes.Text, {
+				Scene.instantiate(S.Text, {
 					text: "HUD content ignores the camera",
 					x: 34,
 					y: 265,
@@ -67,7 +61,7 @@ export const scene = Scene.make(
 
 		// slide the lower-third in while the camera is already moving
 		yield* Scene.all([
-			Motion.tweenTo(lowerThird, { y: 0 }, "700 millis", "easeInOutCubic"),
+			Motion.moveTo(lowerThird, { y: 0 }, "700 millis", "easeInOutCubic"),
 			Motion.moveTo(camera, { z: -300 }, "1200 millis", "easeInOutCubic"),
 		]);
 		// impact shake (the camera-shake idiom): jolt, then an under-damped

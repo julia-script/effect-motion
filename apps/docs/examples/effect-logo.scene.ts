@@ -1,5 +1,12 @@
 import { Schedule } from "effect";
-import { Camera, Color, Motion, Physics, Scene, Shapes } from "effect-motion";
+import {
+	Color,
+	Motion,
+	Physics,
+	Runner,
+	Entities as S,
+	Scene,
+} from "effect-motion";
 
 // The Effect logo rebuilt as a scene instead of traced from the SVG: the
 // mark really is three square plates lying flat in the ground plane
@@ -24,13 +31,11 @@ export const scene = Scene.make(
 			stroke?: Color.Color;
 			strokeWidth?: number;
 		}) =>
-			Scene.instantiate(Shapes.Rect, {
-				x: CENTER_X - HALF,
-				y: CENTER_Y - 340,
+			Scene.instantiate("Rect", {
+				position: S.vec3({ x: CENTER_X - HALF, y: CENTER_Y - 340 }),
+				rotation: S.vec3({ x: Math.PI / 2, y: Math.PI / 4 }),
 				width: SIZE,
 				height: SIZE,
-				rotX: Math.PI / 2,
-				rotY: Math.PI / 4,
 				...style,
 			});
 		const outline = {
@@ -50,7 +55,7 @@ export const scene = Scene.make(
 		// look at the stack from above: pitch the camera down, and pan it up so
 		// the optical axis still passes through the stack (y = z·tan(pitch))
 		const cam = yield* Scene.camera;
-		const restZ = Camera.identity((yield* Scene.comp()).width).z;
+		const restZ = Runner.identityCameraView((yield* Scene.comp()).width).z;
 		yield* Scene.update(cam, (d) => ({
 			...d,
 			rotX: PITCH,
@@ -64,23 +69,22 @@ export const scene = Scene.make(
 		);
 
 		// the wordmark rides the HUD: screen-space, immune to the camera
-		const wordmark = yield* Scene.instantiate(Shapes.Text, {
+		const wordmark = yield* Scene.instantiate("Text", {
+			position: S.vec3({ x: 250, y: 226 }),
 			text: "effect",
-			x: 250,
-			y: 226,
 			fontSize: 42,
-			fill: Color.hex("white"),
+			fillColor: Color.hex("white"),
 			textAnchor: "middle",
 			baseline: "middle",
 			opacity: 0,
 		});
-		const hud = yield* Scene.instantiate(Shapes.Hud, {
-			y: 14,
+		const hud = yield* Scene.instantiate("Hud", {
+			position: S.vec3({ y: 14 }),
 			children: [wordmark],
 		});
 		yield* Scene.all([
 			wordmark.pipe(Motion.fadeTo(1, "600 millis")),
-			hud.pipe(Motion.tweenTo({ y: 0 }, "600 millis", "easeOutCubic")),
+			hud.pipe(Motion.moveTo({ y: 0 }, "600 millis", "easeOutCubic")),
 		]);
 
 		// one settling breath through the stack, top to bottom

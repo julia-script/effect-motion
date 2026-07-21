@@ -1,4 +1,4 @@
-import { Camera, Color, Motion, Scene, Shapes } from "effect-motion";
+import { Color, Motion, Runner, Entities as S, Scene } from "effect-motion";
 
 // The synthwave floor: cross lines sit at one depth each (constant z),
 // while the rails receding to the horizon span depth — start and end
@@ -13,33 +13,31 @@ export const scene = Scene.make(
 		// stroke is thick because a segment's width scales by its MIDPOINT
 		// perspective scale (one width per line — see the camera docs).
 		for (let x = -1750; x <= 1750; x += 250) {
-			yield* Scene.instantiate(Shapes.Line, {
+			yield* Scene.instantiate("Line", {
+				position: S.vec3({ y: floorY, z: 300 }),
 				x,
-				y: floorY,
-				z: 300,
 				x2: x,
 				y2: floorY,
 				z2: horizon,
-				stroke: Color.hex("#ff2975"),
+				strokeColor: Color.hex("#ff2975"),
 				strokeWidth: 5,
 			});
 		}
 		// cross lines: each fully at one depth, marching toward the horizon
 		for (let z = 300; z >= horizon; z -= 200) {
-			yield* Scene.instantiate(Shapes.Line, {
-				x: -1750,
-				y: floorY,
+			yield* Scene.instantiate("Line", {
+				position: S.vec3({ x: -1750, y: floorY }),
 				z,
 				x2: 1750,
 				y2: floorY,
 				z2: z,
-				stroke: Color.hex("#f9c80e"),
+				strokeColor: Color.hex("#f9c80e"),
 				strokeWidth: 2,
 				opacity: 0.8,
 			});
 		}
 
-		const camera = yield* Scene.instantiate(Camera.Camera, { aperture: 2.5 });
+		const camera = yield* Scene.instantiate("Camera", { aperture: 2.5 });
 		yield* Scene.setCamera(camera);
 
 		// focus on the middle of the grid: a rail blurs by its MIDPOINT depth
@@ -55,14 +53,14 @@ export const scene = Scene.make(
 		// slow dolly into the grid and back — the rails' perspective and the
 		// blur bands shift with the camera. The resting z comes from the
 		// identity camera (the Runner fills it; only it knows the width).
-		const restZ = Camera.identity((yield* Scene.comp()).width).z;
+		const restZ = Runner.identityCameraView((yield* Scene.comp()).width).z;
 		yield* Motion.tweenTo(
 			camera,
 			{ z: restZ - 500 },
 			"3 seconds",
 			"easeInOutSine",
 		);
-		yield* Motion.tweenTo(camera, { z: restZ }, "3 seconds", "easeInOutSine");
+		yield* Motion.moveTo(camera, { z: restZ }, "3 seconds", "easeInOutSine");
 	},
 	{ width: 500, height: 300, backgroundColor: Color.rgba(22, 22, 29) },
 );

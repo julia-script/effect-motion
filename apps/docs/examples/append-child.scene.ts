@@ -1,4 +1,4 @@
-import { Color, Motion, Scene, Shapes } from "effect-motion";
+import { Color, Motion, Entities as S, Scene } from "effect-motion";
 
 // Instances are born under the ambient parent (the root). `Scene.appendChild`
 // moves one into a group after the fact — detaching it from its current parent
@@ -7,14 +7,15 @@ import { Color, Motion, Scene, Shapes } from "effect-motion";
 export const scene = Scene.make(
 	function* () {
 		// a group that will act as a moving platform
-		const platform = yield* Scene.instantiate(Shapes.Group, { x: 60, y: 150 });
+		const platform = yield* Scene.instantiate("Group", {
+			position: S.vec3({ x: 60, y: 150 }),
+		});
 
 		// a dot born at the root (not yet in the group)
-		const dot = yield* Scene.instantiate(Shapes.Circle, {
-			x: 0,
-			y: 0,
+		const dot = yield* Scene.instantiate("Circle", {
+			position: S.vec3({ x: 0, y: 0 }),
 			radius: 14,
-			fill: Color.hex("#7f5af0"),
+			fillColor: Color.hex("#7f5af0"),
 		});
 
 		// slide it in on its own, at the root level

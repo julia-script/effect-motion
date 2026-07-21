@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import * as Camera from "../src/Camera";
 import * as P from "../src/Projection";
+import * as Runner from "../src/Runner";
 
 // 720-wide resting camera (see projection.test.ts) and a 500x300 viewport
 const F = P.defaultFocalLength(720);
@@ -101,7 +101,7 @@ describe("POI camera end-to-end", () => {
 		// 200x200 viewport: point far off-center at depth; camera aims at it
 		const o: P.Vec2 = { x: 100, y: 100 };
 		const cam = {
-			...Camera.identity(200),
+			...Runner.identityCameraView(200),
 			poiX: 160,
 			poiY: 40,
 			poiZ: -300,

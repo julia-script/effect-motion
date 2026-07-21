@@ -1,4 +1,11 @@
-import { Color, Image, Motion, Resource, Scene, Shapes } from "effect-motion";
+import {
+	Color,
+	Image,
+	Motion,
+	Resource,
+	Entities as S,
+	Scene,
+} from "effect-motion";
 
 // Images are typed scene dependencies like fonts: yielding the constant
 // puts `ImageLoader<"rocket">` into the scene's requirements, the layer
@@ -10,20 +17,18 @@ const Rocket = Image.Image("rocket");
 export const scene = Scene.make(
 	function* () {
 		const rocketImage = yield* Rocket;
-		const rocket = yield* Scene.instantiate(Shapes.Image, {
+		const rocket = yield* Scene.instantiate("Image", {
+			position: S.vec3({ x: 214, y: 150 }),
 			image: rocketImage,
-			x: 214,
-			y: 150,
 			width: 72,
 			height: 72,
 			opacity: 0,
 		});
-		const caption = yield* Scene.instantiate(Shapes.Text, {
+		const caption = yield* Scene.instantiate("Text", {
+			position: S.vec3({ x: 250, y: 260 }),
 			text: "images tween like any shape",
-			x: 250,
-			y: 260,
 			fontSize: 20,
-			fill: Color.hex("#94a3b8"),
+			fillColor: Color.hex("#94a3b8"),
 			textAnchor: "middle",
 			baseline: "middle",
 			opacity: 0,

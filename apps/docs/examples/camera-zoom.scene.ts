@@ -1,4 +1,4 @@
-import { Camera, Color, Motion, Scene, Shapes } from "effect-motion";
+import { Color, Motion, Runner, Scene } from "effect-motion";
 
 // A punch-in, the 3D-camera way: there is no `zoom` scalar any more. Grow the
 // camera's `focalLength` to narrow the field of view (an optical zoom) while
@@ -14,14 +14,14 @@ export const scene = Scene.make(
 			[350, 90, Color.hex("#e53170")],
 			[410, 220, Color.hex("#ff8906")],
 		] as const) {
-			yield* Scene.instantiate(Shapes.Circle, { x, y, radius: 16, fill });
+			yield* Scene.instantiate("Circle", { x, y, radius: 16, fill });
 		}
 
 		const cam = yield* Scene.camera;
 		// the resting focal length is width-relative (AE's 50mm equivalent) —
 		// read it off the identity view instead of hardcoding a number
 		const { width } = yield* Scene.comp();
-		const rest = Camera.identity(width).focalLength;
+		const rest = Runner.identityCameraView(width).focalLength;
 		// zoom in: 2.5× the default focal length narrows the FOV. Pan the camera
 		// so the subject (350,90) sits at the viewport centre (250,150) — the pan
 		// is (subject - centre) = (100, -60).

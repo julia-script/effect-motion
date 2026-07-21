@@ -1,4 +1,4 @@
-import { Color, Motion, Physics, Scene, Shapes } from "effect-motion";
+import { Color, Motion, Physics, Entities as S, Scene } from "effect-motion";
 
 // An impact shake. The block falls and hits the ground on an exact frame
 // (a fixed-duration accelerating drop, so there's no spring settle-tail
@@ -7,19 +7,17 @@ import { Color, Motion, Physics, Scene, Shapes } from "effect-motion";
 // The ring-back oscillation IS the shake, no keyframed wobble.
 export const scene = Scene.make(
 	function* () {
-		const block = yield* Scene.instantiate(Shapes.Square, {
-			x: 234,
-			y: -70,
+		const block = yield* Scene.instantiate("Square", {
+			position: S.vec3({ x: 234, y: -70 }),
 			size: 64,
-			fill: Color.hex("#e53170"),
+			fillColor: Color.hex("#e53170"),
 		});
 		// ground line so the impact reads
-		yield* Scene.instantiate(Shapes.Line, {
-			x: 40,
-			y: 210,
+		yield* Scene.instantiate("Line", {
+			position: S.vec3({ x: 40, y: 210 }),
 			x2: 460,
 			y2: 210,
-			stroke: Color.hex("#544f80"),
+			strokeColor: Color.hex("#544f80"),
 		});
 
 		// fall and land on the ground on an exact frame — easeInQuad reads as

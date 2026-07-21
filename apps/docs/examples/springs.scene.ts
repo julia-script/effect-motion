@@ -1,13 +1,12 @@
-import { Color, Motion, Physics, Scene, Shapes } from "effect-motion";
+import { Color, Motion, Physics, Entities as S, Scene } from "effect-motion";
 
 // no durations — springs run until they physically settle
 export const scene = Scene.make(
 	function* () {
-		const ball = yield* Scene.instantiate(Shapes.Circle, {
-			x: 250,
-			y: 150,
+		const ball = yield* Scene.instantiate("Circle", {
+			position: S.vec3({ x: 250, y: 150 }),
 			radius: 1,
-			fill: Color.hex("#ff8906"),
+			fillColor: Color.hex("#ff8906"),
 		});
 
 		// elastic entrance, then springy travel — one chained motion

@@ -1,7 +1,7 @@
 import { ThreeRaw as THREE, Scene as ThreeScene } from "@effect-motion/three";
 import { Effect, Exit } from "effect";
 import * as Stream from "effect/Stream";
-import { Camera, Color, Entity, Scene, Shapes } from "effect-motion";
+import { Color, Runner, Entities as S, Scene } from "effect-motion";
 import { describe, expect, it } from "vitest";
 import { builtinRegistry } from "../src/Builtins.js";
 import type { Leaf, Retained } from "../src/EntityRenderer.js";
@@ -46,7 +46,10 @@ const registry = () => builtinRegistry;
 describe("coordinate mapping and the 2D identity invariant", () => {
 	it("z=0 content under the untouched camera lands where authored", async () => {
 		const frames = await framesOf(function* () {
-			yield* Scene.instantiate(Shapes.Circle, { x: 100, y: 50, radius: 7 });
+			yield* Scene.instantiate("Circle", {
+				position: S.vec3({ x: 100, y: 50 }),
+				radius: 7,
+			});
 			yield* Scene.tick;
 		});
 		const sync = Sync.make(registry());
@@ -64,7 +67,7 @@ describe("coordinate mapping and the 2D identity invariant", () => {
 
 	it("the camera derives fov from the AE focal-length default", async () => {
 		const frames = await framesOf(function* () {
-			yield* Scene.instantiate(Shapes.Circle, {});
+			yield* Scene.instantiate("Circle", {});
 			yield* Scene.tick;
 		});
 		const sync = Sync.make(registry());
@@ -77,7 +80,7 @@ describe("coordinate mapping and the 2D identity invariant", () => {
 
 	it("frame metadata drives the background color", async () => {
 		const frames = await framesOf(function* () {
-			yield* Scene.instantiate(Shapes.Circle, {});
+			yield* Scene.instantiate("Circle", {});
 			yield* Scene.tick;
 		});
 		const frame = frames.at(-1) ?? unreachable();
@@ -95,7 +98,11 @@ describe("coordinate mapping and the 2D identity invariant", () => {
 describe("retained diff through the entity render contract", () => {
 	// a custom entity registered through the same contract as built-ins —
 	// its counters make create/update/dispose observable
-	const Probe = Entity.make("test/Probe", { ...Shapes.Shape2D.position }, {});
+	// The retained contract (create once / skip unchanged / update on change /
+	// dispose on departure) is what this exercises. It used to define a custom
+	// entity; the world is closed now, so it overrides the registry entry for
+	// a real union member instead — the contract under test is unchanged.
+	const PROBE_TAG = "Circle" as const;
 
 	const makeProbeRenderer = () => {
 		const counters = { builds: 0, updates: 0, disposes: 0 };
@@ -122,25 +129,30 @@ describe("retained diff through the entity render contract", () => {
 
 	const probeData = (
 		frame: AnyFrame,
-	): { x?: number; "~visible"?: boolean } | undefined =>
+	): { position?: { x: number }; visible?: boolean } | undefined =>
 		Object.values(frame.instances).find(
-			(entry) => entry.entity.name === "test/Probe",
-		)?.data as { x?: number; "~visible"?: boolean } | undefined;
+			(entry) => entry.data._tag === PROBE_TAG,
+		)?.data as { position?: { x: number }; visible?: boolean } | undefined;
 
 	it("creates once, skips unchanged frames, updates on change, disposes departed", async () => {
 		const frames = await framesOf(function* () {
-			const probe = yield* Scene.instantiate(Probe, { x: 1 });
+			const probe = yield* Scene.instantiate(PROBE_TAG, {
+				position: S.vec3({ x: 1 }),
+			});
 			yield* Scene.tick; // frame A
-			yield* Scene.update(probe, (data) => ({ ...data, x: 2 }));
+			yield* Scene.update(probe, (data) => ({
+				...data,
+				position: S.vec3({ x: 2 }),
+			}));
 			yield* Scene.tick; // frame B (changed)
-			yield* Scene.update(probe, (data) => ({ ...data, "~visible": false }));
+			yield* Scene.update(probe, (data) => ({ ...data, visible: false }));
 			yield* Scene.tick; // frame C (hidden)
 		});
 		expect(frames.length).toBeGreaterThanOrEqual(3);
 		const { counters, renderer } = makeProbeRenderer();
 		const sync = Sync.make({
 			...registry(),
-			"test/Probe": renderer,
+			[PROBE_TAG]: renderer,
 		});
 		const a = frames[0] ?? unreachable();
 		Effect.runSync(Sync.syncFrame(sync, a));
@@ -148,11 +160,12 @@ describe("retained diff through the entity render contract", () => {
 		// identical frame: retained object untouched
 		Effect.runSync(Sync.syncFrame(sync, a));
 		expect(counters).toMatchObject({ builds: 1, updates: 0 });
-		const b = frames.find((f) => probeData(f)?.x === 2) ?? unreachable();
+		const b =
+			frames.find((f) => probeData(f)?.position?.x === 2) ?? unreachable();
 		Effect.runSync(Sync.syncFrame(sync, b));
 		expect(counters).toMatchObject({ builds: 1, updates: 1 });
 		const hidden =
-			frames.find((f) => probeData(f)?.["~visible"] === false) ?? unreachable();
+			frames.find((f) => probeData(f)?.visible === false) ?? unreachable();
 		Effect.runSync(Sync.syncFrame(sync, hidden));
 		expect(counters).toMatchObject({ builds: 1, updates: 1, disposes: 1 });
 		expect(ThreeScene.children(sync.scene)).toHaveLength(0);
@@ -160,43 +173,37 @@ describe("retained diff through the entity render contract", () => {
 
 	it("group translation composes into the child's world position", async () => {
 		const frames = await framesOf(function* () {
-			const child = yield* Scene.instantiate(Probe, { x: 3, y: 4 });
-			yield* Scene.instantiate(Shapes.Group, {
-				x: 10,
-				y: 20,
+			const child = yield* Scene.instantiate(PROBE_TAG, {
+				position: S.vec3({ x: 3, y: 4 }),
+			});
+			yield* Scene.instantiate("Group", {
+				position: S.vec3({ x: 10, y: 20 }),
 				children: [child],
 			});
 			yield* Scene.tick;
 		});
 		const { worlds, renderer } = makeProbeRenderer();
-		const sync = Sync.make({ ...registry(), "test/Probe": renderer });
+		const sync = Sync.make({ ...registry(), [PROBE_TAG]: renderer });
 		Effect.runSync(Sync.syncFrame(sync, frames.at(-1) ?? unreachable()));
 		expect(worlds.at(-1)).toEqual({ x: 13, y: 24, z: 0 });
 	});
 
-	it("an unregistered entity is a loud defect naming it", async () => {
-		const Unknown = Entity.make(
-			"test/Unregistered",
-			{ ...Shapes.Shape2D.position },
-			{},
-		);
-		const frames = await framesOf(function* () {
-			yield* Scene.instantiate(Unknown, {});
-			yield* Scene.tick;
-		});
-		const sync = Sync.make(registry());
-		const exit = Effect.runSyncExit(
-			Sync.syncFrame(sync, frames.at(-1) ?? unreachable()),
-		);
-		expect(exit._tag).toBe("Failure");
-		expect(failureMessage(exit)).toMatch(/test\/Unregistered/);
+	// The "unregistered entity is a loud defect" test is gone: with the
+	// registry exhaustive over the tag union, a missing renderer is a
+	// COMPILE error, so the runtime path it covered is unreachable. The
+	// guarantee is now asserted statically instead.
+	it("the registry covers every entity tag", () => {
+		const registered = new Set(Object.keys(registry()));
+		for (const tag of Object.keys(S.EntityMap)) {
+			expect(registered.has(tag)).toBe(true);
+		}
 	});
 });
 
 describe("billboards and tilted planes", () => {
 	it("a circle billboards: it carries the camera quaternion", async () => {
 		const frames = await framesOf(function* () {
-			yield* Scene.instantiate(Shapes.Circle, { x: 10 });
+			yield* Scene.instantiate("Circle", { position: S.vec3({ x: 10 }) });
 			yield* Scene.tick;
 		});
 		const sync = Sync.make(registry());
@@ -207,7 +214,9 @@ describe("billboards and tilted planes", () => {
 
 	it("a rect with rotY tilts instead of billboarding", async () => {
 		const frames = await framesOf(function* () {
-			yield* Scene.instantiate(Shapes.Rect, { rotY: Math.PI / 4 });
+			yield* Scene.instantiate("Rect", {
+				rotation: S.vec3({ y: Math.PI / 4 }),
+			});
 			yield* Scene.tick;
 		});
 		const sync = Sync.make(registry());
@@ -220,7 +229,7 @@ describe("billboards and tilted planes", () => {
 describe("depth of field request", () => {
 	it("aperture 0 (default) leaves the post chain structurally off", async () => {
 		const frames = await framesOf(function* () {
-			yield* Scene.instantiate(Shapes.Circle, {});
+			yield* Scene.instantiate("Circle", {});
 			yield* Scene.tick;
 		});
 		const sync = Sync.make(registry());
@@ -230,7 +239,7 @@ describe("depth of field request", () => {
 
 	it("aperture > 0 turns the per-pixel DoF on with camera-derived values", async () => {
 		const frames = await framesOf(function* () {
-			yield* Scene.instantiate(Shapes.Circle, {});
+			yield* Scene.instantiate("Circle", {});
 			yield* Scene.tick;
 		});
 		const frame = frames.at(-1) ?? unreachable();
@@ -249,9 +258,11 @@ describe("depth of field request", () => {
 describe("screen-space HUD tier", () => {
 	it("a Hud subtree routes to the hud scene with identity billboarding", async () => {
 		const frames = await framesOf(function* () {
-			yield* Scene.instantiate(Shapes.Circle, { x: 10 });
-			const pinned = yield* Scene.instantiate(Shapes.Circle, { x: 20 });
-			yield* Scene.instantiate(Shapes.Hud, { children: [pinned] });
+			yield* Scene.instantiate("Circle", { position: S.vec3({ x: 10 }) });
+			const pinned = yield* Scene.instantiate("Circle", {
+				position: S.vec3({ x: 20 }),
+			});
+			yield* Scene.instantiate("Hud", { children: [pinned] });
 			yield* Scene.tick;
 		});
 		const sync = Sync.make(registry());
@@ -264,18 +275,23 @@ describe("screen-space HUD tier", () => {
 	});
 });
 
-describe("sized-group sub-compositions", () => {
-	it("a sized group becomes a comp: nested sync + textured plane", async () => {
+describe("mounted-scene sub-compositions", () => {
+	// A comp is DECLARED by Scene.play now, not inferred from a group that
+	// happens to carry a size (design D13). The frame's `comps` registry is
+	// what makes a subtree a render-to-texture boundary.
+	it("a mounted scene becomes a comp: nested sync + textured plane", async () => {
+		const innerScene = Scene.make(
+			function* () {
+				yield* Scene.instantiate("Circle", {
+					position: S.vec3({ x: 30, y: 20 }),
+				});
+				yield* Scene.tick;
+			} as never,
+			{ width: 100, height: 80 },
+		);
 		const frames = await framesOf(function* () {
-			const child = yield* Scene.instantiate(Shapes.Circle, { x: 30, y: 20 });
-			yield* Scene.instantiate(Shapes.Group, {
-				x: 40,
-				y: 10,
-				width: 100,
-				height: 80,
-				children: [child],
-			});
-			yield* Scene.tick;
+			const h = yield* Scene.play(innerScene as never);
+			yield* h.finished;
 		});
 		const sync = Sync.make(registry());
 		Effect.runSync(Sync.syncFrame(sync, frames.at(-1) ?? unreachable()));
@@ -287,9 +303,10 @@ describe("sized-group sub-compositions", () => {
 		// comp-local coords: the child sits at its own (x, y) within 100x80
 		expect(inner.position.x).toBe(30 - 50);
 		expect(inner.position.y).toBe(-(20 - 40));
-		// the composite plane sits at the group's world anchor
-		expect(comp.holder.position.x).toBe(40 - 250);
-		expect(comp.holder.position.y).toBe(-(10 - 150));
+		// Scene.play centers the child comp in the movie: (500-100)/2 = 200,
+		// (300-80)/2 = 110 — the mount group's world anchor
+		expect(comp.holder.position.x).toBe(200 - 250);
+		expect(comp.holder.position.y).toBe(-(110 - 150));
 		expect(comp.plane.scale.x).toBe(100);
 		expect(comp.plane.scale.y).toBe(80);
 	});
@@ -303,24 +320,22 @@ describe("traversal defects (hand-built frames)", () => {
 		({
 			instances: {
 				...instances,
-				root: {
-					data: Shapes.Group.data.make({ children: rootChildren }),
-					entity: Shapes.Group,
-				},
+				root: { data: S.Group.make({ children: rootChildren }) },
 			},
 			root: "root",
 			frameRate: 60,
 			width: 500,
 			height: 300,
 			backgroundColor: Color.hex("#16161d"),
-			camera: Camera.identity(500),
+			camera: Runner.identityCameraView(500),
+			comps: {},
 		}) as AnyFrame;
 
 	const group = (children: ReadonlyArray<string>) => ({
-		data: Shapes.Group.data.make({ children }),
-		entity: Shapes.Group,
+		data: S.Group.make({ children }),
+		entity: S.Group,
 	});
-	const circle = { data: Shapes.Circle.data.make({}), entity: Shapes.Circle };
+	const circle = { data: S.Circle.make({}), entity: S.Circle };
 
 	it("duplicate reference dies naming the id", () => {
 		const frame = frameOf(

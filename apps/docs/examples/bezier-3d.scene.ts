@@ -1,4 +1,4 @@
-import { Camera, Color, Scene, Shapes } from "effect-motion";
+import { Camera, Color, Entities as S, Scene } from "effect-motion";
 
 // A 3D cubic Bézier drawn with Path. Native curve commands are a planned
 // follow-up, and their chosen implementation is flattening — sampling the
@@ -89,22 +89,22 @@ export const scene = Scene.make(
 		// the wireframe box: each edge is a skeletal Line, both endpoints at
 		// their own depth
 		for (const [a, b] of boxEdges()) {
-			yield* Scene.instantiate(Shapes.Line, {
+			yield* Scene.instantiate("Line", {
 				...a,
 				x2: b.x,
 				y2: b.y,
 				z2: b.z,
-				stroke: Color.hex("#3d4266"),
+				strokeColor: Color.hex("#3d4266"),
 				strokeWidth: 2,
 				opacity: 1,
 			});
 		}
 
 		// the control polygon: straight rails between the control points
-		yield* Scene.instantiate(Shapes.Path, {
+		yield* Scene.instantiate("Path", {
 			...ANCHOR,
-			fill: noFill,
-			stroke: Color.tw("gray", "400"),
+			fillColor: noFill,
+			strokeColor: Color.tw("gray", "400"),
 			strokeWidth: 2,
 			commands: [
 				{ _tag: "M", ...P0 },
@@ -115,10 +115,10 @@ export const scene = Scene.make(
 		});
 
 		// the curve itself — one Path, every sample at its own depth
-		yield* Scene.instantiate(Shapes.Path, {
+		yield* Scene.instantiate("Path", {
 			...ANCHOR,
-			fill: noFill,
-			stroke: Color.tw("pink", "500"),
+			fillColor: noFill,
+			strokeColor: Color.tw("pink", "500"),
 			strokeWidth: 3,
 			commands: curveCommands,
 		});
@@ -126,20 +126,20 @@ export const scene = Scene.make(
 		// markers + labels at the control points (world = anchor + local)
 		const points = [P0, P1, P2, P3];
 		for (const [i, p] of points.entries()) {
-			yield* Scene.instantiate(Shapes.Circle, {
-				x: ANCHOR.x + p.x,
-				y: ANCHOR.y + p.y,
-				z: p.z,
+			yield* Scene.instantiate("Circle", {
+				position: S.vec3({ x: ANCHOR.x + p.x, y: ANCHOR.y + p.y, z: p.z }),
 				radius: 5,
-				fill: Color.tw("violet", "500"),
+				fillColor: Color.tw("violet", "500"),
 			});
-			yield* Scene.instantiate(Shapes.Text, {
-				x: ANCHOR.x + p.x + 12,
-				y: ANCHOR.y + p.y - 8,
-				z: p.z,
+			yield* Scene.instantiate("Text", {
+				position: S.vec3({
+					x: ANCHOR.x + p.x + 12,
+					y: ANCHOR.y + p.y - 8,
+					z: p.z,
+				}),
 				text: `P${i}`,
 				fontSize: 14,
-				fill: Color.tw("gray", "400"),
+				fillColor: Color.tw("gray", "400"),
 			});
 		}
 

@@ -1,6 +1,6 @@
 import { Effect } from "effect";
 import * as Stream from "effect/Stream";
-import { Color, Scene, Shapes } from "effect-motion";
+import { Color, Entities as S, Scene } from "effect-motion";
 import { describe, expect, it } from "vitest";
 import * as NodeRenderer from "../src/node.js";
 import { unreachable } from "./support/raise.js";
@@ -30,12 +30,11 @@ const framesOf = (
 describe("SDF text, headless", () => {
 	it("renders text with the auto-provided default font", async () => {
 		const frames = await framesOf(function* () {
-			yield* Scene.instantiate(Shapes.Text, {
-				x: 20,
-				y: 60,
+			yield* Scene.instantiate("Text", {
+				position: S.vec3({ x: 20, y: 60 }),
 				text: "Hello",
 				fontSize: 40,
-				fill: Color.rgba(255, 255, 255),
+				fillColor: Color.rgba(255, 255, 255),
 			});
 			yield* Scene.tick;
 		});
@@ -58,7 +57,7 @@ describe("SDF text, headless", () => {
 	it("a missing custom font loader dies naming the font id", async () => {
 		const frames = await framesOf(function* () {
 			const font = { _tag: "effect-motion/Resources/Font", id: "Comic" };
-			yield* Scene.instantiate(Shapes.Text, {
+			yield* Scene.instantiate("Text", {
 				text: "nope",
 				fontFamily: font as never,
 			});

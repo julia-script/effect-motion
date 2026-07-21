@@ -1,16 +1,15 @@
-import { Color, Motion, Scene, Shapes } from "effect-motion";
+import { Color, Motion, Entities as S, Scene } from "effect-motion";
 
 // scene A finishes when its crossing is done — the fade-out afterwards
 // is a TAIL: it keeps playing, but nothing waits for it
 const sceneA = Scene.make(
 	function* () {
-		const c = yield* Scene.instantiate(Shapes.Circle, {
-			x: 60,
-			y: 110,
+		const c = yield* Scene.instantiate("Circle", {
+			position: S.vec3({ x: 60, y: 110 }),
 			radius: 16,
-			fill: Color.hex("#e53170"),
+			fillColor: Color.hex("#e53170"),
 		});
-		yield* Motion.tweenTo(c, { x: 440 }, "1 second", "easeInOutCubic");
+		yield* Motion.moveTo(c, { x: 440 }, "1 second", "easeInOutCubic");
 		yield* Scene.finish;
 		yield* Motion.fadeTo(c, 0, "1 second");
 	},
@@ -19,14 +18,13 @@ const sceneA = Scene.make(
 
 const sceneB = Scene.make(
 	function* () {
-		const c = yield* Scene.instantiate(Shapes.Circle, {
-			x: 60,
-			y: 190,
+		const c = yield* Scene.instantiate("Circle", {
+			position: S.vec3({ x: 60, y: 190 }),
 			radius: 16,
-			fill: Color.hex("#2cb67d"),
+			fillColor: Color.hex("#2cb67d"),
 		});
 		yield* Motion.fade(c, 0, 1, "600 millis");
-		yield* Motion.tweenTo(c, { x: 440 }, "1 second", "easeInOutCubic");
+		yield* Motion.moveTo(c, { x: 440 }, "1 second", "easeInOutCubic");
 	},
 	{ width: 500, height: 300 },
 );

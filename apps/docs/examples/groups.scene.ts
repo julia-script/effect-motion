@@ -1,20 +1,19 @@
-import { Color, Motion, Physics, Scene, Shapes } from "effect-motion";
+import { Color, Motion, Physics, Entities as S, Scene } from "effect-motion";
 
 // children live in the group's local coordinates: one motion moves them all.
 // structure is defined by the children list, not a parent argument.
 export const scene = Scene.make(
 	function* () {
-		const duo = yield* Scene.instantiate(Shapes.Group, {
-			x: 70,
-			y: 200,
+		const duo = yield* Scene.instantiate("Group", {
+			position: S.vec3({ x: 70, y: 200 }),
 			children: [
-				Scene.instantiate(Shapes.Circle, {
+				Scene.instantiate(S.Circle, {
 					x: 0,
 					y: 0,
 					radius: 14,
 					fill: Color.hex("#e53170"),
 				}),
-				Scene.instantiate(Shapes.Square, {
+				Scene.instantiate(S.Rect, {
 					x: 20,
 					y: -16,
 					size: 28,

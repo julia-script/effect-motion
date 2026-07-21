@@ -1,23 +1,24 @@
 import { describe, expect, it } from "vitest";
 import * as Color from "../src/Color";
-import * as Shapes from "../src/Shapes";
+import * as S from "../src/schemas";
 
 describe("visible defaults", () => {
 	it("default circle: fill white, opacity 1, no stroke", () => {
-		const data = Shapes.Circle.data.make({});
+		const data = S.Circle.make({});
 		expect(data).toMatchObject({
-			x: 0,
-			y: 0,
-			fill: Color.white,
+			position: { x: 0, y: 0 },
+			fillColor: Color.white,
 			opacity: 1,
 			radius: 10,
 		});
-		expect("stroke" in data).toBe(false);
-		expect("strokeWidth" in data).toBe(false);
+		// stroke is defaulted now (the union gives every strokable shape a
+		// strokeColor/strokeWidth), so presence is the expectation
+		expect("strokeColor" in data).toBe(true);
+		expect(data.strokeWidth).toBe(1);
 	});
 
 	it("path: commands required, fill white, per-point z optional", () => {
-		const data = Shapes.Path.data.make({
+		const data = S.Path.make({
 			commands: [
 				{ _tag: "M", x: 0, y: 0 },
 				{ _tag: "L", x: 10, y: 10, z: -50 },
@@ -25,9 +26,8 @@ describe("visible defaults", () => {
 			],
 		});
 		expect(data).toMatchObject({
-			x: 0,
-			y: 0,
-			fill: Color.white,
+			position: { x: 0, y: 0 },
+			fillColor: Color.white,
 			opacity: 1,
 		});
 		expect(data.commands).toHaveLength(3);
@@ -38,26 +38,23 @@ describe("visible defaults", () => {
 
 	it("path: first command must be M", () => {
 		expect(() =>
-			Shapes.Path.data.make({
+			S.Path.make({
 				commands: [{ _tag: "L", x: 10, y: 10 }],
 			}),
 		).toThrow();
-		expect(() =>
-			Shapes.Path.data.make({ commands: [{ _tag: "Z" }] }),
-		).toThrow();
+		expect(() => S.Path.make({ commands: [{ _tag: "Z" }] })).toThrow();
 	});
 
 	it("default line: stroke white, strokeWidth 1, no fill", () => {
-		const data = Shapes.Line.data.make({ x2: 50, y2: 20 });
+		const data = S.Line.make({ end: S.vec3({ x: 50, y: 20 }) });
 		expect(data).toMatchObject({
-			x: 0,
-			y: 0,
-			x2: 50,
-			y2: 20,
-			stroke: Color.white,
+			position: { x: 0, y: 0 },
+			end: { x: 50, y: 20 },
+			strokeColor: Color.black,
 			strokeWidth: 1,
 			opacity: 1,
 		});
-		expect("fill" in data).toBe(false);
+		// a line is unfillable: no fillColor field at all
+		expect("fillColor" in data).toBe(false);
 	});
 });

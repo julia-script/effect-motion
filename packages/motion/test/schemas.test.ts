@@ -119,11 +119,11 @@ describe("closed entity union", () => {
 
 	it("instances carry an id and a tag, never the definition", () => {
 		const instance = S.makeInstance("circle_0", "Circle");
-		expect(instance).toEqual({
-			_tag: "Instance",
-			id: "circle_0",
-			kind: "Circle",
-		});
+		// _tag lives on the Pipeable prototype, so toEqual (own properties
+		// only) cannot see it — assert the fields and the tag separately
+		expect(instance).toMatchObject({ id: "circle_0", kind: "Circle" });
+		expect(instance._tag).toBe("Instance");
+		expect(typeof instance.pipe).toBe("function");
 		expect(S.isInstance(instance)).toBe(true);
 		expect(S.isInstanceOf("Circle", instance)).toBe(true);
 		expect(S.isInstanceOf("Rect", instance)).toBe(false);

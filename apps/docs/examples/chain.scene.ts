@@ -1,5 +1,5 @@
 import { Schedule } from "effect";
-import { Color, Motion, Scene, Shapes } from "effect-motion";
+import { Color, Motion, Entities as S, Scene } from "effect-motion";
 
 // Scene.chain runs items one at a time — the schedule is consulted when
 // an item ENDS, so items never overlap (Effect's own schedule guarantee)
@@ -13,9 +13,8 @@ export const scene = Scene.make(
 		const dots = [];
 		for (const [i, fill] of colors.entries()) {
 			dots.push(
-				yield* Scene.instantiate(Shapes.Circle, {
-					x: 60,
-					y: 75 + i * 75,
+				yield* Scene.instantiate("Circle", {
+					position: S.vec3({ x: 60, y: 75 + i * 75 }),
 					radius: 14,
 					fill,
 				}),
@@ -25,7 +24,7 @@ export const scene = Scene.make(
 		// each starts 300ms after the previous one FINISHES
 		yield* Scene.chain(
 			dots.map((dot) =>
-				Motion.tweenTo(dot, { x: 440 }, "800 millis", "easeInOutCubic"),
+				Motion.moveTo(dot, { x: 440 }, "800 millis", "easeInOutCubic"),
 			),
 			Schedule.spaced("300 millis"),
 		);

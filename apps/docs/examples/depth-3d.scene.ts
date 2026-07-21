@@ -1,4 +1,4 @@
-import { Camera, Color, Motion, Scene, Shapes } from "effect-motion";
+import { Color, Motion, Runner, Entities as S, Scene } from "effect-motion";
 
 // The 2.5D showcase: objects live at real depths, a tilted Rect lies back as
 // a floor, and the free camera dollies forward while orbiting. Render order
@@ -7,14 +7,12 @@ import { Camera, Color, Motion, Scene, Shapes } from "effect-motion";
 export const scene = Scene.make(
 	function* () {
 		// a floor: a big Rect tilted back so it recedes toward the horizon
-		yield* Scene.instantiate(Shapes.Rect, {
-			x: -300,
-			y: 180,
-			z: -200,
+		yield* Scene.instantiate("Rect", {
+			position: S.vec3({ x: -300, y: 180, z: -200 }),
+			rotation: S.vec3({ x: Math.PI / 2.3 }),
 			width: 900,
 			height: 900,
-			rotX: Math.PI / 2.3,
-			fill: Color.hex("#232946"),
+			fillColor: Color.hex("#232946"),
 		});
 
 		// a scatter of cards at varied depths and colours. Same size in world
@@ -29,12 +27,14 @@ export const scene = Scene.make(
 		for (let i = 0; i < 18; i++) {
 			const col = i % 6;
 			const row = Math.floor(i / 6);
-			yield* Scene.instantiate(Shapes.Circle, {
-				x: 40 + col * 80,
-				y: 90 + row * 20,
-				z: -100 - i * 90, // each card deeper than the last
+			yield* Scene.instantiate("Circle", {
+				position: S.vec3({
+					x: 40 + col * 80,
+					y: 90 + row * 20,
+					z: -100 - i * 90,
+				}), // each card deeper than the last
 				radius: 26,
-				fill: palette[i % palette.length],
+				fillColor: palette[i % palette.length],
 			});
 		}
 
@@ -53,7 +53,7 @@ export const scene = Scene.make(
 			),
 		]);
 		// settle back to the resting view (z = a focal-length back, per identity)
-		const restZ = Camera.identity((yield* Scene.comp()).width).z;
+		const restZ = Runner.identityCameraView((yield* Scene.comp()).width).z;
 		yield* Scene.all([
 			cam.pipe(Motion.moveTo({ z: restZ }, "2.5 seconds", "easeInOutCubic")),
 			cam.pipe(

@@ -5,7 +5,7 @@ import {
 	type ChildProcess,
 	ChildProcessSpawner,
 } from "effect/unstable/process";
-import { Color, Scene, Shapes } from "effect-motion";
+import { Color, Entities as S, Scene } from "effect-motion";
 import { expect, it } from "vitest";
 import { Ffmpeg, Video } from "../src";
 
@@ -72,11 +72,10 @@ const mockSpawner = (record: SpawnRecord[], bytesOut?: number[]) => {
 // state plus one per tick)
 const EXPECTED_FRAMES = 4;
 const frameBody = function* () {
-	yield* Scene.instantiate(Shapes.Circle, {
-		x: 40,
-		y: 40,
+	yield* Scene.instantiate("Circle", {
+		position: S.vec3({ x: 40, y: 40 }),
 		radius: 20,
-		fill: Color.hex("#fde68a"),
+		fillColor: Color.hex("#fde68a"),
 	});
 	yield* Scene.tick;
 	yield* Scene.tick;
@@ -142,11 +141,10 @@ it("rejects odd output dimensions before spawning ffmpeg", async () => {
 it("caps an infinite scene with options.frames", async () => {
 	const infinite = Scene.make(
 		function* () {
-			yield* Scene.instantiate(Shapes.Circle, {
-				x: 10,
-				y: 10,
+			yield* Scene.instantiate("Circle", {
+				position: S.vec3({ x: 10, y: 10 }),
 				radius: 5,
-				fill: Color.hex("#fff"),
+				fillColor: Color.hex("#fff"),
 			});
 			while (true) {
 				yield* Scene.tick;

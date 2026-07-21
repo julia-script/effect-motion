@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import * as Physics from "../src/Physics";
 import type * as Runner from "../src/Runner";
 import * as Scene from "../src/Scene";
-import * as Shapes from "../src/Shapes";
+import * as S from "../src/schemas";
 import { unreachable } from "./support/raise";
 
 // runs resolve and returns the defect message it died with
@@ -74,7 +74,9 @@ const springXScene = (
 ) =>
 	runScene(
 		function* () {
-			const circle = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
+			const circle = yield* Scene.instantiate("Circle", {
+				position: S.vec3({ x: 0 }),
+			});
 			yield* Physics.springTo(
 				circle,
 				{ x: 100 },
@@ -82,7 +84,7 @@ const springXScene = (
 				settleTolerance as number,
 			);
 		},
-		(data) => data.x as number,
+		(data) => data.position.x as number,
 		settings,
 	);
 
@@ -113,13 +115,15 @@ describe("spring physics", () => {
 	it("record keys settle together", async () => {
 		const track = await runScene(
 			function* () {
-				const circle = yield* Scene.instantiate(Shapes.Circle, {
-					x: 0,
-					y: 0,
+				const circle = yield* Scene.instantiate("Circle", {
+					position: S.vec3({ x: 0, y: 0 }),
 				});
 				yield* circle.pipe(Physics.springTo({ x: 100, y: 40 }, "swing"));
 			},
-			(data) => ({ x: data.x as number, y: data.y as number }),
+			(data) => ({
+				x: data.position.x as number,
+				y: data.position.y as number,
+			}),
 		);
 		const last = track.at(-1) ?? unreachable();
 		expect(last).toEqual({ x: 100, y: 40 });
@@ -128,10 +132,12 @@ describe("spring physics", () => {
 	it("spring takes an explicit origin through the position lens", async () => {
 		const track = await runScene(
 			function* () {
-				const circle = yield* Scene.instantiate(Shapes.Circle, { x: 500 });
+				const circle = yield* Scene.instantiate("Circle", {
+					position: S.vec3({ x: 500 }),
+				});
 				yield* Physics.spring(circle, { x: 0 }, { x: 100 }, "smooth");
 			},
-			(data) => data.x as number,
+			(data) => data.position.x as number,
 		);
 		// starts from the explicit origin, not the current position
 		expect(track[0] ?? unreachable()).toBeLessThan(120);
@@ -141,10 +147,12 @@ describe("spring physics", () => {
 	it("springTo works data-first with the default spring", async () => {
 		const track = await runScene(
 			function* () {
-				const circle = yield* Scene.instantiate(Shapes.Circle, { x: 50 });
+				const circle = yield* Scene.instantiate("Circle", {
+					position: S.vec3({ x: 50 }),
+				});
 				yield* Physics.springTo(circle, { x: 150 });
 			},
-			(data) => data.x as number,
+			(data) => data.position.x as number,
 		);
 		expect(track.at(-1)).toBe(150);
 		expect(track[0] ?? unreachable()).toBeGreaterThan(50);

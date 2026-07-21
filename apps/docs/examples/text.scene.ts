@@ -1,15 +1,14 @@
-import { Color, Motion, Scene, Shapes } from "effect-motion";
+import { Color, Motion, Entities as S, Scene } from "effect-motion";
 
 // Text is a plain-string leaf; alignment and styling stay entity-level.
 export const scene = Scene.make(
 	function* () {
-		const title = yield* Scene.instantiate(Shapes.Text, {
+		const title = yield* Scene.instantiate("Text", {
+			position: S.vec3({ x: 250, y: 150 }),
 			text: "effect-motion with Effect",
-			x: 250,
-			y: 150,
 			fontSize: 8,
 			opacity: 0,
-			fill: Color.hex("#7f5af0"),
+			fillColor: Color.hex("#7f5af0"),
 			textAnchor: "middle",
 			baseline: "middle",
 		});

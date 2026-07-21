@@ -3,7 +3,7 @@ import * as Stream from "effect/Stream";
 import { describe, expect, it } from "vitest";
 import * as Motion from "../src/Motion";
 import * as Scene from "../src/Scene";
-import * as Shapes from "../src/Shapes";
+import * as S from "../src/schemas";
 import * as Time from "../src/Time";
 import { unreachable } from "./support/raise";
 import { whileInputBelow } from "./support/schedule";
@@ -125,17 +125,19 @@ const trackX = async (
 		const entry = Object.entries(frame.instances).find(
 			([id]) => id !== frame.root,
 		)?.[1];
-		return ((entry ?? unreachable()).data as { x: number }).x;
+		return (entry ?? unreachable()).data.position.x;
 	});
 };
 
 describe("Scene.repeat", () => {
 	it("spaced: gap measured from run completion, restart from schedule target", async () => {
 		const track = await trackX(function* () {
-			const circle = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
+			const circle = yield* Scene.instantiate("Circle", {
+				position: S.vec3({ x: 0 }),
+			});
 			// 30-frame animation, repeated once, 1 second after it completes
 			yield* Scene.repeat(
-				Motion.tween(circle, { x: 0 }, { x: 100 }, "0.5 seconds"),
+				Motion.move(circle, { x: 0 }, { x: 100 }, "0.5 seconds"),
 				Schedule.spaced("1 second").pipe(Schedule.upTo({ times: 1 })),
 			);
 		});
@@ -151,12 +153,14 @@ describe("Scene.repeat", () => {
 
 	it("fixed: cadence catch-up, runs never overlap", async () => {
 		const track = await trackX(function* () {
-			const circle = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
+			const circle = yield* Scene.instantiate("Circle", {
+				position: S.vec3({ x: 0 }),
+			});
 			// 30-frame (0.5s) animation on a 0.25s fixed cadence: the cadence
 			// anchors at run 1's completion (500ms), so run 2 starts at 750ms;
 			// from then on the schedule is behind and runs are back-to-back
 			yield* Scene.repeat(
-				Motion.tween(circle, { x: 0 }, { x: 100 }, "0.5 seconds"),
+				Motion.move(circle, { x: 0 }, { x: 100 }, "0.5 seconds"),
 				Schedule.fixed("0.25 seconds").pipe(Schedule.upTo({ times: 2 })),
 			);
 		});
@@ -172,7 +176,7 @@ describe("Scene.repeat", () => {
 	it("recurs(2) runs the effect exactly 3 times", async () => {
 		let runs = 0;
 		await trackX(function* () {
-			yield* Scene.instantiate(Shapes.Circle, { x: 0 });
+			yield* Scene.instantiate("Circle", { position: S.vec3({ x: 0 }) });
 			yield* Scene.repeat(
 				Effect.gen(function* () {
 					runs++;
@@ -187,7 +191,7 @@ describe("Scene.repeat", () => {
 	it("feeds the run result to the schedule as input", async () => {
 		let n = 0;
 		await trackX(function* () {
-			yield* Scene.instantiate(Shapes.Circle, { x: 0 });
+			yield* Scene.instantiate("Circle", { position: S.vec3({ x: 0 }) });
 			yield* Scene.repeat(
 				Effect.gen(function* () {
 					yield* Scene.tick;
@@ -203,7 +207,7 @@ describe("Scene.repeat", () => {
 	it("a failing run fails immediately without another run", async () => {
 		let runs = 0;
 		const attempt = trackX(function* () {
-			yield* Scene.instantiate(Shapes.Circle, { x: 0 });
+			yield* Scene.instantiate("Circle", { position: S.vec3({ x: 0 }) });
 			yield* Scene.repeat(
 				Effect.gen(function* () {
 					runs++;

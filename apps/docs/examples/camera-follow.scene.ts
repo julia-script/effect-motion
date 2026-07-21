@@ -1,4 +1,4 @@
-import { Camera, Color, Motion, Scene, Shapes } from "effect-motion";
+import { Camera, Color, Motion, Entities as S, Scene } from "effect-motion";
 
 // Two subjects, one camera. Follow the first, hand off to the second with
 // an eased lookAt — a RETARGETED tween, so it lands exactly on the moving
@@ -13,27 +13,26 @@ export const scene = Scene.make(
 		for (let i = 0; i < 24; i++) {
 			const col = i % 6;
 			const row = Math.floor(i / 6);
-			yield* Scene.instantiate(Shapes.Circle, {
-				x: 40 + col * 84,
-				y: 40 + row * 74,
-				z: -150 - ((i * 137) % 500),
+			yield* Scene.instantiate("Circle", {
+				position: S.vec3({
+					x: 40 + col * 84,
+					y: 40 + row * 74,
+					z: -150 - ((i * 137) % 500),
+				}),
 				radius: 3,
-				fill: Color.hex("#3d4266"),
+				fillColor: Color.hex("#3d4266"),
 			});
 		}
 
-		const a = yield* Scene.instantiate(Shapes.Circle, {
-			x: 80,
-			y: 120,
+		const a = yield* Scene.instantiate("Circle", {
+			position: S.vec3({ x: 80, y: 120 }),
 			radius: 14,
-			fill: Color.hex("#e53170"),
+			fillColor: Color.hex("#e53170"),
 		});
-		const b = yield* Scene.instantiate(Shapes.Circle, {
-			x: 380,
-			y: 210,
-			z: -400,
+		const b = yield* Scene.instantiate("Circle", {
+			position: S.vec3({ x: 380, y: 210, z: -400 }),
 			radius: 14,
-			fill: Color.hex("#ff8906"),
+			fillColor: Color.hex("#ff8906"),
 		});
 
 		const cam = yield* Scene.camera;

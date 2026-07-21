@@ -4,11 +4,11 @@ import { describe, expect, it } from "vitest";
 import * as Color from "../src/Color";
 import type * as Runner from "../src/Runner";
 import * as Scene from "../src/Scene";
-import * as Shapes from "../src/Shapes";
+import * as S from "../src/schemas";
 
 const oneFrameScene = (meta?: Partial<Runner.CompConfig>) =>
 	Scene.make(function* () {
-		yield* Scene.instantiate(Shapes.Circle, { x: 5, y: 6 });
+		yield* Scene.instantiate("Circle", { position: S.vec3({ x: 5, y: 6 }) });
 		yield* Scene.tick;
 	}, meta);
 

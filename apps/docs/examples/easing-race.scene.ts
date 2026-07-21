@@ -1,31 +1,28 @@
-import { Color, Motion, Scene, Shapes } from "effect-motion";
+import { Color, Motion, Entities as S, Scene } from "effect-motion";
 
 // same distance, same duration — only the pacing differs
 export const scene = Scene.make(
 	function* () {
-		const linear = yield* Scene.instantiate(Shapes.Circle, {
-			x: 40,
-			y: 70,
+		const linear = yield* Scene.instantiate("Circle", {
+			position: S.vec3({ x: 40, y: 70 }),
 			radius: 14,
-			fill: Color.hex("#7f5af0"),
+			fillColor: Color.hex("#7f5af0"),
 		});
-		const cubic = yield* Scene.instantiate(Shapes.Circle, {
-			x: 40,
-			y: 150,
+		const cubic = yield* Scene.instantiate("Circle", {
+			position: S.vec3({ x: 40, y: 150 }),
 			radius: 14,
-			fill: Color.hex("#2cb67d"),
+			fillColor: Color.hex("#2cb67d"),
 		});
-		const expo = yield* Scene.instantiate(Shapes.Circle, {
-			x: 40,
-			y: 230,
+		const expo = yield* Scene.instantiate("Circle", {
+			position: S.vec3({ x: 40, y: 230 }),
 			radius: 14,
-			fill: Color.hex("tomato"),
+			fillColor: Color.hex("tomato"),
 		});
 
 		yield* Scene.all([
-			Motion.tweenTo(linear, { x: 460 }, "2 seconds"),
-			Motion.tweenTo(cubic, { x: 460 }, "2 seconds", "easeInOutCubic"),
-			Motion.tweenTo(expo, { x: 460 }, "2 seconds", "easeOutExpo"),
+			Motion.moveTo(linear, { x: 460 }, "2 seconds"),
+			Motion.moveTo(cubic, { x: 460 }, "2 seconds", "easeInOutCubic"),
+			Motion.moveTo(expo, { x: 460 }, "2 seconds", "easeOutExpo"),
 		]);
 	},
 	{ width: 500, height: 300, backgroundColor: Color.rgba(22, 22, 29) },

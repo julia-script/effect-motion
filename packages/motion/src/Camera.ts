@@ -171,14 +171,12 @@ const lookAtImpl = Effect.fnUntraced(function* (
 	for (let i = 1; i <= frames; i++) {
 		const t = timingFn(i / frames);
 		const p = yield* read;
-		yield* Scene.update(
-			cam,
-			(d) =>
-				setPoi(d, {
-					x: start.x + (p.x - start.x) * t,
-					y: start.y + (p.y - start.y) * t,
-					z: start.z + (p.z - start.z) * t,
-				}) as typeof d,
+		yield* Scene.update(cam, (d) =>
+			setPoi(d, {
+				x: start.x + (p.x - start.x) * t,
+				y: start.y + (p.y - start.y) * t,
+				z: start.z + (p.z - start.z) * t,
+			}),
 		);
 		yield* Scene.tick;
 	}
@@ -288,10 +286,14 @@ const orbitImpl = Effect.fnUntraced(function* (
 		// POI read from live data: orbiting a moving POI stays centered on it
 		const p = poiOrDie(data);
 		const angle = startAzimuth + (to - startAzimuth) * t;
-		return Object.assign({}, d, {
-			x: p.x + radius * Math.sin(angle) - origin.x,
-			z: p.z + radius * Math.cos(angle),
-		}) as typeof d;
+		return {
+			...d,
+			position: S.vec3({
+				x: p.x + radius * Math.sin(angle) - origin.x,
+				y: d.position.y,
+				z: p.z + radius * Math.cos(angle),
+			}),
+		};
 	});
 });
 
@@ -377,11 +379,14 @@ const dollyImpl = Effect.fnUntraced(function* (
 		const data = d;
 		const p = poiOrDie(data);
 		const dist = d0 + (to - d0) * t;
-		return Object.assign({}, d, {
-			x: p.x + u.x * dist - origin.x,
-			y: p.y + u.y * dist - origin.y,
-			z: p.z + u.z * dist,
-		}) as typeof d;
+		return {
+			...d,
+			position: S.vec3({
+				x: p.x + u.x * dist - origin.x,
+				y: p.y + u.y * dist - origin.y,
+				z: p.z + u.z * dist,
+			}),
+		};
 	});
 });
 

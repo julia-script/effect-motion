@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { NodeServices } from "@effect/platform-node";
 import { Effect } from "effect";
-import { Color, Scene, Shapes } from "effect-motion";
+import { Color, Entities as S, Scene } from "effect-motion";
 import { afterAll, expect, it } from "vitest";
 
 // Encoding uses the bundled ffmpeg-static binary, so no system ffmpeg is
@@ -28,18 +28,16 @@ afterAll(() => {
 // import after gate check so the module still loads when skipped
 const scene = Scene.make(
 	function* () {
-		yield* Scene.instantiate(Shapes.Circle, {
-			x: 100,
-			y: 60,
+		yield* Scene.instantiate("Circle", {
+			position: S.vec3({ x: 100, y: 60 }),
 			radius: 30,
-			fill: Color.hex("#fde68a"),
+			fillColor: Color.hex("#fde68a"),
 		});
-		yield* Scene.instantiate(Shapes.Rect, {
-			x: 20,
-			y: 20,
+		yield* Scene.instantiate("Rect", {
+			position: S.vec3({ x: 20, y: 20 }),
 			width: 40,
 			height: 40,
-			fill: Color.hex("#7c3aed"),
+			fillColor: Color.hex("#7c3aed"),
 		});
 		for (let i = 0; i < 9; i++) yield* Scene.tick;
 	},
@@ -91,7 +89,7 @@ it.runIf(canVerify)(
 		const {
 			Image,
 			Scene: SceneMod,
-			Shapes: ShapesMod,
+			Entities: EntitiesMod,
 		} = await import("effect-motion");
 		const { encodePng } = await import("@effect-motion/renderer/node");
 
@@ -106,10 +104,9 @@ it.runIf(canVerify)(
 		const withImage = SceneMod.make(
 			function* () {
 				const dot = yield* Dot;
-				yield* SceneMod.instantiate(ShapesMod.Image, {
+				yield* SceneMod.instantiate("Image", {
 					image: dot,
-					x: 30,
-					y: 30,
+					position: EntitiesMod.vec3({ x: 30, y: 30 }),
 					width: 40,
 					height: 40,
 				});

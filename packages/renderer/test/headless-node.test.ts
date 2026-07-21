@@ -1,6 +1,6 @@
 import { Effect } from "effect";
 import * as Stream from "effect/Stream";
-import { Color, Scene, Shapes } from "effect-motion";
+import { Color, Entities as S, Scene } from "effect-motion";
 import { describe, expect, it } from "vitest";
 import * as NodeRenderer from "../src/node.js";
 import { unreachable } from "./support/raise.js";
@@ -29,11 +29,10 @@ const framesOf = (
 describe("headless Dawn rendering", () => {
 	it("renders a frame to a PNG with content", async () => {
 		const frames = await framesOf(function* () {
-			yield* Scene.instantiate(Shapes.Circle, {
-				x: 64,
-				y: 32,
+			yield* Scene.instantiate("Circle", {
+				position: S.vec3({ x: 64, y: 32 }),
 				radius: 20,
-				fill: Color.rgba(255, 60, 60),
+				fillColor: Color.rgba(255, 60, 60),
 			});
 			yield* Scene.tick;
 		});
@@ -60,11 +59,10 @@ describe("headless Dawn rendering", () => {
 
 	it("readback rgba shows both background and circle pixels", async () => {
 		const frames = await framesOf(function* () {
-			yield* Scene.instantiate(Shapes.Circle, {
-				x: 64,
-				y: 32,
+			yield* Scene.instantiate("Circle", {
+				position: S.vec3({ x: 64, y: 32 }),
 				radius: 20,
-				fill: Color.rgba(255, 60, 60),
+				fillColor: Color.rgba(255, 60, 60),
 			});
 			yield* Scene.tick;
 		});

@@ -3,7 +3,7 @@ import * as Stream from "effect/Stream";
 import { describe, expect, it } from "vitest";
 import * as Motion from "../src/Motion";
 import * as Scene from "../src/Scene";
-import * as Shapes from "../src/Shapes";
+import * as S from "../src/schemas";
 import { whileInputBelow } from "./support/schedule";
 
 // runs a scene and returns, per frame, the non-root instances' data in
@@ -27,63 +27,77 @@ const collectFrames = async (
 describe("Scene.all", () => {
 	it("runs effects in lockstep parallel", async () => {
 		const frames = await collectFrames(function* () {
-			const a = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
-			const b = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
+			const a = yield* Scene.instantiate("Circle", {
+				position: S.vec3({ x: 0 }),
+			});
+			const b = yield* Scene.instantiate("Circle", {
+				position: S.vec3({ x: 0 }),
+			});
 			yield* Scene.all([
-				Motion.tween(a, { x: 0 }, { x: 100 }, "0.5 seconds"),
-				Motion.tween(b, { x: 0 }, { x: 100 }, "0.5 seconds"),
+				Motion.move(a, { x: 0 }, { x: 100 }, "0.5 seconds"),
+				Motion.move(b, { x: 0 }, { x: 100 }, "0.5 seconds"),
 			]);
 		});
 		expect(frames).toHaveLength(31);
-		expect(frames.at(-1)?.[0]?.x).toBe(100);
-		expect(frames.at(-1)?.[1]?.x).toBe(100);
+		expect(frames.at(-1)?.[0]?.position.x).toBe(100);
+		expect(frames.at(-1)?.[1]?.position.x).toBe(100);
 		// truly concurrent: both mid-flight on the same frame
-		expect(frames[15]?.[0]?.x).toBeGreaterThan(0);
-		expect(frames[15]?.[1]?.x).toBeGreaterThan(0);
+		expect(frames[15]?.[0]?.position.x).toBeGreaterThan(0);
+		expect(frames[15]?.[1]?.position.x).toBeGreaterThan(0);
 	});
 });
 
 describe("Scene.chain", () => {
 	it("items run one at a time with schedule-paced rests — never overlapping", async () => {
 		const frames = await collectFrames(function* () {
-			const a = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
-			const b = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
+			const a = yield* Scene.instantiate("Circle", {
+				position: S.vec3({ x: 0 }),
+			});
+			const b = yield* Scene.instantiate("Circle", {
+				position: S.vec3({ x: 0 }),
+			});
 			yield* Scene.chain(
 				[
-					Motion.tween(a, { x: 0 }, { x: 100 }, "0.5 seconds"),
-					Motion.tween(b, { x: 0 }, { x: 100 }, "0.5 seconds"),
+					Motion.move(a, { x: 0 }, { x: 100 }, "0.5 seconds"),
+					Motion.move(b, { x: 0 }, { x: 100 }, "0.5 seconds"),
 				],
 				Schedule.spaced("0.5 seconds"),
 			);
 		});
 		// item 1: 0..29 — rest: 30..59 — item 2: 60..89 — settle: 90
 		expect(frames).toHaveLength(91);
-		expect(frames[29]?.[0]?.x).toBe(100);
-		expect(frames[59]?.[1]?.x).toBe(0); // b untouched through the rest
-		expect(frames[60]?.[1]?.x).toBeGreaterThan(0); // b starts at frame 60
-		expect(frames.at(-1)?.[1]?.x).toBe(100);
+		expect(frames[29]?.[0]?.position.x).toBe(100);
+		expect(frames[59]?.[1]?.position.x).toBe(0); // b untouched through the rest
+		expect(frames[60]?.[1]?.position.x).toBeGreaterThan(0); // b starts at frame 60
+		expect(frames.at(-1)?.[1]?.position.x).toBe(100);
 	});
 
 	it("without a schedule, plain sequential composition", async () => {
 		const frames = await collectFrames(function* () {
-			const a = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
-			const b = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
+			const a = yield* Scene.instantiate("Circle", {
+				position: S.vec3({ x: 0 }),
+			});
+			const b = yield* Scene.instantiate("Circle", {
+				position: S.vec3({ x: 0 }),
+			});
 			yield* Scene.chain([
-				Motion.tween(a, { x: 0 }, { x: 100 }, "0.5 seconds"),
-				Motion.tween(b, { x: 0 }, { x: 100 }, "0.5 seconds"),
+				Motion.move(a, { x: 0 }, { x: 100 }, "0.5 seconds"),
+				Motion.move(b, { x: 0 }, { x: 100 }, "0.5 seconds"),
 			]);
 		});
 		expect(frames).toHaveLength(61);
-		expect(frames[29]?.[1]?.x).toBe(0);
-		expect(frames[30]?.[1]?.x).toBeGreaterThan(0); // b right after a, no gap
+		expect(frames[29]?.[1]?.position.x).toBe(0);
+		expect(frames[30]?.[1]?.position.x).toBeGreaterThan(0); // b right after a, no gap
 	});
 
 	it("schedule exhaustion skips remaining items, observably", async () => {
 		let completed = 0;
 		const spawn = () =>
 			Effect.gen(function* () {
-				const c = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
-				yield* Motion.tween(c, { x: 0 }, { x: 100 }, "166 millis");
+				const c = yield* Scene.instantiate("Circle", {
+					position: S.vec3({ x: 0 }),
+				});
+				yield* Motion.move(c, { x: 0 }, { x: 100 }, "166 millis");
 			}) as never;
 		const frames = await collectFrames(function* () {
 			const result = yield* Scene.chain(
@@ -105,7 +119,7 @@ describe("Scene.chain", () => {
 			}) as never;
 		let completed = 0;
 		await collectFrames(function* () {
-			yield* Scene.instantiate(Shapes.Circle, { x: 0 });
+			yield* Scene.instantiate("Circle", { position: S.vec3({ x: 0 }) });
 			const result = yield* Scene.chain(
 				[item(), item(), item(), item(), item()],
 				whileInputBelow(3),
@@ -121,14 +135,20 @@ describe("Scene.chain", () => {
 describe("Scene.stagger", () => {
 	it("staggers starts on exact frames; pacing never delays completion", async () => {
 		const frames = await collectFrames(function* () {
-			const a = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
-			const b = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
-			const c = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
+			const a = yield* Scene.instantiate("Circle", {
+				position: S.vec3({ x: 0 }),
+			});
+			const b = yield* Scene.instantiate("Circle", {
+				position: S.vec3({ x: 0 }),
+			});
+			const c = yield* Scene.instantiate("Circle", {
+				position: S.vec3({ x: 0 }),
+			});
 			yield* Scene.stagger(
 				[
-					Motion.tween(a, { x: 0 }, { x: 100 }, "0.5 seconds"),
-					Motion.tween(b, { x: 0 }, { x: 100 }, "0.5 seconds"),
-					Motion.tween(c, { x: 0 }, { x: 100 }, "0.5 seconds"),
+					Motion.move(a, { x: 0 }, { x: 100 }, "0.5 seconds"),
+					Motion.move(b, { x: 0 }, { x: 100 }, "0.5 seconds"),
+					Motion.move(c, { x: 0 }, { x: 100 }, "0.5 seconds"),
 				],
 				Schedule.spaced("0.25 seconds"),
 			);
@@ -136,24 +156,26 @@ describe("Scene.stagger", () => {
 		// releases at frames 0, 15, 30 — last branch ends at 60, settle at 61.
 		// The schedule itself is infinite: it must not add a tail.
 		expect(frames).toHaveLength(61);
-		expect(frames[14]?.[1]?.x).toBe(0); // b not yet released
-		expect(frames[15]?.[1]?.x).toBeGreaterThan(0); // b starts at frame 15
-		expect(frames[29]?.[2]?.x).toBe(0);
-		expect(frames[30]?.[2]?.x).toBeGreaterThan(0); // c starts at frame 30
+		expect(frames[14]?.[1]?.position.x).toBe(0); // b not yet released
+		expect(frames[15]?.[1]?.position.x).toBeGreaterThan(0); // b starts at frame 15
+		expect(frames[29]?.[2]?.position.x).toBe(0);
+		expect(frames[30]?.[2]?.position.x).toBeGreaterThan(0); // c starts at frame 30
 		// overlap: a and b animate concurrently
-		expect(frames[20]?.[0]?.x).toBeGreaterThan(0);
-		expect(frames[20]?.[0]?.x).toBeLessThan(100);
-		expect(frames[20]?.[1]?.x).toBeGreaterThan(0);
-		expect(frames[20]?.[1]?.x).toBeLessThan(100);
-		expect(frames.at(-1)?.every((d) => d.x === 100)).toBe(true);
+		expect(frames[20]?.[0]?.position.x).toBeGreaterThan(0);
+		expect(frames[20]?.[0]?.position.x).toBeLessThan(100);
+		expect(frames[20]?.[1]?.position.x).toBeGreaterThan(0);
+		expect(frames[20]?.[1]?.position.x).toBeLessThan(100);
+		expect(frames.at(-1)?.every((d) => d.position.x === 100)).toBe(true);
 	});
 
 	it("schedule exhaustion skips the remaining effects, observably", async () => {
 		let released = 0;
 		const spawn = () =>
 			Effect.gen(function* () {
-				const c = yield* Scene.instantiate(Shapes.Circle, { x: 0 });
-				yield* Motion.tween(c, { x: 0 }, { x: 100 }, "166 millis");
+				const c = yield* Scene.instantiate("Circle", {
+					position: S.vec3({ x: 0 }),
+				});
+				yield* Motion.move(c, { x: 0 }, { x: 100 }, "166 millis");
 			}) as never;
 		const frames = await collectFrames(function* () {
 			const result = yield* Scene.stagger(

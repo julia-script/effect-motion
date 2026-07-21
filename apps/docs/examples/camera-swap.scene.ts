@@ -1,4 +1,4 @@
-import { Camera, Color, Motion, Scene, Shapes } from "effect-motion";
+import { Color, Motion, Runner, Entities as S, Scene } from "effect-motion";
 
 // Two cameras, one cut. We OPEN on the wide two-shot so the viewer sees both
 // subjects and where they are — that's the reference frame that makes the cut
@@ -7,23 +7,21 @@ import { Camera, Color, Motion, Scene, Shapes } from "effect-motion";
 // B eases back out to the wide shot.
 export const scene = Scene.make(
 	function* () {
-		const left = yield* Scene.instantiate(Shapes.Circle, {
-			x: 130,
-			y: 150,
+		const left = yield* Scene.instantiate("Circle", {
+			position: S.vec3({ x: 130, y: 150 }),
 			radius: 24,
-			fill: Color.hex("#e53170"),
+			fillColor: Color.hex("#e53170"),
 		});
-		const right = yield* Scene.instantiate(Shapes.Circle, {
-			x: 370,
-			y: 150,
+		const right = yield* Scene.instantiate("Circle", {
+			position: S.vec3({ x: 370, y: 150 }),
 			radius: 24,
-			fill: Color.hex("#2cb67d"),
+			fillColor: Color.hex("#2cb67d"),
 		});
 
 		const camA = yield* Scene.camera;
 		// the resting view (focal length + z) is width-relative — read it off the
 		// identity view; the push-in framing is 1.9× the resting focal length
-		const rest = Camera.identity((yield* Scene.comp()).width);
+		const rest = Runner.identityCameraView((yield* Scene.comp()).width);
 		const tight = rest.focalLength * 1.9;
 		// hold the wide two-shot so the viewer registers both subjects first
 		yield* Motion.wait("900 millis");
@@ -47,7 +45,7 @@ export const scene = Scene.make(
 		// CUT: swap to camera B, pre-framed on the RIGHT subject at the same FOV.
 		// z stays at the resting distance so B's framing matches A's push-in (an
 		// unset z would default to a focal-length back — the wide resting view).
-		const camB = yield* Scene.instantiate(Camera.Camera, {
+		const camB = yield* Scene.instantiate("Camera", {
 			x: 120,
 			y: 0,
 			z: rest.z,
