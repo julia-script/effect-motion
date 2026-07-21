@@ -152,8 +152,13 @@ Ordering follows the migration plan in `design.md`: capture a determinism baseli
 
 ## 9. Specs
 
-- [ ] 9.1 Sync the deltas: `openspec sync --change close-the-entity-world`
-- [ ] 9.2 Confirm the `traits` capability is removed and its behavioral scenarios live in `entity-transform`
-- [ ] 9.3 Confirm the resolved drifts: `instance-visibility` no longer specifies `$visible`, `object-depth` no longer requires `~transform3d`
-- [ ] 9.4 Note the remaining known-stale `shapes` requirements (`Visible defaults` specifies black fills and SVG output; `Rect corner radii` references SVG semantics) — pre-existing drift, deliberately NOT fixed here; propose a separate cleanup change
-- [ ] 9.5 Archive the change: `openspec archive close-the-entity-world`
+- [x] 9.1 Sync the deltas: `openspec sync --change close-the-entity-world`
+  - archived: specs synced (entity-model/entity-transform created, 4 updated, traits removed)
+- [x] 9.2 Confirm the `traits` capability is removed and its behavioral scenarios live in `entity-transform`
+  - traits capability deleted from openspec/specs/
+- [x] 9.3 Confirm the resolved drifts: `instance-visibility` no longer specifies `$visible`, `object-depth` no longer requires `~transform3d`
+  - no $visible or ~transform3d remain in the synced specs
+- [x] 9.4 Note the remaining known-stale `shapes` requirements (`Visible defaults` specifies black fills and SVG output; `Rect corner radii` references SVG semantics) — pre-existing drift, deliberately NOT fixed here; propose a separate cleanup change
+  - Visible defaults + (pre-existing) SVG framing left for a separate cleanup change
+- [x] 9.5 Archive the change: `openspec archive close-the-entity-world`
+  - archived as 2026-07-21-close-the-entity-world
