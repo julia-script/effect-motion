@@ -145,12 +145,36 @@ namespaces, so consumers import the actor, not its members:
 
 ```ts
 export * as Scene from "./Scene.js";
-// →  import { Scene } from "effect-motion"
+// →  import * as Scene from "effect-motion/Scene"
 ```
 
 Consequences: no god-modules grouping unrelated helpers ("utils.ts",
 "helpers.ts"), no class-per-entity, and a new concept means a new module
 plus one barrel line — not a folder of five files.
+
+**Prefer deep per-actor imports over the barrel** — one `import * as` per
+actor, from the actor's own path. This holds for both `effect` itself and
+this library. The barrel exists so a module *can* be imported by name; the
+deep import is what you reach for. It keeps each actor a distinct
+top-level binding (not one destructured `{ … }` line that grows unbounded),
+matches how `effect`'s own docs and source import, and tree-shakes without
+relying on the bundler seeing through a re-export.
+
+```ts
+// PREFER THIS
+import * as Camera from "effect-motion/Camera";
+import * as Color from "effect-motion/Color";
+import * as Entity from "effect-motion/Entity";
+import * as Scene from "effect-motion/Scene";
+
+import * as Effect from "effect/Effect";
+import * as Schema from "effect/Schema";
+import * as Option from "effect/Option";
+
+// OVER THIS
+import { Camera, Color, Entity, Scene } from "effect-motion";
+import { Effect, Schema, Option } from "effect";
+```
 
 ## Wrap external APIs in Effect
 
