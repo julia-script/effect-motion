@@ -1,5 +1,5 @@
 import { Effect, Schedule } from "effect";
-import { Color, Motion, Entities as S, Scene } from "effect-motion";
+import { Color, Motion, Entity as S, Scene } from "effect-motion";
 
 // background: loops for the scene's duration and is interrupted at the
 // end. fork: overlapping spawns whose last survivor defines the end.

@@ -1,4 +1,4 @@
-import { Color, Motion, Physics, Entities as S, Scene } from "effect-motion";
+import { Color, Motion, Physics, Entity as S, Scene } from "effect-motion";
 
 // no durations — springs run until they physically settle
 export const scene = Scene.make(

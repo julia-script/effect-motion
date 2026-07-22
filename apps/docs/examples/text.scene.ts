@@ -1,4 +1,4 @@
-import { Color, Motion, Entities as S, Scene } from "effect-motion";
+import { Color, Motion, Entity as S, Scene } from "effect-motion";
 
 // Text is a plain-string leaf; alignment and styling stay entity-level.
 export const scene = Scene.make(

@@ -1,4 +1,4 @@
-import { Color, Motion, Entities as S, Scene } from "effect-motion";
+import { Color, Motion, Entity as S, Scene } from "effect-motion";
 
 // same distance, same duration — only the pacing differs
 export const scene = Scene.make(

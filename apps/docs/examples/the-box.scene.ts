@@ -1,5 +1,5 @@
 import { Effect, Schedule } from "effect";
-import { Color, Motion, Entities as S, type Timing } from "effect-motion";
+import { Color, Motion, Entity as S, type Timing } from "effect-motion";
 import * as Scene from "effect-motion/Scene";
 
 // ─── The Box ────────────────────────────────────────────────────────────

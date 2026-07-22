@@ -4,9 +4,10 @@ import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import type * as Fiber from "effect/Fiber";
 import * as Color from "./Color.js";
+import * as Entity from "./Entity.js";
+import * as Instance from "./Instance.js";
 import * as Phaser from "./Phaser.js";
 import * as Projection from "./Projection.js";
-import * as S from "./schemas.js";
 import { ROOT_ID, Tree } from "./Tree.js";
 
 export const TypeId = "~motion/SceneRunner" as const;
@@ -59,7 +60,7 @@ export const defaultComp: CompConfig = {
 };
 
 /** a container instance — the only thing children may be mounted under */
-export type GroupInstance = S.Instance<S.ContainerTag>;
+export type GroupInstance = Instance.Instance<Entity.ContainerTag>;
 
 /**
  * A child in a polymorphic `children` list: a plain string (→ a `Text`),
@@ -69,8 +70,8 @@ export type GroupInstance = S.Instance<S.ContainerTag>;
  */
 export type Child =
 	| string
-	| S.Instance
-	| Effect.Effect<S.Instance, never, Runner>;
+	| Instance.Instance
+	| Effect.Effect<Instance.Instance, never, Runner>;
 
 /**
  * The input `instantiate` accepts: the entity's own make-input, except that
@@ -78,11 +79,11 @@ export type Child =
  * polymorphic {@link Child} list — the runner normalizes it to ids in list
  * order.
  */
-export type InstantiateProps<Tag extends S.EntityTag> = Omit<
-	S.MakeInput<Tag>,
+export type InstantiateProps<Tag extends Entity.EntityTag> = Omit<
+	Entity.MakeInput<Tag>,
 	"children"
 > &
-	(Tag extends S.ContainerTag
+	(Tag extends Entity.ContainerTag
 		? { readonly children?: ReadonlyArray<Child> }
 		: Record<never, never>);
 
@@ -116,7 +117,7 @@ const nodeNotFound = (id: string): never => {
  * the projection math keep the contract they already had.
  */
 const toCameraView = (
-	camera: S.EntityByTag<"Camera">,
+	camera: Entity.EntityByTag<"Camera">,
 ): Projection.CameraView & Projection.PointOfInterest => ({
 	x: camera.position.x,
 	y: camera.position.y,
@@ -142,11 +143,11 @@ export const identityCameraView = (
 ): Projection.CameraView & Projection.PointOfInterest =>
 	toCameraView(identityCamera(width));
 
-export const identityCamera = (width: number): S.EntityByTag<"Camera"> => {
+export const identityCamera = (width: number): Entity.EntityByTag<"Camera"> => {
 	const focalLength = Projection.defaultFocalLength(width);
 	const z = Projection.defaultCameraZ(focalLength);
-	return S.Camera.make({
-		position: S.vec3({ x: 0, y: 0, z }),
+	return Entity.Camera.make({
+		position: Entity.vec3({ x: 0, y: 0, z }),
 		focalLength,
 		focusDistance: z,
 		aperture: 0,
@@ -186,24 +187,24 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 		 */
 		const comps = new Map<string, CompConfig>();
 
-		const setDataUnsafe = <Tag extends S.EntityTag>(
-			instance: S.Instance<Tag>,
-			state: S.EntityByTag<Tag>,
+		const setDataUnsafe = <Tag extends Entity.EntityTag>(
+			instance: Instance.Instance<Tag>,
+			state: Entity.EntityByTag<Tag>,
 		): void => {
 			const entry = tree.getEntry(instance.id) ?? nodeNotFound(instance.id);
 			entry.state = state;
 		};
 
-		const getDataUnsafe = <Tag extends S.EntityTag>(
-			instance: S.Instance<Tag>,
-		): S.EntityByTag<Tag> | null => {
+		const getDataUnsafe = <Tag extends Entity.EntityTag>(
+			instance: Instance.Instance<Tag>,
+		): Entity.EntityByTag<Tag> | null => {
 			const entry = tree.getEntry(instance.id);
 			if (entry === null) {
 				return null;
 			}
 			// the instance's tag names the entry's state; the tree stores mixed
 			// tags, so this is the one place the two are reconciled
-			return entry.state as S.EntityByTag<Tag>;
+			return entry.state as Entity.EntityByTag<Tag>;
 		};
 
 		const resolvedSettings = {
@@ -215,14 +216,17 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 
 		// the root group: never rendered itself, holds the top level. Its
 		// entry is created by the tree itself.
-		const root: GroupInstance = S.makeInstance(ROOT_ID, "Group");
+		const root: GroupInstance = Instance.makeInstance(ROOT_ID, "Group");
 
 		// the active camera: an ordinary tree node (so the animators drive it),
 		// never rendered. A default resting camera is present from the start,
 		// so depth/zoom work with no author ceremony; `setCamera` swaps which
 		// instance is active.
 		tree.createNode(identityCamera(comp.width), "camera");
-		const camera: S.Instance<"Camera"> = S.makeInstance("camera", "Camera");
+		const camera: Instance.Instance<"Camera"> = Instance.makeInstance(
+			"camera",
+			"Camera",
+		);
 		let activeCameraId = camera.id;
 		const cameraState = (): Projection.CameraView &
 			Projection.PointOfInterest => {
@@ -237,7 +241,10 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 
 		// move `child` under `parent`: the tree detaches it from its current
 		// parent first, so it is never double-referenced.
-		const appendChild = (parent: GroupInstance, child: S.Instance): void => {
+		const appendChild = (
+			parent: GroupInstance,
+			child: Instance.Instance,
+		): void => {
 			const childEntry = tree.getEntry(child.id);
 			if (childEntry === null) {
 				throw new Error(`Runner: child "${child.id}" was destroyed`);
@@ -245,7 +252,10 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 			tree.appendChild(parent.id, childEntry);
 		};
 
-		const removeChild = (parent: GroupInstance, child: S.Instance): void => {
+		const removeChild = (
+			parent: GroupInstance,
+			child: Instance.Instance,
+		): void => {
 			const entry = tree.getEntry(child.id);
 			if (entry !== null && entry.parentId === parent.id) {
 				tree.removeFromParent(entry);
@@ -264,7 +274,7 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 					if (typeof child === "string") {
 						const text = yield* self.instantiate("Text", { text: child });
 						ids.push(text.id);
-					} else if (S.isInstance(child)) {
+					} else if (Instance.isInstance(child)) {
 						ids.push(child.id);
 					} else {
 						const resolved = yield* child;
@@ -276,10 +286,10 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 
 		const self = {
 			root,
-			instantiate: Effect.fnUntraced(function* <Tag extends S.EntityTag>(
+			instantiate: Effect.fnUntraced(function* <Tag extends Entity.EntityTag>(
 				kind: Tag,
 				props: InstantiateProps<Tag>,
-			): Effect.fn.Return<S.Instance<Tag>, never, Runner> {
+			): Effect.fn.Return<Instance.Instance<Tag>, never, Runner> {
 				const raw = props as Record<string, unknown>;
 				const children = Array.isArray(raw.children)
 					? (raw.children as ReadonlyArray<Child>)
@@ -297,14 +307,14 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 				// raw children never reach stored data: normalized ids are
 				// appended through the tree below, in list order
 				const { children: _children, ...rest } = raw;
-				const definition = S.getEntityDefinitionByTag(kind);
+				const definition = Entity.getEntityDefinitionByTag(kind);
 				const state = definition.make({
 					...rest,
 					...defaults,
-				} as never) as S.Entity;
+				} as never) as Entity.Entity;
 
 				const entry = tree.createNode(state);
-				const instance = S.makeInstance(entry.id, kind);
+				const instance = Instance.makeInstance(entry.id, kind);
 
 				// cameras are view state, not scene content: they live in the tree
 				// so the animators drive them, but must NOT be mounted under a
@@ -341,7 +351,7 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 				// the active camera lives in the tree so the animators drive it,
 				// but it is view state, not a renderable instance — omit it from
 				// the frame's instance map (its data is surfaced as `camera`)
-				const instances: Record<string, { data: S.Entity }> = {};
+				const instances: Record<string, { data: Entity.Entity }> = {};
 				for (const [id, entry] of Object.entries(tree.map)) {
 					if (id === activeCameraId) {
 						continue;
@@ -369,11 +379,11 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 			 * ambient parent like any instance. Delete with the particles
 			 * rewrite; see `particlesEscapeInstantiate`.
 			 */
-			instantiateEscape: Effect.fnUntraced(function* (state: S.Entity) {
+			instantiateEscape: Effect.fnUntraced(function* (state: Entity.Entity) {
 				const entry = tree.createNode(state);
 				const ambient = yield* CurrentParent;
 				tree.appendChild((ambient ?? root).id, entry);
-				return S.makeInstance(entry.id, state._tag);
+				return Instance.makeInstance(entry.id, state._tag);
 			}),
 
 			// declare the group at `id` to be a mounted scene with these bounds
@@ -389,11 +399,11 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 			camera,
 			// swap the active camera to another instance; its live data becomes
 			// the view on every subsequent frame
-			setCamera: (instance: S.Instance<"Camera">): void => {
+			setCamera: (instance: Instance.Instance<"Camera">): void => {
 				activeCameraId = instance.id;
 			},
 
-			destroy: (instance: S.Instance): void => {
+			destroy: (instance: Instance.Instance): void => {
 				// double-destroy is a no-op, like the old map-based delete
 				if (tree.getEntry(instance.id) === null) {
 					return;
@@ -424,7 +434,7 @@ const cameraDefaults = (
 	props: Record<string, unknown>,
 	width: number,
 ): Record<string, unknown> => {
-	const position = props.position as S.Vec3 | undefined;
+	const position = props.position as Entity.Vec3 | undefined;
 	const focalLength =
 		typeof props.focalLength === "number" && props.focalLength !== 0
 			? props.focalLength
@@ -432,7 +442,7 @@ const cameraDefaults = (
 	const restingZ = Projection.defaultCameraZ(focalLength);
 	return {
 		focalLength,
-		position: S.vec3({
+		position: Entity.vec3({
 			x: position?.x ?? 0,
 			y: position?.y ?? 0,
 			z: position?.z ?? restingZ,
@@ -471,27 +481,27 @@ export const PARTICLE_FIELD_TAG = "particles/ParticleField";
 export const particlesEscapeInstantiate = (
 	runner: Runner["Service"],
 	state: ParticlesState,
-): Effect.Effect<S.Instance, never, Runner> =>
+): Effect.Effect<Instance.Instance, never, Runner> =>
 	// bypasses the tag→EntityMap lookup, which by construction has no
 	// ParticleField. The state is stored verbatim; only particles read it.
 	runner.instantiateEscape({
 		...state,
 		_tag: PARTICLE_FIELD_TAG,
-	} as unknown as S.Entity);
+	} as unknown as Entity.Entity);
 
 /** read a non-union entity's state. Particles only. */
 export const particlesEscapeRead = <T>(
 	runner: Runner["Service"],
-	instance: S.Instance,
+	instance: Instance.Instance,
 ): T | null => runner.getDataUnsafe(instance) as unknown as T | null;
 
 /** write a non-union entity's state. Particles only. */
 export const particlesEscapeWrite = <T>(
 	runner: Runner["Service"],
-	instance: S.Instance,
+	instance: Instance.Instance,
 	state: T,
 ): void =>
 	runner.setDataUnsafe(
 		instance,
-		state as unknown as S.EntityByTag<S.EntityTag>,
+		state as unknown as Entity.EntityByTag<Entity.EntityTag>,
 	);

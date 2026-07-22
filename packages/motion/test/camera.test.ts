@@ -1,10 +1,10 @@
 import { Effect } from "effect";
 import * as Stream from "effect/Stream";
 import { describe, expect, it } from "vitest";
+import * as S from "../src/Entity";
 import * as Motion from "../src/Motion";
 import * as Runner from "../src/Runner";
 import * as Scene from "../src/Scene";
-import * as S from "../src/schemas";
 import { unreachable } from "./support/raise";
 
 type Entities = S.EntityByTag<"Circle"> | S.EntityByTag<"Group">;

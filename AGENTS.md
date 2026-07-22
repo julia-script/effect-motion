@@ -13,7 +13,7 @@ origin comes from:
 - `verb(instance, from, to, ...)` — **explicit origin**. Partial origins
   are filled from the current value.
 - `verbTo(instance, to, ...)` — **origin read from the instance** (via
-  its data or trait lens).
+  its `position`/`opacity` field).
 
 This holds across both engines: `tween`/`tweenTo` and `move`/`moveTo`,
 `fade`/`fadeTo` (duration + easing) as well as `spring`/`springTo`
@@ -33,56 +33,49 @@ value exactly as `moveTo` does.
 
 | layer | functions | operates on | value types |
 |---|---|---|---|
-| **raw** | `Motion.tween` / `tweenTo` | numeric fields by name | `Target<Data>` (inferred from the schema) |
-| **semantic** | `Motion.move`/`moveTo`, `Motion.fade`/`fadeTo`, `Physics.spring`/`springTo` | trait lenses | concrete (`{x?, y?}`, `number`) |
+| **raw** | `Motion.tween` / `tweenTo` | numeric fields by name | `Target<Tag>` (inferred from the entity's schema) |
+| **semantic** | `Motion.move`/`moveTo`, `Motion.fade`/`fadeTo`, `Physics.spring`/`springTo` | the `position` / `opacity` fields directly | concrete (`{x?, y?, z?}`, `number`) |
 
-Rule of thumb: **prefer the semantic helper when one exists** — it
-carries per-entity meaning (moving a Line translates both endpoints;
-moving a Group carries its subtree). Use `tween`/`tweenTo` for fields
-without a trait (`radius`, `width`, custom entity fields). Springy
-effects on raw fields use elastic/bounce *easings*, not physics.
+Rule of thumb: **prefer the semantic helper when one exists** — it moves
+the entity as one unit for free, because geometry is relative to
+`position` (moving a Line translates both endpoints; moving a Group
+carries its subtree). Use `tween`/`tweenTo` for fields without a semantic
+helper (`radius`, `width`, `fontSize`). Springy effects on raw fields use
+elastic/bounce *easings*, not physics.
 
-## Trait lenses (all-or-nothing)
+## No traits — geometry is relative to `position`
 
-A trait is a complete get/set lens declared on the entity:
+There is no lens layer. Every entity's position IS `data.position` (a
+`Vec3`), so what a trait used to abstract collapses into a plain field
+access. Two rules replace the trait system:
 
-```ts
-Entity.make("shapes/Thing", fields, {
-  "~position": {
-    get: (data) => ({ x: data.x, y: data.y }),
-    set: (data, value) => ({ ...data, x: value.x, y: value.y }),
-  },
-})
-```
+- **Geometry is relative to the entity's own `position`.** A `Line`
+  carries `start`/`end` as `Vec3` offsets from `position`; a `Path`
+  carries `commands` as offsets. So writing `position` alone translates
+  the whole shape rigidly — no per-entity compensation anywhere. This is
+  why traits became unnecessary rather than merely replaced.
+- **Applicability is gated by the tag, not a trait.** A semantic animator
+  states its requirement with `TagsWith<Field>` (`schemas.ts`): `fadeTo`
+  accepts `Instance<TagsWith<"opacity">>`, so fading a `Camera` (which has
+  no `opacity`) is a compile error naming the missing field. No runtime
+  trait lookup, no `~position`/`~opacity` keys, no lens objects.
 
-- `get` and `set` live in **one object per trait key** — a lone getter
-  or setter is unrepresentable by design. Entities may omit a trait
-  entirely, never half of one.
-- `set` receives the whole data and returns a **new immutable whole**;
-  each entity owns its semantics.
-- Current keys: `~position` (`{x, y}`), `~opacity` (number). Standard
-  x/y implementations come from `Shape2D.positionLens()` /
-  `Shape2D.opacityLens()`; write a custom lens only when semantics
-  differ (see `shapes/Line.ts`).
-- Detection is type-level (helpers constrain on the instance's traits;
-  calling `moveTo` on an untraited entity fails compilation) with a
-  runtime defect naming the entity and trait key as backstop.
-
-## Two-tier 3D positioning (planar vs skeletal)
+## 3D positioning (planar vs skeletal)
 
 Shapes occupy 3D space in one of two ways — never both on one shape:
 
-- **Planar** (Rect, Image, Text — content on a flat extent): anchor
-  `x/y/z` plus Euler orientation `rotX/rotY/rotZ`; the renderer projects
-  the plane's corners (the AE layer model).
+- **Planar** (Rect, Image, Text — content on a flat extent): `position`
+  plus Euler `rotation`; the renderer projects the plane's corners (the
+  AE layer model).
 - **Skeletal** (Line; Path when it goes 3D): every defining point is an
-  independent world point (`x/y/z`, `x2/y2/z2`), each projected with its
-  own depth. Skeletal shapes never get orientation fields — a segment is
-  parametrized by its endpoints, and tweening a point moves it in a
-  straight line (deriving an orientation instead would make tweens sweep
-  arcs).
-- The trait layer hides the split: `~position` moves ANY entity rigidly
-  as one unit. Only raw field vocabulary differs per tier.
+  offset from `position` (`Line.start`/`Line.end`; `Path.commands`), each
+  projected with its own depth. Skeletal shapes never get a meaningful
+  `rotation` — a segment is parametrized by its endpoints, and tweening a
+  point moves it in a straight line (deriving an orientation instead would
+  make tweens sweep arcs).
+- Either way, animating `position` moves the whole shape rigidly, because
+  the geometry is relative to it. Only raw field vocabulary differs per
+  tier.
 
 ## Call forms
 
@@ -370,7 +363,7 @@ route around it.
   springs snap exactly on settle.
 - Scenes are pure functions of `(scene, settings)` — no wall-clock, no
   `Math.random()` (seeded `Random` is provided to every scene).
-- Failures are loud: missing traits, invalid springs, unknown timing
+- Failures are loud: invalid springs, unknown timing
   names, and scene-graph violations die with defects naming the
   offender.
 - Determinism stops at the frame stream. Same seed + settings → same
@@ -417,6 +410,7 @@ representation of structure inside an entity's data.
   DOM semantics; append detaches from the current parent first (O(1) via
   tracked parent). There is no per-callsite `parent` argument.
 - **Builtin instance props are `$`-namespaced.** They live *beside* entity
-  data, not in the schema, so every entity has them uniformly. `$visible`
-  (default `true`) is the first; renderers skip `$visible: false`.
-  `Entity.make` rejects any schema field starting with `$`.
+  data uniformly via a shared mixin, so every entity has them. `visible`
+  (default `true`) is one such field; renderers skip `visible: false`. No
+  sigil namespace is reserved — the closed union has no user-declared
+  fields to collide with engine-owned ones.

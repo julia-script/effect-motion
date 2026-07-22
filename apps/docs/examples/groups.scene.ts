@@ -1,4 +1,4 @@
-import { Color, Motion, Physics, Entities as S, Scene } from "effect-motion";
+import { Color, Motion, Physics, Entity as S, Scene } from "effect-motion";
 
 // children live in the group's local coordinates: one motion moves them all.
 // structure is defined by the children list, not a parent argument.

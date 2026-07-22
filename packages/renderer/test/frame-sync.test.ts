@@ -1,7 +1,7 @@
 import { ThreeRaw as THREE, Scene as ThreeScene } from "@effect-motion/three";
 import { Effect, Exit } from "effect";
 import * as Stream from "effect/Stream";
-import { Color, Runner, Entities as S, Scene } from "effect-motion";
+import { Color, Runner, Entity as S, Scene } from "effect-motion";
 import { describe, expect, it } from "vitest";
 import { builtinRegistry } from "../src/Builtins.js";
 import type { Leaf, Retained } from "../src/EntityRenderer.js";

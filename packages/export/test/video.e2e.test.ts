@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { NodeServices } from "@effect/platform-node";
 import { Effect } from "effect";
-import { Color, Entities as S, Scene } from "effect-motion";
+import { Color, Entity as S, Scene } from "effect-motion";
 import { afterAll, expect, it } from "vitest";
 
 // Encoding uses the bundled ffmpeg-static binary, so no system ffmpeg is
@@ -89,7 +89,7 @@ it.runIf(canVerify)(
 		const {
 			Image,
 			Scene: SceneMod,
-			Entities: EntitiesMod,
+			Entity: EntitiesMod,
 		} = await import("effect-motion");
 		const { encodePng } = await import("@effect-motion/renderer/node");
 

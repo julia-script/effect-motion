@@ -1,4 +1,4 @@
-import { Color, Motion, Physics, Entities as S, Scene } from "effect-motion";
+import { Color, Motion, Physics, Entity as S, Scene } from "effect-motion";
 
 // An impact shake. The block falls and hits the ground on an exact frame
 // (a fixed-duration accelerating drop, so there's no spring settle-tail

@@ -1,4 +1,4 @@
-import { Color, Motion, Entities as S, Scene } from "effect-motion";
+import { Color, Motion, Entity as S, Scene } from "effect-motion";
 
 // Path in 3D: commands are M/L/Z points local to the anchor, and every
 // point can carry its own z — the renderer projects each point with its

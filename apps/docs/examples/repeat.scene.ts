@@ -1,5 +1,5 @@
 import { Schedule } from "effect";
-import { Color, Motion, Entities as S, Scene } from "effect-motion";
+import { Color, Motion, Entity as S, Scene } from "effect-motion";
 
 // Scene.repeat re-runs a motion on a schedule, in scene time: the first
 // run is immediate, the schedule paces the gaps after each run

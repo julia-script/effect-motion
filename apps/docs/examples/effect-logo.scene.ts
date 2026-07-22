@@ -4,7 +4,7 @@ import {
 	Motion,
 	Physics,
 	Runner,
-	Entities as S,
+	Entity as S,
 	Scene,
 } from "effect-motion";
 

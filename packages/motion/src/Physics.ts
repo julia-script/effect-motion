@@ -1,9 +1,10 @@
 import * as Effect from "effect/Effect";
 import { dual } from "effect/Function";
+import * as Entity from "./Entity.js";
+import * as Instance from "./Instance.js";
 import type * as Motion from "./Motion.js";
 import * as Runner from "./Runner.js";
 import * as Scene from "./Scene.js";
-import * as S from "./schemas.js";
 
 /**
  * Physics-based motion: durationless animations that carry momentum and
@@ -146,17 +147,17 @@ const simulate = Effect.fnUntraced(function* <
 });
 
 const springPosition = Effect.fnUntraced(function* <
-	Tag extends S.TagsWith<"position">,
+	Tag extends Entity.TagsWith<"position">,
 	E = never,
 	R = never,
 >(
-	instanceOrEffect: S.InstanceOrEffect<Tag, E, R>,
+	instanceOrEffect: Instance.InstanceOrEffect<Tag, E, R>,
 	from: Partial<Motion.Position> | undefined,
 	to: Partial<Motion.Position>,
 	springInput?: SpringInput,
 	settleTolerance?: number,
 ) {
-	const instance = yield* S.flattenInstance(instanceOrEffect);
+	const instance = yield* Instance.flattenInstance(instanceOrEffect);
 	// flatten the Vec3 for the simulator: it works on flat numeric records
 	// (design D2), so the tagged struct is unwrapped here and rebuilt below
 	const position = (yield* Scene.data(instance)).position;
@@ -169,13 +170,16 @@ const springPosition = Effect.fnUntraced(function* <
 		target,
 		springInput ?? defaultSpring,
 		(value) =>
-			Scene.update(instance, (data) => ({ ...data, position: S.vec3(value) })),
+			Scene.update(instance, (data) => ({
+				...data,
+				position: Entity.vec3(value),
+			})),
 		settleTolerance,
 	);
 	return instance;
 });
 
-const firstArgIsInstance = (args: IArguments) => S.isInstance(args[0]);
+const firstArgIsInstance = (args: IArguments) => Instance.isInstance(args[0]);
 
 /**
  * Spring an instance to a position — the
@@ -185,40 +189,40 @@ const firstArgIsInstance = (args: IArguments) => S.isInstance(args[0]);
  * `instance.pipe(springTo(to, springInput?, settleTolerance?))`.
  */
 export const springTo = dual<
-	<Tag extends S.TagsWith<"position">>(
+	<Tag extends Entity.TagsWith<"position">>(
 		to: Partial<Motion.Position>,
 		springInput?: SpringInput,
 		settleTolerance?: number,
 	) => <E = never, R = never>(
-		instance: S.InstanceOrEffect<Tag, E, R>,
-	) => Effect.Effect<S.Instance<Tag>, E, R | Runner.Runner>,
-	<Tag extends S.TagsWith<"position">, E = never, R = never>(
-		instance: S.InstanceOrEffect<Tag, E, R>,
+		instance: Instance.InstanceOrEffect<Tag, E, R>,
+	) => Effect.Effect<Instance.Instance<Tag>, E, R | Runner.Runner>,
+	<Tag extends Entity.TagsWith<"position">, E = never, R = never>(
+		instance: Instance.InstanceOrEffect<Tag, E, R>,
 		to: Partial<Motion.Position>,
 		springInput?: SpringInput,
 		settleTolerance?: number,
-	) => Effect.Effect<S.Instance<Tag>, E, R | Runner.Runner>
+	) => Effect.Effect<Instance.Instance<Tag>, E, R | Runner.Runner>
 >(firstArgIsInstance, (instance, to, springInput, settleTolerance) =>
 	springPosition(instance, undefined, to, springInput, settleTolerance),
 );
 
 /** Like `springTo`, but from an explicit position (partials filled from current). */
 export const spring = dual<
-	<Tag extends S.TagsWith<"position">>(
+	<Tag extends Entity.TagsWith<"position">>(
 		from: Partial<Motion.Position>,
 		to: Partial<Motion.Position>,
 		springInput?: SpringInput,
 		settleTolerance?: number,
 	) => <E = never, R = never>(
-		instance: S.InstanceOrEffect<Tag, E, R>,
-	) => Effect.Effect<S.Instance<Tag>, E, R | Runner.Runner>,
-	<Tag extends S.TagsWith<"position">, E = never, R = never>(
-		instance: S.InstanceOrEffect<Tag, E, R>,
+		instance: Instance.InstanceOrEffect<Tag, E, R>,
+	) => Effect.Effect<Instance.Instance<Tag>, E, R | Runner.Runner>,
+	<Tag extends Entity.TagsWith<"position">, E = never, R = never>(
+		instance: Instance.InstanceOrEffect<Tag, E, R>,
 		from: Partial<Motion.Position>,
 		to: Partial<Motion.Position>,
 		springInput?: SpringInput,
 		settleTolerance?: number,
-	) => Effect.Effect<S.Instance<Tag>, E, R | Runner.Runner>
+	) => Effect.Effect<Instance.Instance<Tag>, E, R | Runner.Runner>
 >(firstArgIsInstance, (instance, from, to, springInput, settleTolerance) =>
 	springPosition(instance, from, to, springInput, settleTolerance),
 );

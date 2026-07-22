@@ -1,6 +1,6 @@
 import type { ThreeRaw as THREE } from "@effect-motion/three";
 import type { Effect } from "effect";
-import type { EffectMotionError, Entities } from "effect-motion";
+import type { EffectMotionError, Entity } from "effect-motion";
 import type * as Images from "./Images.js";
 import type * as Text from "./Text.js";
 
@@ -44,7 +44,7 @@ export interface RenderContext {
 }
 
 /** One leaf instance as the frame walk hands it to an entity renderer. */
-export interface Leaf<Ent = Entities.Entity> {
+export interface Leaf<Ent = Entity.Entity> {
 	readonly id: string;
 	readonly data: Ent;
 	readonly world: World;
@@ -79,7 +79,5 @@ export interface EntityRenderer<Ent> {
  * guarantee `PaintFunctions` gives the ThorVG path).
  */
 export type EntityRenderers = {
-	readonly [Tag in Entities.EntityTag]: EntityRenderer<
-		Entities.EntityByTag<Tag>
-	>;
+	readonly [Tag in Entity.EntityTag]: EntityRenderer<Entity.EntityByTag<Tag>>;
 };

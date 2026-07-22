@@ -1,6 +1,6 @@
 import { Line2 as FatLine, ThreeRaw as THREE, Tsl } from "@effect-motion/three";
 import { Effect } from "effect";
-import { Color, type Entities, Runner } from "effect-motion";
+import { Color, type Entity, Runner } from "effect-motion";
 import { renderOpacity, renderSize } from "effect-motion/particles/overLife";
 import type { OverLife, Particle } from "effect-motion/particles/Particle";
 import type { ParticleField } from "effect-motion/particles/ParticleField";
@@ -218,7 +218,7 @@ const placeFillGroup = (
 	return parts;
 };
 
-const circle: EntityRenderer<Entities.EntityByTag<"Circle">> = {
+const circle: EntityRenderer<Entity.EntityByTag<"Circle">> = {
 	build: (leaf, ctx) => {
 		const { retained, parts } = buildFillGroup();
 		parts.mesh.geometry = unitCircle;
@@ -244,7 +244,7 @@ const circle: EntityRenderer<Entities.EntityByTag<"Circle">> = {
 	},
 };
 
-const ellipse: EntityRenderer<Entities.EntityByTag<"Ellipse">> = {
+const ellipse: EntityRenderer<Entity.EntityByTag<"Ellipse">> = {
 	build: (leaf, ctx) => {
 		const { retained, parts } = buildFillGroup();
 		parts.mesh.geometry = unitCircle;
@@ -270,7 +270,7 @@ const ellipse: EntityRenderer<Entities.EntityByTag<"Ellipse">> = {
 	},
 };
 
-const rect: EntityRenderer<Entities.EntityByTag<"Rect">> = {
+const rect: EntityRenderer<Entity.EntityByTag<"Rect">> = {
 	build: (leaf, ctx) => {
 		const { retained } = buildFillGroup();
 		rect.update(retained, leaf, ctx);
@@ -328,7 +328,7 @@ const disposeFatLine = (line: FatLine.Line2): void => {
 	(line.material as THREE.Material).dispose();
 };
 
-const line: EntityRenderer<Entities.EntityByTag<"Line">> = {
+const line: EntityRenderer<Entity.EntityByTag<"Line">> = {
 	build: (leaf, ctx) => {
 		const fatLine = makeFatLine();
 		const retained: Retained = {
@@ -417,7 +417,7 @@ const pathSubpaths = (
 // (earcut only uses the input vertices, so mildly non-planar subpaths keep
 // their depths). Holes are not supported — each closed subpath fills
 // independently (winding analysis is a later concern).
-const path: EntityRenderer<Entities.EntityByTag<"Path">> = {
+const path: EntityRenderer<Entity.EntityByTag<"Path">> = {
 	build: (leaf, ctx) => {
 		const group = new THREE.Group();
 		const retained: Retained = {
@@ -513,7 +513,7 @@ const disposePathChild = (child: THREE.Object3D): void => {
 // half-built string. The mesh billboards and scales with perspective like
 // the other billboard shapes.
 
-const text: EntityRenderer<Entities.EntityByTag<"Text">> = {
+const text: EntityRenderer<Entity.EntityByTag<"Text">> = {
 	build: (leaf, ctx) => {
 		const textMesh = Text.makeMesh(ctx.text);
 		const retained: Retained = {
@@ -559,7 +559,7 @@ const text: EntityRenderer<Entities.EntityByTag<"Text">> = {
 // (data.position.x, data.position.y) is the top-left like Rect; both dimensions set draw at
 // that size, else the natural decoded size; a lone dimension is ignored.
 
-const image: EntityRenderer<Entities.EntityByTag<"Image">> = {
+const image: EntityRenderer<Entity.EntityByTag<"Image">> = {
 	build: (leaf, ctx) => {
 		const material = new THREE.MeshBasicNodeMaterial();
 		material.transparent = true;

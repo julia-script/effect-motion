@@ -1,4 +1,4 @@
-import { Camera, Color, Motion, Entities as S, Scene } from "effect-motion";
+import { Camera, Color, Motion, Entity as S, Scene } from "effect-motion";
 
 // Two subjects, one camera. Follow the first, hand off to the second with
 // an eased lookAt — a RETARGETED tween, so it lands exactly on the moving

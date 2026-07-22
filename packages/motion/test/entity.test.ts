@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import * as S from "../src/schemas";
+import * as S from "../src/Entity";
+import * as Instance from "../src/Instance";
 
 describe("closed entity union", () => {
 	it("every paintable entity shares the transform and appearance mixins", () => {
@@ -118,16 +119,16 @@ describe("closed entity union", () => {
 	});
 
 	it("instances carry an id and a tag, never the definition", () => {
-		const instance = S.makeInstance("circle_0", "Circle");
+		const instance = Instance.makeInstance("circle_0", "Circle");
 		// _tag lives on the Pipeable prototype, so toEqual (own properties
 		// only) cannot see it — assert the fields and the tag separately
 		expect(instance).toMatchObject({ id: "circle_0", kind: "Circle" });
 		expect(instance._tag).toBe("Instance");
 		expect(typeof instance.pipe).toBe("function");
-		expect(S.isInstance(instance)).toBe(true);
-		expect(S.isInstanceOf("Circle", instance)).toBe(true);
-		expect(S.isInstanceOf("Rect", instance)).toBe(false);
-		expect(S.isInstance({ id: "x" })).toBe(false);
+		expect(Instance.isInstance(instance)).toBe(true);
+		expect(Instance.isInstanceOf("Circle", instance)).toBe(true);
+		expect(Instance.isInstanceOf("Rect", instance)).toBe(false);
+		expect(Instance.isInstance({ id: "x" })).toBe(false);
 	});
 });
 
@@ -159,7 +160,7 @@ describe("type-level gating", () => {
 	});
 
 	it("an instance narrows to exactly its entity's data", () => {
-		type CircleData = S.DataOf<S.Instance<"Circle">>;
+		type CircleData = Instance.DataOf<Instance.Instance<"Circle">>;
 		const circle: CircleData = S.Circle.make({ radius: 5 });
 		expect(circle._tag).toBe("Circle");
 		expect(circle.radius).toBe(5);

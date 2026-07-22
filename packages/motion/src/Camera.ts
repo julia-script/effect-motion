@@ -1,11 +1,12 @@
 import { Effect } from "effect";
 import * as Duration from "effect/Duration";
 import * as Function from "effect/Function";
+import * as Entity from "./Entity.js";
+import * as Instance from "./Instance.js";
 import * as Motion from "./Motion.js";
 import type * as Projection from "./Projection.js";
 import * as Runner from "./Runner.js";
 import * as Scene from "./Scene.js";
-import * as S from "./schemas.js";
 import * as Time from "./Time.js";
 import * as Timing from "./Timing.js";
 
@@ -39,24 +40,24 @@ export type CameraState = Projection.CameraView & Projection.PointOfInterest;
  * plain position (inherently fixed — the no-entity escape hatch).
  */
 export type CameraTarget =
-	| S.Instance
-	| Effect.Effect<S.Instance, never, Runner.Runner>
+	| Instance.Instance
+	| Effect.Effect<Instance.Instance, never, Runner.Runner>
 	| Partial<Motion.Position>;
 
 // R defaults to Runner so helper outputs pipe straight into helper inputs
-type CamOrEffect<E = never, R = Runner.Runner> = S.InstanceOrEffect<
+type CamOrEffect<E = never, R = Runner.Runner> = Instance.InstanceOrEffect<
 	"Camera",
 	E,
 	R
 >;
-type CamInstance = S.Instance<"Camera">;
+type CamInstance = Instance.Instance<"Camera">;
 type CamEffect = Effect.Effect<CamInstance, never, Runner.Runner>;
 
 // a target argument (vs a duration/timing in the same slot): instances,
 // effects, or a position-like object — Durations are objects too, so
 // exclude them explicitly
 const isTargetArg = (v: unknown): boolean =>
-	S.isInstance(v) ||
+	Instance.isInstance(v) ||
 	Effect.isEffect(v) ||
 	(typeof v === "object" &&
 		v !== null &&
@@ -67,7 +68,7 @@ const isTargetArg = (v: unknown): boolean =>
 // plain firstArgIsInstance would misread `cam.pipe`-less pipeable calls
 // whose TARGET is an instance (`lookAt(hero, "1 second")`)
 const dataFirst = (args: IArguments) =>
-	S.isInstance(args[0]) && isTargetArg(args[1]);
+	Instance.isInstance(args[0]) && isTargetArg(args[1]);
 
 /**
  * Resolve a target once (Effects yield their Instance), returning a
@@ -81,9 +82,13 @@ const targetReader = Effect.fnUntraced(function* (
 	const ox = offset?.x ?? 0;
 	const oy = offset?.y ?? 0;
 	const oz = offset?.z ?? 0;
-	if (S.isInstance(target) || Effect.isEffect(target)) {
-		const instance = yield* S.flattenInstance(
-			target as S.InstanceOrEffect<S.EntityTag, never, Runner.Runner>,
+	if (Instance.isInstance(target) || Effect.isEffect(target)) {
+		const instance = yield* Instance.flattenInstance(
+			target as Instance.InstanceOrEffect<
+				Entity.EntityTag,
+				never,
+				Runner.Runner
+			>,
 		);
 		return Scene.data(instance).pipe(
 			Effect.map((data) => {
@@ -106,11 +111,11 @@ const targetReader = Effect.fnUntraced(function* (
 // the camera's own data, straight from the union — CameraShape (a
 // hand-written duplicate this module cast to at six sites) is gone with the
 // open world that made it necessary
-type CameraShape = S.EntityByTag<"Camera">;
+type CameraShape = Entity.EntityByTag<"Camera">;
 
 const setPoi = (data: CameraShape, p: Motion.Position): CameraShape => ({
 	...data,
-	poi: S.vec3(p),
+	poi: Entity.vec3(p),
 });
 
 // the camera's WORLD position: x/y are pan-from-viewport-center
@@ -131,7 +136,7 @@ const lookAtImpl = Effect.fnUntraced(function* (
 	timing?: Timing.TimingInput,
 	offset?: Partial<Motion.Position>,
 ) {
-	const cam = yield* S.flattenInstance(camOrEffect);
+	const cam = yield* Instance.flattenInstance(camOrEffect);
 	const read = yield* targetReader(target, offset);
 	if (duration === undefined) {
 		const p = yield* read;
@@ -235,7 +240,7 @@ export const follow = Function.dual<
 		duration: Duration.Input,
 		offset?: Partial<Motion.Position>,
 	) {
-		const cam = yield* S.flattenInstance(camOrEffect);
+		const cam = yield* Instance.flattenInstance(camOrEffect);
 		const read = yield* targetReader(target, offset);
 		const runner = yield* Runner.Runner;
 		const frames = Math.max(
@@ -268,7 +273,7 @@ const orbitImpl = Effect.fnUntraced(function* (
 	duration: Duration.Input,
 	timing?: Timing.TimingInput,
 ) {
-	const cam = yield* S.flattenInstance(camOrEffect);
+	const cam = yield* Instance.flattenInstance(camOrEffect);
 	const { comp } = yield* Runner.Runner;
 	const origin = { x: comp.width / 2, y: comp.height / 2 };
 	const startData = yield* Scene.data(cam);
@@ -288,7 +293,7 @@ const orbitImpl = Effect.fnUntraced(function* (
 		const angle = startAzimuth + (to - startAzimuth) * t;
 		return {
 			...d,
-			position: S.vec3({
+			position: Entity.vec3({
 				x: p.x + radius * Math.sin(angle) - origin.x,
 				y: d.position.y,
 				z: p.z + radius * Math.cos(angle),
@@ -316,7 +321,7 @@ export const orbitTo = Function.dual<
 		duration: Duration.Input,
 		timing?: Timing.TimingInput,
 	) => CamEffect
->((args) => S.isInstance(args[0]), ((
+>((args) => Instance.isInstance(args[0]), ((
 	cam: CamOrEffect,
 	azimuth: number,
 	duration: Duration.Input,
@@ -338,7 +343,7 @@ export const orbit = Function.dual<
 		duration: Duration.Input,
 		timing?: Timing.TimingInput,
 	) => CamEffect
->((args) => S.isInstance(args[0]), orbitImpl as never);
+>((args) => Instance.isInstance(args[0]), orbitImpl as never);
 
 const dollyImpl = Effect.fnUntraced(function* (
 	camOrEffect: CamOrEffect,
@@ -347,7 +352,7 @@ const dollyImpl = Effect.fnUntraced(function* (
 	duration: Duration.Input,
 	timing?: Timing.TimingInput,
 ) {
-	const cam = yield* S.flattenInstance(camOrEffect);
+	const cam = yield* Instance.flattenInstance(camOrEffect);
 	const { comp } = yield* Runner.Runner;
 	const origin = { x: comp.width / 2, y: comp.height / 2 };
 	const startData = yield* Scene.data(cam);
@@ -381,7 +386,7 @@ const dollyImpl = Effect.fnUntraced(function* (
 		const dist = d0 + (to - d0) * t;
 		return {
 			...d,
-			position: S.vec3({
+			position: Entity.vec3({
 				x: p.x + u.x * dist - origin.x,
 				y: p.y + u.y * dist - origin.y,
 				z: p.z + u.z * dist,
@@ -407,7 +412,7 @@ export const dollyTo = Function.dual<
 		duration: Duration.Input,
 		timing?: Timing.TimingInput,
 	) => CamEffect
->((args) => S.isInstance(args[0]), ((
+>((args) => Instance.isInstance(args[0]), ((
 	cam: CamOrEffect,
 	distance: number,
 	duration: Duration.Input,
@@ -429,4 +434,4 @@ export const dolly = Function.dual<
 		duration: Duration.Input,
 		timing?: Timing.TimingInput,
 	) => CamEffect
->((args) => S.isInstance(args[0]), dollyImpl as never);
+>((args) => Instance.isInstance(args[0]), dollyImpl as never);

@@ -1,6 +1,6 @@
 import { Effect } from "effect";
 import * as Stream from "effect/Stream";
-import { Color, Entities as S, Scene } from "effect-motion";
+import { Color, Entity as S, Scene } from "effect-motion";
 import { describe, expect, it } from "vitest";
 import * as NodeRenderer from "../src/node.js";
 import { unreachable } from "./support/raise.js";

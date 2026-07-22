@@ -3,7 +3,7 @@ import {
 	Color,
 	Motion,
 	Runner,
-	Entities as S,
+	Entity as S,
 	Scene,
 } from "effect-motion";
 

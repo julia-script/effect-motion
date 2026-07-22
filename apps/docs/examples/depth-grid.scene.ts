@@ -1,4 +1,4 @@
-import { Color, Motion, Runner, Entities as S, Scene } from "effect-motion";
+import { Color, Motion, Runner, Entity as S, Scene } from "effect-motion";
 
 // The synthwave floor: cross lines sit at one depth each (constant z),
 // while the rails receding to the horizon span depth — start and end

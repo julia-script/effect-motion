@@ -1,4 +1,4 @@
-import { Color, Motion, Runner, Entities as S, Scene } from "effect-motion";
+import { Color, Motion, Runner, Entity as S, Scene } from "effect-motion";
 
 // The 2.5D showcase: objects live at real depths, a tilted Rect lies back as
 // a floor, and the free camera dollies forward while orbiting. Render order

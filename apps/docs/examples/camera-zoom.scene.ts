@@ -1,4 +1,4 @@
-import { Color, Motion, Runner, Entities as S, Scene } from "effect-motion";
+import { Color, Motion, Runner, Entity as S, Scene } from "effect-motion";
 
 // A punch-in, the 3D-camera way: there is no `zoom` scalar any more. Grow the
 // camera's `focalLength` to narrow the field of view (an optical zoom) while

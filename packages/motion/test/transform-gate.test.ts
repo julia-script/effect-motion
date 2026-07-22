@@ -12,7 +12,7 @@
  * has to appear in them, design D3 is wrong and the port must stop (3.4).
  */
 import { describe, expect, it } from "vitest";
-import * as S from "../src/schemas";
+import * as S from "../src/Entity";
 
 // ── the entire position "lens", for every entity, with no dispatch ───────
 

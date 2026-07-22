@@ -3,7 +3,7 @@ import {
 	Image,
 	Motion,
 	Resource,
-	Entities as S,
+	Entity as S,
 	Scene,
 } from "effect-motion";
 

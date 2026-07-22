@@ -1,5 +1,5 @@
 import { Schedule } from "effect";
-import { Color, Motion, Physics, Entities as S, Scene } from "effect-motion";
+import { Color, Motion, Physics, Entity as S, Scene } from "effect-motion";
 
 const finalCaption = "Some lights meet you halfway.";
 

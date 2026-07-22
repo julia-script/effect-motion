@@ -10,11 +10,12 @@ import type * as Schedule from "effect/Schedule";
 import type * as Scope from "effect/Scope";
 import * as Stream from "effect/Stream";
 import type * as Color from "./Color.js";
+import * as Entity from "./Entity.js";
+import type * as Instance from "./Instance.js";
 import * as Phaser from "./Phaser.js";
 import type * as Projection from "./Projection.js";
 import type * as Resource from "./Resource.js";
 import * as Runner from "./Runner.js";
-import * as S from "./schemas.js";
 import * as Time from "./Time.js";
 
 export const TypeId = "~motion/Scene" as const;
@@ -111,11 +112,11 @@ const makeScene = <E = never, R = never>(
 });
 
 export const instantiate = Effect.fnUntraced(function* <
-	Tag extends S.EntityTag,
+	Tag extends Entity.EntityTag,
 >(
 	kind: Tag,
 	props: Runner.InstantiateProps<Tag>,
-): Effect.fn.Return<S.Instance<Tag>, never, Runner.Runner> {
+): Effect.fn.Return<Instance.Instance<Tag>, never, Runner.Runner> {
 	const runner = yield* Runner.Runner;
 
 	return yield* runner.instantiate(kind, props);
@@ -146,7 +147,7 @@ export const sleep = (duration: Duration.Input) =>
  * renderer narrows on it instead of dispatching on an entity object.
  */
 export interface FrameEntry {
-	data: S.Entity;
+	data: Entity.Entity;
 }
 
 export interface Frame<out Resources = never> {
@@ -361,7 +362,9 @@ const isUpdaterFn = <Data>(
 	props: Updater<Data>,
 ): props is (data: Data) => Data => typeof props === "function";
 
-export const data = <Tag extends S.EntityTag>(instance: S.Instance<Tag>) =>
+export const data = <Tag extends Entity.EntityTag>(
+	instance: Instance.Instance<Tag>,
+) =>
 	Effect.gen(function* () {
 		const runner = yield* Runner.Runner;
 		const current = runner.getDataUnsafe(instance);
@@ -372,9 +375,9 @@ export const data = <Tag extends S.EntityTag>(instance: S.Instance<Tag>) =>
 		}
 		return current;
 	});
-export const update = <Tag extends S.EntityTag>(
-	instance: S.Instance<Tag>,
-	props: Updater<S.EntityByTag<Tag>>,
+export const update = <Tag extends Entity.EntityTag>(
+	instance: Instance.Instance<Tag>,
+	props: Updater<Entity.EntityByTag<Tag>>,
 ) =>
 	Effect.gen(function* () {
 		const runner = yield* Runner.Runner;
@@ -395,14 +398,20 @@ export const update = <Tag extends S.EntityTag>(
  * ambient parent; `appendChild` is the explicit reparent — the door to
  * placing a lazily-created node into an existing group.
  */
-export const appendChild = (parent: Runner.GroupInstance, child: S.Instance) =>
+export const appendChild = (
+	parent: Runner.GroupInstance,
+	child: Instance.Instance,
+) =>
 	Effect.gen(function* () {
 		const runner = yield* Runner.Runner;
 		runner.appendChild(parent, child);
 	});
 
 /** Detach `child` from `parent` (no-op unless it is currently its child). */
-export const removeChild = (parent: Runner.GroupInstance, child: S.Instance) =>
+export const removeChild = (
+	parent: Runner.GroupInstance,
+	child: Instance.Instance,
+) =>
 	Effect.gen(function* () {
 		const runner = yield* Runner.Runner;
 		runner.removeChild(parent, child);
@@ -436,7 +445,7 @@ export const camera = Effect.gen(function* () {
 });
 
 /** Swap the active camera to `instance`; its live data becomes the view. */
-export const setCamera = (instance: S.Instance<"Camera">) =>
+export const setCamera = (instance: Instance.Instance<"Camera">) =>
 	Effect.gen(function* () {
 		const runner = yield* Runner.Runner;
 		runner.setCamera(instance);
@@ -706,7 +715,7 @@ export const play = <E, R>(
 		// a Group that happens to carry a size is not what makes a comp.
 		const group = yield* runner
 			.instantiate("Group", {
-				position: S.vec3({
+				position: Entity.vec3({
 					x: enclosing === null ? 0 : (enclosing.width - scene.width) / 2,
 					y: enclosing === null ? 0 : (enclosing.height - scene.height) / 2,
 				}),

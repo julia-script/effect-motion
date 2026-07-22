@@ -1,4 +1,4 @@
-import { Color, Motion, Physics, Entities as S, Scene } from "effect-motion";
+import { Color, Motion, Physics, Entity as S, Scene } from "effect-motion";
 
 // A Hud's subtree is projected through the IDENTITY camera: while the real
 // camera dollies and shakes through the world, HUD content stays bolted to

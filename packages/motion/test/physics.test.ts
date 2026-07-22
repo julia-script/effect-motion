@@ -1,10 +1,10 @@
 import { Effect, Exit } from "effect";
 import * as Stream from "effect/Stream";
 import { describe, expect, it } from "vitest";
+import * as S from "../src/Entity";
 import * as Physics from "../src/Physics";
 import type * as Runner from "../src/Runner";
 import * as Scene from "../src/Scene";
-import * as S from "../src/schemas";
 import { unreachable } from "./support/raise";
 
 // runs resolve and returns the defect message it died with

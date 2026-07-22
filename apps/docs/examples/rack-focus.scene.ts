@@ -1,4 +1,4 @@
-import { Color, Motion, Entities as S, Scene } from "effect-motion";
+import { Color, Motion, Entity as S, Scene } from "effect-motion";
 
 // Depth of field: aperture > 0 opts in, focusDistance picks the sharp
 // plane. Both are plain camera fields, so a rack focus — the classic

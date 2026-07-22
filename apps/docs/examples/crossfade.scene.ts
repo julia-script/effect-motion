@@ -1,4 +1,4 @@
-import { Color, Motion, Entities as S, Scene } from "effect-motion";
+import { Color, Motion, Entity as S, Scene } from "effect-motion";
 
 // scene A finishes when its crossing is done — the fade-out afterwards
 // is a TAIL: it keeps playing, but nothing waits for it

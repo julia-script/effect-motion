@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import * as S from "../src/schemas";
+import * as S from "../src/Entity";
 import { ROOT_ID, Tree } from "../src/Tree";
 import { unreachable } from "./support/raise";
 

@@ -7,7 +7,7 @@ import { Context, Effect } from "effect";
 import {
 	Color,
 	type EffectMotionError,
-	type Entities,
+	type Entity,
 	Runner,
 } from "effect-motion";
 import * as Font from "effect-motion/Font";
@@ -59,7 +59,7 @@ type AnyEntityRenderer = EntityRenderer<never>;
 
 /** the renderer for a leaf, with the tag↔renderer pairing asserted once */
 const dispatch = (renderer: AnyEntityRenderer) =>
-	renderer as unknown as EntityRenderer<Entities.Entity>;
+	renderer as unknown as EntityRenderer<Entity.Entity>;
 
 // ── coordinate mapping ────────────────────────────────────────────────────
 // Scene space: x right, y down, origin top-left, +z toward the viewer,
@@ -477,13 +477,13 @@ export const syncFrame = (
 	});
 
 /** child ids, or none — containers are the only entities with children */
-const childIdsOf = (data: Entities.Entity): ReadonlyArray<string> =>
+const childIdsOf = (data: Entity.Entity): ReadonlyArray<string> =>
 	"children" in data ? data.children : [];
 
 const syncComp = (
 	sync: Sync,
 	id: string,
-	groupData: Entities.Entity,
+	groupData: Entity.Entity,
 	compConfig: {
 		readonly width: number;
 		readonly height: number;

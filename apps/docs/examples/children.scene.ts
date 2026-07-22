@@ -1,4 +1,4 @@
-import { Color, Motion, Entities as S, Scene } from "effect-motion";
+import { Color, Motion, Entity as S, Scene } from "effect-motion";
 
 // A Group's `children` list is polymorphic: a bare string becomes a Text, a
 // not-yet-yielded `instantiate` is resolved internally, and an already-created

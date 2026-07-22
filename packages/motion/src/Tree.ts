@@ -1,10 +1,10 @@
-import * as S from "./schemas.js";
+import * as Entity from "./Entity.js";
 
 /**
  * The runner's scene graph: id → entry, plus parent/child bookkeeping.
  *
  * An entry holds the entity's current state as a member of the closed union
- * (`schemas.ts`), so reading a field means narrowing on `_tag` rather than
+ * (`Entity.ts`), so reading a field means narrowing on `_tag` rather than
  * casting from `{}`. The entity DEFINITION is not stored — it is resolved
  * from the state's tag when construction is needed.
  */
@@ -12,9 +12,9 @@ import * as S from "./schemas.js";
 /** conventional id of the implicit root group every instance attaches to */
 export const ROOT_ID = "root";
 
-export interface Entry<Tag extends S.EntityTag = S.EntityTag> {
+export interface Entry<Tag extends Entity.EntityTag = Entity.EntityTag> {
 	readonly id: string;
-	state: S.EntityByTag<Tag>;
+	state: Entity.EntityByTag<Tag>;
 	parentId: string | null;
 }
 
@@ -39,14 +39,14 @@ const notAContainer = (entry: Entry): never => {
 
 /** the entry's children, or a loud failure if its entity is not a container */
 const childrenOrDie = (entry: Entry): ReadonlyArray<string> =>
-	S.isContainer(entry.state) ? entry.state.children : notAContainer(entry);
+	Entity.isContainer(entry.state) ? entry.state.children : notAContainer(entry);
 
 export class Tree {
 	private idCounter = 0;
 	readonly map: Record<string, Entry> = {
 		[ROOT_ID]: {
 			id: ROOT_ID,
-			state: S.Group.make({}),
+			state: Entity.Group.make({}),
 			parentId: null,
 		},
 	};
@@ -58,7 +58,7 @@ export class Tree {
 	 * and where the narrowing is actually wanted.
 	 */
 	createNode = (
-		state: S.Entity,
+		state: Entity.Entity,
 		// engine-owned singletons (the built-in camera) claim a fixed id
 		id: string = `${state._tag}_${this.idCounter++}`,
 	): Entry => {
@@ -157,7 +157,7 @@ export class Tree {
 				other.parentId = null;
 			}
 			if (
-				S.isContainer(other.state) &&
+				Entity.isContainer(other.state) &&
 				other.state.children.includes(entry.id)
 			) {
 				this.setChildren(

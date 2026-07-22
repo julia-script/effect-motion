@@ -22,10 +22,10 @@ import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
 import { describe, expect, it } from "vitest";
 import * as Color from "../src/Color";
+import * as S from "../src/Entity";
 import * as Motion from "../src/Motion";
 import * as Physics from "../src/Physics";
 import * as Scene from "../src/Scene";
-import * as S from "../src/schemas";
 
 const OUT = join(__dirname, "__baseline__", "determinism.json");
 

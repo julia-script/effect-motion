@@ -1,4 +1,4 @@
-import { Camera, Color, Entities as S, Scene } from "effect-motion";
+import { Camera, Color, Entity as S, Scene } from "effect-motion";
 
 // A 3D cubic Bézier drawn with Path. Native curve commands are a planned
 // follow-up, and their chosen implementation is flattening — sampling the

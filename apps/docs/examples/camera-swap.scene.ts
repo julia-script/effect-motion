@@ -1,4 +1,4 @@
-import { Color, Motion, Runner, Entities as S, Scene } from "effect-motion";
+import { Color, Motion, Runner, Entity as S, Scene } from "effect-motion";
 
 // Two cameras, one cut. We OPEN on the wide two-shot so the viewer sees both
 // subjects and where they are — that's the reference frame that makes the cut

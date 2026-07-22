@@ -2,9 +2,9 @@ import { Effect } from "effect";
 import * as Stream from "effect/Stream";
 import { describe, expect, it } from "vitest";
 import * as Color from "../src/Color";
+import * as S from "../src/Entity";
 import type * as Runner from "../src/Runner";
 import * as Scene from "../src/Scene";
-import * as S from "../src/schemas";
 
 const oneFrameScene = (meta?: Partial<Runner.CompConfig>) =>
 	Scene.make(function* () {

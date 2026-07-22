@@ -2,9 +2,9 @@ import type * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import { dual } from "effect/Function";
 import * as Random from "effect/Random";
+import * as Instance from "../Instance.js";
 import * as Runner from "../Runner.js";
 import * as Scene from "../Scene.js";
-import * as S from "../schemas.js";
 import * as Time from "../Time.js";
 import type { EmitterField, FloatField } from "./constructors.js";
 import type { EmitterConfig, Particle } from "./Particle.js";
@@ -12,9 +12,9 @@ import type { ParticleField } from "./ParticleField.js";
 import * as Prng from "./Prng.js";
 import { step } from "./step.js";
 
-// ponytail: particles ride S.Instance untagged — ParticleField is not a
+// ponytail: particles ride Instance.Instance untagged — ParticleField is not a
 // union member (design D10), so there is no tag to parameterize on
-type Field = S.Instance;
+type Field = Instance.Instance;
 
 /**
  * Emission model for a single `simulate` call:
@@ -123,7 +123,7 @@ const run = Effect.fnUntraced(function* (
 	return instance;
 });
 
-const firstArgIsInstance = (args: IArguments) => S.isInstance(args[0]);
+const firstArgIsInstance = (args: IArguments) => Instance.isInstance(args[0]);
 
 // the untyped runtime dual; the public `simulate` below narrows it per brand
 const simulateImpl = dual<

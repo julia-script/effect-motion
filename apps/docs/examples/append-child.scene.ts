@@ -1,4 +1,4 @@
-import { Color, Motion, Entities as S, Scene } from "effect-motion";
+import { Color, Motion, Entity as S, Scene } from "effect-motion";
 
 // Instances are born under the ambient parent (the root). `Scene.appendChild`
 // moves one into a group after the fact — detaching it from its current parent

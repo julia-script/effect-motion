@@ -1,5 +1,5 @@
 import { Schedule } from "effect";
-import { Color, Motion, Entities as S, Scene } from "effect-motion";
+import { Color, Motion, Entity as S, Scene } from "effect-motion";
 
 // Scene.chain runs items one at a time — the schedule is consulted when
 // an item ENDS, so items never overlap (Effect's own schedule guarantee)

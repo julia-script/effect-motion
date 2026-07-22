@@ -1,4 +1,4 @@
-import { Color, Entities as S, Scene } from "effect-motion";
+import { Color, Entity as S, Scene } from "effect-motion";
 
 // tiny deterministic scene: 5 frames total (4 ticks + initial)
 export const scene = Scene.make(

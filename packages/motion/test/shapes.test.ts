@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as Color from "../src/Color";
-import * as S from "../src/schemas";
+import * as S from "../src/Entity";
 
 describe("visible defaults", () => {
 	it("default circle: fill white, opacity 1, no stroke", () => {

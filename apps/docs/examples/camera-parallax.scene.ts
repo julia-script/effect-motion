@@ -1,4 +1,4 @@
-import { Color, Motion, Particles, Entities as S, Scene } from "effect-motion";
+import { Color, Motion, Particles, Entity as S, Scene } from "effect-motion";
 
 // Parallax falls out of perspective for free: give objects a world `z` and a
 // panning camera separates them by depth automatically — far things drift

@@ -2,9 +2,9 @@ import { Effect, Schedule } from "effect";
 import * as Fiber from "effect/Fiber";
 import * as Stream from "effect/Stream";
 import { describe, expect, it } from "vitest";
+import * as S from "../src/Entity";
 import * as Motion from "../src/Motion";
 import * as Scene from "../src/Scene";
-import * as S from "../src/schemas";
 import { unreachable } from "./support/raise";
 
 // runs a scene and returns, per frame, the non-root instances' data in

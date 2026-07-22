@@ -1,5 +1,5 @@
 import { Schedule } from "effect";
-import { Color, Motion, Entities as S, Scene } from "effect-motion";
+import { Color, Motion, Entity as S, Scene } from "effect-motion";
 
 // Scene.stagger is the explicit overlap opt-in: starts are staggered by
 // the schedule and the released animations run concurrently

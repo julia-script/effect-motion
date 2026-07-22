@@ -1,5 +1,5 @@
 import { Random } from "effect";
-import { Color, Motion, Entities as S, Scene } from "effect-motion";
+import { Color, Motion, Entity as S, Scene } from "effect-motion";
 
 // effect's Random is seeded per scene: every run of this scene —
 // including every replay in this player — is byte-identical

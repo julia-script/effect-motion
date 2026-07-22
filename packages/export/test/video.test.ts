@@ -5,7 +5,7 @@ import {
 	type ChildProcess,
 	ChildProcessSpawner,
 } from "effect/unstable/process";
-import { Color, Entities as S, Scene } from "effect-motion";
+import { Color, Entity as S, Scene } from "effect-motion";
 import { expect, it } from "vitest";
 import { Ffmpeg, Video } from "../src";
 

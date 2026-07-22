@@ -3,9 +3,10 @@ import * as Effect from "effect/Effect";
 import * as Effectable from "effect/Effectable";
 import { dual } from "effect/Function";
 import * as Color from "./Color.js";
+import * as Entity from "./Entity.js";
+import * as Instance from "./Instance.js";
 import * as Runner from "./Runner.js";
 import * as Scene from "./Scene.js";
-import * as S from "./schemas.js";
 import * as Time from "./Time.js";
 import * as Timing from "./Timing.js";
 
@@ -95,18 +96,18 @@ const interpolate = Effect.fnUntraced(function* <
 });
 
 /** target props, or an updater computing them from the current data */
-export type Target<Tag extends S.EntityTag> =
-	| Partial<InterpolableOrInterpolator<S.EntityByTag<Tag>>>
+export type Target<Tag extends Entity.EntityTag> =
+	| Partial<InterpolableOrInterpolator<Entity.EntityByTag<Tag>>>
 	| ((
-			data: S.EntityByTag<Tag>,
-	  ) => Partial<InterpolableOrInterpolator<S.EntityByTag<Tag>>>);
+			data: Entity.EntityByTag<Tag>,
+	  ) => Partial<InterpolableOrInterpolator<Entity.EntityByTag<Tag>>>);
 
-// InterpolableOnly of an opaque S.EntityByTag<Tag> can't be proven
+// InterpolableOnly of an opaque Entity.EntityByTag<Tag> can't be proven
 // index-compatible with Record<string, number>; the runtime shape is
 // guaranteed by the Target type, so cast once here.
-export const resolveTarget = <Tag extends S.EntityTag>(
+export const resolveTarget = <Tag extends Entity.EntityTag>(
 	target: Target<Tag>,
-	current: S.EntityByTag<Tag>,
+	current: Entity.EntityByTag<Tag>,
 ): Record<string, number> =>
 	(typeof target === "function"
 		? target(current)
@@ -135,17 +136,17 @@ export const startValues = (
 };
 
 const animate = Effect.fnUntraced(function* <
-	Tag extends S.EntityTag,
+	Tag extends Entity.EntityTag,
 	E = never,
 	R = never,
 >(
-	instanceOrEffect: S.InstanceOrEffect<Tag, E, R>,
+	instanceOrEffect: Instance.InstanceOrEffect<Tag, E, R>,
 	from: Target<Tag> | undefined,
 	to: Target<Tag>,
 	duration: Duration.Input,
 	timing?: Timing.TimingInput,
 ) {
-	const instance = yield* S.flattenInstance(instanceOrEffect);
+	const instance = yield* Instance.flattenInstance(instanceOrEffect);
 	const current = yield* Scene.data(instance);
 	const target = resolveTarget(to, current);
 	const start = startValues(
@@ -158,10 +159,10 @@ const animate = Effect.fnUntraced(function* <
 		target,
 		duration,
 		(value) =>
-			// S.EntityByTag<Tag> is opaque to TS, so spread is disallowed — assign + cast
+			// Entity.EntityByTag<Tag> is opaque to TS, so spread is disallowed — assign + cast
 			Scene.update(
 				instance,
-				(data) => Object.assign({}, data, value) as S.EntityByTag<Tag>,
+				(data) => Object.assign({}, data, value) as Entity.EntityByTag<Tag>,
 			),
 		timing,
 	);
@@ -170,7 +171,7 @@ const animate = Effect.fnUntraced(function* <
 
 // dispatch on the first argument, not arity: the optional trailing
 // `timing` makes call arity ambiguous between the two forms
-const firstArgIsInstance = (args: IArguments) => S.isInstance(args[0]);
+const firstArgIsInstance = (args: IArguments) => Instance.isInstance(args[0]);
 
 /**
  * Animate interpolable (numeric) props of an instance toward `to` over
@@ -181,19 +182,19 @@ const firstArgIsInstance = (args: IArguments) => S.isInstance(args[0]);
  * instance, so animations chain.
  */
 export const tweenTo = dual<
-	<Tag extends S.EntityTag>(
+	<Tag extends Entity.EntityTag>(
 		to: Target<Tag>,
 		duration: Duration.Input,
 		timing?: Timing.TimingInput,
 	) => <E = never, R = never>(
-		instance: S.InstanceOrEffect<Tag, E, R>,
-	) => Effect.Effect<S.Instance<Tag>, E, R | Runner.Runner>,
-	<Tag extends S.EntityTag, E = never, R = never>(
-		instance: S.InstanceOrEffect<Tag, E, R>,
+		instance: Instance.InstanceOrEffect<Tag, E, R>,
+	) => Effect.Effect<Instance.Instance<Tag>, E, R | Runner.Runner>,
+	<Tag extends Entity.EntityTag, E = never, R = never>(
+		instance: Instance.InstanceOrEffect<Tag, E, R>,
 		to: Target<Tag>,
 		duration: Duration.Input,
 		timing?: Timing.TimingInput,
-	) => Effect.Effect<S.Instance<Tag>, E, R | Runner.Runner>
+	) => Effect.Effect<Instance.Instance<Tag>, E, R | Runner.Runner>
 >(firstArgIsInstance, (instance, to, duration, timing) =>
 	animate(instance, undefined, to, duration, timing),
 );
@@ -209,23 +210,23 @@ export const tweenTo = dual<
  * `instance.pipe(drive(duration, timing, fn))`.
  */
 export const drive = dual<
-	<Tag extends S.EntityTag>(
+	<Tag extends Entity.EntityTag>(
 		duration: Duration.Input,
 		timing: Timing.TimingInput,
-		fn: (t: number, data: S.EntityByTag<Tag>) => S.EntityByTag<Tag>,
+		fn: (t: number, data: Entity.EntityByTag<Tag>) => Entity.EntityByTag<Tag>,
 	) => <E = never, R = never>(
-		instance: S.InstanceOrEffect<Tag, E, R>,
-	) => Effect.Effect<S.Instance<Tag>, E, R | Runner.Runner>,
-	<Tag extends S.EntityTag, E = never, R = never>(
-		instance: S.InstanceOrEffect<Tag, E, R>,
+		instance: Instance.InstanceOrEffect<Tag, E, R>,
+	) => Effect.Effect<Instance.Instance<Tag>, E, R | Runner.Runner>,
+	<Tag extends Entity.EntityTag, E = never, R = never>(
+		instance: Instance.InstanceOrEffect<Tag, E, R>,
 		duration: Duration.Input,
 		timing: Timing.TimingInput,
-		fn: (t: number, data: S.EntityByTag<Tag>) => S.EntityByTag<Tag>,
-	) => Effect.Effect<S.Instance<Tag>, E, R | Runner.Runner>
+		fn: (t: number, data: Entity.EntityByTag<Tag>) => Entity.EntityByTag<Tag>,
+	) => Effect.Effect<Instance.Instance<Tag>, E, R | Runner.Runner>
 >(
 	firstArgIsInstance,
 	Effect.fnUntraced(function* (instanceOrEffect, duration, timing, fn) {
-		const instance = yield* S.flattenInstance(instanceOrEffect);
+		const instance = yield* Instance.flattenInstance(instanceOrEffect);
 		const runner = yield* Runner.Runner;
 		const timingFn = Timing.resolve(timing);
 		const frames = Math.max(
@@ -248,21 +249,21 @@ export const drive = dual<
  * `instance.pipe(tween(from, to, duration, timing?))`.
  */
 export const tween = dual<
-	<Tag extends S.EntityTag>(
+	<Tag extends Entity.EntityTag>(
 		from: Target<Tag>,
 		to: Target<Tag>,
 		duration: Duration.Input,
 		timing?: Timing.TimingInput,
 	) => <E = never, R = never>(
-		instance: S.InstanceOrEffect<Tag, E, R>,
-	) => Effect.Effect<S.Instance<Tag>, E, R | Runner.Runner>,
-	<Tag extends S.EntityTag, E = never, R = never>(
-		instance: S.InstanceOrEffect<Tag, E, R>,
+		instance: Instance.InstanceOrEffect<Tag, E, R>,
+	) => Effect.Effect<Instance.Instance<Tag>, E, R | Runner.Runner>,
+	<Tag extends Entity.EntityTag, E = never, R = never>(
+		instance: Instance.InstanceOrEffect<Tag, E, R>,
 		from: Target<Tag>,
 		to: Target<Tag>,
 		duration: Duration.Input,
 		timing?: Timing.TimingInput,
-	) => Effect.Effect<S.Instance<Tag>, E, R | Runner.Runner>
+	) => Effect.Effect<Instance.Instance<Tag>, E, R | Runner.Runner>
 >(firstArgIsInstance, (instance, from, to, duration, timing) =>
 	animate(instance, from, to, duration, timing),
 );
@@ -281,11 +282,12 @@ export type Position = {
 };
 
 /** tags whose entity carries a position: every one of them */
-type Positionable = S.TagsWith<"position">;
+type Positionable = Entity.TagsWith<"position">;
 /** tags whose entity carries opacity: every paintable one (not Camera) */
-type Fadeable = S.TagsWith<"opacity">;
+type Fadeable = Entity.TagsWith<"opacity">;
 
-const readPosition = (data: { position: S.Vec3 }): Position => data.position;
+const readPosition = (data: { position: Entity.Vec3 }): Position =>
+	data.position;
 
 /**
  * Structural parameter, not `EntityByTag<Tag>`: `Tag extends Fadeable`
@@ -301,12 +303,12 @@ const readOpacity = (data: { opacity: number }): number => data.opacity;
  * becoming a nested Vec3. A partial Vec3 must never reach `interpolate`:
  * lerping an absent channel yields NaN frames.
  */
-const writePosition = <T extends { position: S.Vec3 }>(
+const writePosition = <T extends { position: Entity.Vec3 }>(
 	data: T,
 	value: Partial<Position>,
 ): T => ({
 	...data,
-	position: S.vec3({
+	position: Entity.vec3({
 		x: value.x ?? data.position.x,
 		y: value.y ?? data.position.y,
 		z: value.z ?? data.position.z,
@@ -318,13 +320,13 @@ const animatePosition = Effect.fnUntraced(function* <
 	E = never,
 	R = never,
 >(
-	instanceOrEffect: S.InstanceOrEffect<Tag, E, R>,
+	instanceOrEffect: Instance.InstanceOrEffect<Tag, E, R>,
 	from: Partial<Position> | undefined,
 	to: Partial<Position>,
 	duration: Duration.Input,
 	timing?: Timing.TimingInput,
 ) {
-	const instance = yield* S.flattenInstance(instanceOrEffect);
+	const instance = yield* Instance.flattenInstance(instanceOrEffect);
 	const current = readPosition(yield* Scene.data(instance));
 	// partial targets/origins hold the missing axis at its current value
 	const target = { ...current, ...to };
@@ -344,13 +346,13 @@ const animateOpacity = Effect.fnUntraced(function* <
 	E = never,
 	R = never,
 >(
-	instanceOrEffect: S.InstanceOrEffect<Tag, E, R>,
+	instanceOrEffect: Instance.InstanceOrEffect<Tag, E, R>,
 	from: number | undefined,
 	to: number,
 	duration: Duration.Input,
 	timing?: Timing.TimingInput,
 ) {
-	const instance = yield* S.flattenInstance(instanceOrEffect);
+	const instance = yield* Instance.flattenInstance(instanceOrEffect);
 	const current = readOpacity(yield* Scene.data(instance));
 	yield* interpolate(
 		{ opacity: from ?? current },
@@ -377,14 +379,14 @@ export const moveTo = dual<
 		duration: Duration.Input,
 		timing?: Timing.TimingInput,
 	) => <E = never, R = never>(
-		instance: S.InstanceOrEffect<Tag, E, R>,
-	) => Effect.Effect<S.Instance<Tag>, E, R | Runner.Runner>,
+		instance: Instance.InstanceOrEffect<Tag, E, R>,
+	) => Effect.Effect<Instance.Instance<Tag>, E, R | Runner.Runner>,
 	<Tag extends Positionable, E = never, R = never>(
-		instance: S.InstanceOrEffect<Tag, E, R>,
+		instance: Instance.InstanceOrEffect<Tag, E, R>,
 		to: Partial<Position>,
 		duration: Duration.Input,
 		timing?: Timing.TimingInput,
-	) => Effect.Effect<S.Instance<Tag>, E, R | Runner.Runner>
+	) => Effect.Effect<Instance.Instance<Tag>, E, R | Runner.Runner>
 >(firstArgIsInstance, (instance, to, duration, timing) =>
 	animatePosition(instance, undefined, to, duration, timing),
 );
@@ -397,15 +399,15 @@ export const move = dual<
 		duration: Duration.Input,
 		timing?: Timing.TimingInput,
 	) => <E = never, R = never>(
-		instance: S.InstanceOrEffect<Tag, E, R>,
-	) => Effect.Effect<S.Instance<Tag>, E, R | Runner.Runner>,
+		instance: Instance.InstanceOrEffect<Tag, E, R>,
+	) => Effect.Effect<Instance.Instance<Tag>, E, R | Runner.Runner>,
 	<Tag extends Positionable, E = never, R = never>(
-		instance: S.InstanceOrEffect<Tag, E, R>,
+		instance: Instance.InstanceOrEffect<Tag, E, R>,
 		from: Partial<Position>,
 		to: Partial<Position>,
 		duration: Duration.Input,
 		timing?: Timing.TimingInput,
-	) => Effect.Effect<S.Instance<Tag>, E, R | Runner.Runner>
+	) => Effect.Effect<Instance.Instance<Tag>, E, R | Runner.Runner>
 >(firstArgIsInstance, (instance, from, to, duration, timing) =>
 	animatePosition(instance, from, to, duration, timing),
 );
@@ -421,14 +423,14 @@ export const fadeTo = dual<
 		duration: Duration.Input,
 		timing?: Timing.TimingInput,
 	) => <E = never, R = never>(
-		instance: S.InstanceOrEffect<Tag, E, R>,
-	) => Effect.Effect<S.Instance<Tag>, E, R | Runner.Runner>,
+		instance: Instance.InstanceOrEffect<Tag, E, R>,
+	) => Effect.Effect<Instance.Instance<Tag>, E, R | Runner.Runner>,
 	<Tag extends Fadeable, E = never, R = never>(
-		instance: S.InstanceOrEffect<Tag, E, R>,
+		instance: Instance.InstanceOrEffect<Tag, E, R>,
 		to: number,
 		duration: Duration.Input,
 		timing?: Timing.TimingInput,
-	) => Effect.Effect<S.Instance<Tag>, E, R | Runner.Runner>
+	) => Effect.Effect<Instance.Instance<Tag>, E, R | Runner.Runner>
 >(firstArgIsInstance, (instance, to, duration, timing) =>
 	animateOpacity(instance, undefined, to, duration, timing),
 );
@@ -441,15 +443,15 @@ export const fade = dual<
 		duration: Duration.Input,
 		timing?: Timing.TimingInput,
 	) => <E = never, R = never>(
-		instance: S.InstanceOrEffect<Tag, E, R>,
-	) => Effect.Effect<S.Instance<Tag>, E, R | Runner.Runner>,
+		instance: Instance.InstanceOrEffect<Tag, E, R>,
+	) => Effect.Effect<Instance.Instance<Tag>, E, R | Runner.Runner>,
 	<Tag extends Fadeable, E = never, R = never>(
-		instance: S.InstanceOrEffect<Tag, E, R>,
+		instance: Instance.InstanceOrEffect<Tag, E, R>,
 		from: number,
 		to: number,
 		duration: Duration.Input,
 		timing?: Timing.TimingInput,
-	) => Effect.Effect<S.Instance<Tag>, E, R | Runner.Runner>
+	) => Effect.Effect<Instance.Instance<Tag>, E, R | Runner.Runner>
 >(firstArgIsInstance, (instance, from, to, duration, timing) =>
 	animateOpacity(instance, from, to, duration, timing),
 );
