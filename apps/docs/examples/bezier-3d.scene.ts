@@ -89,9 +89,11 @@ export const scene = Scene.make(
 		// the wireframe box: each edge is a skeletal Line, both endpoints at
 		// their own depth
 		for (const [a, b] of boxEdges()) {
+			// position stays at the origin; start and end carry the two corners
+			// as offsets from it, so the edge spans a → b directly
 			yield* Scene.instantiate("Line", {
+				start: S.vec3({ x: a.x, y: a.y, z: a.z }),
 				end: S.vec3({ x: b.x, y: b.y, z: b.z }),
-				...a,
 				strokeColor: Color.hex("#3d4266"),
 				strokeWidth: 2,
 				opacity: 1,

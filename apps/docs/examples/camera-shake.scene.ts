@@ -15,8 +15,8 @@ export const scene = Scene.make(
 		});
 		// ground line so the impact reads
 		yield* Scene.instantiate("Line", {
-			end: S.vec3({ x: 460, y: 210 }),
 			position: S.vec3({ x: 40, y: 210 }),
+			end: S.vec3({ x: 420, y: 0 }),
 			strokeColor: Color.hex("#544f80"),
 		});
 

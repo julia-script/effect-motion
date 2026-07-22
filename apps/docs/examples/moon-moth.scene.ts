@@ -34,8 +34,8 @@ export const scene = Scene.make(
 			});
 		}
 		yield* Scene.instantiate("Line", {
-			end: S.vec3({ x: 350, y: 212 }),
 			position: S.vec3({ x: 350, y: 22 }),
+			end: S.vec3({ x: 0, y: 190 }),
 			strokeColor: Color.hex("#94a3b8"),
 			strokeWidth: 3,
 		});

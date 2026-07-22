@@ -200,6 +200,37 @@ describe("retained diff through the entity render contract", () => {
 	});
 });
 
+describe("line endpoints", () => {
+	// regression: `start` AND `end` are both offsets from `position`. The
+	// renderer once ignored `start` and treated `end` as absolute, so a box
+	// wireframe whose edges carried their corners in start/end collapsed to
+	// the origin. This asserts each endpoint lands at position + its offset.
+	it("renders each endpoint at position + its own offset", async () => {
+		const frames = await framesOf(function* () {
+			yield* Scene.instantiate("Line", {
+				position: S.vec3({ x: 100, y: 50, z: 0 }),
+				start: S.vec3({ x: 10, y: 5, z: 0 }),
+				end: S.vec3({ x: 40, y: 20, z: 0 }),
+			});
+			yield* Scene.tick;
+		});
+		const sync = Sync.make(registry());
+		Effect.runSync(Sync.syncFrame(sync, frames.at(-1) ?? unreachable()));
+		const fatLine = ThreeScene.children(sync.scene)[0] ?? unreachable();
+		const positions = (
+			fatLine as unknown as {
+				geometry: { attributes: { instanceStart: { array: Float32Array } } };
+			}
+		).geometry.attributes.instanceStart.array;
+		// start endpoint: position + start = (110, 55) → three (x, -y)
+		expect(positions[0]).toBeCloseTo(110 - 250, 4);
+		expect(positions[1]).toBeCloseTo(-(55 - 150), 4);
+		// end endpoint: position + end = (140, 70)
+		expect(positions[3]).toBeCloseTo(140 - 250, 4);
+		expect(positions[4]).toBeCloseTo(-(70 - 150), 4);
+	});
+});
+
 describe("billboards and tilted planes", () => {
 	it("a circle billboards: it carries the camera quaternion", async () => {
 		const frames = await framesOf(function* () {

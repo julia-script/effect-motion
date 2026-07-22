@@ -345,16 +345,18 @@ const line: EntityRenderer<Entities.EntityByTag<"Line">> = {
 		setColor(material, leaf.data.strokeColor, leaf.data.opacity);
 		material.linewidth = leaf.data.strokeWidth;
 		fatLine.visible = material.opacity > 0;
-		const a = ctx.toThree(leaf.world.x, leaf.world.y, leaf.world.z);
-		// x2/y2/z2 compose the same ancestor offset as the anchor: recover
-		// the offset from world - local, then apply it to the endpoint
-		const ox = leaf.world.x - leaf.data.position.x;
-		const oy = leaf.world.y - leaf.data.position.y;
-		const oz = leaf.world.z - leaf.data.position.z;
+		// `world` is the line's position (ancestor offset composed in). Both
+		// `start` and `end` are offsets FROM position, so each endpoint is
+		// world + its own offset — a zero/zero line is a point at position.
+		const a = ctx.toThree(
+			leaf.world.x + leaf.data.start.x,
+			leaf.world.y + leaf.data.start.y,
+			leaf.world.z + leaf.data.start.z,
+		);
 		const b = ctx.toThree(
-			ox + leaf.data.end.x,
-			oy + leaf.data.end.y,
-			oz + leaf.data.end.z,
+			leaf.world.x + leaf.data.end.x,
+			leaf.world.y + leaf.data.end.y,
+			leaf.world.z + leaf.data.end.z,
 		);
 		fatLine.geometry.setPositions([a.x, a.y, a.z, b.x, b.y, b.z]);
 		fatLine.computeLineDistances();
