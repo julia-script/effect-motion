@@ -148,8 +148,7 @@ export const scene = Scene.make(
 		const cam = yield* Scene.camera;
 		yield* Scene.update(cam, (props) => ({
 			...props,
-			y: -1500,
-			// focusDistance: 100000,
+			position: S.vec3({ ...props.position, y: -1500 }),
 			focalLength: 5000,
 		}));
 		yield* cam.pipe(

@@ -23,7 +23,10 @@ export const scene = Scene.make(
 
 		// adopt it into the platform — now its coordinates are the group's local space
 		yield* Scene.appendChild(platform, dot);
-		yield* Scene.update(dot, (d) => ({ ...d, x: 0, y: 0 }));
+		yield* Scene.update(dot, (d) => ({
+			...d,
+			position: S.vec3({ x: 0, y: 0 }),
+		}));
 
 		// moving the platform now carries the dot with it
 		yield* platform.pipe(

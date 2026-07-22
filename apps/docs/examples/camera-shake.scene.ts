@@ -28,7 +28,10 @@ export const scene = Scene.make(
 		// impact came from above, so jolt the view mostly DOWN (a little lateral),
 		// then spring back — the decaying ring is the shake. Under-damped enough
 		// to oscillate a few times, damped enough to die in ~1s.
-		yield* Scene.update(cam, (d) => ({ ...d, x: 5, y: 20 }));
+		yield* Scene.update(cam, (d) => ({
+			...d,
+			position: S.vec3({ x: 5, y: 20 }),
+		}));
 		yield* cam.pipe(
 			Physics.springTo(
 				{ x: 0, y: 0 },

@@ -58,8 +58,8 @@ export const scene = Scene.make(
 		const restZ = Runner.identityCameraView((yield* Scene.comp()).width).z;
 		yield* Scene.update(cam, (d) => ({
 			...d,
-			rotX: PITCH,
-			y: restZ * Math.tan(PITCH),
+			rotation: S.vec3({ ...d.rotation, x: PITCH }),
+			position: S.vec3({ ...d.position, y: restZ * Math.tan(PITCH) }),
 		}));
 
 		// the stack assembles bottom-up, each plate landing with a little give
