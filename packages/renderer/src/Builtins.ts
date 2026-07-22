@@ -145,61 +145,17 @@ const ellipsePoints = (
 	return points;
 };
 
-// rect outline/fill points in the top-left-anchored local frame (+x, -y)
+// rect outline points, top-left-anchored local frame (+x, -y). Sharp
+// corners only — rounded rects were removed with the entity-model rewrite.
 const rectPoints = (
 	width: number,
 	height: number,
-	rx: number,
-	ry: number,
-): Array<readonly [number, number]> => {
-	if (rx <= 0 || ry <= 0) {
-		return [
-			[0, 0],
-			[width, 0],
-			[width, -height],
-			[0, -height],
-		];
-	}
-	const cx = Math.min(rx, width / 2);
-	const cy = Math.min(ry, height / 2);
-	const points: Array<readonly [number, number]> = [];
-	const STEPS = 8;
-	const corner = (
-		centerX: number,
-		centerY: number,
-		startAngle: number,
-	): void => {
-		for (let i = 0; i <= STEPS; i++) {
-			const a = startAngle + (i / STEPS) * (Math.PI / 2);
-			points.push([centerX + Math.cos(a) * cx, centerY + Math.sin(a) * cy]);
-		}
-	};
-	// counterclockwise in the y-up local frame, starting at the top-right arc
-	corner(width - cx, -cy, 0);
-	corner(cx, -cy, Math.PI / 2);
-	corner(cx, -(height - cy), Math.PI);
-	corner(width - cx, -(height - cy), Math.PI * 1.5);
-	return points;
-};
-
-const _polygonGeometry = (
-	points: ReadonlyArray<readonly [number, number]>,
-): THREE.BufferGeometry => {
-	const contour = points.map(([x, y]) => new THREE.Vector2(x, y));
-	const triangles = THREE.ShapeUtils.triangulateShape(contour, []);
-	const positions = new Float32Array(points.length * 3);
-	for (const [i, [x, y]] of points.entries()) {
-		positions[i * 3] = x;
-		positions[i * 3 + 1] = y;
-	}
-	const geometry = new THREE.BufferGeometry();
-	geometry.setAttribute(
-		"position",
-		new THREE.Float32BufferAttribute(positions, 3),
-	);
-	geometry.setIndex(triangles.flat());
-	return geometry;
-};
+): Array<readonly [number, number]> => [
+	[0, 0],
+	[width, 0],
+	[width, -height],
+	[0, -height],
+];
 
 const placeFillGroup = (
 	retained: Retained,
@@ -293,7 +249,7 @@ const rect: EntityRenderer<Entity.EntityByTag<"Rect">> = {
 			parts,
 			data,
 			data.strokeColor !== undefined
-				? rectPoints(data.width, data.height, 0, 0)
+				? rectPoints(data.width, data.height)
 				: null,
 		);
 		const { x: rotX, y: rotY, z: rotZ } = data.rotation;
@@ -732,15 +688,6 @@ const particleField: EntityRenderer<ParticleFieldData> = {
 };
 
 // ── staged gaps: loud, never silent ──────────────────────────────────────
-
-const _notPorted = <T>(what: string, stage: string): EntityRenderer<T> => ({
-	build: (leaf: Leaf<T>) => {
-		throw new Error(
-			`${what} is not yet ported to the three renderer (${stage}) — instance "${leaf.id}"`,
-		);
-	},
-	update: () => {},
-});
 
 // containers never reach leaf rendering — the frame walk composes them
 const container = <T>(name: string): EntityRenderer<T> => ({

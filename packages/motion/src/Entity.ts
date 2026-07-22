@@ -271,13 +271,8 @@ export const EntityMap = {
 	Camera,
 } as const;
 
-export const EntityUnion = Schema.Union(Object.values(EntityMap));
-
-/** an entity DEFINITION (the schema), as opposed to its decoded data */
-export type EntityDefinition = (typeof EntityMap)[keyof typeof EntityMap];
-
 /** decoded entity data — the union every consumer narrows on */
-export type Entity = EntityDefinition["Type"];
+export type Entity = (typeof EntityMap)[keyof typeof EntityMap]["Type"];
 
 /** every entity's tag: the discriminant, and the entity's identity */
 export type EntityTag = Entity["_tag"];
@@ -285,9 +280,8 @@ export type EntityTag = Entity["_tag"];
 /** the data type of one entity, by tag */
 export type EntityByTag<Tag extends EntityTag> = Extract<Entity, { _tag: Tag }>;
 
-/** the definition of one entity, by tag */
-export type EntityDefinitionByTag<Tag extends EntityTag> =
-	(typeof EntityMap)[Tag];
+/** the definition (schema) of one entity, by tag */
+type EntityDefinitionByTag<Tag extends EntityTag> = (typeof EntityMap)[Tag];
 
 export const getEntityDefinitionByTag = <Tag extends EntityTag>(
 	tag: Tag,
@@ -316,10 +310,7 @@ export type TagsWith<Field extends string> = Extract<
 export type ContainerTag = TagsWith<"children">;
 
 /** entity data narrowed to a container */
-export type ContainerEntity = Extract<
-	Entity,
-	{ children: ReadonlyArray<string> }
->;
+type ContainerEntity = Extract<Entity, { children: ReadonlyArray<string> }>;
 
 /**
  * Every container tag, exhaustively. `Record<ContainerTag, true>` (not
