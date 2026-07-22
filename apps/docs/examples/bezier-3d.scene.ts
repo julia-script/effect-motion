@@ -1,4 +1,4 @@
-import { Camera, Color, Entity as S, Scene } from "effect-motion";
+import { Camera, Color, Entity, Scene } from "effect-motion";
 
 // A 3D cubic Bézier drawn with Path. Native curve commands are a planned
 // follow-up, and their chosen implementation is flattening — sampling the
@@ -92,8 +92,8 @@ export const scene = Scene.make(
 			// position stays at the origin; start and end carry the two corners
 			// as offsets from it, so the edge spans a → b directly
 			yield* Scene.instantiate("Line", {
-				start: S.vec3({ x: a.x, y: a.y, z: a.z }),
-				end: S.vec3({ x: b.x, y: b.y, z: b.z }),
+				start: Entity.vec3({ x: a.x, y: a.y, z: a.z }),
+				end: Entity.vec3({ x: b.x, y: b.y, z: b.z }),
 				strokeColor: Color.hex("#3d4266"),
 				strokeWidth: 2,
 				opacity: 1,
@@ -102,7 +102,6 @@ export const scene = Scene.make(
 
 		// the control polygon: straight rails between the control points
 		yield* Scene.instantiate("Path", {
-			...ANCHOR,
 			fillColor: noFill,
 			strokeColor: Color.tw("gray", "400"),
 			strokeWidth: 2,
@@ -116,7 +115,6 @@ export const scene = Scene.make(
 
 		// the curve itself — one Path, every sample at its own depth
 		yield* Scene.instantiate("Path", {
-			...ANCHOR,
 			fillColor: noFill,
 			strokeColor: Color.tw("pink", "500"),
 			strokeWidth: 3,
@@ -127,12 +125,12 @@ export const scene = Scene.make(
 		const points = [P0, P1, P2, P3];
 		for (const [i, p] of points.entries()) {
 			yield* Scene.instantiate("Circle", {
-				position: S.vec3({ x: ANCHOR.x + p.x, y: ANCHOR.y + p.y, z: p.z }),
+				position: Entity.vec3({ x: ANCHOR.x + p.x, y: ANCHOR.y + p.y, z: p.z }),
 				radius: 5,
 				fillColor: Color.tw("violet", "500"),
 			});
 			yield* Scene.instantiate("Text", {
-				position: S.vec3({
+				position: Entity.vec3({
 					x: ANCHOR.x + p.x + 12,
 					y: ANCHOR.y + p.y - 8,
 					z: p.z,
@@ -148,7 +146,7 @@ export const scene = Scene.make(
 		const cam = yield* Scene.camera;
 		yield* Scene.update(cam, (props) => ({
 			...props,
-			position: S.vec3({ ...props.position, y: -1500 }),
+			position: Entity.vec3({ ...props.position, y: -1500 }),
 			focalLength: 5000,
 		}));
 		yield* cam.pipe(
