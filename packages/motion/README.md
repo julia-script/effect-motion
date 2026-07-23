@@ -1,8 +1,8 @@
 # effect-motion
 
-Deterministic, frame-exact motion graphics in code, composed with [Effect](https://effect.website).
+Frame-exact motion graphics in code, composed with [Effect](https://effect.website).
 
-A scene is an Effect generator program: instantiate entities, then tween or spring their properties, composing motions sequentially or in parallel. Scenes are **deterministic** — seeded randomness and a frame-locked clock make every run byte-identical — and **finite**, which is what lets a scene be scrubbed and replayed like a video.
+A scene is an Effect generator program: instantiate entities, then tween or spring their properties, composing motions sequentially or in parallel. Scenes are **frame-exact** — animation is counted in whole frames at the scene's frame rate, never read from a wall clock — and **finite**, which is what lets a scene be scrubbed and replayed like a video.
 
 ## Install
 

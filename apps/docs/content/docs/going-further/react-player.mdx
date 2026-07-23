@@ -60,8 +60,8 @@ pace even when a render is briefly slow (it drops intermediate frames rather
 than falling behind). On a high-DPI display the canvas rasterizes at a softened
 device-pixel-ratio for a crisp image.
 
-Because scenes are deterministic and finite, a finite scene collects every
-frame up front, so seeking in both directions is free. `totalFrames` is unknown
+A finite scene keeps every frame it has pulled, so seeking backwards through
+the buffered range is free. `totalFrames` is unknown
 until the stream completes (never, for infinite scenes), so until then the
 progress bar reads against the buffered edge.
 
