@@ -405,7 +405,25 @@ export const step = Effect.fnUntraced(function* <E, R>(
 			),
 		);
 	}
-	yield* runningScene.runner.phaser.awaitAdvance;
+	// The end-check above reads bookkeeping that the scene fiber writes, and
+	// on the very first step that fiber has not been scheduled yet: the body
+	// may still spawn branches and finish before producing anything. A body
+	// whose only statement is `Scene.background` does exactly that — it
+	// registers a phaser party (synchronously, in Phaser.run) and returns, so
+	// the advance we are about to await can never complete: the root has
+	// deregistered and the background will never arrive. Racing the scene
+	// fiber closes that window without teaching the phaser about branch kinds.
+	// After the first advance the fiber is running and the race is already
+	// settled, so this costs nothing on the hot path.
+	const advanced = yield* Effect.raceFirst(
+		runningScene.runner.phaser.awaitAdvance.pipe(Effect.as(true)),
+		Fiber.await(runningScene.fiber).pipe(Effect.as(false)),
+	);
+	if (!advanced) {
+		// the scene ended before this frame could advance — re-run the end
+		// path, which owns failure propagation and background teardown
+		return yield* step(runningScene);
+	}
 	runningScene.framesDelivered++;
 	return yield* runningScene.runner.state;
 });
@@ -1041,11 +1059,12 @@ export const fork = <A, E = never, R = never>(effect: Effect.Effect<A, E, R>) =>
  * "Scene end" includes the fork drain: backgrounds keep animating while
  * awaited forks finish, and are stopped only after the last one.
  *
- * Because backgrounds do not keep a scene alive, a scene whose body has
- * nothing else to do will not end on its own — it has no content to
- * finish, and the background is not content. Always pair one with
- * something that defines the length, whether a real animation or an
- * explicit {@link sleep}.
+ * Because backgrounds do not keep a scene alive, a body that spawns only
+ * backgrounds ends immediately and produces NO frames — the background is
+ * not content, so there is nothing to give the scene a length. Pair one
+ * with something that does define the length, whether a real animation or
+ * an explicit {@link sleep}, or the ambient motion never gets a frame to
+ * play on.
  *
  * @param effect - The ambient animation.
  * @returns A handle with `finished` and `fiber`.
