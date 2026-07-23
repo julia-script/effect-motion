@@ -404,6 +404,13 @@ export const makeMesh = (text: Text): TextMesh => {
 	const edgeMesh = new THREE.Mesh(geometry, edgeMaterial);
 	coreMesh.frustumCulled = false;
 	edgeMesh.frustumCulled = false;
+	// hidden until setQuads installs glyphBounds/glyphUvRect — otherwise the
+	// material renders referencing attributes the geometry doesn't have yet,
+	// spamming "attribute not found" warnings every frame before layout lands
+	let hasQuads = false;
+	let wantVisible = true;
+	coreMesh.visible = false;
+	edgeMesh.visible = false;
 	const group = new THREE.Group();
 	// z-lift: keep text above coplanar backdrops so the core depth test
 	// never loses to a shape at the same depth
@@ -413,8 +420,9 @@ export const makeMesh = (text: Text): TextMesh => {
 	group.add(edgeMesh);
 
 	const setVisible = (visible: boolean) => {
-		coreMesh.visible = visible;
-		edgeMesh.visible = visible;
+		wantVisible = visible;
+		coreMesh.visible = visible && hasQuads;
+		edgeMesh.visible = visible && hasQuads;
 	};
 
 	return {
@@ -429,6 +437,8 @@ export const makeMesh = (text: Text): TextMesh => {
 				new THREE.InstancedBufferAttribute(quads.uvRects, 4),
 			);
 			geometry.instanceCount = quads.count;
+			hasQuads = true;
+			setVisible(wantVisible);
 		},
 		setColor: (r, g, b, a) => {
 			for (const material of [coreMaterial, edgeMaterial]) {
