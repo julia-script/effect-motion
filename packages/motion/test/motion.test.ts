@@ -177,4 +177,24 @@ describe("Motion.wait", () => {
 		// …and BEFORE the fade, whose result still lands exactly
 		expect(track.at(-1)).toEqual({ x: 10, opacity: 0.5 });
 	});
+
+	it("opens a pipe chain: the bare instance handle is lifted, not tapped", async () => {
+		const track = await runScene(
+			function* () {
+				const circle = yield* Scene.instantiate("Circle", {
+					position: S.vec3({ x: 0 }),
+				});
+				yield* circle.pipe(
+					Motion.wait("100 millis"),
+					Motion.moveTo({ x: 10 }, "50 millis"),
+				);
+			},
+			(data) => data.position.x as number,
+		);
+		// 6 held + 3 tween + 1 final frame. An Instance is Pipeable but NOT
+		// an Effect, so tapping it directly used to hang the phaser forever.
+		expect(track).toHaveLength(10);
+		expect(track.slice(0, 6)).toEqual([0, 0, 0, 0, 0, 0]);
+		expect(track.at(-1)).toBe(10);
+	});
 });

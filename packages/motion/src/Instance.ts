@@ -23,9 +23,10 @@ import type { EntityByTag, EntityTag } from "./Entity.js";
  * Camera fails at compile time with a message naming the missing field
  * rather than misbehaving at runtime.
  *
- * Instances are pipeable, and are themselves Effects resolving to
- * themselves — the two properties that let `circle.pipe(moveTo(…),
- * fadeTo(…))` read as one chain.
+ * Instances are Pipeable — that is what lets `circle.pipe(moveTo(…),
+ * fadeTo(…))` read as one chain. A handle is NOT itself an Effect, so
+ * anything accepting one in Effect position lifts it with
+ * {@link flattenInstance} first.
  *
  * @typeParam Tag - Which entity this refers to, e.g. `"Circle"`.
  */
