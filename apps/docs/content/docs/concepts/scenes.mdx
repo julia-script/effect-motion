@@ -1,12 +1,12 @@
 ---
 title: Scenes & the frame model
-description: How a scene becomes a deterministic sequence of frames
+description: How a scene becomes a sequence of frames
 ---
 
 A scene is a **pure function of `(scene, settings) → frames`**. You author it as
 a generator that instantiates entities and yields animation effects; the runner
-turns that into a deterministic, frame-exact sequence. The same scene with the
-same settings always produces byte-identical frames.
+turns that into a frame-exact sequence. The same scene with the same settings
+produces the same frames.
 
 ```ts
 import { Motion, Scene, Shapes } from "effect-motion";
@@ -77,10 +77,9 @@ Because `frameRate` lives in settings, all durations in a scene are written in
 real time (`"1 second"`, `"500 millis"`) and resolve to the right frame count at
 whatever rate you render.
 
-## Frame timing is deterministic
+## Concurrency doesn't change the frames
 
-Concurrency doesn't break determinism. Every animation waits on a per-frame
-barrier (the phaser), so concurrent animations advance in lockstep — the frame
-at index *n* is identical no matter how the work was scheduled. This is what
-makes `run` and `stream` produce the same frames, and what lets export and live
-playback agree exactly.
+Every animation waits on a per-frame barrier (the phaser), so concurrent
+animations advance in lockstep — the frame at index *n* holds the same values no
+matter how the work was scheduled. This is what makes `run` and `stream` produce
+the same frames, and what lets export and live playback agree.

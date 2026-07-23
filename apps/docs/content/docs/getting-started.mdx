@@ -46,6 +46,6 @@ export function App() {
 ```
 
 The Player sizes itself from the scene's own resolution, so there's nothing
-else to configure. Because scenes are deterministic and finite, it collects
-every frame up front by running the scene once, then plays the frames back —
-seeking in both directions is free.
+else to configure. Frames stream in as the scene runs, so playback starts before
+the whole scene is computed; a finite scene keeps the frames it has pulled, so
+seeking backwards is free.

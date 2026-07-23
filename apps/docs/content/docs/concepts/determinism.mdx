@@ -1,16 +1,14 @@
 ---
-title: Determinism
-description: Why the same scene always produces the same frames
+title: Randomness & frame-exactness
+description: Seeded randomness, and why animations land exactly on target
 ---
 
-effect-motion is **deterministic and frame-exact** by construction. The same
-scene with the same settings produces byte-identical frames every run. This is
-what makes export match live playback exactly, and what makes scenes safe to
-cache, diff, and reproduce.
+Scene time is counted in **frames** rather than read from a wall clock, and
+randomness comes from a **seeded** generator rather than `Math.random()`.
+Together those are what let a scene be replayed, scrubbed, and exported as the
+same animation you authored.
 
-Three invariants hold, always:
-
-## 1. No wall-clock, no `Math.random()`
+## Seeded randomness
 
 A scene is a pure function of `(scene, settings)`. It never reads the wall clock
 (durations are frame counts at the runner's frame rate) and never calls
@@ -20,18 +18,21 @@ scene, seeded from settings:
 ```ts
 import { Random } from "effect";
 
-// reproducible: same seed → same sequence, every run
+// same seed → same sequence
 const x = yield* Random.nextBetween(40, 460);
 const y = yield* Random.nextBetween(40, 260);
 ```
 
-The default seed is the fixed string `"effect-motion"`, so even a
-default-constructed scene replays identically. Pass a different `seed` in
-settings for a different — but equally reproducible — result.
+The default seed is the fixed string `"effect-motion"`, so a scene that scatters
+shapes "randomly" scatters them the same way each run. Pass a different `seed`
+in settings for a different — but equally repeatable — result.
+
+Note the generator belongs to `effect`, so upgrading it can change the sequence
+a given seed produces.
 
 <Example name="seeded-randomness" />
 
-## 2. Animations land exactly on target
+## Animations land exactly on target
 
 Duration-based animations land their **final frame exactly** on the target value,
 whatever the easing — no sub-pixel drift from accumulated rounding. Springs run
@@ -46,10 +47,14 @@ offender: a missing trait, an invalid spring, an unknown timing name, a duplicat
 parent, exceeding `maxFrames`. You find out at author time, not from a subtly
 wrong frame.
 
-## Why it matters
+## Concurrency doesn't change the frames
 
 Because concurrency runs on a per-frame barrier (see
-[Scenes & the frame model](/docs/concepts/scenes)), frame *n* is identical no
-matter how the work was scheduled. That's the foundation the whole library sits
-on: `run` and `stream` agree, nested scenes replay like standalone runs, and a
-video export is exactly what you saw in the player.
+[Scenes & the frame model](/docs/concepts/scenes)), frame *n* holds the same
+values no matter how the work was scheduled — `Scene.all` and `Scene.fork`
+change how a scene is written, not what it renders. `run` and `stream` agree,
+and nested scenes replay like standalone runs.
+
+Frames are reproducible; **pixels are not promised bit-identical** across GPUs,
+drivers, or platforms, since rasterization and the GPU depth-of-field pass can
+differ in the last bit.

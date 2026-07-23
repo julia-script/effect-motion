@@ -1,14 +1,14 @@
 ---
 title: Introduction
-description: Declarative, deterministic animations built on Effect
+description: Declarative animations built on Effect
 ---
 
 **effect-motion** is an animation library where scenes are written as
 [Effect](https://effect.website) generator programs: instantiate entities,
 tween or spring their properties, and compose motions sequentially or in
-parallel. Scenes are **deterministic** — seeded randomness and a frame-locked
-clock make every run byte-identical — and **finite**, which is what lets the
-player below pause, scrub, and replay them like a video.
+parallel. Scenes are **frame-exact** — animation lands on whole frames at the
+scene's frame rate, never on a wall clock — and **finite**, which is what lets
+the player below pause, scrub, and replay them like a video.
 
 <Example name="easing-race" />
 

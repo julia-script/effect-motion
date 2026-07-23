@@ -704,9 +704,13 @@ export const fade = dual<
  * flowing.
  */
 export interface Wait extends Effect.Effect<void, never, Runner.Runner> {
-	<A, E, R>(
-		effect: Effect.Effect<A, E, R>,
-	): Effect.Effect<A, E, R | Runner.Runner>;
+	<Self extends Effect.Effect<any, any, any> | Instance.Instance>(
+		self: Self,
+	): Self extends Instance.Instance
+		? Effect.Effect<Self, never, Runner.Runner>
+		: Self extends Effect.Effect<infer A, infer E, infer R>
+			? Effect.Effect<A, E, R | Runner.Runner>
+			: never;
 }
 
 /**
@@ -723,10 +727,9 @@ export interface Wait extends Effect.Effect<void, never, Runner.Runner> {
  * step, a beat can sit inside an animator chain without breaking it apart
  * into separate statements.
  *
- * As a pipe step it wraps the PRECEDING step, so it needs one to wrap:
- * place it after at least one animator, not as the opening step of a chain.
- * To hold before anything animates, yield `Motion.wait` (or `Scene.sleep`)
- * on its own line first.
+ * As a pipe step it wraps the PRECEDING step and passes its value through,
+ * so it sits anywhere in a chain — including first, where the step it wraps
+ * is the bare instance handle.
  *
  * @param duration - How long to hold, in scene time.
  *
@@ -750,9 +753,16 @@ export interface Wait extends Effect.Effect<void, never, Runner.Runner> {
 export const wait = (duration: Duration.Input): Wait =>
 	Object.assign(
 		<A, E, R>(
-			effect: Effect.Effect<A, E, R>,
+			effect: Effect.Effect<A, E, R> | Instance.Instance,
 		): Effect.Effect<A, E, R | Runner.Runner> =>
-			Effect.tap(effect, () => Scene.sleep(duration)),
+			Effect.tap(
+				// an Instance is Pipeable but NOT an Effect, so a bare handle as
+				// the opening pipe step must be lifted before tapping
+				Instance.flattenInstance(
+					effect as Instance.InstanceOrEffect<Entity.EntityTag, E, R>,
+				) as Effect.Effect<A, E, R>,
+				() => Scene.sleep(duration),
+			),
 		Effectable.Prototype<Effect.Effect<void, never, Runner.Runner>>({
 			label: "Motion.wait",
 			evaluate: () => Scene.sleep(duration),

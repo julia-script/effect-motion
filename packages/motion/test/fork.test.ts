@@ -162,6 +162,43 @@ describe("Scene.background", () => {
 		expect(frames[29]?.[1]?.position.y).toBeGreaterThan(0);
 	});
 
+	// A background is not content: it cannot define a scene's length, so a
+	// body that spawns only backgrounds has nothing to wait for and must end
+	// rather than block. These pin the startup window where the consumer asks
+	// for the first frame before the forked body has run.
+	it("a scene containing only a background terminates", {
+		timeout: 5000,
+	}, async () => {
+		const frames = await collectFrames(function* () {
+			const b = yield* Scene.instantiate("Circle", {
+				position: S.vec3({ x: 0 }),
+			});
+			yield* Scene.background(
+				Motion.move(b, { x: 0 }, { x: 100 }, "10 seconds"),
+			);
+		});
+		// nothing holds the scene open, so it ends before producing a frame
+		expect(frames).toHaveLength(0);
+	});
+
+	it("an endless background alone does not keep the scene alive", {
+		timeout: 5000,
+	}, async () => {
+		const frames = await collectFrames(function* () {
+			const b = yield* Scene.instantiate("Circle", {
+				position: S.vec3({ x: 0, y: 0 }),
+			});
+			yield* Scene.background(
+				Scene.repeat(
+					Motion.move(b, { y: 0 }, { y: 50 }, "100 millis") as never,
+					Schedule.forever,
+				) as never,
+			);
+		});
+		// ends immediately rather than running to the maxFrames cap
+		expect(frames).toHaveLength(0);
+	});
+
 	it("backgrounds live through the fork drain, then stop", async () => {
 		const frames = await collectFrames(function* () {
 			const a = yield* Scene.instantiate("Circle", {

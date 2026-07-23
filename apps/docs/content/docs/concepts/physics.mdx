@@ -51,8 +51,8 @@ yield* Physics.springTo(dot, { x: 300 }, {
 
 ## Springs snap exactly on settle
 
-Determinism holds: a spring runs until the simulation is at rest, then snaps
-**exactly** onto the target on its final frame — no lingering sub-pixel drift.
+A spring runs until the simulation is at rest, then snaps **exactly** onto the
+target on its final frame — no lingering sub-pixel drift.
 That's why springs compose cleanly with duration-based animators and with
 `chain` / `stagger`.
 

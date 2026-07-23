@@ -136,6 +136,6 @@ snow — only the angles, forces, and emission rate changed:
 The only randomness is at emission. Each particle is seeded from the scene's
 `Random` at birth and then carries its own independent generator, so consuming
 one particle's randomness never shifts another's. Evolution after birth is a pure
-function of age and shared forces. The result is the library's usual guarantee:
-[same seed, byte-identical output](/docs/concepts/determinism) — scrub the
-timeline and every particle retraces its exact path.
+function of age and shared forces. So the field replays from its
+[seed](/docs/concepts/determinism) — scrub the timeline and every particle
+retraces its path.
