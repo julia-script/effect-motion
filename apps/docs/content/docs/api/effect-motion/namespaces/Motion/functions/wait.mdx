@@ -1,0 +1,57 @@
+---
+title: "wait"
+description: "function wait(duration): Wait;"
+---
+# Function: wait()
+
+```ts
+function wait(duration): Wait;
+```
+
+Defined in: [packages/motion/src/Motion.ts:750](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Motion.ts#L750)
+
+Hold for `duration` of scene time — the chainable sibling of
+`Scene.sleep`.
+
+## Parameters
+
+| Parameter | Type | Description |
+| ------ | ------ | ------ |
+| `duration` | `Input` | How long to hold, in scene time. |
+
+## Returns
+
+[`Wait`](../interfaces/Wait.mdx)
+
+## Remarks
+
+This is frame time, not wall time: `Effect.sleep` would block on a real
+clock and make the scene non-deterministic, so `wait` advances whole
+frames at the runner's frame rate instead. The same hold produces the
+same frame count on every run and on every machine.
+
+Its value over `Scene.sleep` is placement — because it doubles as a pipe
+step, a beat can sit inside an animator chain without breaking it apart
+into separate statements.
+
+As a pipe step it wraps the PRECEDING step, so it needs one to wrap:
+place it after at least one animator, not as the opening step of a chain.
+To hold before anything animates, yield `Motion.wait` (or `Scene.sleep`)
+on its own line first.
+
+## Examples
+
+A hold between two animations, mid-chain — `card` flows through to the
+fade.
+```typescript
+yield* card.pipe(
+	Motion.moveTo({ y: 100 }, "500 millis"),
+	Motion.wait("1 second"),
+	Motion.fadeTo(0, "300 millis"),
+);
+```
+
+Or yielded on its own, as a plain pause in the scene body.
+```typescript
+yield* Motion.wait("2 seconds");
+```

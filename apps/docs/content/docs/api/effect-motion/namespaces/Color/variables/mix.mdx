@@ -1,0 +1,37 @@
+---
+title: "mix"
+description: "const mix: (color, amount, mode?) => (self) => Color & (self, color, amount, mode?) => Color;"
+---
+# Variable: mix
+
+```ts
+const mix: (color, amount, mode?) => (self) => Color & (self, color, amount, mode?) => Color;
+```
+
+Defined in: [packages/motion/src/Color.ts:290](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Color.ts#L290)
+
+Blend two colors, `amount` of the way from `self` to `color`.
+
+## Remarks
+
+`mode` picks the color space the blend travels through, which changes the
+intermediate hues considerably: `"lab"` (the animators' default) keeps
+perceptual evenness, while `"rgb"` can pass through muddy midpoints.
+
+## Param
+
+**color**
+
+The color to blend toward.
+
+## Param
+
+**amount**
+
+0 keeps `self`, 1 gives `color`.
+
+## Param
+
+**mode**
+
+Interpolation space.

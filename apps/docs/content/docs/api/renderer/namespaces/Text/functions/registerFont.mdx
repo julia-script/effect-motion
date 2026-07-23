@@ -1,0 +1,34 @@
+---
+title: "registerFont"
+description: "function registerFont("
+---
+# Function: registerFont()
+
+```ts
+function registerFont(
+   text, 
+   id, 
+   bytes): void;
+```
+
+Defined in: [Text.ts:157](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Text.ts#L157)
+
+Register a font's bytes under its id.
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `text` | [`Text`](../interfaces/Text.mdx) |
+| `id` | `string` |
+| `bytes` | `Uint8Array` |
+
+## Returns
+
+`void`
+
+## Remarks
+
+Idempotent per id — registering the same font twice does nothing the
+second time. A font must be registered before any string using it can be
+laid out; `Sync.resolveResources` handles that for frames.

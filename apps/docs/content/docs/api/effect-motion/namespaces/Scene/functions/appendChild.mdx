@@ -1,0 +1,27 @@
+---
+title: "appendChild"
+description: "function appendChild(parent, child): Effect<void, never, Runner>;"
+---
+# Function: appendChild()
+
+```ts
+function appendChild(parent, child): Effect<void, never, Runner>;
+```
+
+Defined in: [packages/motion/src/Scene.ts:698](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L698)
+
+Move `child` under `parent`, detaching it from its current parent first
+(so it is never double-referenced). Instances are born mounted under the
+ambient parent; `appendChild` is the explicit reparent — the door to
+placing a lazily-created node into an existing group.
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `parent` | [`GroupInstance`](../../Runner/type-aliases/GroupInstance.mdx) |
+| `child` | [`Instance`](../../Instance/interfaces/Instance.mdx) |
+
+## Returns
+
+`Effect`\<`void`, `never`, [`Runner`](../../Runner/classes/Runner.mdx)\>

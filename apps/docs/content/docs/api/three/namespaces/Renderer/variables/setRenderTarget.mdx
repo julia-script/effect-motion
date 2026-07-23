@@ -1,0 +1,57 @@
+---
+title: "setRenderTarget"
+description: "const setRenderTarget: {"
+---
+# Variable: setRenderTarget
+
+```ts
+const setRenderTarget: {
+  (target): (self) => Renderer;
+  (self, target): Renderer;
+};
+```
+
+Defined in: [packages/three/src/Renderer.ts:251](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/Renderer.ts#L251)
+
+Point the renderer's output at an offscreen target, or `null` to draw to
+the canvas.
+
+## Call Signature
+
+```ts
+(target): (self) => Renderer;
+```
+
+### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `target` | [`RenderTarget`](../../RenderTarget/interfaces/RenderTarget.mdx) \| `null` |
+
+### Returns
+
+(`self`) => [`Renderer`](../interfaces/Renderer.mdx)
+
+## Call Signature
+
+```ts
+(self, target): Renderer;
+```
+
+### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `self` | [`Renderer`](../interfaces/Renderer.mdx) |
+| `target` | [`RenderTarget`](../../RenderTarget/interfaces/RenderTarget.mdx) \| `null` |
+
+### Returns
+
+[`Renderer`](../interfaces/Renderer.mdx)
+
+## Remarks
+
+Rendering to a target is how a result becomes something to sample —
+reading pixels back, or feeding a texture into another pass. Save and
+restore the previous target around nested renders; [getRenderTarget](../functions/getRenderTarget.mdx)
+is there for exactly that.

@@ -1,0 +1,97 @@
+---
+title: "Settings"
+description: "type Settings = {"
+---
+# Type Alias: Settings
+
+```ts
+type Settings = {
+  frameRate: number;
+  maxFrames: number;
+  seed: Seed;
+};
+```
+
+Defined in: [packages/motion/src/Runner.ts:38](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Runner.ts#L38)
+
+Playback settings — how a scene RUNS, as opposed to what it IS.
+
+## Remarks
+
+Passed to `Scene.run` / `Scene.stream`, so the same scene can be played
+back at different rates or seeds without being rewritten. Resolution and
+background are NOT here: those are the composition's own identity, fixed
+at `Scene.make`.
+
+## Properties
+
+### frameRate
+
+```ts
+frameRate: number;
+```
+
+Defined in: [packages/motion/src/Runner.ts:50](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Runner.ts#L50)
+
+Frames produced per second of scene time.
+
+#### Remarks
+
+Determines how many frames a given duration becomes: a one-second
+animation is 30 frames at 30fps and 60 at 60fps. It changes the
+sampling, never the motion — the same scene looks the same, just
+smoother.
+
+#### Default Value
+
+`60`
+
+***
+
+### maxFrames
+
+```ts
+maxFrames: number;
+```
+
+Defined in: [packages/motion/src/Runner.ts:78](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Runner.ts#L78)
+
+Hard cap on how many frames a scene may produce.
+
+#### Remarks
+
+A safety net: a scene that exceeds it fails with a message naming the
+limit instead of hanging whatever is consuming it. The usual cause is
+an unbounded loop with nothing to end it.
+
+Set it to `Infinity` to declare a deliberately endless scene.
+
+#### Default Value
+
+`36_000` — ten minutes at 60fps
+
+***
+
+### seed
+
+```ts
+seed: Seed;
+```
+
+Defined in: [packages/motion/src/Runner.ts:65](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Runner.ts#L65)
+
+Seeds the scene's random number generator.
+
+#### Remarks
+
+Randomness in a scene comes from this seed rather than
+`Math.random()`, so the "random" scatter of a particle field is
+identical on every run. Change the seed to get a different arrangement
+that is itself reproducible.
+
+Note the generator belongs to `effect`, so upgrading it can change the
+sequence a given seed produces.
+
+#### Default Value
+
+`"effect-motion"`

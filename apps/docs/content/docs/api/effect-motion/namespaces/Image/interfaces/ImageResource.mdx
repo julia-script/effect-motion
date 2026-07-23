@@ -1,0 +1,42 @@
+---
+title: "ImageResource"
+description: "One image constant, two faces — author side (`yield*` for the value and"
+---
+# Interface: ImageResource\<ID\>
+
+Defined in: [packages/motion/src/Image.ts:53](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Image.ts#L53)
+
+One image constant, two faces — author side (`yield*` for the value and
+the phantom `ImageLoader<ID>` requirement) and provider side (`.Loader`
+plus [layer](../functions/layer.mdx)). See `Font.Font` for the full contract; images follow
+it exactly.
+
+## Extends
+
+- `Effect`\<[`Image`](./Image.mdx)\<`ID`\>, `never`, [`ImageLoader`](./ImageLoader.mdx)\<`ID`\>\>
+
+## Type Parameters
+
+| Type Parameter | Default type |
+| ------ | ------ |
+| `ID` *extends* `string` | `string` |
+
+## Properties
+
+### id
+
+```ts
+readonly id: ID;
+```
+
+Defined in: [packages/motion/src/Image.ts:55](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Image.ts#L55)
+
+***
+
+### Loader
+
+```ts
+readonly Loader: Service<ImageLoader<ID>, ImageLoader<ID>>;
+```
+
+Defined in: [packages/motion/src/Image.ts:56](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Image.ts#L56)

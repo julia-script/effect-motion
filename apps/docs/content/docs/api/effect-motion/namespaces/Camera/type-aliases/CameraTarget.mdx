@@ -1,0 +1,22 @@
+---
+title: "CameraTarget"
+description: "type CameraTarget ="
+---
+# Type Alias: CameraTarget
+
+```ts
+type CameraTarget = 
+  | Instance
+  | Effect.Effect<Instance, never, Runner>
+| Partial<Position>;
+```
+
+Defined in: [packages/motion/src/Camera.ts:45](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Camera.ts#L45)
+
+What the camera helpers accept as something to aim at.
+
+## Remarks
+
+An instance is read LIVE each frame, so aiming tracks it as it moves — the
+usual case. A plain position is fixed, for aiming at a spot where no
+entity exists.

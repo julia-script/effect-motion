@@ -1,0 +1,47 @@
+---
+title: "Image"
+description: "Image: <ID>(id) => ImageResource<ID>;"
+---
+# Variable: Image
+
+```ts
+Image: <ID>(id) => ImageResource<ID>;
+```
+
+Defined in: [packages/motion/src/Image.ts:15](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Image.ts#L15)
+
+Declare an image your scene uses.
+
+## Type Parameters
+
+| Type Parameter |
+| ------ |
+| `ID` *extends* `string` |
+
+## Parameters
+
+| Parameter | Type | Description |
+| ------ | ------ | ------ |
+| `id` | `ID` & `EnsureLiteral`\<`ID`, `"Image id must be a literal string"`\> | An identifier for this image, as a literal string. |
+
+## Returns
+
+[`ImageResource`](../interfaces/ImageResource.mdx)\<`ID`\>
+
+## Remarks
+
+Follows the same two-faced contract as `Font.Font`: `yield*` the constant
+in a scene to get the reference for an Image entity, and pair it with
+[layer](../functions/layer.mdx) to provide the encoded bytes. Yielding is what puts the
+requirement into the scene's type.
+
+## Example
+
+```typescript
+const Logo = Image.Image("logo");
+
+const scene = Scene.make(function* () {
+	const logo = yield* Logo;
+	yield* Scene.instantiate("Image", { image: logo, width: 200, height: 80 });
+});
+```

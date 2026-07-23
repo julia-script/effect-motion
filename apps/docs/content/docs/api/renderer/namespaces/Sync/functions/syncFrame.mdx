@@ -1,0 +1,35 @@
+---
+title: "syncFrame"
+description: "function syncFrame(sync, frame): Effect<void, RenderException>;"
+---
+# Function: syncFrame()
+
+```ts
+function syncFrame(sync, frame): Effect<void, RenderException>;
+```
+
+Defined in: [Sync.ts:515](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L515)
+
+Bring the retained scenes in step with a frame.
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `sync` | [`Sync`](../interfaces/Sync.mdx) |
+| `frame` | `AnyFrame` |
+
+## Returns
+
+`Effect`\<`void`, `RenderException`\>
+
+## Remarks
+
+Runs the four phases described in the module overview. Objects are built,
+updated, or disposed as the frame demands; unchanged ones are skipped by
+reference equality on their data and world position, so a still scene
+costs almost nothing to hold.
+
+Scene-graph violations arrive as a typed `RenderException` naming the
+offending instance — never as a thrown exception escaping into the
+caller's Effect.

@@ -1,0 +1,65 @@
+---
+title: "TimingFunction"
+description: "type TimingFunction = (t) => number;"
+---
+# Type Alias: TimingFunction
+
+```ts
+type TimingFunction = (t) => number;
+```
+
+Defined in: [packages/motion/src/Timing.ts:44](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Timing.ts#L44)
+
+Easing curves — the shape of an animation's pacing over its duration.
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `t` | `number` |
+
+## Returns
+
+`number`
+
+## Remarks
+
+An easing maps linear progress `t` (0 → 1) to eased progress. It changes
+only WHEN a value gets where it's going, never where it ends up, so
+swapping curves restyles motion without touching its endpoints.
+
+Pass any of these to an animator by name — `"easeOutCubic"` — which
+autocompletes and is the usual form. A `TimingFunction` of your own is
+accepted anywhere a name is.
+
+Choosing one, in short:
+
+- `linear` — mechanical, constant speed. Good for continuous motion
+  (rotation, scrolling), stiff for anything that starts or stops.
+- `easeOut*` — fast then settling. The default instinct for something
+  ARRIVING; the motion is legible immediately.
+- `easeIn*` — slow then accelerating. For something LEAVING.
+- `easeInOut*` — eased at both ends; the natural choice for a move
+  between two resting states.
+- Within each family, `Sine` is the gentlest and `Quad` → `Cubic` →
+  `Quart` → `Quint` → `Expo` progressively more pronounced. `Circ` is
+  sharper still near the ends.
+- `Back`, `Elastic`, `Bounce` — overshoot and oscillation, for character.
+  These are how you get spring-LIKE motion in a fixed duration; for true
+  physics with an emergent duration, use `Physics` instead.
+
+Every non-periodic easing satisfies f(0) = 0 and f(1) = 1, which is what
+guarantees a tween lands exactly on its target. `Back` and `Elastic`
+deliberately leave [0, 1] mid-animation — that overshoot IS the effect, so
+consumers extrapolate rather than clamp. `Bounce` stays within [0, 1]: it
+rebounds AWAY from the target rather than past it. `sin` and `cos` are the
+exceptions to the endpoint rule: they trace a full periodic cycle and
+return to where they started.
+
+## Example
+
+By name, and with a custom curve.
+```typescript
+yield* box.pipe(Motion.moveTo({ x: 400 }, "1 second", "easeInOutCubic"));
+yield* box.pipe(Motion.moveTo({ x: 0 }, "1 second", (t) => t * t));
+```

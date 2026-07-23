@@ -1,0 +1,98 @@
+---
+title: "Pass"
+description: "A rendered scene, exposed as nodes a shader graph can sample."
+---
+# Interface: Pass
+
+Defined in: [packages/three/src/PostProcessing.ts:50](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/PostProcessing.ts#L50)
+
+A rendered scene, exposed as nodes a shader graph can sample.
+
+## Remarks
+
+Accessors return TSL nodes typed as `unknown` — see the module overview
+on why. Consumers re-declare the minimal node shape they use.
+
+## Properties
+
+### ~three.pass
+
+```ts
+readonly ~three.pass: PassNode;
+```
+
+Defined in: [packages/three/src/PostProcessing.ts:51](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/PostProcessing.ts#L51)
+
+***
+
+### cameraFar
+
+```ts
+readonly cameraFar: unknown;
+```
+
+Defined in: [packages/three/src/PostProcessing.ts:69](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/PostProcessing.ts#L69)
+
+***
+
+### cameraNear
+
+```ts
+readonly cameraNear: unknown;
+```
+
+Defined in: [packages/three/src/PostProcessing.ts:68](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/PostProcessing.ts#L68)
+
+The camera's near and far planes as auto-updating uniforms.
+
+#### Remarks
+
+Needed to linearize depth at an arbitrary sample point.
+[Pass.getViewZNode](#getviewznode) only reports depth at the current pixel, so
+any effect gathering depth from NEIGHBOURING taps has to do the
+conversion itself. Reaches past three's public surface to get them.
+
+***
+
+### getTextureNode
+
+```ts
+readonly getTextureNode: (name?) => unknown;
+```
+
+Defined in: [packages/three/src/PostProcessing.ts:53](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/PostProcessing.ts#L53)
+
+The pass's rendered color, as a node to sample.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `name?` | `string` |
+
+#### Returns
+
+`unknown`
+
+***
+
+### getViewZNode
+
+```ts
+readonly getViewZNode: (name?) => unknown;
+```
+
+Defined in: [packages/three/src/PostProcessing.ts:58](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/PostProcessing.ts#L58)
+
+Per-pixel view-space depth, for effects that need to know how far away
+something is — fog, or a depth-driven blur.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `name?` | `string` |
+
+#### Returns
+
+`unknown`

@@ -1,0 +1,61 @@
+---
+title: "move"
+description: "const move: <Tag>(from, to, duration, timing?) => <E, R>(instance) => Effect<Instance<Tag>, E, Runner | R> & <Tag, E, R>(instance, from, to, duration,"
+---
+# Variable: move
+
+```ts
+const move: <Tag>(from, to, duration, timing?) => <E, R>(instance) => Effect<Instance<Tag>, E, Runner | R> & <Tag, E, R>(instance, from, to, duration, timing?) => Effect<Instance<Tag>, E, Runner | R>;
+```
+
+Defined in: [packages/motion/src/Motion.ts:588](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Motion.ts#L588)
+
+Like [moveTo](./moveTo.mdx), but starting from an explicit position.
+
+## Remarks
+
+The entrance animator: an instance can sit at its final position in the
+scene tree and still fly in from off-screen, because the origin is stated
+rather than read. Both `from` and `to` are partial, and each fills its
+missing axes from the current position.
+
+## Param
+
+**from**
+
+Starting position; omitted axes start at the current value.
+
+## Param
+
+**to**
+
+Target position; omitted axes hold their current value.
+
+## Param
+
+**duration**
+
+How long, in scene time.
+
+## Param
+
+**timing**
+
+An easing name or function.
+
+## Default Value
+
+`timing` — `"linear"`
+
+## Returns
+
+The instance, so animators chain.
+
+## Example
+
+Slide a title in from off the left edge to where it was declared.
+```typescript
+yield* title.pipe(
+	Motion.move({ x: -200 }, { x: 60 }, "700 millis", "easeOutCubic"),
+);
+```

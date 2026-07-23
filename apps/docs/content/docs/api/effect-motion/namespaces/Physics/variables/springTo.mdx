@@ -1,0 +1,72 @@
+---
+title: "springTo"
+description: "const springTo: <Tag>(to, springInput?, settleTolerance?) => <E, R>(instance) => Effect<Instance<Tag>, E, Runner | R> & <Tag, E, R>(instance, to, spri"
+---
+# Variable: springTo
+
+```ts
+const springTo: <Tag>(to, springInput?, settleTolerance?) => <E, R>(instance) => Effect<Instance<Tag>, E, Runner | R> & <Tag, E, R>(instance, to, springInput?, settleTolerance?) => Effect<Instance<Tag>, E, Runner | R>;
+```
+
+Defined in: [packages/motion/src/Physics.ts:307](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Physics.ts#L307)
+
+Spring an instance to a position — `Motion.moveTo` with momentum instead
+of a duration.
+
+## Remarks
+
+The animation runs until the simulation settles, then lands exactly on
+`to`, so chaining springs is safe: each starts precisely where the last
+finished, with no accumulated drift. How long that takes depends on the
+spring AND the distance — a longer move rings longer.
+
+Because the length is emergent, a spring is awkward to synchronize
+against a fixed beat. When several things must finish together, either
+spring them inside a `Scene.all` and let the slowest govern, or use a
+duration-based tween with an elastic easing.
+
+Targets are partial, like `moveTo` — naming only `x` holds the other axes.
+Every axis is simulated by the same spring, so a diagonal move settles as
+one motion.
+
+## Param
+
+**to**
+
+Target position; omitted axes hold their current value.
+
+## Param
+
+**springInput**
+
+A preset name from [springs](./springs.mdx), or a custom
+  [Spring](../interfaces/Spring.mdx).
+
+## Param
+
+**settleTolerance**
+
+How close to the target (in both displacement
+  and velocity) counts as settled. Larger ends sooner and cuts the tail.
+
+## Default Value
+
+`springInput` — [defaultSpring](./defaultSpring.mdx); `settleTolerance` — `0.001`
+
+## Returns
+
+The instance, so animators chain.
+
+## See
+
+[spring](./spring.mdx) to start from an explicit position.
+
+## Example
+
+A struck-then-settling entrance, using two different presets.
+```typescript
+yield* badge.pipe(
+	Physics.springTo({ y: 120 }, "strike"),
+	Physics.springTo({ x: 300 }, "smooth"),
+);
+```

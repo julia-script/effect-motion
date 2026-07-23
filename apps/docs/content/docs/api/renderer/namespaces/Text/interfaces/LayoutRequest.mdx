@@ -1,0 +1,73 @@
+---
+title: "LayoutRequest"
+description: "What to lay out: the string, the font, its size, and its alignment."
+---
+# Interface: LayoutRequest
+
+Defined in: [Text.ts:82](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Text.ts#L82)
+
+What to lay out: the string, the font, its size, and its alignment.
+
+## Properties
+
+### baseline?
+
+```ts
+readonly optional baseline?: "middle" | "auto" | "hanging";
+```
+
+Defined in: [Text.ts:98](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Text.ts#L98)
+
+Vertical alignment relative to the entity's position.
+
+#### Default Value
+
+`"auto"` — the text's own baseline
+
+***
+
+### fontId
+
+```ts
+readonly fontId: string;
+```
+
+Defined in: [Text.ts:85](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Text.ts#L85)
+
+Id of a font registered with [registerFont](../functions/registerFont.mdx).
+
+***
+
+### fontSize
+
+```ts
+readonly fontSize: number;
+```
+
+Defined in: [Text.ts:86](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Text.ts#L86)
+
+***
+
+### text
+
+```ts
+readonly text: string;
+```
+
+Defined in: [Text.ts:83](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Text.ts#L83)
+
+***
+
+### textAnchor?
+
+```ts
+readonly optional textAnchor?: "start" | "end" | "middle";
+```
+
+Defined in: [Text.ts:92](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Text.ts#L92)
+
+Horizontal alignment relative to the entity's position.
+
+#### Default Value
+
+`"start"`

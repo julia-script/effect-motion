@@ -1,0 +1,20 @@
+---
+title: "sin"
+description: "const sin: TimingFunction;"
+---
+# Variable: sin
+
+```ts
+const sin: TimingFunction;
+```
+
+Defined in: [packages/motion/src/Timing.ts:66](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Timing.ts#L66)
+
+One full sine cycle: 0 → 1 → 0.
+
+## Remarks
+
+Periodic, so it deliberately RETURNS to its starting value instead of
+ending at 1 — a tween using it finishes where it began. That makes it a
+there-and-back helper (a pulse, a sway), not a transition between two
+states.

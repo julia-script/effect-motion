@@ -1,0 +1,70 @@
+---
+title: "setSize"
+description: "const setSize: {"
+---
+# Variable: setSize
+
+```ts
+const setSize: {
+  (width, height, updateStyle?): (self) => Renderer;
+  (self, width, height, updateStyle?): Renderer;
+};
+```
+
+Defined in: [packages/three/src/Renderer.ts:339](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/Renderer.ts#L339)
+
+Set the renderer's logical size in CSS pixels.
+
+## Call Signature
+
+```ts
+(
+   width, 
+   height, 
+   updateStyle?): (self) => Renderer;
+```
+
+### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `width` | `number` |
+| `height` | `number` |
+| `updateStyle?` | `boolean` |
+
+### Returns
+
+(`self`) => [`Renderer`](../interfaces/Renderer.mdx)
+
+## Call Signature
+
+```ts
+(
+   self, 
+   width, 
+   height, 
+   updateStyle?): Renderer;
+```
+
+### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `self` | [`Renderer`](../interfaces/Renderer.mdx) |
+| `width` | `number` |
+| `height` | `number` |
+| `updateStyle?` | `boolean` |
+
+### Returns
+
+[`Renderer`](../interfaces/Renderer.mdx)
+
+## Remarks
+
+The actual drawing buffer is this multiplied by the pixel ratio. Canvas
+CSS is left alone unless `updateStyle` is true, since callers usually own
+the element's layout.
+
+## Default Value
+
+`updateStyle` — `false`

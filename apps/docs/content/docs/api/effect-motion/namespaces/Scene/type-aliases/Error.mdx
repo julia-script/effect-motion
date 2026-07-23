@@ -1,0 +1,19 @@
+---
+title: "Error"
+description: "type Error<S> = S extends Scene<infer E, any> ? E : never;"
+---
+# Type Alias: Error\<S\>
+
+```ts
+type Error<S> = S extends Scene<infer E, any> ? E : never;
+```
+
+Defined in: [packages/motion/src/Scene.ts:112](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L112)
+
+the scene's failure channel
+
+## Type Parameters
+
+| Type Parameter |
+| ------ |
+| `S` *extends* [`AnyScene`](./AnyScene.mdx) |

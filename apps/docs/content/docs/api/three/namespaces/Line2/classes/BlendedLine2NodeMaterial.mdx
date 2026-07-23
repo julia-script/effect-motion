@@ -1,0 +1,85 @@
+---
+title: "BlendedLine2NodeMaterial"
+description: "A `Line2NodeMaterial` whose transparency actually blends."
+---
+# Class: BlendedLine2NodeMaterial
+
+Defined in: [packages/three/src/Line2.ts:39](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/Line2.ts#L39)
+
+A `Line2NodeMaterial` whose transparency actually blends.
+
+## Remarks
+
+Use this instead of three's `Line2NodeMaterial` for any stroke that is
+not fully opaque.
+
+Upstream, a transparent fat line does not truly blend. It fakes
+transparency by sampling a copy of the framebuffer's opaque content —
+three's own comment says "transparency is not supported, yet". That copy
+is a module-level singleton, recreated per render and shared by every
+renderer on the page, which produces two problems: validation errors
+about destroyed textures whenever more than one renderer is alive, and
+wrong results against other translucent content, which the copy does not
+contain.
+
+This subclass skips that branch during shader setup and uses ordinary
+alpha blending, so a translucent stroke composites like every other
+material. Drop it if upstream ever supports real fat-line transparency.
+
+## Extends
+
+- `Line2NodeMaterial`
+
+## Constructors
+
+### Constructor
+
+```ts
+new BlendedLine2NodeMaterial(...parameters): BlendedLine2NodeMaterial;
+```
+
+Defined in: [packages/three/src/Line2.ts:40](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/Line2.ts#L40)
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| ...`parameters` | \[`Line2NodeMaterialParameters`\] |
+
+#### Returns
+
+`BlendedLine2NodeMaterial`
+
+#### Overrides
+
+```ts
+Line2NodeMaterial.constructor
+```
+
+## Methods
+
+### setupDiffuseColor()
+
+```ts
+setupDiffuseColor(...args): void;
+```
+
+Defined in: [packages/three/src/Line2.ts:45](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/Line2.ts#L45)
+
+Setups the computation of the material's diffuse color.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| ...`args` | \[`NodeBuilder`\] |
+
+#### Returns
+
+`void`
+
+#### Overrides
+
+```ts
+Line2NodeMaterial.setupDiffuseColor
+```

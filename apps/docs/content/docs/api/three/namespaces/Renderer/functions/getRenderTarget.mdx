@@ -1,0 +1,27 @@
+---
+title: "getRenderTarget"
+description: "function getRenderTarget(self): RenderTarget | null;"
+---
+# Function: getRenderTarget()
+
+```ts
+function getRenderTarget(self): RenderTarget | null;
+```
+
+Defined in: [packages/three/src/Renderer.ts:270](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/Renderer.ts#L270)
+
+The current output target, or `null` when drawing to the canvas.
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `self` | [`Renderer`](../interfaces/Renderer.mdx) |
+
+## Returns
+
+[`RenderTarget`](../../RenderTarget/interfaces/RenderTarget.mdx) \| `null`
+
+## Remarks
+
+Read it before redirecting output so you can restore it afterwards.

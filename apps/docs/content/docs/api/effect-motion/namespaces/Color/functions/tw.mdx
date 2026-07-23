@@ -1,0 +1,43 @@
+---
+title: "tw"
+description: "function tw("
+---
+# Function: tw()
+
+```ts
+function tw(
+   color, 
+   shade?, 
+   alpha?): Color;
+```
+
+Defined in: [packages/motion/src/Color.ts:824](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Color.ts#L824)
+
+A color from the Tailwind palette.
+
+## Parameters
+
+| Parameter | Type | Default value | Description |
+| ------ | ------ | ------ | ------ |
+| `color` | \| `"blue"` \| `"cyan"` \| `"fuchsia"` \| `"gray"` \| `"green"` \| `"indigo"` \| `"lime"` \| `"olive"` \| `"orange"` \| `"pink"` \| `"purple"` \| `"red"` \| `"teal"` \| `"violet"` \| `"yellow"` \| `"slate"` \| `"zinc"` \| `"neutral"` \| `"stone"` \| `"mauve"` \| `"mist"` \| `"taupe"` \| `"amber"` \| `"emerald"` \| `"sky"` \| `"rose"` | `undefined` | Palette name, e.g. `"violet"`. |
+| `shade` | \| `"50"` \| `"100"` \| `"200"` \| `"300"` \| `"400"` \| `"500"` \| `"600"` \| `"700"` \| `"800"` \| `"900"` \| `"950"` | `"400"` | Lightness step, `"50"` (lightest) to `"950"` (darkest). |
+| `alpha` | `number` | `1` | Opacity, 0–1. |
+
+## Returns
+
+[`Color`](../classes/Color.mdx)
+
+## Remarks
+
+A ready-made, perceptually even set of hues — handy for getting a scene
+looking coherent without hand-picking values.
+
+## Default Value
+
+`shade` — `"400"`; `alpha` — `1`
+
+## Example
+
+```typescript
+Color.tw("violet", "500")
+```

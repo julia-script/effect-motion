@@ -1,0 +1,175 @@
+---
+title: "PlayerProps"
+description: "type PlayerProps<S> = {"
+---
+# Type Alias: PlayerProps\<S\>
+
+```ts
+type PlayerProps<S> = {
+  autoPlay?: boolean;
+  bufferCapacity?: number;
+  defaultRepeatMode?: boolean;
+  fps?: number;
+  isInfinite?: boolean;
+  prebufferedFrames?: number;
+  scene: S;
+  settings?: Partial<Runner.Settings>;
+} & Scene.Resources<S> extends never ? {
+  renderLayers?: never;
+} : {
+  renderLayers: Layer.Layer<Scene.Resources<S>, unknown, never>;
+};
+```
+
+Defined in: [Player.tsx:558](https://github.com/julia-script/effect-motion/blob/main/packages/react/src/Player.tsx#L558)
+
+Props for [Player](../functions/Player.mdx).
+
+## Type Declaration
+
+### autoPlay?
+
+```ts
+optional autoPlay?: boolean;
+```
+
+Start playing on mount instead of waiting for the play button.
+
+#### Default Value
+
+`false`
+
+### bufferCapacity?
+
+```ts
+optional bufferCapacity?: number;
+```
+
+How many frames of scene DATA to keep in memory.
+
+#### Remarks
+
+Frame data, not rendered pixels. A finite scene keeps everything so
+seeking anywhere works; an infinite scene keeps a window, since
+retaining every frame of an endless scene would grow without bound.
+
+Seeking before the retained window clamps to its oldest frame — a scene
+is a forward-only stream, so frames that fell out cannot be recomputed.
+Raise this if deep backward scrubbing on a long scene matters.
+
+#### Default Value
+
+`Infinity` for a finite scene; `1800` (~30s at 60fps) when
+  `isInfinite`
+
+### defaultRepeatMode?
+
+```ts
+optional defaultRepeatMode?: boolean;
+```
+
+Whether repeat starts switched on.
+
+#### Remarks
+
+An INITIAL value, not a controlled prop — the player owns repeat state
+once mounted, because the user can toggle it with the repeat button.
+Ignored for an infinite scene.
+
+#### Default Value
+
+`false`
+
+### fps?
+
+```ts
+optional fps?: number;
+```
+
+Frames per second, for both the scene and the playback clock.
+
+#### Remarks
+
+Overridden by `settings.frameRate` when both are given, so the two can
+never disagree.
+
+#### Default Value
+
+`60`
+
+### isInfinite?
+
+```ts
+optional isInfinite?: boolean;
+```
+
+Declare that the scene never ends.
+
+#### Remarks
+
+Set this for a scene built to run forever — an ambient loop, a
+`Schedule.forever` background. It changes three things: frames are
+buffered in a bounded window rather than kept forever, only a prefix is
+prebuffered, and the scrubber and repeat toggle are hidden, since
+neither means anything without an end. Play and pause remain.
+
+#### Default Value
+
+`false`
+
+### prebufferedFrames?
+
+```ts
+optional prebufferedFrames?: number;
+```
+
+How many frames to buffer ahead before playing.
+
+#### Remarks
+
+The default buffers the WHOLE scene, which is what makes the total
+duration and a complete progress bar available immediately. Lower it to
+start playing sooner on a long scene: the progress bar then tracks how
+much is buffered so far, and the total time stays hidden until the
+scene has been pulled to its end.
+
+An infinite scene can never be fully buffered, so it falls back to 60
+frames.
+
+#### Default Value
+
+`Infinity` (60 when `isInfinite`)
+
+### scene
+
+```ts
+scene: S;
+```
+
+The scene to play.
+
+### settings?
+
+```ts
+optional settings?: Partial<Runner.Settings>;
+```
+
+Playback settings passed to the scene run — `seed`, `maxFrames`, and
+`frameRate`.
+
+#### Remarks
+
+Resolution and background are NOT here: those belong to the scene's own
+composition config, fixed when it was made. A `frameRate` given here
+wins over the `fps` prop.
+
+## Type Parameters
+
+| Type Parameter | Default type | Description |
+| ------ | ------ | ------ |
+| `S` *extends* `Scene.AnyScene` | `Scene.AnyScene` | The scene's type, which decides whether `renderLayers` is required. |
+
+## Remarks
+
+Only `scene` is required — and `renderLayers`, if the scene declares
+resources. Everything else has a working default.

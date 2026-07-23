@@ -1,0 +1,64 @@
+---
+title: "dollyTo"
+description: "const dollyTo: (distance, duration, timing?) => (cam) => CamEffect & (cam, distance, duration, timing?) => CamEffect;"
+---
+# Variable: dollyTo
+
+```ts
+const dollyTo: (distance, duration, timing?) => (cam) => CamEffect & (cam, distance, duration, timing?) => CamEffect;
+```
+
+Defined in: [packages/motion/src/Camera.ts:523](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Camera.ts#L523)
+
+Move the camera toward or away from its point of interest along the view
+axis.
+
+## Remarks
+
+A push-in or pull-back that keeps the subject centered and the aim
+unchanged — only the distance changes. Distinct from tweening the camera's
+`z`, which moves along the WORLD axis and would slide the subject off
+center once the camera is aimed obliquely.
+
+Requires a point of interest — call [lookAt](./lookAt.mdx) first.
+
+## Param
+
+**distance**
+
+Target distance from the point of interest; smaller is
+  closer.
+
+## Param
+
+**duration**
+
+How long, in scene time.
+
+## Param
+
+**timing**
+
+An easing name or function.
+
+## Default Value
+
+`timing` — `"linear"`
+
+## Returns
+
+The camera, so animators chain.
+
+## See
+
+[dolly](./dolly.mdx) to start from an explicit distance.
+
+## Example
+
+Push in on a subject.
+```typescript
+yield* camera.pipe(
+	Camera.lookAt(subject),
+	Camera.dollyTo(300, "1500 millis", "easeInOutCubic"),
+);
+```

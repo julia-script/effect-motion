@@ -1,0 +1,1047 @@
+---
+title: "RunningScene"
+description: "readonly done: boolean;"
+---
+# Interface: RunningScene\<E, R\>
+
+Defined in: [packages/motion/src/Scene.ts:412](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L412)
+
+## Type Parameters
+
+| Type Parameter |
+| ------ |
+| `E` |
+| `R` |
+
+## Properties
+
+### done
+
+```ts
+readonly done: boolean;
+```
+
+Defined in: [packages/motion/src/Scene.ts:418](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L418)
+
+***
+
+### fiber
+
+```ts
+readonly fiber: Fiber<void, E>;
+```
+
+Defined in: [packages/motion/src/Scene.ts:417](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L417)
+
+***
+
+### framesDelivered
+
+```ts
+framesDelivered: number;
+```
+
+Defined in: [packages/motion/src/Scene.ts:420](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L420)
+
+frames delivered so far — mutated by `step` for the maxFrames cap
+
+***
+
+### runner
+
+```ts
+readonly runner: {
+  appendChild: (parent, child) => void;
+  awaitedCount: () => number;
+  backgrounds: Set<BranchEntry>;
+  camera: Instance<"Camera">;
+  comp: CompConfig;
+  compBounds: (id) => CompConfig | null;
+  countAwaited: (n) => void;
+  destroy: (instance) => void;
+  failureCause: () => Cause<unknown> | undefined;
+  forks: Set<BranchEntry>;
+  getDataUnsafe: <Tag>(instance) => 
+     | EntityByTag<Tag>
+    | null;
+  instantiate: <Tag>(...args) => Effect<Instance<Tag>, never, Runner>;
+  instantiateEscape: (...args) => Effect<Instance<
+     | "Camera"
+     | "Line"
+     | "Path"
+     | "Rect"
+     | "Circle"
+     | "Ellipse"
+     | "Text"
+     | "Group"
+     | "Hud"
+    | "Image">, never, never>;
+  phaser: {
+     arriveAndAwaitAdvance: Effect<void, never, never>;
+     awaitAdvance: Effect<number, never, never>;
+     deregister: (n) => void;
+     register: (n) => void;
+     snapshotUnsafe: () => {
+        arrived: number;
+        parties: number;
+        phase: number;
+        state: "idle" | "pending" | "running";
+     };
+  };
+  recordFailure: (cause) => void;
+  registerComp: (id, config) => void;
+  removeChild: (parent, child) => void;
+  root: GroupInstance;
+  setCamera: (instance) => void;
+  setDataUnsafe: <Tag>(instance, state) => void;
+  settings: {
+     frameRate: number;
+     maxFrames: number;
+     seed: Seed;
+  };
+  state: Effect<{
+     backgroundColor: Color;
+     camera: CameraView & PointOfInterest;
+     comps: {
+      [k: string]: CompConfig;
+     };
+     frameRate: number;
+     height: number;
+     instances: Record<string, {
+        data:   | ReadonlySide<{
+           end: withConstructorDefault<TaggedStruct<"Vec3", {
+              x: ...;
+              y: ...;
+              z: ...;
+           }>>;
+           opacity: withConstructorDefault<Number>;
+           position: withConstructorDefault<TaggedStruct<"Vec3", {
+              x: ...;
+              y: ...;
+              z: ...;
+           }>>;
+           rotation: withConstructorDefault<TaggedStruct<"Vec3", {
+              x: ...;
+              y: ...;
+              z: ...;
+           }>>;
+           scale: withConstructorDefault<TaggedStruct<"Vec3", {
+              x: ...;
+              y: ...;
+              z: ...;
+           }>>;
+           start: withConstructorDefault<TaggedStruct<"Vec3", {
+              x: ...;
+              y: ...;
+              z: ...;
+           }>>;
+           strokeColor: withConstructorDefault<typeof Color>;
+           strokeWidth: withConstructorDefault<Number>;
+           visible: withConstructorDefault<Boolean>;
+         }, "Type">
+           | ReadonlySide<{
+           commands: NonEmptyArray<TaggedUnion<{
+              L: ...;
+              M: ...;
+              Z: ...;
+           }>>;
+           fillColor: withConstructorDefault<typeof Color>;
+           opacity: withConstructorDefault<Number>;
+           position: withConstructorDefault<TaggedStruct<"Vec3", {
+              x: ...;
+              y: ...;
+              z: ...;
+           }>>;
+           rotation: withConstructorDefault<TaggedStruct<"Vec3", {
+              x: ...;
+              y: ...;
+              z: ...;
+           }>>;
+           scale: withConstructorDefault<TaggedStruct<"Vec3", {
+              x: ...;
+              y: ...;
+              z: ...;
+           }>>;
+           strokeColor: withConstructorDefault<typeof Color>;
+           strokeWidth: withConstructorDefault<Number>;
+           visible: withConstructorDefault<Boolean>;
+         }, "Type">
+           | ReadonlySide<{
+           fillColor: withConstructorDefault<typeof Color>;
+           height: withConstructorDefault<Number>;
+           opacity: withConstructorDefault<Number>;
+           position: withConstructorDefault<TaggedStruct<"Vec3", {
+              x: ...;
+              y: ...;
+              z: ...;
+           }>>;
+           rotation: withConstructorDefault<TaggedStruct<"Vec3", {
+              x: ...;
+              y: ...;
+              z: ...;
+           }>>;
+           scale: withConstructorDefault<TaggedStruct<"Vec3", {
+              x: ...;
+              y: ...;
+              z: ...;
+           }>>;
+           strokeColor: withConstructorDefault<typeof Color>;
+           strokeWidth: withConstructorDefault<Number>;
+           visible: withConstructorDefault<Boolean>;
+           width: withConstructorDefault<Number>;
+         }, "Type">
+           | ReadonlySide<{
+           fillColor: withConstructorDefault<typeof Color>;
+           opacity: withConstructorDefault<Number>;
+           position: withConstructorDefault<TaggedStruct<"Vec3", {
+              x: ...;
+              y: ...;
+              z: ...;
+           }>>;
+           radius: withConstructorDefault<Number>;
+           rotation: withConstructorDefault<TaggedStruct<"Vec3", {
+              x: ...;
+              y: ...;
+              z: ...;
+           }>>;
+           scale: withConstructorDefault<TaggedStruct<"Vec3", {
+              x: ...;
+              y: ...;
+              z: ...;
+           }>>;
+           strokeColor: withConstructorDefault<typeof Color>;
+           strokeWidth: withConstructorDefault<Number>;
+           visible: withConstructorDefault<Boolean>;
+         }, "Type">
+           | ReadonlySide<{
+           fillColor: withConstructorDefault<typeof Color>;
+           opacity: withConstructorDefault<Number>;
+           position: withConstructorDefault<TaggedStruct<"Vec3", {
+              x: ...;
+              y: ...;
+              z: ...;
+           }>>;
+           radiusX: withConstructorDefault<Number>;
+           radiusY: withConstructorDefault<Number>;
+           rotation: withConstructorDefault<TaggedStruct<"Vec3", {
+              x: ...;
+              y: ...;
+              z: ...;
+           }>>;
+           scale: withConstructorDefault<TaggedStruct<"Vec3", {
+              x: ...;
+              y: ...;
+              z: ...;
+           }>>;
+           strokeColor: withConstructorDefault<typeof Color>;
+           strokeWidth: withConstructorDefault<Number>;
+           visible: withConstructorDefault<Boolean>;
+         }, "Type">
+           | {
+           baseline?: "middle" | "auto" | "hanging";
+           fillColor: Color;
+           fontFamily: ReadonlySide<{
+              id: String;
+           }, "Type">;
+           fontSize: number;
+           opacity: number;
+           position: ReadonlySide<{
+              x: withConstructorDefault<Number>;
+              y: withConstructorDefault<Number>;
+              z: withConstructorDefault<Number>;
+           }, "Type">;
+           rotation: ReadonlySide<{
+              x: withConstructorDefault<Number>;
+              y: withConstructorDefault<Number>;
+              z: withConstructorDefault<Number>;
+           }, "Type">;
+           scale: ReadonlySide<{
+              x: withConstructorDefault<Number>;
+              y: withConstructorDefault<Number>;
+              z: withConstructorDefault<Number>;
+           }, "Type">;
+           text: string;
+           textAnchor?: "start" | "end" | "middle";
+           visible: boolean;
+         }
+           | ReadonlySide<{
+           children: withConstructorDefault<$Array<String>>;
+           opacity: withConstructorDefault<Number>;
+           position: withConstructorDefault<TaggedStruct<"Vec3", {
+              x: ...;
+              y: ...;
+              z: ...;
+           }>>;
+           rotation: withConstructorDefault<TaggedStruct<"Vec3", {
+              x: ...;
+              y: ...;
+              z: ...;
+           }>>;
+           scale: withConstructorDefault<TaggedStruct<"Vec3", {
+              x: ...;
+              y: ...;
+              z: ...;
+           }>>;
+           visible: withConstructorDefault<Boolean>;
+         }, "Type">
+           | ReadonlySide<{
+           children: withConstructorDefault<$Array<String>>;
+           opacity: withConstructorDefault<Number>;
+           position: withConstructorDefault<TaggedStruct<"Vec3", {
+              x: ...;
+              y: ...;
+              z: ...;
+           }>>;
+           rotation: withConstructorDefault<TaggedStruct<"Vec3", {
+              x: ...;
+              y: ...;
+              z: ...;
+           }>>;
+           scale: withConstructorDefault<TaggedStruct<"Vec3", {
+              x: ...;
+              y: ...;
+              z: ...;
+           }>>;
+           visible: withConstructorDefault<Boolean>;
+         }, "Type">
+           | {
+           height?: number;
+           image: ReadonlySide<{
+              id: String;
+           }, "Type">;
+           opacity: number;
+           position: ReadonlySide<{
+              x: withConstructorDefault<Number>;
+              y: withConstructorDefault<Number>;
+              z: withConstructorDefault<Number>;
+           }, "Type">;
+           rotation: ReadonlySide<{
+              x: withConstructorDefault<Number>;
+              y: withConstructorDefault<Number>;
+              z: withConstructorDefault<Number>;
+           }, "Type">;
+           scale: ReadonlySide<{
+              x: withConstructorDefault<Number>;
+              y: withConstructorDefault<Number>;
+              z: withConstructorDefault<Number>;
+           }, "Type">;
+           visible: boolean;
+           width?: number;
+         }
+           | ReadonlySide<{
+           aperture: withConstructorDefault<Number>;
+           focalLength: withConstructorDefault<Number>;
+           focusDistance: withConstructorDefault<Number>;
+           poi: withConstructorDefault<NullOr<TaggedStruct<..., ...>>>;
+           position: withConstructorDefault<TaggedStruct<"Vec3", {
+              x: ...;
+              y: ...;
+              z: ...;
+           }>>;
+           rotation: withConstructorDefault<TaggedStruct<"Vec3", {
+              x: ...;
+              y: ...;
+              z: ...;
+           }>>;
+         }, "Type">;
+     }>;
+     root: string;
+     width: number;
+  }, never, never>;
+};
+```
+
+Defined in: [packages/motion/src/Scene.ts:413](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L413)
+
+#### appendChild
+
+```ts
+appendChild: (parent, child) => void;
+```
+
+##### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `parent` | [`GroupInstance`](../../Runner/type-aliases/GroupInstance.mdx) |
+| `child` | [`Instance`](../../Instance/interfaces/Instance.mdx) |
+
+##### Returns
+
+`void`
+
+#### awaitedCount
+
+```ts
+awaitedCount: () => number;
+```
+
+##### Returns
+
+`number`
+
+#### backgrounds
+
+```ts
+backgrounds: Set<BranchEntry>;
+```
+
+#### camera
+
+```ts
+camera: Instance<"Camera">;
+```
+
+#### comp
+
+```ts
+comp: CompConfig;
+```
+
+#### compBounds
+
+```ts
+compBounds: (id) => CompConfig | null;
+```
+
+##### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `id` | `string` |
+
+##### Returns
+
+[`CompConfig`](../../Runner/type-aliases/CompConfig.mdx) \| `null`
+
+#### countAwaited
+
+```ts
+countAwaited: (n) => void;
+```
+
+##### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `n` | `number` |
+
+##### Returns
+
+`void`
+
+#### destroy
+
+```ts
+destroy: (instance) => void;
+```
+
+##### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `instance` | [`Instance`](../../Instance/interfaces/Instance.mdx) |
+
+##### Returns
+
+`void`
+
+#### failureCause
+
+```ts
+failureCause: () => Cause<unknown> | undefined;
+```
+
+##### Returns
+
+`Cause`\<`unknown`\> \| `undefined`
+
+#### forks
+
+```ts
+forks: Set<BranchEntry>;
+```
+
+#### getDataUnsafe
+
+```ts
+getDataUnsafe: <Tag>(instance) => 
+  | EntityByTag<Tag>
+  | null;
+```
+
+##### Type Parameters
+
+| Type Parameter |
+| ------ |
+| `Tag` *extends* \| `"Camera"` \| `"Line"` \| `"Path"` \| `"Rect"` \| `"Circle"` \| `"Ellipse"` \| `"Text"` \| `"Group"` \| `"Hud"` \| `"Image"` |
+
+##### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `instance` | [`Instance`](../../Instance/interfaces/Instance.mdx)\<`Tag`\> |
+
+##### Returns
+
+  \| [`EntityByTag`](../../Entity/type-aliases/EntityByTag.mdx)\<`Tag`\>
+  \| `null`
+
+#### instantiate
+
+```ts
+instantiate: <Tag>(...args) => Effect<Instance<Tag>, never, Runner>;
+```
+
+##### Type Parameters
+
+| Type Parameter |
+| ------ |
+| `Tag` *extends* \| `"Camera"` \| `"Line"` \| `"Path"` \| `"Rect"` \| `"Circle"` \| `"Ellipse"` \| `"Text"` \| `"Group"` \| `"Hud"` \| `"Image"` |
+
+##### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| ...`args` | \[`Tag`, [`InstantiateProps`](../../Runner/type-aliases/InstantiateProps.mdx)\<`Tag`\>\] |
+
+##### Returns
+
+`Effect`\<[`Instance`](../../Instance/interfaces/Instance.mdx)\<`Tag`\>, `never`, [`Runner`](../../Runner/classes/Runner.mdx)\>
+
+#### instantiateEscape
+
+```ts
+instantiateEscape: (...args) => Effect<Instance<
+  | "Camera"
+  | "Line"
+  | "Path"
+  | "Rect"
+  | "Circle"
+  | "Ellipse"
+  | "Text"
+  | "Group"
+  | "Hud"
+| "Image">, never, never>;
+```
+
+ponytail: create a tree node for an entity that is NOT in the
+union — the particle system only (design D10). Mounts under the
+ambient parent like any instance. Delete with the particles
+rewrite; see `particlesEscapeInstantiate`.
+
+##### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| ...`args` | \[ \| `ReadonlySide`\<\{ `end`: `withConstructorDefault`\<`TaggedStruct`\<`"Vec3"`, \{ `x`: `withConstructorDefault`\<`Number`\>; `y`: `withConstructorDefault`\<`Number`\>; `z`: `withConstructorDefault`\<`Number`\>; \}\>\>; `opacity`: `withConstructorDefault`\<`Number`\>; `position`: `withConstructorDefault`\<`TaggedStruct`\<`"Vec3"`, \{ `x`: `withConstructorDefault`\<`Number`\>; `y`: `withConstructorDefault`\<`Number`\>; `z`: `withConstructorDefault`\<`Number`\>; \}\>\>; `rotation`: `withConstructorDefault`\<`TaggedStruct`\<`"Vec3"`, \{ `x`: `withConstructorDefault`\<`Number`\>; `y`: `withConstructorDefault`\<`Number`\>; `z`: `withConstructorDefault`\<`Number`\>; \}\>\>; `scale`: `withConstructorDefault`\<`TaggedStruct`\<`"Vec3"`, \{ `x`: `withConstructorDefault`\<`Number`\>; `y`: `withConstructorDefault`\<`Number`\>; `z`: `withConstructorDefault`\<`Number`\>; \}\>\>; `start`: `withConstructorDefault`\<`TaggedStruct`\<`"Vec3"`, \{ `x`: `withConstructorDefault`\<`Number`\>; `y`: `withConstructorDefault`\<`Number`\>; `z`: `withConstructorDefault`\<`Number`\>; \}\>\>; `strokeColor`: `withConstructorDefault`\<*typeof* [`Color`](../../Color/classes/Color.mdx)\>; `strokeWidth`: `withConstructorDefault`\<`Number`\>; `visible`: `withConstructorDefault`\<`Boolean`\>; \}, `"Type"`\> \| `ReadonlySide`\<\{ `commands`: `NonEmptyArray`\<`TaggedUnion`\<\{ `L`: `TaggedStruct`\<`"L"`, \{ `x`: ...; `y`: ...; `z`: ...; \}\>; `M`: `TaggedStruct`\<`"M"`, \{ `x`: ...; `y`: ...; `z`: ...; \}\>; `Z`: `TaggedStruct`\<`"Z"`, \{ \}\>; \}\>\>; `fillColor`: `withConstructorDefault`\<*typeof* [`Color`](../../Color/classes/Color.mdx)\>; `opacity`: `withConstructorDefault`\<`Number`\>; `position`: `withConstructorDefault`\<`TaggedStruct`\<`"Vec3"`, \{ `x`: `withConstructorDefault`\<`Number`\>; `y`: `withConstructorDefault`\<`Number`\>; `z`: `withConstructorDefault`\<`Number`\>; \}\>\>; `rotation`: `withConstructorDefault`\<`TaggedStruct`\<`"Vec3"`, \{ `x`: `withConstructorDefault`\<`Number`\>; `y`: `withConstructorDefault`\<`Number`\>; `z`: `withConstructorDefault`\<`Number`\>; \}\>\>; `scale`: `withConstructorDefault`\<`TaggedStruct`\<`"Vec3"`, \{ `x`: `withConstructorDefault`\<`Number`\>; `y`: `withConstructorDefault`\<`Number`\>; `z`: `withConstructorDefault`\<`Number`\>; \}\>\>; `strokeColor`: `withConstructorDefault`\<*typeof* [`Color`](../../Color/classes/Color.mdx)\>; `strokeWidth`: `withConstructorDefault`\<`Number`\>; `visible`: `withConstructorDefault`\<`Boolean`\>; \}, `"Type"`\> \| `ReadonlySide`\<\{ `fillColor`: `withConstructorDefault`\<*typeof* [`Color`](../../Color/classes/Color.mdx)\>; `height`: `withConstructorDefault`\<`Number`\>; `opacity`: `withConstructorDefault`\<`Number`\>; `position`: `withConstructorDefault`\<`TaggedStruct`\<`"Vec3"`, \{ `x`: `withConstructorDefault`\<`Number`\>; `y`: `withConstructorDefault`\<`Number`\>; `z`: `withConstructorDefault`\<`Number`\>; \}\>\>; `rotation`: `withConstructorDefault`\<`TaggedStruct`\<`"Vec3"`, \{ `x`: `withConstructorDefault`\<`Number`\>; `y`: `withConstructorDefault`\<`Number`\>; `z`: `withConstructorDefault`\<`Number`\>; \}\>\>; `scale`: `withConstructorDefault`\<`TaggedStruct`\<`"Vec3"`, \{ `x`: `withConstructorDefault`\<`Number`\>; `y`: `withConstructorDefault`\<`Number`\>; `z`: `withConstructorDefault`\<`Number`\>; \}\>\>; `strokeColor`: `withConstructorDefault`\<*typeof* [`Color`](../../Color/classes/Color.mdx)\>; `strokeWidth`: `withConstructorDefault`\<`Number`\>; `visible`: `withConstructorDefault`\<`Boolean`\>; `width`: `withConstructorDefault`\<`Number`\>; \}, `"Type"`\> \| `ReadonlySide`\<\{ `fillColor`: `withConstructorDefault`\<*typeof* [`Color`](../../Color/classes/Color.mdx)\>; `opacity`: `withConstructorDefault`\<`Number`\>; `position`: `withConstructorDefault`\<`TaggedStruct`\<`"Vec3"`, \{ `x`: `withConstructorDefault`\<`Number`\>; `y`: `withConstructorDefault`\<`Number`\>; `z`: `withConstructorDefault`\<`Number`\>; \}\>\>; `radius`: `withConstructorDefault`\<`Number`\>; `rotation`: `withConstructorDefault`\<`TaggedStruct`\<`"Vec3"`, \{ `x`: `withConstructorDefault`\<`Number`\>; `y`: `withConstructorDefault`\<`Number`\>; `z`: `withConstructorDefault`\<`Number`\>; \}\>\>; `scale`: `withConstructorDefault`\<`TaggedStruct`\<`"Vec3"`, \{ `x`: `withConstructorDefault`\<`Number`\>; `y`: `withConstructorDefault`\<`Number`\>; `z`: `withConstructorDefault`\<`Number`\>; \}\>\>; `strokeColor`: `withConstructorDefault`\<*typeof* [`Color`](../../Color/classes/Color.mdx)\>; `strokeWidth`: `withConstructorDefault`\<`Number`\>; `visible`: `withConstructorDefault`\<`Boolean`\>; \}, `"Type"`\> \| `ReadonlySide`\<\{ `fillColor`: `withConstructorDefault`\<*typeof* [`Color`](../../Color/classes/Color.mdx)\>; `opacity`: `withConstructorDefault`\<`Number`\>; `position`: `withConstructorDefault`\<`TaggedStruct`\<`"Vec3"`, \{ `x`: `withConstructorDefault`\<`Number`\>; `y`: `withConstructorDefault`\<`Number`\>; `z`: `withConstructorDefault`\<`Number`\>; \}\>\>; `radiusX`: `withConstructorDefault`\<`Number`\>; `radiusY`: `withConstructorDefault`\<`Number`\>; `rotation`: `withConstructorDefault`\<`TaggedStruct`\<`"Vec3"`, \{ `x`: `withConstructorDefault`\<`Number`\>; `y`: `withConstructorDefault`\<`Number`\>; `z`: `withConstructorDefault`\<`Number`\>; \}\>\>; `scale`: `withConstructorDefault`\<`TaggedStruct`\<`"Vec3"`, \{ `x`: `withConstructorDefault`\<`Number`\>; `y`: `withConstructorDefault`\<`Number`\>; `z`: `withConstructorDefault`\<`Number`\>; \}\>\>; `strokeColor`: `withConstructorDefault`\<*typeof* [`Color`](../../Color/classes/Color.mdx)\>; `strokeWidth`: `withConstructorDefault`\<`Number`\>; `visible`: `withConstructorDefault`\<`Boolean`\>; \}, `"Type"`\> \| \{ `baseline?`: `"middle"` \| `"auto"` \| `"hanging"`; `fillColor`: [`Color`](../../Color/classes/Color.mdx); `fontFamily`: `ReadonlySide`\<\{ `id`: `String`; \}, `"Type"`\>; `fontSize`: `number`; `opacity`: `number`; `position`: `ReadonlySide`\<\{ `x`: `withConstructorDefault`\<`Number`\>; `y`: `withConstructorDefault`\<`Number`\>; `z`: `withConstructorDefault`\<`Number`\>; \}, `"Type"`\>; `rotation`: `ReadonlySide`\<\{ `x`: `withConstructorDefault`\<`Number`\>; `y`: `withConstructorDefault`\<`Number`\>; `z`: `withConstructorDefault`\<`Number`\>; \}, `"Type"`\>; `scale`: `ReadonlySide`\<\{ `x`: `withConstructorDefault`\<`Number`\>; `y`: `withConstructorDefault`\<`Number`\>; `z`: `withConstructorDefault`\<`Number`\>; \}, `"Type"`\>; `text`: `string`; `textAnchor?`: `"start"` \| `"end"` \| `"middle"`; `visible`: `boolean`; \} \| `ReadonlySide`\<\{ `children`: `withConstructorDefault`\<`$Array`\<`String`\>\>; `opacity`: `withConstructorDefault`\<`Number`\>; `position`: `withConstructorDefault`\<`TaggedStruct`\<`"Vec3"`, \{ `x`: `withConstructorDefault`\<`Number`\>; `y`: `withConstructorDefault`\<`Number`\>; `z`: `withConstructorDefault`\<`Number`\>; \}\>\>; `rotation`: `withConstructorDefault`\<`TaggedStruct`\<`"Vec3"`, \{ `x`: `withConstructorDefault`\<`Number`\>; `y`: `withConstructorDefault`\<`Number`\>; `z`: `withConstructorDefault`\<`Number`\>; \}\>\>; `scale`: `withConstructorDefault`\<`TaggedStruct`\<`"Vec3"`, \{ `x`: `withConstructorDefault`\<`Number`\>; `y`: `withConstructorDefault`\<`Number`\>; `z`: `withConstructorDefault`\<`Number`\>; \}\>\>; `visible`: `withConstructorDefault`\<`Boolean`\>; \}, `"Type"`\> \| `ReadonlySide`\<\{ `children`: `withConstructorDefault`\<`$Array`\<`String`\>\>; `opacity`: `withConstructorDefault`\<`Number`\>; `position`: `withConstructorDefault`\<`TaggedStruct`\<`"Vec3"`, \{ `x`: `withConstructorDefault`\<`Number`\>; `y`: `withConstructorDefault`\<`Number`\>; `z`: `withConstructorDefault`\<`Number`\>; \}\>\>; `rotation`: `withConstructorDefault`\<`TaggedStruct`\<`"Vec3"`, \{ `x`: `withConstructorDefault`\<`Number`\>; `y`: `withConstructorDefault`\<`Number`\>; `z`: `withConstructorDefault`\<`Number`\>; \}\>\>; `scale`: `withConstructorDefault`\<`TaggedStruct`\<`"Vec3"`, \{ `x`: `withConstructorDefault`\<`Number`\>; `y`: `withConstructorDefault`\<`Number`\>; `z`: `withConstructorDefault`\<`Number`\>; \}\>\>; `visible`: `withConstructorDefault`\<`Boolean`\>; \}, `"Type"`\> \| \{ `height?`: `number`; `image`: `ReadonlySide`\<\{ `id`: `String`; \}, `"Type"`\>; `opacity`: `number`; `position`: `ReadonlySide`\<\{ `x`: `withConstructorDefault`\<`Number`\>; `y`: `withConstructorDefault`\<`Number`\>; `z`: `withConstructorDefault`\<`Number`\>; \}, `"Type"`\>; `rotation`: `ReadonlySide`\<\{ `x`: `withConstructorDefault`\<`Number`\>; `y`: `withConstructorDefault`\<`Number`\>; `z`: `withConstructorDefault`\<`Number`\>; \}, `"Type"`\>; `scale`: `ReadonlySide`\<\{ `x`: `withConstructorDefault`\<`Number`\>; `y`: `withConstructorDefault`\<`Number`\>; `z`: `withConstructorDefault`\<`Number`\>; \}, `"Type"`\>; `visible`: `boolean`; `width?`: `number`; \} \| `ReadonlySide`\<\{ `aperture`: `withConstructorDefault`\<`Number`\>; `focalLength`: `withConstructorDefault`\<`Number`\>; `focusDistance`: `withConstructorDefault`\<`Number`\>; `poi`: `withConstructorDefault`\<`NullOr`\<`TaggedStruct`\<`"Vec3"`, \{ `x`: `withConstructorDefault`\<...\>; `y`: `withConstructorDefault`\<...\>; `z`: `withConstructorDefault`\<...\>; \}\>\>\>; `position`: `withConstructorDefault`\<`TaggedStruct`\<`"Vec3"`, \{ `x`: `withConstructorDefault`\<`Number`\>; `y`: `withConstructorDefault`\<`Number`\>; `z`: `withConstructorDefault`\<`Number`\>; \}\>\>; `rotation`: `withConstructorDefault`\<`TaggedStruct`\<`"Vec3"`, \{ `x`: `withConstructorDefault`\<`Number`\>; `y`: `withConstructorDefault`\<`Number`\>; `z`: `withConstructorDefault`\<`Number`\>; \}\>\>; \}, `"Type"`\>\] |
+
+##### Returns
+
+`Effect`\<[`Instance`](../../Instance/interfaces/Instance.mdx)\<
+  \| `"Camera"`
+  \| `"Line"`
+  \| `"Path"`
+  \| `"Rect"`
+  \| `"Circle"`
+  \| `"Ellipse"`
+  \| `"Text"`
+  \| `"Group"`
+  \| `"Hud"`
+  \| `"Image"`\>, `never`, `never`\>
+
+#### phaser
+
+```ts
+phaser: {
+  arriveAndAwaitAdvance: Effect<void, never, never>;
+  awaitAdvance: Effect<number, never, never>;
+  deregister: (n) => void;
+  register: (n) => void;
+  snapshotUnsafe: () => {
+     arrived: number;
+     parties: number;
+     phase: number;
+     state: "idle" | "pending" | "running";
+  };
+};
+```
+
+##### phaser.arriveAndAwaitAdvance
+
+```ts
+arriveAndAwaitAdvance: Effect<void, never, never>;
+```
+
+##### phaser.awaitAdvance
+
+```ts
+awaitAdvance: Effect<number, never, never>;
+```
+
+##### phaser.deregister
+
+```ts
+deregister: (n) => void;
+```
+
+###### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `n` | `number` |
+
+###### Returns
+
+`void`
+
+##### phaser.register
+
+```ts
+register: (n) => void;
+```
+
+###### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `n` | `number` |
+
+###### Returns
+
+`void`
+
+##### phaser.snapshotUnsafe
+
+```ts
+snapshotUnsafe: () => {
+  arrived: number;
+  parties: number;
+  phase: number;
+  state: "idle" | "pending" | "running";
+};
+```
+
+debug/test view of the internal counters
+
+###### Returns
+
+```ts
+{
+  arrived: number;
+  parties: number;
+  phase: number;
+  state: "idle" | "pending" | "running";
+}
+```
+
+###### arrived
+
+```ts
+arrived: number;
+```
+
+###### parties
+
+```ts
+parties: number;
+```
+
+###### phase
+
+```ts
+phase: number;
+```
+
+###### state
+
+```ts
+state: "idle" | "pending" | "running";
+```
+
+#### recordFailure
+
+```ts
+recordFailure: (cause) => void;
+```
+
+##### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `cause` | `Cause`\<`unknown`\> |
+
+##### Returns
+
+`void`
+
+#### registerComp
+
+```ts
+registerComp: (id, config) => void;
+```
+
+##### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `id` | `string` |
+| `config` | [`CompConfig`](../../Runner/type-aliases/CompConfig.mdx) |
+
+##### Returns
+
+`void`
+
+#### removeChild
+
+```ts
+removeChild: (parent, child) => void;
+```
+
+##### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `parent` | [`GroupInstance`](../../Runner/type-aliases/GroupInstance.mdx) |
+| `child` | [`Instance`](../../Instance/interfaces/Instance.mdx) |
+
+##### Returns
+
+`void`
+
+#### root
+
+```ts
+root: GroupInstance;
+```
+
+#### setCamera
+
+```ts
+setCamera: (instance) => void;
+```
+
+##### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `instance` | [`Instance`](../../Instance/interfaces/Instance.mdx)\<`"Camera"`\> |
+
+##### Returns
+
+`void`
+
+#### setDataUnsafe
+
+```ts
+setDataUnsafe: <Tag>(instance, state) => void;
+```
+
+##### Type Parameters
+
+| Type Parameter |
+| ------ |
+| `Tag` *extends* \| `"Camera"` \| `"Line"` \| `"Path"` \| `"Rect"` \| `"Circle"` \| `"Ellipse"` \| `"Text"` \| `"Group"` \| `"Hud"` \| `"Image"` |
+
+##### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `instance` | [`Instance`](../../Instance/interfaces/Instance.mdx)\<`Tag`\> |
+| `state` | [`EntityByTag`](../../Entity/type-aliases/EntityByTag.mdx)\<`Tag`\> |
+
+##### Returns
+
+`void`
+
+#### settings
+
+```ts
+settings: {
+  frameRate: number;
+  maxFrames: number;
+  seed: Seed;
+} = resolvedSettings;
+```
+
+##### settings.frameRate
+
+```ts
+frameRate: number;
+```
+
+##### settings.maxFrames
+
+```ts
+maxFrames: number;
+```
+
+##### settings.seed
+
+```ts
+seed: Seed;
+```
+
+#### state
+
+```ts
+state: Effect<{
+  backgroundColor: Color;
+  camera: CameraView & PointOfInterest;
+  comps: {
+   [k: string]: CompConfig;
+  };
+  frameRate: number;
+  height: number;
+  instances: Record<string, {
+     data:   | ReadonlySide<{
+        end: withConstructorDefault<TaggedStruct<"Vec3", {
+           x: ...;
+           y: ...;
+           z: ...;
+        }>>;
+        opacity: withConstructorDefault<Number>;
+        position: withConstructorDefault<TaggedStruct<"Vec3", {
+           x: ...;
+           y: ...;
+           z: ...;
+        }>>;
+        rotation: withConstructorDefault<TaggedStruct<"Vec3", {
+           x: ...;
+           y: ...;
+           z: ...;
+        }>>;
+        scale: withConstructorDefault<TaggedStruct<"Vec3", {
+           x: ...;
+           y: ...;
+           z: ...;
+        }>>;
+        start: withConstructorDefault<TaggedStruct<"Vec3", {
+           x: ...;
+           y: ...;
+           z: ...;
+        }>>;
+        strokeColor: withConstructorDefault<typeof Color>;
+        strokeWidth: withConstructorDefault<Number>;
+        visible: withConstructorDefault<Boolean>;
+      }, "Type">
+        | ReadonlySide<{
+        commands: NonEmptyArray<TaggedUnion<{
+           L: ...;
+           M: ...;
+           Z: ...;
+        }>>;
+        fillColor: withConstructorDefault<typeof Color>;
+        opacity: withConstructorDefault<Number>;
+        position: withConstructorDefault<TaggedStruct<"Vec3", {
+           x: ...;
+           y: ...;
+           z: ...;
+        }>>;
+        rotation: withConstructorDefault<TaggedStruct<"Vec3", {
+           x: ...;
+           y: ...;
+           z: ...;
+        }>>;
+        scale: withConstructorDefault<TaggedStruct<"Vec3", {
+           x: ...;
+           y: ...;
+           z: ...;
+        }>>;
+        strokeColor: withConstructorDefault<typeof Color>;
+        strokeWidth: withConstructorDefault<Number>;
+        visible: withConstructorDefault<Boolean>;
+      }, "Type">
+        | ReadonlySide<{
+        fillColor: withConstructorDefault<typeof Color>;
+        height: withConstructorDefault<Number>;
+        opacity: withConstructorDefault<Number>;
+        position: withConstructorDefault<TaggedStruct<"Vec3", {
+           x: ...;
+           y: ...;
+           z: ...;
+        }>>;
+        rotation: withConstructorDefault<TaggedStruct<"Vec3", {
+           x: ...;
+           y: ...;
+           z: ...;
+        }>>;
+        scale: withConstructorDefault<TaggedStruct<"Vec3", {
+           x: ...;
+           y: ...;
+           z: ...;
+        }>>;
+        strokeColor: withConstructorDefault<typeof Color>;
+        strokeWidth: withConstructorDefault<Number>;
+        visible: withConstructorDefault<Boolean>;
+        width: withConstructorDefault<Number>;
+      }, "Type">
+        | ReadonlySide<{
+        fillColor: withConstructorDefault<typeof Color>;
+        opacity: withConstructorDefault<Number>;
+        position: withConstructorDefault<TaggedStruct<"Vec3", {
+           x: ...;
+           y: ...;
+           z: ...;
+        }>>;
+        radius: withConstructorDefault<Number>;
+        rotation: withConstructorDefault<TaggedStruct<"Vec3", {
+           x: ...;
+           y: ...;
+           z: ...;
+        }>>;
+        scale: withConstructorDefault<TaggedStruct<"Vec3", {
+           x: ...;
+           y: ...;
+           z: ...;
+        }>>;
+        strokeColor: withConstructorDefault<typeof Color>;
+        strokeWidth: withConstructorDefault<Number>;
+        visible: withConstructorDefault<Boolean>;
+      }, "Type">
+        | ReadonlySide<{
+        fillColor: withConstructorDefault<typeof Color>;
+        opacity: withConstructorDefault<Number>;
+        position: withConstructorDefault<TaggedStruct<"Vec3", {
+           x: ...;
+           y: ...;
+           z: ...;
+        }>>;
+        radiusX: withConstructorDefault<Number>;
+        radiusY: withConstructorDefault<Number>;
+        rotation: withConstructorDefault<TaggedStruct<"Vec3", {
+           x: ...;
+           y: ...;
+           z: ...;
+        }>>;
+        scale: withConstructorDefault<TaggedStruct<"Vec3", {
+           x: ...;
+           y: ...;
+           z: ...;
+        }>>;
+        strokeColor: withConstructorDefault<typeof Color>;
+        strokeWidth: withConstructorDefault<Number>;
+        visible: withConstructorDefault<Boolean>;
+      }, "Type">
+        | {
+        baseline?: "middle" | "auto" | "hanging";
+        fillColor: Color;
+        fontFamily: ReadonlySide<{
+           id: String;
+        }, "Type">;
+        fontSize: number;
+        opacity: number;
+        position: ReadonlySide<{
+           x: withConstructorDefault<Number>;
+           y: withConstructorDefault<Number>;
+           z: withConstructorDefault<Number>;
+        }, "Type">;
+        rotation: ReadonlySide<{
+           x: withConstructorDefault<Number>;
+           y: withConstructorDefault<Number>;
+           z: withConstructorDefault<Number>;
+        }, "Type">;
+        scale: ReadonlySide<{
+           x: withConstructorDefault<Number>;
+           y: withConstructorDefault<Number>;
+           z: withConstructorDefault<Number>;
+        }, "Type">;
+        text: string;
+        textAnchor?: "start" | "end" | "middle";
+        visible: boolean;
+      }
+        | ReadonlySide<{
+        children: withConstructorDefault<$Array<String>>;
+        opacity: withConstructorDefault<Number>;
+        position: withConstructorDefault<TaggedStruct<"Vec3", {
+           x: ...;
+           y: ...;
+           z: ...;
+        }>>;
+        rotation: withConstructorDefault<TaggedStruct<"Vec3", {
+           x: ...;
+           y: ...;
+           z: ...;
+        }>>;
+        scale: withConstructorDefault<TaggedStruct<"Vec3", {
+           x: ...;
+           y: ...;
+           z: ...;
+        }>>;
+        visible: withConstructorDefault<Boolean>;
+      }, "Type">
+        | ReadonlySide<{
+        children: withConstructorDefault<$Array<String>>;
+        opacity: withConstructorDefault<Number>;
+        position: withConstructorDefault<TaggedStruct<"Vec3", {
+           x: ...;
+           y: ...;
+           z: ...;
+        }>>;
+        rotation: withConstructorDefault<TaggedStruct<"Vec3", {
+           x: ...;
+           y: ...;
+           z: ...;
+        }>>;
+        scale: withConstructorDefault<TaggedStruct<"Vec3", {
+           x: ...;
+           y: ...;
+           z: ...;
+        }>>;
+        visible: withConstructorDefault<Boolean>;
+      }, "Type">
+        | {
+        height?: number;
+        image: ReadonlySide<{
+           id: String;
+        }, "Type">;
+        opacity: number;
+        position: ReadonlySide<{
+           x: withConstructorDefault<Number>;
+           y: withConstructorDefault<Number>;
+           z: withConstructorDefault<Number>;
+        }, "Type">;
+        rotation: ReadonlySide<{
+           x: withConstructorDefault<Number>;
+           y: withConstructorDefault<Number>;
+           z: withConstructorDefault<Number>;
+        }, "Type">;
+        scale: ReadonlySide<{
+           x: withConstructorDefault<Number>;
+           y: withConstructorDefault<Number>;
+           z: withConstructorDefault<Number>;
+        }, "Type">;
+        visible: boolean;
+        width?: number;
+      }
+        | ReadonlySide<{
+        aperture: withConstructorDefault<Number>;
+        focalLength: withConstructorDefault<Number>;
+        focusDistance: withConstructorDefault<Number>;
+        poi: withConstructorDefault<NullOr<TaggedStruct<..., ...>>>;
+        position: withConstructorDefault<TaggedStruct<"Vec3", {
+           x: ...;
+           y: ...;
+           z: ...;
+        }>>;
+        rotation: withConstructorDefault<TaggedStruct<"Vec3", {
+           x: ...;
+           y: ...;
+           z: ...;
+        }>>;
+      }, "Type">;
+  }>;
+  root: string;
+  width: number;
+}, never, never>;
+```
+
+***
+
+### scene
+
+```ts
+readonly scene: Scene<E, R>;
+```
+
+Defined in: [packages/motion/src/Scene.ts:415](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L415)

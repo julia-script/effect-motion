@@ -1,0 +1,21 @@
+---
+title: "ExtractLoaders"
+description: "type ExtractLoaders<R> = R extends LoaderBrand ? R : never;"
+---
+# Type Alias: ExtractLoaders\<R\>
+
+```ts
+type ExtractLoaders<R> = R extends LoaderBrand ? R : never;
+```
+
+Defined in: [packages/motion/src/Resource.ts:22](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Resource.ts#L22)
+
+The loader members of a requirements union — what a scene's frames carry
+as `Frame<Resources>` and what the renderer requires. Distributes:
+`FontLoader<"a"> | Runner` → `FontLoader<"a">`.
+
+## Type Parameters
+
+| Type Parameter |
+| ------ |
+| `R` |

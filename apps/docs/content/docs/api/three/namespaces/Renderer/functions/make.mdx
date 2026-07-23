@@ -1,0 +1,40 @@
+---
+title: "make"
+description: "function make(options?): Effect<Renderer, ThreeException, Scope>;"
+---
+# Function: make()
+
+```ts
+function make(options?): Effect<Renderer, ThreeException, Scope>;
+```
+
+Defined in: [packages/three/src/Renderer.ts:143](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/Renderer.ts#L143)
+
+Acquire a renderer, initialization already awaited.
+
+## Parameters
+
+| Parameter | Type | Description |
+| ------ | ------ | ------ |
+| `options` | [`MakeOptions`](../interfaces/MakeOptions.mdx) | Renderer parameters plus optional initial sizing. |
+
+## Returns
+
+`Effect`\<[`Renderer`](../interfaces/Renderer.mdx), [`ThreeException`](../../../classes/ThreeException.mdx), `Scope`\>
+
+A renderer, valid for the current scope.
+
+## Remarks
+
+Scoped: on close the renderer waits for in-flight GPU work to land,
+drains the queue, and disposes. A failure during that teardown is logged
+rather than raised, so it never masks the scope's real outcome.
+
+Without a `canvas`, three creates one. For headless use, pass the canvas
+and device from `@effect-motion/three/node`.
+
+## Example
+
+```typescript
+const renderer = yield* Renderer.make({ width: 640, height: 360 });
+```

@@ -1,0 +1,34 @@
+---
+title: "resolveResources"
+description: "function resolveResources(renderer, frame): Effect<void>;"
+---
+# Function: resolveResources()
+
+```ts
+function resolveResources(renderer, frame): Effect<void>;
+```
+
+Defined in: [Renderer.ts:204](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Renderer.ts#L204)
+
+Load the fonts and images a frame needs, before syncing it.
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `renderer` | [`Renderer`](../interfaces/Renderer.mdx) |
+| `frame` | `AnyFrame` |
+
+## Returns
+
+`Effect`\<`void`\>
+
+## Remarks
+
+Resources are resolved from the CALLER's context, so the loaders a scene
+declared must be provided around this call. Work is done once per resource
+per renderer: already-loaded fonts and images are skipped.
+
+The built-in default font is auto-provided, so plain text needs no setup.
+A font or image the frame references with no loader in context is a defect
+naming the id and the `Font.layer` / `Image.layer` call that would fix it.

@@ -1,0 +1,57 @@
+---
+title: "run"
+description: "function run<E, R>(scene, settings?): Effect<RunningScene<E, R>, never,"
+---
+# Function: run()
+
+```ts
+function run<E, R>(scene, settings?): Effect<RunningScene<E, R>, never, 
+  | Scope
+| Exclude<Exclude<Exclude<Exclude<ExcludeLoaders<R>, Scope>, never>, Phaser>, Runner>>;
+```
+
+Defined in: [packages/motion/src/Scene.ts:447](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L447)
+
+Start a scene and hand back a handle for advancing it manually.
+
+## Type Parameters
+
+| Type Parameter |
+| ------ |
+| `E` |
+| `R` |
+
+## Parameters
+
+| Parameter | Type | Description |
+| ------ | ------ | ------ |
+| `scene` | [`Scene`](../interfaces/Scene.mdx)\<`E`, `R`\> | The scene to start. |
+| `settings` | `Partial`\<[`Settings`](../../Runner/type-aliases/Settings.mdx)\> | Playback settings. |
+
+## Returns
+
+`Effect`\<[`RunningScene`](../interfaces/RunningScene.mdx)\<`E`, `R`\>, `never`, 
+  \| `Scope`
+  \| `Exclude`\<`Exclude`\<`Exclude`\<`Exclude`\<[`ExcludeLoaders`](../../Resource/type-aliases/ExcludeLoaders.mdx)\<`R`\>, `Scope`\>, `never`\>, [`Phaser`](../../Phaser/classes/Phaser.mdx)\>, [`Runner`](../../Runner/classes/Runner.mdx)\>\>
+
+A running-scene handle to pass to [step](../variables/step.mdx).
+
+## Remarks
+
+The low-level entry point, for drivers that need to own the frame loop —
+an exporter writing files, or a player synchronizing to its own clock.
+Starting a scene does not produce any frames; pair this with [step](../variables/step.mdx)
+to pull them one at a time.
+
+Most code wants [stream](./stream.mdx) instead, which wraps exactly this pairing
+in a stream.
+
+## Example
+
+```typescript
+const running = yield* Scene.run(scene, { frameRate: 30 });
+let frame = yield* Scene.step(running);
+while (frame !== null) {
+	frame = yield* Scene.step(running);
+}
+```

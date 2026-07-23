@@ -1,0 +1,43 @@
+---
+title: "camera"
+description: "const camera: Effect<Instance<\"Camera\">, never, Runner>;"
+---
+# Variable: camera
+
+```ts
+const camera: Effect<Instance<"Camera">, never, Runner>;
+```
+
+Defined in: [packages/motion/src/Scene.ts:754](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L754)
+
+The active camera, as an ordinary animatable instance.
+
+## Remarks
+
+There is always a camera — a resting one is present from the first frame,
+placed so that content at `z = 0` renders exactly as flat 2D. A scene that
+never touches the camera looks like a plain 2D scene, and reaching for
+`Scene.camera` is how you opt into depth.
+
+It is a normal instance, so every animator drives it with no special
+vocabulary: `moveTo` flies it (including along `z` to push in or pull
+back), `tweenTo` on `focalLength` changes the lens, springs and forks work
+as they do anywhere. `Camera` helpers add aiming on top.
+
+The camera is view state and is never itself drawn.
+
+## Returns
+
+A handle to the active camera.
+
+## See
+
+[setCamera](../functions/setCamera.mdx) to swap in a different one.
+
+## Example
+
+Push the camera in, revealing depth in the scene.
+```typescript
+const camera = yield* Scene.camera;
+yield* camera.pipe(Motion.moveTo({ z: -300 }, "1200 millis", "easeInOutCubic"));
+```

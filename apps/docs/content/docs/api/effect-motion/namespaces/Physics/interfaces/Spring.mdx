@@ -1,0 +1,74 @@
+---
+title: "Spring"
+description: "A spring's physical parameters — the knobs that decide how motion feels"
+---
+# Interface: Spring
+
+Defined in: [packages/motion/src/Physics.ts:66](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Physics.ts#L66)
+
+A spring's physical parameters — the knobs that decide how motion feels
+and, indirectly, how long it lasts.
+
+## Remarks
+
+The three interact, so tune by feel rather than in isolation: heavier
+`mass` makes motion sluggish and prolongs it; higher `stiffness` pulls
+harder toward the target and speeds it up; higher `damping` bleeds off
+energy, trading overshoot and wobble for a quicker settle. Low damping
+with low stiffness is what produces a long ringing tail.
+
+Start from a preset in [springs](../variables/springs.mdx) and adjust from there — the
+presets are the calibrated points in this space.
+
+## Properties
+
+### damping
+
+```ts
+readonly damping: number;
+```
+
+Defined in: [packages/motion/src/Physics.ts:72](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Physics.ts#L72)
+
+Energy loss. Higher settles sooner with less overshoot; near 0 rings.
+
+***
+
+### initialVelocity?
+
+```ts
+readonly optional initialVelocity?: number;
+```
+
+Defined in: [packages/motion/src/Physics.ts:79](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Physics.ts#L79)
+
+Speed the motion already carries at frame one, for launching something
+that should feel struck or thrown rather than pulled.
+
+#### Default Value
+
+`0`
+
+***
+
+### mass
+
+```ts
+readonly mass: number;
+```
+
+Defined in: [packages/motion/src/Physics.ts:68](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Physics.ts#L68)
+
+Inertia. Higher is heavier and slower to start and stop.
+
+***
+
+### stiffness
+
+```ts
+readonly stiffness: number;
+```
+
+Defined in: [packages/motion/src/Physics.ts:70](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Physics.ts#L70)
+
+Pull toward the target. Higher is snappier.

@@ -1,0 +1,39 @@
+---
+title: "Hud"
+description: "const Hud: TaggedStruct<\"Hud\", {"
+---
+# Variable: Hud
+
+```ts
+const Hud: TaggedStruct<"Hud", {
+  children: withConstructorDefault<$Array<String>>;
+  opacity: withConstructorDefault<Number>;
+  position: withConstructorDefault<TaggedStruct<"Vec3", {
+     x: withConstructorDefault<Number>;
+     y: withConstructorDefault<Number>;
+     z: withConstructorDefault<Number>;
+  }>>;
+  rotation: withConstructorDefault<TaggedStruct<"Vec3", {
+     x: withConstructorDefault<Number>;
+     y: withConstructorDefault<Number>;
+     z: withConstructorDefault<Number>;
+  }>>;
+  scale: withConstructorDefault<TaggedStruct<"Vec3", {
+     x: withConstructorDefault<Number>;
+     y: withConstructorDefault<Number>;
+     z: withConstructorDefault<Number>;
+  }>>;
+  visible: withConstructorDefault<Boolean>;
+}>;
+```
+
+Defined in: [packages/motion/src/Entity.ts:239](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Entity.ts#L239)
+
+A screen-space container: its subtree is projected through the identity
+camera rather than the active one, so HUD content ignores camera
+movement, zoom, and shake, and always paints on top.
+
+`position.z` is depth WITHIN the HUD tier — z consistently means depth in
+the entity's own coordinate space, world for world content and screen for
+HUD content. A Hud must be a top-level child of the root (or of another
+Hud); nesting one inside world content is a loud defect.

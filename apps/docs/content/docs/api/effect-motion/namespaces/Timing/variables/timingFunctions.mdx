@@ -1,0 +1,322 @@
+---
+title: "timingFunctions"
+description: "const timingFunctions: {"
+---
+# Variable: timingFunctions
+
+```ts
+const timingFunctions: {
+  cos: TimingFunction;
+  easeInBack: TimingFunction;
+  easeInBounce: TimingFunction;
+  easeInCirc: TimingFunction;
+  easeInCubic: TimingFunction;
+  easeInElastic: TimingFunction;
+  easeInExpo: TimingFunction;
+  easeInOutBack: TimingFunction;
+  easeInOutBounce: TimingFunction;
+  easeInOutCirc: TimingFunction;
+  easeInOutCubic: TimingFunction;
+  easeInOutElastic: TimingFunction;
+  easeInOutExpo: TimingFunction;
+  easeInOutQuad: TimingFunction;
+  easeInOutQuart: TimingFunction;
+  easeInOutQuint: TimingFunction;
+  easeInOutSine: TimingFunction;
+  easeInQuad: TimingFunction;
+  easeInQuart: TimingFunction;
+  easeInQuint: TimingFunction;
+  easeInSine: TimingFunction;
+  easeOutBack: TimingFunction;
+  easeOutBounce: TimingFunction;
+  easeOutCirc: TimingFunction;
+  easeOutCubic: TimingFunction;
+  easeOutElastic: TimingFunction;
+  easeOutExpo: TimingFunction;
+  easeOutQuad: TimingFunction;
+  easeOutQuart: TimingFunction;
+  easeOutQuint: TimingFunction;
+  easeOutSine: TimingFunction;
+  linear: TimingFunction;
+  sin: TimingFunction;
+};
+```
+
+Defined in: [packages/motion/src/Timing.ts:318](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Timing.ts#L318)
+
+Every built-in easing, by name — the lookup behind the string form.
+
+## Type Declaration
+
+### cos
+
+```ts
+cos: TimingFunction;
+```
+
+One full cosine cycle: 1 → 0 → 1.
+
+#### Remarks
+
+[sin](./sin.mdx) phase-shifted: starts at the far end, dips, and comes back.
+Also periodic, so it does not end at 1.
+
+### easeInBack
+
+```ts
+easeInBack: TimingFunction;
+```
+
+The ready-made overshoot and oscillation curves, at their canonical
+parameters — `Back` anticipates past the target, `Elastic` rings like a
+string, `Bounce` rebounds like a dropped ball.
+
+#### Remarks
+
+These are how you get spring-LIKE character in a fixed, known duration.
+For real physics whose length emerges from the simulation, use `Physics`.
+
+#### See
+
+[createEaseInBack](../functions/createEaseInBack.mdx), [createEaseInElastic](../functions/createEaseInElastic.mdx),
+  [createEaseOutBounce](../functions/createEaseOutBounce.mdx) to tune the parameters.
+
+### easeInBounce
+
+```ts
+easeInBounce: TimingFunction;
+```
+
+### easeInCirc
+
+```ts
+easeInCirc: TimingFunction;
+```
+
+The Circ family — a quarter-circle arc. Sharper at the ends than the
+polynomials, with a distinctly mechanical, geometric feel.
+
+#### See
+
+[TimingFunction](../type-aliases/TimingFunction.mdx) for choosing among the families.
+
+### easeInCubic
+
+```ts
+easeInCubic: TimingFunction;
+```
+
+### easeInElastic
+
+```ts
+easeInElastic: TimingFunction;
+```
+
+### easeInExpo
+
+```ts
+easeInExpo: TimingFunction;
+```
+
+The Expo family — the most extreme of the smooth curves: near-motionless
+at the slow end, very fast at the other. For dramatic arrivals and exits.
+
+#### See
+
+[TimingFunction](../type-aliases/TimingFunction.mdx) for choosing among the families.
+
+### easeInOutBack
+
+```ts
+easeInOutBack: TimingFunction;
+```
+
+### easeInOutBounce
+
+```ts
+easeInOutBounce: TimingFunction;
+```
+
+### easeInOutCirc
+
+```ts
+easeInOutCirc: TimingFunction;
+```
+
+### easeInOutCubic
+
+```ts
+easeInOutCubic: TimingFunction;
+```
+
+### easeInOutElastic
+
+```ts
+easeInOutElastic: TimingFunction;
+```
+
+### easeInOutExpo
+
+```ts
+easeInOutExpo: TimingFunction;
+```
+
+### easeInOutQuad
+
+```ts
+easeInOutQuad: TimingFunction;
+```
+
+### easeInOutQuart
+
+```ts
+easeInOutQuart: TimingFunction;
+```
+
+### easeInOutQuint
+
+```ts
+easeInOutQuint: TimingFunction;
+```
+
+### easeInOutSine
+
+```ts
+easeInOutSine: TimingFunction;
+```
+
+### easeInQuad
+
+```ts
+easeInQuad: TimingFunction;
+```
+
+The polynomial families, from gentlest to most pronounced: Quad (t²),
+Cubic (t³), Quart (t⁴), Quint (t⁵). Cubic is the everyday workhorse.
+
+#### See
+
+[TimingFunction](../type-aliases/TimingFunction.mdx) for choosing among the families.
+
+### easeInQuart
+
+```ts
+easeInQuart: TimingFunction;
+```
+
+### easeInQuint
+
+```ts
+easeInQuint: TimingFunction;
+```
+
+### easeInSine
+
+```ts
+easeInSine: TimingFunction;
+```
+
+The Sine family — the gentlest easing. Barely-there acceleration, for
+motion that should feel eased without drawing attention.
+
+#### See
+
+[TimingFunction](../type-aliases/TimingFunction.mdx) for choosing among the families.
+
+### easeOutBack
+
+```ts
+easeOutBack: TimingFunction;
+```
+
+### easeOutBounce
+
+```ts
+easeOutBounce: TimingFunction;
+```
+
+### easeOutCirc
+
+```ts
+easeOutCirc: TimingFunction;
+```
+
+### easeOutCubic
+
+```ts
+easeOutCubic: TimingFunction;
+```
+
+### easeOutElastic
+
+```ts
+easeOutElastic: TimingFunction;
+```
+
+### easeOutExpo
+
+```ts
+easeOutExpo: TimingFunction;
+```
+
+### easeOutQuad
+
+```ts
+easeOutQuad: TimingFunction;
+```
+
+### easeOutQuart
+
+```ts
+easeOutQuart: TimingFunction;
+```
+
+### easeOutQuint
+
+```ts
+easeOutQuint: TimingFunction;
+```
+
+### easeOutSine
+
+```ts
+easeOutSine: TimingFunction;
+```
+
+### linear
+
+```ts
+linear: TimingFunction;
+```
+
+No easing: constant speed from start to finish.
+
+#### Remarks
+
+The default when no timing is given. Right for continuous motion that
+neither starts nor stops on screen; abrupt for anything that does.
+
+#### See
+
+[TimingFunction](../type-aliases/TimingFunction.mdx) for choosing among the families.
+
+### sin
+
+```ts
+sin: TimingFunction;
+```
+
+One full sine cycle: 0 → 1 → 0.
+
+#### Remarks
+
+Periodic, so it deliberately RETURNS to its starting value instead of
+ending at 1 — a tween using it finishes where it began. That makes it a
+there-and-back helper (a pulse, a sway), not a transition between two
+states.
+
+## Remarks
+
+You rarely touch this directly: passing `"easeOutCubic"` to an animator
+resolves through it. Useful for building a curve picker, or iterating the
+whole set.

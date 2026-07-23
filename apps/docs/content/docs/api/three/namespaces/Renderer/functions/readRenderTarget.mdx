@@ -1,0 +1,44 @@
+---
+title: "readRenderTarget"
+description: "function readRenderTarget("
+---
+# Function: readRenderTarget()
+
+```ts
+function readRenderTarget(
+   self, 
+   target, 
+   width, 
+height): Effect<Uint8Array<ArrayBufferLike>, ThreeException>;
+```
+
+Defined in: [packages/three/src/Renderer.ts:184](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/Renderer.ts#L184)
+
+Read rendered pixels back off the GPU as RGBA bytes.
+
+## Parameters
+
+| Parameter | Type | Description |
+| ------ | ------ | ------ |
+| `self` | [`Renderer`](../interfaces/Renderer.mdx) | - |
+| `target` | [`RenderTarget`](../../RenderTarget/interfaces/RenderTarget.mdx) | The target to read. |
+| `width` | `number` | Region width in device pixels. |
+| `height` | `number` | Region height in device pixels. |
+
+## Returns
+
+`Effect`\<`Uint8Array`\<`ArrayBufferLike`\>, [`ThreeException`](../../../classes/ThreeException.mdx)\>
+
+`width * height * 4` bytes of RGBA.
+
+## Remarks
+
+The result is exactly `width * height * 4` bytes, top-down and tightly
+packed — ready to hand to an image encoder. WebGPU itself pads each row
+to a 256-byte boundary; that padding is stripped here so callers never
+deal with stride.
+
+Colors come back LINEAR. Render through a
+[PostProcessing.RenderPipeline](../../PostProcessing/interfaces/RenderPipeline.mdx) first if you want the sRGB output
+transform applied — reading a raw render target and encoding it directly
+produces a visibly dark image.

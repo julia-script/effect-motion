@@ -1,0 +1,62 @@
+---
+title: API Reference
+description: Generated reference for every public export, across all four packages
+---
+
+Generated from the source's doc-comments — every exported function, type, and
+constant, with its signature, parameters, and examples.
+
+This is the *lookup* layer. If you are learning how something works, the
+[concepts](/docs/concepts) pages explain the ideas and
+[examples](/docs/examples) show them running; come here when you know what you
+want and need the exact shape of it.
+
+## Packages
+
+<Cards>
+	<Card
+		title="effect-motion"
+		href="/docs/api/effect-motion"
+		description="Scenes, entities, and animators — the core authoring API. Start with Scene, Motion, and Physics."
+	/>
+	<Card
+		title="@effect-motion/renderer"
+		href="/docs/api/renderer"
+		description="Turning frames into pixels: the browser canvas renderer and the headless Node export path."
+	/>
+	<Card
+		title="@effect-motion/three"
+		href="/docs/api/three"
+		description="The Effect wrapper over three.js the renderer is built on. Scoped resources, typed failures."
+	/>
+	<Card
+		title="@effect-motion/react"
+		href="/docs/api/react"
+		description="The Player component for playing scenes in the browser."
+	/>
+</Cards>
+
+## Where to start
+
+Most scenes only touch a handful of modules:
+
+| Module | For |
+| --- | --- |
+| [`Scene`](/docs/api/effect-motion/namespaces/Scene) | Declaring a scene, creating entities, composing animations |
+| [`Motion`](/docs/api/effect-motion/namespaces/Motion) | Animating over a duration, with easing |
+| [`Physics`](/docs/api/effect-motion/namespaces/Physics) | Springs — motion whose length emerges from a simulation |
+| [`Entity`](/docs/api/effect-motion/namespaces/Entity) | The shapes, and `vec3` for positions |
+| [`Color`](/docs/api/effect-motion/namespaces/Color) | Building and adjusting colors |
+| [`Timing`](/docs/api/effect-motion/namespaces/Timing) | The easing curves |
+| [`Camera`](/docs/api/effect-motion/namespaces/Camera) | Aiming, orbiting, and dollying the viewpoint |
+
+## Regenerating
+
+The reference is generated from the TSDoc comments in each package's source
+and committed, so the docs site builds without running TypeScript:
+
+```bash
+pnpm docs:api
+```
+
+Re-run it after changing a doc-comment or a public signature.

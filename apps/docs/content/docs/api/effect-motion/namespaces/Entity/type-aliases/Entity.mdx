@@ -1,0 +1,19 @@
+---
+title: "Entity"
+description: "type Entity = typeof EntityMapkeyof typeof EntityMap\"Type\";"
+---
+# Type Alias: Entity
+
+```ts
+type Entity = typeof EntityMap[keyof typeof EntityMap]["Type"];
+```
+
+Defined in: [packages/motion/src/Entity.ts:318](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Entity.ts#L318)
+
+Any entity's data — the union of every kind the library knows.
+
+## Remarks
+
+Closed by design: `_tag` identifies the member, so the runner, the
+animators, and renderers all narrow on it instead of casting. Consumers
+switch on `_tag` and get the exact field set for that entity.

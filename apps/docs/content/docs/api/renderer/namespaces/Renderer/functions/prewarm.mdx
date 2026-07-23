@@ -1,0 +1,30 @@
+---
+title: "prewarm"
+description: "function prewarm(renderer): Effect<void, ThreeException>;"
+---
+# Function: prewarm()
+
+```ts
+function prewarm(renderer): Effect<void, ThreeException>;
+```
+
+Defined in: [Renderer.ts:279](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Renderer.ts#L279)
+
+Compile shader pipelines ahead of showing anything.
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `renderer` | [`Renderer`](../interfaces/Renderer.mdx) |
+
+## Returns
+
+`Effect`\<`void`, `ThreeException`\>
+
+## Remarks
+
+Call once after the first [syncFrame](./syncFrame.mdx) and before revealing the
+canvas. WebGPU compiles a pipeline the first time it is used, which would
+otherwise land as a visible hitch on frame one; doing it here moves that
+cost into startup.

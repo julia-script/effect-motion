@@ -1,0 +1,67 @@
+---
+title: "orbitTo"
+description: "const orbitTo: (azimuth, duration, timing?) => (cam) => CamEffect & (cam, azimuth, duration, timing?) => CamEffect;"
+---
+# Variable: orbitTo
+
+```ts
+const orbitTo: (azimuth, duration, timing?) => (cam) => CamEffect & (cam, azimuth, duration, timing?) => CamEffect;
+```
+
+Defined in: [packages/motion/src/Camera.ts:389](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Camera.ts#L389)
+
+Swing the camera around its point of interest, like a turntable.
+
+## Remarks
+
+The camera travels an arc at a fixed radius and height while continuing to
+face the subject — the standard "orbit the product" move. Only the
+position is animated; the aim follows from the point of interest, so there
+is no orientation math to get wrong.
+
+`azimuth` is an ABSOLUTE angle in radians about the world-Y axis through
+the point of interest, where 0 is directly in front (+z of it). A full
+turn is `Math.PI * 2`; the sign chooses direction.
+
+Requires a point of interest — call [lookAt](./lookAt.mdx) first, or this fails
+loudly telling you so.
+
+## Param
+
+**azimuth**
+
+Target angle in radians; 0 is directly in front.
+
+## Param
+
+**duration**
+
+How long, in scene time.
+
+## Param
+
+**timing**
+
+An easing name or function.
+
+## Default Value
+
+`timing` — `"linear"`
+
+## Returns
+
+The camera, so animators chain.
+
+## See
+
+[orbit](./orbit.mdx) to start from an explicit angle.
+
+## Example
+
+A quarter turn around a subject.
+```typescript
+yield* camera.pipe(
+	Camera.lookAt(subject),
+	Camera.orbitTo(Math.PI / 2, "2 seconds", "easeInOutCubic"),
+);
+```

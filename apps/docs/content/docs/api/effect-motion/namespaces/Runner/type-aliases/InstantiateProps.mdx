@@ -1,0 +1,24 @@
+---
+title: "InstantiateProps"
+description: "type InstantiateProps<Tag> = Omit<MakeInput<Tag>, \"children\"> & Tag extends ContainerTag ? {"
+---
+# Type Alias: InstantiateProps\<Tag\>
+
+```ts
+type InstantiateProps<Tag> = Omit<MakeInput<Tag>, "children"> & Tag extends ContainerTag ? {
+  children?: ReadonlyArray<Child>;
+} : Record<never, never>;
+```
+
+Defined in: [packages/motion/src/Runner.ts:122](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Runner.ts#L122)
+
+The input `instantiate` accepts: the entity's own make-input, except that
+a `children` field (stored as `Array<string>` of ids) is authored as the
+polymorphic [Child](./Child.mdx) list — the runner normalizes it to ids in list
+order.
+
+## Type Parameters
+
+| Type Parameter |
+| ------ |
+| `Tag` *extends* [`EntityTag`](../../Entity/type-aliases/EntityTag.mdx) |

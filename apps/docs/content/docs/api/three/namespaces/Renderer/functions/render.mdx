@@ -1,0 +1,34 @@
+---
+title: "render"
+description: "function render("
+---
+# Function: render()
+
+```ts
+function render(
+   self, 
+   scene, 
+camera): Effect<void, ThreeException>;
+```
+
+Defined in: [packages/three/src/Renderer.ts:156](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/Renderer.ts#L156)
+
+Draw a scene through a camera.
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `self` | [`Renderer`](../interfaces/Renderer.mdx) |
+| `scene` | [`Scene`](../../Scene/interfaces/Scene.mdx) |
+| `camera` | `Camera` |
+
+## Returns
+
+`Effect`\<`void`, [`ThreeException`](../../../classes/ThreeException.mdx)\>
+
+## Remarks
+
+Output goes wherever [setRenderTarget](../variables/setRenderTarget.mdx) last pointed — the canvas by
+default, or an offscreen target. Safe to call immediately after
+[make](./make.mdx), since initialization is already complete by then.

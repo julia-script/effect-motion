@@ -1,0 +1,52 @@
+---
+title: "DofState"
+description: "The depth-of-field request derived from a frame's camera."
+---
+# Interface: DofState
+
+Defined in: [Sync.ts:118](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L118)
+
+The depth-of-field request derived from a frame's camera.
+
+## Remarks
+
+Currently computed but NOT consumed: depth-of-field rendering is not
+implemented, and both render paths draw every frame sharp. The values are
+kept in step with the camera so the feature can be rebuilt without
+re-deriving them.
+
+## Properties
+
+### focusDistance
+
+```ts
+focusDistance: number;
+```
+
+Defined in: [Sync.ts:122](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L122)
+
+View-space distance to the intended sharp plane.
+
+***
+
+### on
+
+```ts
+on: boolean;
+```
+
+Defined in: [Sync.ts:120](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L120)
+
+Whether the camera asked for DoF (`aperture` and `focusDistance` both > 0).
+
+***
+
+### strengthUv
+
+```ts
+strengthUv: number;
+```
+
+Defined in: [Sync.ts:124](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L124)
+
+Blur radius in uv units, derived from the aperture; 0 is off.

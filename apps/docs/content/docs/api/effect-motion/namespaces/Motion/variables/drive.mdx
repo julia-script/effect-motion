@@ -1,0 +1,69 @@
+---
+title: "drive"
+description: "const drive: <Tag>(duration, timing, fn) => <E, R>(instance) => Effect<Instance<Tag>, E, Runner | R> & <Tag, E, R>(instance, duration, timing, fn) => "
+---
+# Variable: drive
+
+```ts
+const drive: <Tag>(duration, timing, fn) => <E, R>(instance) => Effect<Instance<Tag>, E, Runner | R> & <Tag, E, R>(instance, duration, timing, fn) => Effect<Instance<Tag>, E, Runner | R>;
+```
+
+Defined in: [packages/motion/src/Motion.ts:331](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Motion.ts#L331)
+
+The escape hatch: run `fn` once per frame with the eased progress and the
+entity's current data, and use whatever it returns as the new data.
+
+## Remarks
+
+Reach for `drive` when fields must move TOGETHER in a way independent
+tweens cannot express. Tweening `x` and `y` separately gives you a
+straight line; a circular orbit needs both derived from one angle, and
+that coupling is what this provides. It is the primitive `Camera.orbit`
+and `Camera.dolly` are themselves built on.
+
+`fn` must be pure — it receives only `(t, data)` and returns new data, so
+a scene stays reproducible frame-for-frame. Reading a clock or a random
+number here is what breaks determinism. `t` is the EASED parameter, so a
+non-linear `timing` reshapes the pacing without `fn` knowing.
+
+The final frame receives exactly `t = 1` for any easing with f(1) = 1, so
+the motion lands precisely on whatever `fn(1, …)` computes.
+
+## Param
+
+**duration**
+
+How long, in scene time.
+
+## Param
+
+**timing**
+
+An easing name or function; applied to `t` before `fn`
+  sees it.
+
+## Param
+
+**fn**
+
+Pure `(t, data) => data`, called once per frame.
+
+## Returns
+
+The instance, so animators chain.
+
+## Example
+
+Sweep a dot around a circle — one angle driving both axes, which two
+independent tweens could not do.
+```typescript
+yield* dot.pipe(
+	Motion.drive("2 seconds", "linear", (t, data) => ({
+		...data,
+		position: Entity.vec3({
+			x: 250 + Math.cos(t * 2 * Math.PI) * 120,
+			y: 150 + Math.sin(t * 2 * Math.PI) * 120,
+		}),
+	})),
+);
+```

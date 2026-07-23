@@ -1,0 +1,22 @@
+---
+title: "TagsWith"
+description: "type TagsWith<Field> = Extract<Entity, Record<Field, unknown>>\"_tag\";"
+---
+# Type Alias: TagsWith\<Field\>
+
+```ts
+type TagsWith<Field> = Extract<Entity, Record<Field, unknown>>["_tag"];
+```
+
+Defined in: [packages/motion/src/Entity.ts:350](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Entity.ts#L350)
+
+Tags whose entity carries a given field — how animators state their
+requirements now that traits are gone. `TagsWith<"opacity">` is every
+paintable entity; `fade` constrains on it, so fading a Camera is a
+compile error naming the missing field rather than a runtime defect.
+
+## Type Parameters
+
+| Type Parameter |
+| ------ |
+| `Field` *extends* `string` |

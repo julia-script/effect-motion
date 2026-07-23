@@ -1,0 +1,42 @@
+---
+title: "run"
+description: "function run<A, E, R>(phaser, scene): Effect<Fiber<A, E>, never, Exclude<R, Phaser>>;"
+---
+# Function: run()
+
+```ts
+function run<A, E, R>(phaser, scene): Effect<Fiber<A, E>, never, Exclude<R, Phaser>>;
+```
+
+Defined in: [packages/motion/src/Phaser.ts:132](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Phaser.ts#L132)
+
+Fork `scene` as the root party of `phaser`.
+
+Registration happens synchronously before the fork, so between combinators
+the scene is registered-but-running and `awaitAdvance` can never resolve
+during a sequential handoff or before the scene starts. The slot is
+released by a finalizer on success, failure, and interrupt alike.
+
+## Type Parameters
+
+| Type Parameter | Default type |
+| ------ | ------ |
+| `A` | - |
+| `E` | `never` |
+| `R` | `never` |
+
+## Parameters
+
+| Parameter | Type | Description |
+| ------ | ------ | ------ |
+| `phaser` | \{ `arriveAndAwaitAdvance`: `Effect`\<`void`, `never`, `never`\>; `awaitAdvance`: `Effect`\<`number`, `never`, `never`\>; `deregister`: (`n`) => `void`; `register`: (`n`) => `void`; `snapshotUnsafe`: () => \{ `arrived`: `number`; `parties`: `number`; `phase`: `number`; `state`: `"idle"` \| `"pending"` \| `"running"`; \}; \} | - |
+| `phaser.arriveAndAwaitAdvance` | `Effect`\<`void`, `never`, `never`\> | - |
+| `phaser.awaitAdvance` | `Effect`\<`number`, `never`, `never`\> | - |
+| `phaser.deregister` | (`n`) => `void` | - |
+| `phaser.register` | (`n`) => `void` | - |
+| `phaser.snapshotUnsafe` | () => \{ `arrived`: `number`; `parties`: `number`; `phase`: `number`; `state`: `"idle"` \| `"pending"` \| `"running"`; \} | debug/test view of the internal counters |
+| `scene` | `Effect`\<`A`, `E`, `R`\> | - |
+
+## Returns
+
+`Effect`\<`Fiber`\<`A`, `E`\>, `never`, `Exclude`\<`R`, [`Phaser`](../classes/Phaser.mdx)\>\>

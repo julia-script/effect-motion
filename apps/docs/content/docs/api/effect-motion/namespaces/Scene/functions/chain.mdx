@@ -1,0 +1,73 @@
+---
+title: "chain"
+description: "function chain<Eff, ScheduleE, ScheduleR>(effects, schedule?): Effect<{"
+---
+# Function: chain()
+
+```ts
+function chain<Eff, ScheduleE, ScheduleR>(effects, schedule?): Effect<{
+  completed: number;
+}, 
+  | ScheduleE
+  | Eff extends Effect<any, E, any> ? E : never, 
+  | Runner
+  | ScheduleR
+| Eff extends Effect<any, any, R> ? R : never>;
+```
+
+Defined in: [packages/motion/src/Scene.ts:1254](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L1254)
+
+Run animations one at a time, in order, optionally resting between them.
+
+## Type Parameters
+
+| Type Parameter | Default type |
+| ------ | ------ |
+| `Eff` *extends* `Effect`\<`any`, `any`, `any`\> | - |
+| `ScheduleE` | `never` |
+| `ScheduleR` | `never` |
+
+## Parameters
+
+| Parameter | Type | Description |
+| ------ | ------ | ------ |
+| `effects` | `Iterable`\<`Eff`\> | The animations, in order. |
+| `schedule?` | `Schedule`\<`unknown`, `Eff` *extends* `Effect`\<`A`, `any`, `any`\> ? `A` : `never`, `ScheduleE`, `ScheduleR`\> | Optional pacing for the gaps between them. |
+
+## Returns
+
+`Effect`\<\{
+  `completed`: `number`;
+\}, 
+  \| `ScheduleE`
+  \| `Eff` *extends* `Effect`\<`any`, `E`, `any`\> ? `E` : `never`, 
+  \| [`Runner`](../../Runner/classes/Runner.mdx)
+  \| `ScheduleR`
+  \| `Eff` *extends* `Effect`\<`any`, `any`, `R`\> ? `R` : `never`\>
+
+`{ completed }` — how many items actually ran.
+
+## Remarks
+
+Items NEVER overlap — each begins only after the previous one has fully
+finished. That guarantee is the difference between this and
+[stagger](./stagger.mdx), and it holds no matter what schedule you pass.
+
+Without a schedule this is plain sequencing, equivalent to yielding each
+item in turn but composable as a list. With one, the schedule paces the
+GAPS after each item: `Schedule.spaced("400 millis")` rests 400ms between
+items, while `Schedule.fixed` targets a steady start-to-start cadence.
+
+The schedule also decides how many items run: when it ends, the remaining
+items are skipped. `Schedule.recurs(2)` therefore plays three items — the
+first, plus two more the schedule released.
+
+## Example
+
+Three shapes flashing in turn, resting 400ms between each.
+```typescript
+const { completed } = yield* Scene.chain(
+	[a, b, c].map((shape) => shape.pipe(Motion.fadeTo(1, "300 millis"))),
+	Schedule.spaced("400 millis"),
+);
+```

@@ -1,0 +1,63 @@
+---
+title: "repeat"
+description: "function repeat<A, E, R, Output, ScheduleE, ScheduleR>(effect, schedule): Effect<Output, E | ScheduleE, Runner | R | ScheduleR>;"
+---
+# Function: repeat()
+
+```ts
+function repeat<A, E, R, Output, ScheduleE, ScheduleR>(effect, schedule): Effect<Output, E | ScheduleE, Runner | R | ScheduleR>;
+```
+
+Defined in: [packages/motion/src/Scene.ts:961](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L961)
+
+Play an animation again and again, on a schedule.
+
+## Type Parameters
+
+| Type Parameter |
+| ------ |
+| `A` |
+| `E` |
+| `R` |
+| `Output` |
+| `ScheduleE` |
+| `ScheduleR` |
+
+## Parameters
+
+| Parameter | Type | Description |
+| ------ | ------ | ------ |
+| `effect` | `Effect`\<`A`, `E`, `R`\> | The animation to repeat. |
+| `schedule` | `Schedule`\<`Output`, `A`, `ScheduleE`, `ScheduleR`\> | How often, and how many times. |
+
+## Returns
+
+`Effect`\<`Output`, `E` \| `ScheduleE`, [`Runner`](../../Runner/classes/Runner.mdx) \| `R` \| `ScheduleR`\>
+
+The schedule's final output.
+
+## Remarks
+
+`Effect.repeat`'s sibling, paced by FRAMES rather than the wall clock —
+which is what keeps a looping scene deterministic.
+
+The first run happens immediately, and the schedule paces the gaps AFTER
+each run. So `Schedule.spaced("400 millis")` means "run, rest 400ms, run
+again", and the loop count comes from the schedule: `Schedule.forever`
+for ambient motion (usually inside [background](./background.mdx)), or
+`Schedule.upTo({ times: 2 })` for a bounded three-run sequence.
+
+A failing run fails immediately, without consulting the schedule again.
+
+## Example
+
+Three round-trips, resting 400ms between them.
+```typescript
+yield* Scene.repeat(
+	ball.pipe(
+		Motion.moveTo({ x: 430 }, "600 millis", "easeInOutCubic"),
+		Motion.moveTo({ x: 70 }, "600 millis", "easeInOutCubic"),
+	),
+	Schedule.spaced("400 millis").pipe(Schedule.upTo({ times: 2 })),
+);
+```

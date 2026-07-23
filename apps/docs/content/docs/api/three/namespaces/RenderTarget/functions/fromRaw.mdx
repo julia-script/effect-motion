@@ -1,0 +1,27 @@
+---
+title: "fromRaw"
+description: "function fromRaw(target): RenderTarget;"
+---
+# Function: fromRaw()
+
+```ts
+function fromRaw(target): RenderTarget;
+```
+
+Defined in: [packages/three/src/RenderTarget.ts:91](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/RenderTarget.ts#L91)
+
+Wrap an existing three render target, without registering teardown.
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `target` | `RenderTarget` |
+
+## Returns
+
+[`RenderTarget`](../interfaces/RenderTarget.mdx)
+
+## Remarks
+
+Same caveat as [makeUnsafe](./makeUnsafe.mdx): whoever owns it must dispose it.

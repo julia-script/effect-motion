@@ -1,0 +1,35 @@
+---
+title: "compile"
+description: "function compile("
+---
+# Function: compile()
+
+```ts
+function compile(
+   self, 
+   scene, 
+camera): Effect<void, ThreeException>;
+```
+
+Defined in: [packages/three/src/Renderer.ts:230](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/Renderer.ts#L230)
+
+Compile the shader pipelines a scene needs, ahead of drawing it.
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `self` | [`Renderer`](../interfaces/Renderer.mdx) |
+| `scene` | [`Scene`](../../Scene/interfaces/Scene.mdx) |
+| `camera` | `Camera` |
+
+## Returns
+
+`Effect`\<`void`, [`ThreeException`](../../../classes/ThreeException.mdx)\>
+
+## Remarks
+
+WebGPU compiles a pipeline the first time it is used, which lands as a
+visible hitch (roughly 40–80ms) on the first frame. Calling this after
+the scene is populated but before anything is shown moves that cost into
+startup.

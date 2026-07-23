@@ -1,0 +1,39 @@
+---
+title: "makeMesh"
+description: "function makeMesh(text): TextMesh;"
+---
+# Function: makeMesh()
+
+```ts
+function makeMesh(text): TextMesh;
+```
+
+Defined in: [Text.ts:383](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Text.ts#L383)
+
+Build a mesh that draws glyphs from the shared atlas.
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `text` | [`Text`](../interfaces/Text.mdx) |
+
+## Returns
+
+[`TextMesh`](../interfaces/TextMesh.mdx)
+
+## Remarks
+
+Rendered in two passes so overlapping glyph ink — connected scripts, tight
+kerning — blends exactly ONCE per pixel at any opacity. A single-pass
+approach would double-blend the joins and show them as darker seams on
+semi-transparent text.
+
+- core pass: fragments with SDF coverage ≥ 0.5 draw flat at the string
+  opacity, write depth with `LessDepth` — a second glyph's core at the
+  same depth fails the test, deduplicating the join.
+- edge pass: the antialiasing ring (coverage \< 0.5) blends without depth
+  writes; core-covered pixels reject it via the depth buffer.
+
+The mesh carries a tiny z-lift so text sits above coplanar backdrops
+(invisible at ordinary scales, deterministic).

@@ -1,0 +1,40 @@
+---
+title: "layer"
+description: "function layer<ID, E, R>("
+---
+# Function: layer()
+
+```ts
+function layer<ID, E, R>(
+   font, 
+   load, 
+options?): Layer<FontLoader<ID>, E, R>;
+```
+
+Defined in: [packages/motion/src/Font.ts:114](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Font.ts#L114)
+
+Provide a font's bytes. The load effect runs ONCE, at layer construction
+(runtime build) — never at frame time; compose retries/timeouts on the
+load effect itself. Every provided font loads regardless of whether the
+scene ends up using it (preload-all-provided policy).
+
+## Type Parameters
+
+| Type Parameter |
+| ------ |
+| `ID` *extends* `string` |
+| `E` |
+| `R` |
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `font` | [`FontResource`](../interfaces/FontResource.mdx)\<`ID`\> |
+| `load` | `Effect`\<`Uint8Array`\<`ArrayBufferLike`\>, `E`, `R`\> |
+| `options?` | \{ `format?`: `"ttf"` \| `"otf"`; \} |
+| `options.format?` | `"ttf"` \| `"otf"` |
+
+## Returns
+
+`Layer`\<[`FontLoader`](../interfaces/FontLoader.mdx)\<`ID`\>, `E`, `R`\>

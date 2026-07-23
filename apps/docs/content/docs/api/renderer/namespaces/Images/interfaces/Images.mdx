@@ -1,0 +1,23 @@
+---
+title: "Images"
+description: "The per-renderer image cache. Mostly data — the API is the sibling"
+---
+# Interface: Images
+
+Defined in: [Images.ts:112](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Images.ts#L112)
+
+The per-renderer image cache. Mostly data — the API is the sibling
+functions ([register](../variables/register.mdx), [ready](../functions/ready.mdx), [has](../functions/has.mdx),
+[dispose](../variables/dispose.mdx)).
+
+## Properties
+
+### entries
+
+```ts
+readonly entries: Map<string, Deferred<DecodedImage, EffectMotionError>>;
+```
+
+Defined in: [Images.ts:114](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Images.ts#L114)
+
+internal: image id → its in-flight or completed decode

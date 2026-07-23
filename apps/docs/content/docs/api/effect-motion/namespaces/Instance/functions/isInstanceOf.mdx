@@ -1,0 +1,35 @@
+---
+title: "isInstanceOf"
+description: "function isInstanceOf<Tag>(tag, u): u is Instance<Tag>;"
+---
+# Function: isInstanceOf()
+
+```ts
+function isInstanceOf<Tag>(tag, u): u is Instance<Tag>;
+```
+
+Defined in: [packages/motion/src/Instance.ts:90](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Instance.ts#L90)
+
+Whether `u` is an instance of one specific entity kind.
+
+## Type Parameters
+
+| Type Parameter |
+| ------ |
+| `Tag` *extends* \| `"Camera"` \| `"Line"` \| `"Path"` \| `"Rect"` \| `"Circle"` \| `"Ellipse"` \| `"Text"` \| `"Group"` \| `"Hud"` \| `"Image"` |
+
+## Parameters
+
+| Parameter | Type | Description |
+| ------ | ------ | ------ |
+| `tag` | `Tag` | The kind to test for, e.g. `"Circle"`. |
+| `u` | `unknown` | The value to test. |
+
+## Returns
+
+`u is Instance<Tag>`
+
+## Remarks
+
+Narrows to `Instance<Tag>`, so a heterogeneous list can be filtered down
+to the circles and then animated with circle-only fields.

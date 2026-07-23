@@ -1,0 +1,30 @@
+---
+title: "pass"
+description: "function pass(scene, camera): Pass;"
+---
+# Function: pass()
+
+```ts
+function pass(scene, camera): Pass;
+```
+
+Defined in: [packages/three/src/PostProcessing.ts:80](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/PostProcessing.ts#L80)
+
+Render a scene through a camera into something a shader graph can sample.
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `scene` | [`Scene`](../../Scene/interfaces/Scene.mdx) |
+| `camera` | `Camera` |
+
+## Returns
+
+[`Pass`](../interfaces/Pass.mdx)
+
+## Remarks
+
+The pass is the input end of a post chain: build one, take
+[Pass.getTextureNode](../interfaces/Pass.mdx#gettexturenode) as a node, combine it however you like, and
+hand the result to [makePipeline](./makePipeline.mdx).

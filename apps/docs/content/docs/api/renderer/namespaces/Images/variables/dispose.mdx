@@ -1,0 +1,28 @@
+---
+title: "dispose"
+description: "const dispose: (...args) => Effect<void, never, never>;"
+---
+# Variable: dispose
+
+```ts
+const dispose: (...args) => Effect<void, never, never>;
+```
+
+Defined in: [Images.ts:183](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Images.ts#L183)
+
+Release every decoded texture.
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| ...`args` | \[[`Images`](../interfaces/Images.mdx)\] |
+
+## Returns
+
+`Effect`\<`void`, `never`, `never`\>
+
+## Remarks
+
+Called when the renderer's scope closes. Only completed decodes hold a
+texture — an in-flight or failed one has nothing to free.

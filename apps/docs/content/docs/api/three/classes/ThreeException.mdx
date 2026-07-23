@@ -1,0 +1,97 @@
+---
+title: "ThreeException"
+description: "A three.js operation failed."
+---
+# Class: ThreeException
+
+Defined in: [packages/three/src/ThreeException.ts:16](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/ThreeException.ts#L16)
+
+A three.js operation failed.
+
+## Remarks
+
+Every fallible call in this package reports through this one error type,
+so a caller catches by tag rather than guarding each three API
+separately. `operation` names which call failed — `"WebGPURenderer.init"`,
+`"readRenderTargetPixelsAsync"` — and `cause` carries whatever three
+threw or rejected with.
+
+Typical causes are environmental rather than logical: no WebGPU adapter,
+a lost device, a shader that failed to compile.
+
+## Extends
+
+- `YieldableError`\<`this`\> & \{
+\} & `Readonly`\<\{
+  `cause?`: `unknown`;
+  `operation?`: `string`;
+\}\>
+
+## Constructors
+
+### Constructor
+
+```ts
+new ThreeException(args): ThreeException;
+```
+
+Defined in: node\_modules/.pnpm/effect@4.0.0-beta.98/node\_modules/effect/dist/Data.d.ts:986
+
+#### Parameters
+
+| Parameter | Type | Description |
+| ------ | ------ | ------ |
+| `args` | \{ `cause?`: `unknown`; `operation?`: `string`; \} | - |
+| `args.cause?` | `unknown` | The underlying error three threw or rejected with. |
+| `args.operation?` | `string` | Name of the three.js operation that failed. |
+
+#### Returns
+
+`ThreeException`
+
+#### Inherited from
+
+```ts
+Data.TaggedError("ThreeException")<{
+	/ The underlying error three threw or rejected with. /
+	cause?: unknown;
+	/ Name of the three.js operation that failed. /
+	operation?: string;
+}>.constructor
+```
+
+## Properties
+
+### cause?
+
+```ts
+optional cause?: unknown;
+```
+
+Defined in: node\_modules/.pnpm/typescript@5.9.3/node\_modules/typescript/lib/lib.es2022.error.d.ts:26
+
+The underlying error three threw or rejected with.
+
+#### Inherited from
+
+```ts
+Data.TaggedError("ThreeException").cause
+```
+
+***
+
+### operation?
+
+```ts
+readonly optional operation?: string;
+```
+
+Defined in: [packages/three/src/ThreeException.ts:20](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/ThreeException.ts#L20)
+
+Name of the three.js operation that failed.
+
+#### Inherited from
+
+```ts
+Data.TaggedError("ThreeException").operation
+```

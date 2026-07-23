@@ -1,0 +1,27 @@
+---
+title: "Vec3-1"
+description: "const Vec3: TaggedStruct<\"Vec3\", {"
+---
+# Variable: Vec3
+
+```ts
+const Vec3: TaggedStruct<"Vec3", {
+  x: withConstructorDefault<Number>;
+  y: withConstructorDefault<Number>;
+  z: withConstructorDefault<Number>;
+}>;
+```
+
+Defined in: [packages/motion/src/Entity.ts:33](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Entity.ts#L33)
+
+A point or offset in 3D space.
+
+## Remarks
+
+Screen coordinates with depth: `x` right, `y` DOWN (the screen
+convention, not the mathematical one), `z` toward the viewer. Every axis
+defaults to 0, so `vec3({ x: 100 })` is a valid horizontal offset.
+
+At `z = 0` content renders exactly as flat 2D. Non-zero `z` is only
+meaningful under a perspective camera, where it changes apparent size and
+parallax.

@@ -1,0 +1,40 @@
+---
+title: "createEaseOutBounce"
+description: "function createEaseOutBounce(n?, d?): TimingFunction;"
+---
+# Function: createEaseOutBounce()
+
+```ts
+function createEaseOutBounce(n?, d?): TimingFunction;
+```
+
+Defined in: [packages/motion/src/Timing.ts:255](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Timing.ts#L255)
+
+Build a Bounce easing with custom stiffness and bounce spacing.
+
+## Parameters
+
+| Parameter | Type | Default value | Description |
+| ------ | ------ | ------ | ------ |
+| `n` | `number` | `7.5625` | Bounce stiffness. |
+| `d` | `number` | `2.75` | Interval divisor, setting how the bounces are spaced. |
+
+## Returns
+
+[`TimingFunction`](../type-aliases/TimingFunction.mdx)
+
+A [TimingFunction](../type-aliases/TimingFunction.mdx) to pass to any animator.
+
+## Remarks
+
+Bounce curves imitate a ball hitting a surface: a series of ever-smaller
+rebounds. Unlike Elastic, they never go PAST the target — they arrive and
+rebound away from it. Prefer [easeOutBounce](../variables/easeOutBounce.mdx) and its siblings unless
+tuning the character.
+
+The offsets are derived from the parameters, so f(1) = 1 holds for any
+stiffness and a tween still lands exactly.
+
+## Default Value
+
+`n` — `7.5625`; `d` — `2.75` (the canonical CSS bounce)

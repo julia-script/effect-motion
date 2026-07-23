@@ -1,0 +1,41 @@
+---
+title: "sleep"
+description: "function sleep(duration): Effect<void, never, Runner>;"
+---
+# Function: sleep()
+
+```ts
+function sleep(duration): Effect<void, never, Runner>;
+```
+
+Defined in: [packages/motion/src/Scene.ts:289](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L289)
+
+Hold the scene still for `duration`.
+
+## Parameters
+
+| Parameter | Type | Description |
+| ------ | ------ | ------ |
+| `duration` | `Input` | How long to hold, in scene time. |
+
+## Returns
+
+`Effect`\<`void`, `never`, [`Runner`](../../Runner/classes/Runner.mdx)\>
+
+## Remarks
+
+`Effect.sleep`'s sibling, but counted in FRAMES at the runner's frame
+rate rather than read from a clock. That distinction is load-bearing:
+a wall-clock sleep would produce a different number of frames on a slow
+machine, and scenes must be reproducible.
+
+A zero-length duration is a no-op — unlike an animator, which always
+consumes at least one frame.
+
+Use `Motion.wait` instead when the hold belongs inside an animator chain.
+
+## Example
+
+```typescript
+yield* Scene.sleep("500 millis");
+```

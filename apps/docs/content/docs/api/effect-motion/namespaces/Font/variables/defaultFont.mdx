@@ -1,0 +1,17 @@
+---
+title: "defaultFont"
+description: "const defaultFont: FontResource<\"sans-serif\">;"
+---
+# Variable: defaultFont
+
+```ts
+const defaultFont: FontResource<"sans-serif">;
+```
+
+Defined in: [packages/motion/src/Font.ts:140](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Font.ts#L140)
+
+The built-in default font under the RESERVED id `"sans-serif"` — the
+`Text.fontFamily` constructor default. It never appears in a scene's
+requirements (no `yield*` happens for a schema default); the render path
+auto-provides its loader beneath caller context, so providing your own
+loader under the `"sans-serif"` id overrides the built-in bytes.

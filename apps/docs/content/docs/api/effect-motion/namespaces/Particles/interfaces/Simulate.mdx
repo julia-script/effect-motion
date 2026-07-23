@@ -1,0 +1,141 @@
+---
+title: "Simulate"
+description: "Advance a `ParticleField` for `duration`, running its per-frame step"
+---
+# Interface: Simulate()
+
+Defined in: [packages/motion/src/particles/simulate.ts:154](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/particles/simulate.ts#L154)
+
+Advance a `ParticleField` for `duration`, running its per-frame step
+(emit, integrate, kill) once per frame and arriving at the phaser once
+per frame — O(1) on the barrier regardless of live particle count.
+
+Dual: `simulate(field, duration, emission)` or
+`field.pipe(simulate(duration, emission))`. The emission is constrained by
+how the field was created: a `Particles.emitter(...)` takes `{ burst }` or
+`{ rate }`, a `Particles.field(...)` takes `{ fill }`. Resolves with the
+field so calls chain.
+
+## Call Signature
+
+```ts
+Simulate(
+   field, 
+   duration, 
+emission): Effect<EmitterField, never, Runner>;
+```
+
+Defined in: [packages/motion/src/particles/simulate.ts:156](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/particles/simulate.ts#L156)
+
+Advance a `ParticleField` for `duration`, running its per-frame step
+(emit, integrate, kill) once per frame and arriving at the phaser once
+per frame — O(1) on the barrier regardless of live particle count.
+
+Dual: `simulate(field, duration, emission)` or
+`field.pipe(simulate(duration, emission))`. The emission is constrained by
+how the field was created: a `Particles.emitter(...)` takes `{ burst }` or
+`{ rate }`, a `Particles.field(...)` takes `{ fill }`. Resolves with the
+field so calls chain.
+
+### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `field` | [`EmitterField`](../type-aliases/EmitterField.mdx) |
+| `duration` | `Input` |
+| `emission` | [`EmitterEmission`](../type-aliases/EmitterEmission.mdx) |
+
+### Returns
+
+`Effect`\<[`EmitterField`](../type-aliases/EmitterField.mdx), `never`, [`Runner`](../../Runner/classes/Runner.mdx)\>
+
+## Call Signature
+
+```ts
+Simulate(
+   field, 
+   duration, 
+emission): Effect<FloatField, never, Runner>;
+```
+
+Defined in: [packages/motion/src/particles/simulate.ts:161](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/particles/simulate.ts#L161)
+
+Advance a `ParticleField` for `duration`, running its per-frame step
+(emit, integrate, kill) once per frame and arriving at the phaser once
+per frame — O(1) on the barrier regardless of live particle count.
+
+Dual: `simulate(field, duration, emission)` or
+`field.pipe(simulate(duration, emission))`. The emission is constrained by
+how the field was created: a `Particles.emitter(...)` takes `{ burst }` or
+`{ rate }`, a `Particles.field(...)` takes `{ fill }`. Resolves with the
+field so calls chain.
+
+### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `field` | [`FloatField`](../type-aliases/FloatField.mdx) |
+| `duration` | `Input` |
+| `emission` | [`FillEmission`](../type-aliases/FillEmission.mdx) |
+
+### Returns
+
+`Effect`\<[`FloatField`](../type-aliases/FloatField.mdx), `never`, [`Runner`](../../Runner/classes/Runner.mdx)\>
+
+## Call Signature
+
+```ts
+Simulate(duration, emission): (field) => Effect<EmitterField, never, Runner>;
+```
+
+Defined in: [packages/motion/src/particles/simulate.ts:167](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/particles/simulate.ts#L167)
+
+Advance a `ParticleField` for `duration`, running its per-frame step
+(emit, integrate, kill) once per frame and arriving at the phaser once
+per frame — O(1) on the barrier regardless of live particle count.
+
+Dual: `simulate(field, duration, emission)` or
+`field.pipe(simulate(duration, emission))`. The emission is constrained by
+how the field was created: a `Particles.emitter(...)` takes `{ burst }` or
+`{ rate }`, a `Particles.field(...)` takes `{ fill }`. Resolves with the
+field so calls chain.
+
+### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `duration` | `Input` |
+| `emission` | [`EmitterEmission`](../type-aliases/EmitterEmission.mdx) |
+
+### Returns
+
+(`field`) => `Effect`\<[`EmitterField`](../type-aliases/EmitterField.mdx), `never`, [`Runner`](../../Runner/classes/Runner.mdx)\>
+
+## Call Signature
+
+```ts
+Simulate(duration, emission): (field) => Effect<FloatField, never, Runner>;
+```
+
+Defined in: [packages/motion/src/particles/simulate.ts:171](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/particles/simulate.ts#L171)
+
+Advance a `ParticleField` for `duration`, running its per-frame step
+(emit, integrate, kill) once per frame and arriving at the phaser once
+per frame — O(1) on the barrier regardless of live particle count.
+
+Dual: `simulate(field, duration, emission)` or
+`field.pipe(simulate(duration, emission))`. The emission is constrained by
+how the field was created: a `Particles.emitter(...)` takes `{ burst }` or
+`{ rate }`, a `Particles.field(...)` takes `{ fill }`. Resolves with the
+field so calls chain.
+
+### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `duration` | `Input` |
+| `emission` | [`FillEmission`](../type-aliases/FillEmission.mdx) |
+
+### Returns
+
+(`field`) => `Effect`\<[`FloatField`](../type-aliases/FloatField.mdx), `never`, [`Runner`](../../Runner/classes/Runner.mdx)\>

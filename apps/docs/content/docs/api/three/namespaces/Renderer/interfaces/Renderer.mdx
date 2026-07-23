@@ -1,0 +1,39 @@
+---
+title: "Renderer"
+description: "A handle to an initialized GPU renderer."
+---
+# Interface: Renderer
+
+Defined in: [packages/three/src/Renderer.ts:38](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/Renderer.ts#L38)
+
+A handle to an initialized GPU renderer.
+
+## Remarks
+
+The three renderer stays reachable through `~three.renderer` for anything
+this wrapper does not cover — a deliberate escape hatch, not the front
+door.
+
+## Extends
+
+- `Pipeable`
+
+## Properties
+
+### ~three.renderer
+
+```ts
+readonly ~three.renderer: WebGPURenderer;
+```
+
+Defined in: [packages/three/src/Renderer.ts:40](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/Renderer.ts#L40)
+
+***
+
+### ~three/Renderer
+
+```ts
+readonly ~three/Renderer: "~three/Renderer";
+```
+
+Defined in: [packages/three/src/Renderer.ts:39](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/Renderer.ts#L39)

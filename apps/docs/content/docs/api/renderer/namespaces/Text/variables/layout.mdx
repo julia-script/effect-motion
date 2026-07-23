@@ -1,0 +1,36 @@
+---
+title: "layout"
+description: "const layout: (...args) => Effect<GlyphQuads, EffectMotionError, never>;"
+---
+# Variable: layout
+
+```ts
+const layout: (...args) => Effect<GlyphQuads, EffectMotionError, never>;
+```
+
+Defined in: [Text.ts:255](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Text.ts#L255)
+
+Lay out a string into positioned glyph quads.
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| ...`args` | \[[`Text`](../interfaces/Text.mdx), [`LayoutRequest`](../interfaces/LayoutRequest.mdx)\] |
+
+## Returns
+
+`Effect`\<[`GlyphQuads`](../interfaces/GlyphQuads.mdx), `EffectMotionError`, `never`\>
+
+## Remarks
+
+Typesets the text, rasterizes any glyph not already in the atlas, and
+returns per-glyph quad bounds and atlas UV rects with the anchor and
+baseline offsets applied. By default the text's baseline-left sits at
+local (0, 0).
+
+Asynchronous because typesetting and SDF generation are; the renderer
+registers the work so a frame is never drawn with half its glyphs.
+Typesetting and SDF failures arrive as typed errors naming the font.
+
+The font must be registered first — an unregistered font is a defect.

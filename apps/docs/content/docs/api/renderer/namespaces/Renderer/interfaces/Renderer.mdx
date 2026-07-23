@@ -1,0 +1,51 @@
+---
+title: "Renderer"
+description: "A live browser renderer."
+---
+# Interface: Renderer
+
+Defined in: [Renderer.ts:132](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Renderer.ts#L132)
+
+A live browser renderer.
+
+## Remarks
+
+Mostly data — the API is the sibling functions ([syncFrame](../functions/syncFrame.mdx),
+[resolveResources](../functions/resolveResources.mdx), [render](../functions/render.mdx), [prewarm](../functions/prewarm.mdx)). `sync.stats`
+is useful for diagnostics: it reports how many objects are retained and
+how long the last sync took.
+
+## Properties
+
+### gpu
+
+```ts
+readonly gpu: Renderer;
+```
+
+Defined in: [Renderer.ts:134](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Renderer.ts#L134)
+
+***
+
+### scope
+
+```ts
+readonly scope: Scope;
+```
+
+Defined in: [Renderer.ts:141](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Renderer.ts#L141)
+
+The scope this renderer was acquired in. Image decodes fork into it,
+so they are interrupted with the renderer rather than outliving it —
+and callers of `resolveResources` do not have to carry a Scope of
+their own.
+
+***
+
+### sync
+
+```ts
+readonly sync: Sync;
+```
+
+Defined in: [Renderer.ts:133](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Renderer.ts#L133)

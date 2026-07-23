@@ -1,0 +1,29 @@
+---
+title: "makeUnsafe"
+description: "function makeUnsafe(scene): Scene;"
+---
+# Function: makeUnsafe()
+
+```ts
+function makeUnsafe(scene): Scene;
+```
+
+Defined in: [packages/three/src/Scene.ts:59](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/Scene.ts#L59)
+
+Wrap an existing three scene WITHOUT registering teardown.
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `scene` | `Scene` |
+
+## Returns
+
+[`Scene`](../interfaces/Scene.mdx)
+
+## Remarks
+
+For a scene whose lifetime something else already owns and will clean up.
+Prefer [make](../variables/make.mdx), which ties teardown to a scope; reach for this only
+when a longer-lived owner is genuinely in charge.

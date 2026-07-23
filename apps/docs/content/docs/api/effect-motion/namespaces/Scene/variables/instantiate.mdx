@@ -1,0 +1,70 @@
+---
+title: "instantiate"
+description: "const instantiate: <Tag>(...args) => Effect<Instance<Tag>, never, Runner>;"
+---
+# Variable: instantiate
+
+```ts
+const instantiate: <Tag>(...args) => Effect<Instance<Tag>, never, Runner>;
+```
+
+Defined in: [packages/motion/src/Scene.ts:252](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L252)
+
+Create an entity and put it in the scene.
+
+## Type Parameters
+
+| Type Parameter |
+| ------ |
+| `Tag` *extends* \| `"Camera"` \| `"Line"` \| `"Path"` \| `"Rect"` \| `"Circle"` \| `"Ellipse"` \| `"Text"` \| `"Group"` \| `"Hud"` \| `"Image"` |
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| ...`args` | \[`Tag`, [`InstantiateProps`](../../Runner/type-aliases/InstantiateProps.mdx)\<`Tag`\>\] |
+
+## Returns
+
+`Effect`\<[`Instance`](../../Instance/interfaces/Instance.mdx)\<`Tag`\>, `never`, [`Runner`](../../Runner/classes/Runner.mdx)\>
+
+A handle to the live entity.
+
+## Remarks
+
+`kind` selects the entity and, with it, the exact props allowed — asking
+for a `"Circle"` gets you `radius`, a `"Text"` gets `text` and
+`fontSize`. Everything is optional and defaulted, so `instantiate("Circle",
+\{\})` is a valid white circle at the origin.
+
+The entity appears immediately and stays for the rest of the scene. It is
+mounted under the ambient parent — the root, or the enclosing Group when
+created inside one.
+
+What you get back is a lightweight HANDLE, not the entity's data. It is
+what animators take, and it stays valid as the data changes underneath;
+to read the current state use [data](../functions/data.mdx). Because the handle is itself
+pipeable, you can animate straight off the call without binding it first.
+
+Containers (`Group`, `Hud`) accept a `children` array that is deliberately
+permissive: a bare string becomes a Text, an existing handle is adopted,
+and an un-yielded `instantiate` is resolved for you.
+
+## Example
+
+A shape, and a Group adopting mixed children.
+```typescript
+const dot = yield* Scene.instantiate("Circle", {
+	position: Entity.vec3({ x: 100, y: 50 }),
+	radius: 20,
+	fillColor: Color.hex("#7f5af0"),
+});
+
+const panel = yield* Scene.instantiate("Group", {
+	children: [
+		"a bare string becomes a Text",
+		Scene.instantiate("Rect", { width: 200, height: 40 }),
+		dot,
+	],
+});
+```

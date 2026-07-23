@@ -1,0 +1,60 @@
+---
+title: "spring"
+description: "const spring: <Tag>(from, to, springInput?, settleTolerance?) => <E, R>(instance) => Effect<Instance<Tag>, E, Runner | R> & <Tag, E, R>(instance, from"
+---
+# Variable: spring
+
+```ts
+const spring: <Tag>(from, to, springInput?, settleTolerance?) => <E, R>(instance) => Effect<Instance<Tag>, E, Runner | R> & <Tag, E, R>(instance, from, to, springInput?, settleTolerance?) => Effect<Instance<Tag>, E, Runner | R>;
+```
+
+Defined in: [packages/motion/src/Physics.ts:348](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Physics.ts#L348)
+
+Like [springTo](./springTo.mdx), but starting from an explicit position.
+
+## Remarks
+
+The springy entrance: an instance declared at its resting place can still
+fly in from off-screen and settle, because the origin is stated rather
+than read from the entity. Both `from` and `to` are partial and fill
+missing axes from the current position.
+
+## Param
+
+**from**
+
+Starting position; omitted axes start at the current value.
+
+## Param
+
+**to**
+
+Target position; omitted axes hold their current value.
+
+## Param
+
+**springInput**
+
+A preset name from [springs](./springs.mdx), or a custom
+  [Spring](../interfaces/Spring.mdx).
+
+## Param
+
+**settleTolerance**
+
+How close counts as settled.
+
+## Default Value
+
+`springInput` — [defaultSpring](./defaultSpring.mdx); `settleTolerance` — `0.001`
+
+## Returns
+
+The instance, so animators chain.
+
+## Example
+
+Drop a card in from above and let it settle where it was declared.
+```typescript
+yield* card.pipe(Physics.spring({ y: -200 }, { y: 150 }, "plop"));
+```

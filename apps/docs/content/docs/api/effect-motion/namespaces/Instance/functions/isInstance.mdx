@@ -1,0 +1,30 @@
+---
+title: "isInstance"
+description: "function isInstance(u): u is Instance<\"Camera\" | \"Line\" | \"Path\" | \"Rect\" | \"Circle\" | \"Ellipse\" | \"Text\" | \"Group\" | \"Hud\" | \"Image\">;"
+---
+# Function: isInstance()
+
+```ts
+function isInstance(u): u is Instance<"Camera" | "Line" | "Path" | "Rect" | "Circle" | "Ellipse" | "Text" | "Group" | "Hud" | "Image">;
+```
+
+Defined in: [packages/motion/src/Instance.ts:74](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Instance.ts#L74)
+
+Whether `u` is an [Instance](../interfaces/Instance.mdx).
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `u` | `unknown` |
+
+## Returns
+
+u is Instance\<"Camera" \| "Line" \| "Path" \| "Rect" \| "Circle" \| "Ellipse" \| "Text" \| "Group" \| "Hud" \| "Image"\>
+
+## Remarks
+
+The dispatch behind every dual animator: `moveTo(circle, …)` and
+`circle.pipe(moveTo(…))` are told apart by testing the first argument
+with this, rather than by counting arguments — trailing optional
+parameters make arity ambiguous.

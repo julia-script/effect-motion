@@ -1,0 +1,30 @@
+---
+title: "register"
+description: "const register: (...args) => Effect<void, never, Scope>;"
+---
+# Variable: register
+
+```ts
+const register: (...args) => Effect<void, never, Scope>;
+```
+
+Defined in: [Images.ts:134](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Images.ts#L134)
+
+Begin decoding an image's bytes under an id.
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| ...`args` | \[[`Images`](../interfaces/Images.mdx), `string`, `Uint8Array`\<`ArrayBufferLike`\>\] |
+
+## Returns
+
+`Effect`\<`void`, `never`, `Scope`\>
+
+## Remarks
+
+Idempotent per id: registering the same image twice does nothing the
+second time, and a racing decode cannot clobber the first result. The
+decode is forked so it overlaps the rest of the frame's sync; use
+[ready](../functions/ready.mdx) to await the texture.

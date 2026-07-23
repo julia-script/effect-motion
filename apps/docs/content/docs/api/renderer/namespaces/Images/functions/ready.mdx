@@ -1,0 +1,31 @@
+---
+title: "ready"
+description: "function ready(images, id): Effect<DecodedImage, EffectMotionError>;"
+---
+# Function: ready()
+
+```ts
+function ready(images, id): Effect<DecodedImage, EffectMotionError>;
+```
+
+Defined in: [Images.ts:164](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Images.ts#L164)
+
+Await the decoded texture for an id.
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `images` | [`Images`](../interfaces/Images.mdx) |
+| `id` | `string` |
+
+## Returns
+
+`Effect`\<[`DecodedImage`](../interfaces/DecodedImage.mdx), `EffectMotionError`\>
+
+## Remarks
+
+[register](../variables/register.mdx) must have run first — asking for an unregistered image is
+a defect, though in practice `Sync.resolveResources` guarantees
+registration for anything a frame references. A failed decode arrives as a
+typed error naming the image.

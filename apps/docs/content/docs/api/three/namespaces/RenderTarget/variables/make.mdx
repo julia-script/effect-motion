@@ -1,0 +1,29 @@
+---
+title: "make"
+description: "const make: (...args) => Effect<RenderTarget, never, Scope>;"
+---
+# Variable: make
+
+```ts
+const make: (...args) => Effect<RenderTarget, never, Scope>;
+```
+
+Defined in: [packages/three/src/RenderTarget.ts:65](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/RenderTarget.ts#L65)
+
+A render target of `width × height` device pixels, freed when the scope
+closes.
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| ...`args` | \[`number`, `number`\] |
+
+## Returns
+
+`Effect`\<[`RenderTarget`](../interfaces/RenderTarget.mdx), `never`, `Scope`\>
+
+## Remarks
+
+Dimensions are DEVICE pixels, so multiply by the pixel ratio yourself
+when supersampling.

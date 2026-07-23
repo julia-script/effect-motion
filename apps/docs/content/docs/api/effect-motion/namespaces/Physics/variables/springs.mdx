@@ -1,0 +1,292 @@
+---
+title: "springs"
+description: "const springs: {"
+---
+# Variable: springs
+
+```ts
+const springs: {
+  beat: {
+     damping: 1.2;
+     initialVelocity: 10;
+     mass: 0.13;
+     stiffness: 5.7;
+  };
+  bounce: {
+     damping: 0.05;
+     mass: 0.08;
+     stiffness: 4.75;
+  };
+  jump: {
+     damping: 0.7;
+     initialVelocity: 8;
+     mass: 0.04;
+     stiffness: 10;
+  };
+  plop: {
+     damping: 0.68;
+     mass: 0.2;
+     stiffness: 20;
+  };
+  smooth: {
+     damping: 1.88;
+     mass: 0.16;
+     stiffness: 15.35;
+  };
+  strike: {
+     damping: 0.9;
+     initialVelocity: 4.8;
+     mass: 0.03;
+     stiffness: 20;
+  };
+  swing: {
+     damping: 2.82;
+     mass: 0.39;
+     stiffness: 19.85;
+  };
+};
+```
+
+Defined in: [packages/motion/src/Physics.ts:113](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Physics.ts#L113)
+
+The named spring presets, each a calibrated point in `\{ mass, stiffness,
+damping \}` space. Pass the NAME to any spring animator — it autocompletes.
+
+## Type Declaration
+
+### beat
+
+```ts
+readonly beat: {
+  damping: 1.2;
+  initialVelocity: 10;
+  mass: 0.13;
+  stiffness: 5.7;
+};
+```
+
+#### beat.damping
+
+```ts
+readonly damping: 1.2 = 1.2;
+```
+
+#### beat.initialVelocity
+
+```ts
+readonly initialVelocity: 10 = 10;
+```
+
+#### beat.mass
+
+```ts
+readonly mass: 0.13 = 0.13;
+```
+
+#### beat.stiffness
+
+```ts
+readonly stiffness: 5.7 = 5.7;
+```
+
+### bounce
+
+```ts
+readonly bounce: {
+  damping: 0.05;
+  mass: 0.08;
+  stiffness: 4.75;
+};
+```
+
+#### bounce.damping
+
+```ts
+readonly damping: 0.05 = 0.05;
+```
+
+#### bounce.mass
+
+```ts
+readonly mass: 0.08 = 0.08;
+```
+
+#### bounce.stiffness
+
+```ts
+readonly stiffness: 4.75 = 4.75;
+```
+
+### jump
+
+```ts
+readonly jump: {
+  damping: 0.7;
+  initialVelocity: 8;
+  mass: 0.04;
+  stiffness: 10;
+};
+```
+
+#### jump.damping
+
+```ts
+readonly damping: 0.7 = 0.7;
+```
+
+#### jump.initialVelocity
+
+```ts
+readonly initialVelocity: 8 = 8;
+```
+
+#### jump.mass
+
+```ts
+readonly mass: 0.04 = 0.04;
+```
+
+#### jump.stiffness
+
+```ts
+readonly stiffness: 10 = 10;
+```
+
+### plop
+
+```ts
+readonly plop: {
+  damping: 0.68;
+  mass: 0.2;
+  stiffness: 20;
+};
+```
+
+#### plop.damping
+
+```ts
+readonly damping: 0.68 = 0.68;
+```
+
+#### plop.mass
+
+```ts
+readonly mass: 0.2 = 0.2;
+```
+
+#### plop.stiffness
+
+```ts
+readonly stiffness: 20 = 20;
+```
+
+### smooth
+
+```ts
+readonly smooth: {
+  damping: 1.88;
+  mass: 0.16;
+  stiffness: 15.35;
+};
+```
+
+#### smooth.damping
+
+```ts
+readonly damping: 1.88 = 1.88;
+```
+
+#### smooth.mass
+
+```ts
+readonly mass: 0.16 = 0.16;
+```
+
+#### smooth.stiffness
+
+```ts
+readonly stiffness: 15.35 = 15.35;
+```
+
+### strike
+
+```ts
+readonly strike: {
+  damping: 0.9;
+  initialVelocity: 4.8;
+  mass: 0.03;
+  stiffness: 20;
+};
+```
+
+#### strike.damping
+
+```ts
+readonly damping: 0.9 = 0.9;
+```
+
+#### strike.initialVelocity
+
+```ts
+readonly initialVelocity: 4.8 = 4.8;
+```
+
+#### strike.mass
+
+```ts
+readonly mass: 0.03 = 0.03;
+```
+
+#### strike.stiffness
+
+```ts
+readonly stiffness: 20 = 20;
+```
+
+### swing
+
+```ts
+readonly swing: {
+  damping: 2.82;
+  mass: 0.39;
+  stiffness: 19.85;
+};
+```
+
+#### swing.damping
+
+```ts
+readonly damping: 2.82 = 2.82;
+```
+
+#### swing.mass
+
+```ts
+readonly mass: 0.39 = 0.39;
+```
+
+#### swing.stiffness
+
+```ts
+readonly stiffness: 19.85 = 19.85;
+```
+
+## Remarks
+
+Durations below are measured for a 100px move at 60fps and scale with
+distance; a spring's length is emergent, so treat them as character, not
+contract:
+
+- `strike` — hardest and fastest, launched with initial velocity (~0.7s).
+- `jump` — a quick launched hop (~1.4s).
+- `smooth` — mild overshoot, unobtrusive (~2s).
+- `beat` — a small, tight pulse; the least overshoot of the set (~2.6s).
+- `swing` — a relaxed, pendulum-like arc (~3.5s).
+- `plop` — lands heavy and wobbles noticeably (~7s).
+- `bounce` — barely damped, so it rings for a LONG time: about 37 seconds
+  and 90 direction changes for a 100px move. Striking as a one-off accent,
+  but check the frame count before putting it in a timed sequence.
+
+## See
+
+[Spring](../interfaces/Spring.mdx) to define your own.

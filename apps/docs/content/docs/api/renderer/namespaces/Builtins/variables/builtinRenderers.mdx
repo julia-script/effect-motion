@@ -1,0 +1,23 @@
+---
+title: "builtinRenderers"
+description: "const builtinRenderers: EntityRenderers;"
+---
+# Variable: builtinRenderers
+
+```ts
+const builtinRenderers: EntityRenderers;
+```
+
+Defined in: [Builtins.ts:735](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Builtins.ts#L735)
+
+The renderer for every built-in entity kind.
+
+## Remarks
+
+Typed as an exhaustive map, so adding an entity to the core library
+without a renderer here fails the build rather than silently drawing
+nothing.
+
+To change how a kind is drawn, pass a replacement in the `renderers`
+option of `Renderer.make` or the Node adapter's `make` — it is merged over
+this map by tag — rather than editing this manifest.

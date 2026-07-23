@@ -1,0 +1,39 @@
+---
+title: "all"
+description: "function all<Eff>(effects): Effect<void, Eff extends Effect<any, E, any> ? E : never,"
+---
+# Function: all()
+
+```ts
+function all<Eff>(effects): Effect<void, Eff extends Effect<any, E, any> ? E : never, 
+  | Phaser
+| Eff extends Effect<any, any, R> ? R : never>;
+```
+
+Defined in: [packages/motion/src/Phaser.ts:170](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Phaser.ts#L170)
+
+Run branches in parallel, sharing phases.
+
+N branches share N slots: the caller's one (the caller is blocked, not
+arrived, so it must not hold a countable slot) plus N-1 minted here. A
+finished branch releases a slot immediately so it cannot hold the phase
+open — except the last branch, whose slot returns to the resuming caller
+with no deregister/register gap.
+
+## Type Parameters
+
+| Type Parameter |
+| ------ |
+| `Eff` *extends* `Effect`\<`any`, `any`, `any`\> |
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `effects` | `Iterable`\<`Eff`\> |
+
+## Returns
+
+`Effect`\<`void`, `Eff` *extends* `Effect`\<`any`, `E`, `any`\> ? `E` : `never`, 
+  \| [`Phaser`](../classes/Phaser.mdx)
+  \| `Eff` *extends* `Effect`\<`any`, `any`, `R`\> ? `R` : `never`\>

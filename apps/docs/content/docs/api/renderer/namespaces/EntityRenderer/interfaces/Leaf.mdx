@@ -1,0 +1,46 @@
+---
+title: "Leaf"
+description: "One instance as it is handed to a renderer: its id, its entity data for"
+---
+# Interface: Leaf\<Ent\>
+
+Defined in: [EntityRenderer.ts:90](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L90)
+
+One instance as it is handed to a renderer: its id, its entity data for
+this frame, and its composed world position.
+
+## Type Parameters
+
+| Type Parameter | Default type | Description |
+| ------ | ------ | ------ |
+| `Ent` | `Entity.Entity` | The entity data type this renderer draws. |
+
+## Properties
+
+### data
+
+```ts
+readonly data: Ent;
+```
+
+Defined in: [EntityRenderer.ts:92](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L92)
+
+***
+
+### id
+
+```ts
+readonly id: string;
+```
+
+Defined in: [EntityRenderer.ts:91](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L91)
+
+***
+
+### world
+
+```ts
+readonly world: World;
+```
+
+Defined in: [EntityRenderer.ts:93](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L93)

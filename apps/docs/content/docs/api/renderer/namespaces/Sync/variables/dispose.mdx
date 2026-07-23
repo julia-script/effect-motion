@@ -1,0 +1,29 @@
+---
+title: "dispose"
+description: "const dispose: (...args) => Effect<void, never, never>;"
+---
+# Variable: dispose
+
+```ts
+const dispose: (...args) => Effect<void, never, never>;
+```
+
+Defined in: [Sync.ts:621](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L621)
+
+Release every retained object, texture, and sub-composition.
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| ...`args` | \[[`Sync`](../interfaces/Sync.mdx)\] |
+
+## Returns
+
+`Effect`\<`void`, `never`, `never`\>
+
+## Remarks
+
+Called automatically when a renderer's scope closes; you rarely call it
+directly. Effectful because decoded image textures live behind Deferreds
+that may still be in flight.

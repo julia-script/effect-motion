@@ -1,0 +1,185 @@
+---
+title: "EmitterConfig"
+description: "The emitter configuration an author writes. Ranged props are drawn once"
+---
+# Interface: EmitterConfig
+
+Defined in: [packages/motion/src/particles/Particle.ts:58](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/particles/Particle.ts#L58)
+
+The emitter configuration an author writes. Ranged props are drawn once
+per particle at birth; `gravity` is a shared force; over-life curves are
+deterministic functions of particle age.
+
+## Properties
+
+### angle
+
+```ts
+readonly angle: Range;
+```
+
+Defined in: [packages/motion/src/particles/Particle.ts:65](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/particles/Particle.ts#L65)
+
+launch angle range (degrees; 0 = up, clockwise-positive)
+
+***
+
+### drift?
+
+```ts
+readonly optional drift?: Range;
+```
+
+Defined in: [packages/motion/src/particles/Particle.ts:88](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/particles/Particle.ts#L88)
+
+fill mode only — magnitude of each particle's small isotropic drift
+velocity (px/sec). Replaces speed+angle launch for evenly-spread
+floating fields. `[min, max]` of the speed; direction is uniform.
+
+***
+
+### gravity
+
+```ts
+readonly gravity: number;
+```
+
+Defined in: [packages/motion/src/particles/Particle.ts:74](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/particles/Particle.ts#L74)
+
+shared downward acceleration (px/sec²); not ranged
+
+***
+
+### life
+
+```ts
+readonly life: Range;
+```
+
+Defined in: [packages/motion/src/particles/Particle.ts:67](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/particles/Particle.ts#L67)
+
+lifetime range (seconds)
+
+***
+
+### opacity?
+
+```ts
+readonly optional opacity?: Range;
+```
+
+Defined in: [packages/motion/src/particles/Particle.ts:72](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/particles/Particle.ts#L72)
+
+birth opacity range (0..1), drawn per particle; the over-life opacity
+curve (if any) multiplies this baseline. Omit → every particle 1.
+
+***
+
+### opacityOverLife?
+
+```ts
+readonly optional opacityOverLife?: OverLife;
+```
+
+Defined in: [packages/motion/src/particles/Particle.ts:92](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/particles/Particle.ts#L92)
+
+optional over-life opacity curve (0..1)
+
+***
+
+### palette
+
+```ts
+readonly palette: readonly Color[];
+```
+
+Defined in: [packages/motion/src/particles/Particle.ts:76](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/particles/Particle.ts#L76)
+
+colors drawn from uniformly at birth
+
+***
+
+### region?
+
+```ts
+readonly optional region?: {
+  h: number;
+  w: number;
+};
+```
+
+Defined in: [packages/motion/src/particles/Particle.ts:82](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/particles/Particle.ts#L82)
+
+fill mode only — the rectangular region particles scatter across and
+wrap around, in the field's local coordinates. The animator defaults
+this to the whole frame when the author doesn't set it.
+
+#### h
+
+```ts
+readonly h: number;
+```
+
+#### w
+
+```ts
+readonly w: number;
+```
+
+***
+
+### size
+
+```ts
+readonly size: Range;
+```
+
+Defined in: [packages/motion/src/particles/Particle.ts:69](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/particles/Particle.ts#L69)
+
+birth size range (px radius)
+
+***
+
+### sizeOverLife?
+
+```ts
+readonly optional sizeOverLife?: OverLife;
+```
+
+Defined in: [packages/motion/src/particles/Particle.ts:90](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/particles/Particle.ts#L90)
+
+optional over-life size curve (multiplies drawn size)
+
+***
+
+### speed
+
+```ts
+readonly speed: Range;
+```
+
+Defined in: [packages/motion/src/particles/Particle.ts:63](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/particles/Particle.ts#L63)
+
+launch speed range (px/sec)
+
+***
+
+### x
+
+```ts
+readonly x: number;
+```
+
+Defined in: [packages/motion/src/particles/Particle.ts:60](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/particles/Particle.ts#L60)
+
+emitter origin
+
+***
+
+### y
+
+```ts
+readonly y: number;
+```
+
+Defined in: [packages/motion/src/particles/Particle.ts:61](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/particles/Particle.ts#L61)

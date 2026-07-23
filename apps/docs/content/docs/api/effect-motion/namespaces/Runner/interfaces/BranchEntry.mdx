@@ -1,0 +1,31 @@
+---
+title: "BranchEntry"
+description: "A branch of animation as the runner tracks it: its fiber and its"
+---
+# Interface: BranchEntry
+
+Defined in: [packages/motion/src/Runner.ts:144](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Runner.ts#L144)
+
+A branch of animation as the runner tracks it: its fiber and its
+SEMANTIC end (`finished` resolves at `Scene.finish` or completion,
+whichever comes first).
+
+## Properties
+
+### fiber
+
+```ts
+readonly fiber: Fiber<unknown, unknown>;
+```
+
+Defined in: [packages/motion/src/Runner.ts:145](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Runner.ts#L145)
+
+***
+
+### finished
+
+```ts
+readonly finished: Effect<void>;
+```
+
+Defined in: [packages/motion/src/Runner.ts:146](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Runner.ts#L146)

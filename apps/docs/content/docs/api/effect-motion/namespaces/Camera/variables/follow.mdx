@@ -1,0 +1,60 @@
+---
+title: "follow"
+description: "const follow: (target, duration, offset?) => (cam) => CamEffect & (cam, target, duration, offset?) => CamEffect;"
+---
+# Variable: follow
+
+```ts
+const follow: (target, duration, offset?) => (cam) => CamEffect & (cam, target, duration, offset?) => CamEffect;
+```
+
+Defined in: [packages/motion/src/Camera.ts:275](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Camera.ts#L275)
+
+Keep the camera locked onto a moving target for `duration`.
+
+## Remarks
+
+Where [lookAt](./lookAt.mdx) with a duration EASES toward a target and stops,
+`follow` holds the aim on it: every frame copies the target's position, so
+the subject stays pinned while it moves. Run it concurrently with the
+subject's own animation — typically inside `Scene.all` or a `Scene.fork`.
+
+There is no timing parameter, because tracking is a hard per-frame copy
+rather than an interpolation. For a lagging, weighted camera, animate the
+point of interest with a spring instead.
+
+Ordering note: within a frame, branches run in the order they were forked.
+A follow forked BEFORE its target's animator reads the previous frame's
+position — a deterministic one-frame trail, not a bug.
+
+## Param
+
+**target**
+
+An instance to track, or a fixed world position.
+
+## Param
+
+**duration**
+
+How long to keep tracking.
+
+## Param
+
+**offset**
+
+Shifts the aim relative to the target.
+
+## Returns
+
+The camera, so animators chain.
+
+## Example
+
+Track the runner for the two seconds it is crossing frame.
+```typescript
+yield* Scene.all([
+	runner.pipe(Motion.moveTo({ x: 900 }, "2 seconds")),
+	camera.pipe(Camera.follow(runner, "2 seconds")),
+]);
+```

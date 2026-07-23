@@ -1,0 +1,30 @@
+---
+title: "make"
+description: "const make: (...args) => Effect<Scene, never, Scope>;"
+---
+# Variable: make
+
+```ts
+const make: (...args) => Effect<Scene, never, Scope>;
+```
+
+Defined in: [packages/three/src/Scene.ts:82](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/Scene.ts#L82)
+
+A scoped scene that detaches its children when the scope closes.
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| ...`args` | \[\] |
+
+## Returns
+
+`Effect`\<[`Scene`](../interfaces/Scene.mdx), `never`, `Scope`\>
+
+## Remarks
+
+Detaching is NOT disposal. A scene does not own the geometries,
+materials, and textures hanging off its objects — those are routinely
+shared between objects and outlive any one graph — so whoever created
+them is responsible for freeing them.

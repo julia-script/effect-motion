@@ -1,0 +1,501 @@
+---
+title: "Runner"
+description: "`appendChild`: (`parent`, `child`) => `void`;"
+---
+# Class: Runner
+
+Defined in: [packages/motion/src/Runner.ts:197](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Runner.ts#L197)
+
+## Extends
+
+- `Shape`\<`"Runner"`, \{
+  `appendChild`: (`parent`, `child`) => `void`;
+  `awaitedCount`: () => `number`;
+  `backgrounds`: `Set`\<[`BranchEntry`](../interfaces/BranchEntry.mdx)\>;
+  `camera`: [`Instance`](../../Instance/interfaces/Instance.mdx)\<`"Camera"`\>;
+  `comp`: [`CompConfig`](../type-aliases/CompConfig.mdx);
+  `compBounds`: (`id`) => [`CompConfig`](../type-aliases/CompConfig.mdx) \| `null`;
+  `countAwaited`: (`n`) => `void`;
+  `destroy`: (`instance`) => `void`;
+  `failureCause`: () => `Cause`\<`unknown`\> \| `undefined`;
+  `forks`: `Set`\<[`BranchEntry`](../interfaces/BranchEntry.mdx)\>;
+  `getDataUnsafe`: \<`Tag`\>(`instance`) => 
+     \| [`EntityByTag`](../../Entity/type-aliases/EntityByTag.mdx)\<`Tag`\>
+    \| `null`;
+  `instantiate`: \<`Tag`\>(...`args`) => `Effect`\<[`Instance`](../../Instance/interfaces/Instance.mdx)\<`Tag`\>, `never`, `Runner`\>;
+  `instantiateEscape`: (...`args`) => `Effect`\<[`Instance`](../../Instance/interfaces/Instance.mdx)\<
+     \| `"Camera"`
+     \| `"Line"`
+     \| `"Path"`
+     \| `"Rect"`
+     \| `"Circle"`
+     \| `"Ellipse"`
+     \| `"Text"`
+     \| `"Group"`
+     \| `"Hud"`
+    \| `"Image"`\>, `never`, `never`\>;
+  `phaser`: \{
+     `arriveAndAwaitAdvance`: `Effect`\<`void`, `never`, `never`\>;
+     `awaitAdvance`: `Effect`\<`number`, `never`, `never`\>;
+     `deregister`: (`n`) => `void`;
+     `register`: (`n`) => `void`;
+     `snapshotUnsafe`: () => \{
+        `arrived`: `number`;
+        `parties`: `number`;
+        `phase`: `number`;
+        `state`: `"idle"` \| `"pending"` \| `"running"`;
+     \};
+  \};
+  `recordFailure`: (`cause`) => `void`;
+  `registerComp`: (`id`, `config`) => `void`;
+  `removeChild`: (`parent`, `child`) => `void`;
+  `root`: [`GroupInstance`](../type-aliases/GroupInstance.mdx);
+  `setCamera`: (`instance`) => `void`;
+  `setDataUnsafe`: \<`Tag`\>(`instance`, `state`) => `void`;
+  `settings`: \{
+     `frameRate`: `number`;
+     `maxFrames`: `number`;
+     `seed`: [`Seed`](../type-aliases/Seed.mdx);
+  \};
+  `state`: `Effect`\<\{
+     `backgroundColor`: [`Color`](../../Color/classes/Color.mdx);
+     `camera`: `CameraView` & `PointOfInterest`;
+     `comps`: \{
+      \[`k`: `string`\]: [`CompConfig`](../type-aliases/CompConfig.mdx);
+     \};
+     `frameRate`: `number`;
+     `height`: `number`;
+     `instances`: `Record`\<`string`, \{
+        `data`:   \| `ReadonlySide`\<\{
+           `end`: `withConstructorDefault`\<...\>;
+           `opacity`: `withConstructorDefault`\<...\>;
+           `position`: `withConstructorDefault`\<...\>;
+           `rotation`: `withConstructorDefault`\<...\>;
+           `scale`: `withConstructorDefault`\<...\>;
+           `start`: `withConstructorDefault`\<...\>;
+           `strokeColor`: `withConstructorDefault`\<...\>;
+           `strokeWidth`: `withConstructorDefault`\<...\>;
+           `visible`: `withConstructorDefault`\<...\>;
+         \}, `"Type"`\>
+           \| `ReadonlySide`\<\{
+           `commands`: `NonEmptyArray`\<...\>;
+           `fillColor`: `withConstructorDefault`\<...\>;
+           `opacity`: `withConstructorDefault`\<...\>;
+           `position`: `withConstructorDefault`\<...\>;
+           `rotation`: `withConstructorDefault`\<...\>;
+           `scale`: `withConstructorDefault`\<...\>;
+           `strokeColor`: `withConstructorDefault`\<...\>;
+           `strokeWidth`: `withConstructorDefault`\<...\>;
+           `visible`: `withConstructorDefault`\<...\>;
+         \}, `"Type"`\>
+           \| `ReadonlySide`\<\{
+           `fillColor`: `withConstructorDefault`\<...\>;
+           `height`: `withConstructorDefault`\<...\>;
+           `opacity`: `withConstructorDefault`\<...\>;
+           `position`: `withConstructorDefault`\<...\>;
+           `rotation`: `withConstructorDefault`\<...\>;
+           `scale`: `withConstructorDefault`\<...\>;
+           `strokeColor`: `withConstructorDefault`\<...\>;
+           `strokeWidth`: `withConstructorDefault`\<...\>;
+           `visible`: `withConstructorDefault`\<...\>;
+           `width`: `withConstructorDefault`\<...\>;
+         \}, `"Type"`\>
+           \| `ReadonlySide`\<\{
+           `fillColor`: `withConstructorDefault`\<...\>;
+           `opacity`: `withConstructorDefault`\<...\>;
+           `position`: `withConstructorDefault`\<...\>;
+           `radius`: `withConstructorDefault`\<...\>;
+           `rotation`: `withConstructorDefault`\<...\>;
+           `scale`: `withConstructorDefault`\<...\>;
+           `strokeColor`: `withConstructorDefault`\<...\>;
+           `strokeWidth`: `withConstructorDefault`\<...\>;
+           `visible`: `withConstructorDefault`\<...\>;
+         \}, `"Type"`\>
+           \| `ReadonlySide`\<\{
+           `fillColor`: `withConstructorDefault`\<...\>;
+           `opacity`: `withConstructorDefault`\<...\>;
+           `position`: `withConstructorDefault`\<...\>;
+           `radiusX`: `withConstructorDefault`\<...\>;
+           `radiusY`: `withConstructorDefault`\<...\>;
+           `rotation`: `withConstructorDefault`\<...\>;
+           `scale`: `withConstructorDefault`\<...\>;
+           `strokeColor`: `withConstructorDefault`\<...\>;
+           `strokeWidth`: `withConstructorDefault`\<...\>;
+           `visible`: `withConstructorDefault`\<...\>;
+         \}, `"Type"`\>
+           \| \{
+           `baseline?`: `"middle"` \| `"auto"` \| `"hanging"`;
+           `fillColor`: [`Color`](../../Color/classes/Color.mdx);
+           `fontFamily`: `ReadonlySide`\<\{
+              `id`: ...;
+           \}, `"Type"`\>;
+           `fontSize`: `number`;
+           `opacity`: `number`;
+           `position`: `ReadonlySide`\<\{
+              `x`: ...;
+              `y`: ...;
+              `z`: ...;
+           \}, `"Type"`\>;
+           `rotation`: `ReadonlySide`\<\{
+              `x`: ...;
+              `y`: ...;
+              `z`: ...;
+           \}, `"Type"`\>;
+           `scale`: `ReadonlySide`\<\{
+              `x`: ...;
+              `y`: ...;
+              `z`: ...;
+           \}, `"Type"`\>;
+           `text`: `string`;
+           `textAnchor?`: `"start"` \| `"end"` \| `"middle"`;
+           `visible`: `boolean`;
+         \}
+           \| `ReadonlySide`\<\{
+           `children`: `withConstructorDefault`\<...\>;
+           `opacity`: `withConstructorDefault`\<...\>;
+           `position`: `withConstructorDefault`\<...\>;
+           `rotation`: `withConstructorDefault`\<...\>;
+           `scale`: `withConstructorDefault`\<...\>;
+           `visible`: `withConstructorDefault`\<...\>;
+         \}, `"Type"`\>
+           \| `ReadonlySide`\<\{
+           `children`: `withConstructorDefault`\<...\>;
+           `opacity`: `withConstructorDefault`\<...\>;
+           `position`: `withConstructorDefault`\<...\>;
+           `rotation`: `withConstructorDefault`\<...\>;
+           `scale`: `withConstructorDefault`\<...\>;
+           `visible`: `withConstructorDefault`\<...\>;
+         \}, `"Type"`\>
+           \| \{
+           `height?`: `number`;
+           `image`: `ReadonlySide`\<\{
+              `id`: ...;
+           \}, `"Type"`\>;
+           `opacity`: `number`;
+           `position`: `ReadonlySide`\<\{
+              `x`: ...;
+              `y`: ...;
+              `z`: ...;
+           \}, `"Type"`\>;
+           `rotation`: `ReadonlySide`\<\{
+              `x`: ...;
+              `y`: ...;
+              `z`: ...;
+           \}, `"Type"`\>;
+           `scale`: `ReadonlySide`\<\{
+              `x`: ...;
+              `y`: ...;
+              `z`: ...;
+           \}, `"Type"`\>;
+           `visible`: `boolean`;
+           `width?`: `number`;
+         \}
+           \| `ReadonlySide`\<\{
+           `aperture`: `withConstructorDefault`\<...\>;
+           `focalLength`: `withConstructorDefault`\<...\>;
+           `focusDistance`: `withConstructorDefault`\<...\>;
+           `poi`: `withConstructorDefault`\<...\>;
+           `position`: `withConstructorDefault`\<...\>;
+           `rotation`: `withConstructorDefault`\<...\>;
+         \}, `"Type"`\>;
+     \}\>;
+     `root`: `string`;
+     `width`: `number`;
+  \}, `never`, `never`\>;
+\}, `this`\>
+
+## Constructors
+
+### Constructor
+
+```ts
+new Runner(_): Runner;
+```
+
+Defined in: node\_modules/.pnpm/effect@4.0.0-beta.98/node\_modules/effect/dist/Context.d.ts:115
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `_` | `never` |
+
+#### Returns
+
+`Runner`
+
+#### Inherited from
+
+```ts
+Context.Service<Runner>()("Runner", {
+	make: Effect.fnUntraced(function (
+		settings: Partial<Settings> = {},
+		comp: CompConfig = defaultComp,
+	) {
+		const tree = new Tree();
+		const phaser = yield Phaser.Phaser.make;
+		// concurrent branches spawned by Scene.fork / Scene.play /
+		// Scene.background. forks hold the scene's end hostage until their
+		// SEMANTIC end; a branch that finishes (or completes) is demoted to
+		// backgrounds, which are interrupted at scene end.
+		const forks = new Set<BranchEntry>();
+		const backgrounds = new Set<BranchEntry>();
+		// root party + un-finished forks — the work the scene's end must wait
+		// for. Kept as a synchronous counter (updated in the same finalizers
+		// that release phaser parties) so the frame consumer can decide
+		// "scene over" without depending on the scene fiber being scheduled.
+		let awaited = 0;
+		// first NON-finished branch failure; failures in a tail (after
+		// Scene.finish) are deliberately not reported
+		let failure: Cause.Cause<unknown> | undefined;
+
+		/
+		  Mounted scenes, by the id of the group they mount under.
+		 
+		  A comp is a render-to-texture boundary — its own scene, render
+		  target, and identity camera — created ONLY by Scene.play. It used
+		  to be inferred from a Group carrying width/height, which duplicated
+		  what the child Scene already owned and made "is this a comp" a
+		  question about field presence. It is now declared here explicitly.
+		 /
+		const comps = new Map<string, CompConfig>();
+
+		const setDataUnsafe = <Tag extends Entity.EntityTag>(
+			instance: Instance.Instance<Tag>,
+			state: Entity.EntityByTag<Tag>,
+		): void => {
+			const entry = tree.getEntry(instance.id) ?? nodeNotFound(instance.id);
+			entry.state = state;
+		};
+
+		const getDataUnsafe = <Tag extends Entity.EntityTag>(
+			instance: Instance.Instance<Tag>,
+		): Entity.EntityByTag<Tag> | null => {
+			const entry = tree.getEntry(instance.id);
+			if (entry === null) {
+				return null;
+			}
+			// the instance's tag names the entry's state; the tree stores mixed
+			// tags, so this is the one place the two are reconciled
+			return entry.state as Entity.EntityByTag<Tag>;
+		};
+
+		const resolvedSettings = {
+			...settings,
+			frameRate: settings.frameRate ?? 60,
+			seed: settings.seed ?? defaultSeed,
+			maxFrames: settings.maxFrames ?? 36_000,
+		} satisfies Settings;
+
+		// the root group: never rendered itself, holds the top level. Its
+		// entry is created by the tree itself.
+		const root: GroupInstance = Instance.makeInstance(ROOT_ID, "Group");
+
+		// the active camera: an ordinary tree node (so the animators drive it),
+		// never rendered. A default resting camera is present from the start,
+		// so depth/zoom work with no author ceremony; setCamera swaps which
+		// instance is active.
+		tree.createNode(identityCamera(comp.width), "camera");
+		const camera: Instance.Instance<"Camera"> = Instance.makeInstance(
+			"camera",
+			"Camera",
+		);
+		let activeCameraId = camera.id;
+		const cameraState = (): Projection.CameraView &
+			Projection.PointOfInterest => {
+			const entry = tree.getEntry(activeCameraId);
+			// a destroyed (or swapped-to-non-camera) active camera falls back to
+			// the resting view rather than dying: the view is not scene-critical
+			if (entry === null || entry.state._tag !== "Camera") {
+				return toCameraView(identityCamera(comp.width));
+			}
+			return toCameraView(entry.state);
+		};
+
+		// move child under parent: the tree detaches it from its current
+		// parent first, so it is never double-referenced.
+		const appendChild = (
+			parent: GroupInstance,
+			child: Instance.Instance,
+		): void => {
+			const childEntry = tree.getEntry(child.id);
+			if (childEntry === null) {
+				throw new Error(Runner: child "${child.id}" was destroyed);
+			}
+			tree.appendChild(parent.id, childEntry);
+		};
+
+		const removeChild = (
+			parent: GroupInstance,
+			child: Instance.Instance,
+		): void => {
+			const entry = tree.getEntry(child.id);
+			if (entry !== null && entry.parentId === parent.id) {
+				tree.removeFromParent(entry);
+			}
+		};
+
+		// normalize a polymorphic children list into stored child ids, in
+		// order: a string → a Text; an Instance → its id; otherwise an
+		// Effect<Instance> yielded here (JSX children need no yield).
+		const normalizeChildren = (
+			children: ReadonlyArray<Child>,
+		): Effect.Effect<Array<string>, never, Runner> =>
+			Effect.gen(function () {
+				const ids: Array<string> = [];
+				for (const child of children) {
+					if (typeof child === "string") {
+						const text = yield self.instantiate("Text", { text: child });
+						ids.push(text.id);
+					} else if (Instance.isInstance(child)) {
+						ids.push(child.id);
+					} else {
+						const resolved = yield child;
+						ids.push(resolved.id);
+					}
+				}
+				return ids;
+			});
+
+		const self = {
+			root,
+			instantiate: Effect.fnUntraced(function <Tag extends Entity.EntityTag>(
+				kind: Tag,
+				props: InstantiateProps<Tag>,
+			): Effect.fn.Return<Instance.Instance<Tag>, never, Runner> {
+				const raw = props as Record<string, unknown>;
+				const children = Array.isArray(raw.children)
+					? (raw.children as ReadonlyArray<Child>)
+					: [];
+				const childIds =
+					children.length > 0 ? yield normalizeChildren(children) : undefined;
+
+				// cameras get width-relative z/focalLength defaults filled here
+				// (AE's 50mm equivalent): the schema cannot default them because
+				// only the Runner knows the comp width. Filled for EVERY Camera,
+				// not just the built-in one, so a setCamera swap never jumps zoom.
+				const defaults =
+					kind === "Camera" ? cameraDefaults(raw, comp.width) : undefined;
+
+				// raw children never reach stored data: normalized ids are
+				// appended through the tree below, in list order
+				const { children: _children, ...rest } = raw;
+				const definition = Entity.getEntityDefinitionByTag(kind);
+				const state = definition.make({
+					...rest,
+					...defaults,
+				} as never) as Entity.Entity;
+
+				const entry = tree.createNode(state);
+				const instance = Instance.makeInstance(entry.id, kind);
+
+				// cameras are view state, not scene content: they live in the tree
+				// so the animators drive them, but must NOT be mounted under a
+				// group. Everything else mounts under the ambient parent.
+				if (kind !== "Camera") {
+					const ambient = yield CurrentParent;
+					tree.appendChild((ambient ?? root).id, entry);
+				}
+				// adopt listed children: they were attached to the ambient parent
+				// at birth; appendChild moves each under this instance in order
+				if (childIds !== undefined) {
+					for (const childId of childIds) {
+						tree.appendChild(entry, childId);
+					}
+				}
+
+				return instance;
+			}),
+			// move child under parent (detaching from its current parent
+			// first, so it is never double-referenced). Instances are born
+			// attached to the ambient parent; this reparents them.
+			appendChild,
+			// detach child from parent (no-op unless currently its child),
+			// leaving it detached from the tree (still alive, just unmounted)
+			removeChild,
+			settings: resolvedSettings,
+			// the root scene's composition config (resolution + background)
+			comp,
+			getDataUnsafe,
+
+			setDataUnsafe,
+
+			state: Effect.sync(() => {
+				// the active camera lives in the tree so the animators drive it,
+				// but it is view state, not a renderable instance — omit it from
+				// the frame's instance map (its data is surfaced as camera)
+				const instances: Record<string, { data: Entity.Entity }> = {};
+				for (const [id, entry] of Object.entries(tree.map)) {
+					if (id === activeCameraId) {
+						continue;
+					}
+					instances[id] = { data: entry.state };
+				}
+				return {
+					instances,
+					root: ROOT_ID,
+					frameRate: resolvedSettings.frameRate,
+					width: comp.width,
+					height: comp.height,
+					backgroundColor: comp.backgroundColor,
+					camera: cameraState(),
+					// mounted scenes, by mount-group id: the renderer reads this
+					// to know a subtree is a render-to-texture boundary, instead
+					// of inferring it from a group carrying a size
+					comps: Object.fromEntries(comps),
+				};
+			}),
+
+			/
+			  ponytail: create a tree node for an entity that is NOT in the
+			  union — the particle system only (design D10). Mounts under the
+			  ambient parent like any instance. Delete with the particles
+			  rewrite; see particlesEscapeInstantiate.
+			 /
+			instantiateEscape: Effect.fnUntraced(function (state: Entity.Entity) {
+				const entry = tree.createNode(state);
+				const ambient = yield CurrentParent;
+				tree.appendChild((ambient ?? root).id, entry);
+				return Instance.makeInstance(entry.id, state._tag);
+			}),
+
+			// declare the group at id to be a mounted scene with these bounds
+			// (see comps); called by Scene.play, never by authors
+			registerComp: (id: string, config: CompConfig): void => {
+				comps.set(id, config);
+			},
+			// the bounds of the mounted scene at id, or null if it is a plain
+			// group. Never inferred from fields — a comp is declared.
+			compBounds: (id: string): CompConfig | null => comps.get(id) ?? null,
+
+			// the default resting camera (animate it, or swap via setCamera)
+			camera,
+			// swap the active camera to another instance; its live data becomes
+			// the view on every subsequent frame
+			setCamera: (instance: Instance.Instance<"Camera">): void => {
+				activeCameraId = instance.id;
+			},
+
+			destroy: (instance: Instance.Instance): void => {
+				// double-destroy is a no-op, like the old map-based delete
+				if (tree.getEntry(instance.id) === null) {
+					return;
+				}
+				tree.remove(instance.id);
+			},
+			phaser,
+			forks,
+			backgrounds,
+			countAwaited: (n: number): void => {
+				awaited += n;
+			},
+			awaitedCount: (): number => awaited,
+			recordFailure: (cause: Cause.Cause<unknown>): void => {
+				failure = failure ?? cause;
+			},
+			failureCause: (): Cause.Cause<unknown> | undefined => failure,
+		};
+		return self;
+	}),
+}).constructor
+```

@@ -1,0 +1,55 @@
+---
+title: "CompConfig"
+description: "type CompConfig = {"
+---
+# Type Alias: CompConfig
+
+```ts
+type CompConfig = {
+  backgroundColor: Color;
+  height: number;
+  width: number;
+};
+```
+
+Defined in: [packages/motion/src/Runner.ts:89](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Runner.ts#L89)
+
+What a composition IS: its pixel dimensions and background.
+
+## Remarks
+
+Set at `Scene.make` and carried on every frame, so a frame is
+self-describing. A nested scene keeps its own config as its bounds — that
+is what a played scene clips and paints within.
+
+## Properties
+
+### backgroundColor
+
+```ts
+backgroundColor: Color;
+```
+
+Defined in: [packages/motion/src/Runner.ts:93](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Runner.ts#L93)
+
+carried on every frame so renderers can paint it; transparent = nothing painted
+
+***
+
+### height
+
+```ts
+height: number;
+```
+
+Defined in: [packages/motion/src/Runner.ts:91](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Runner.ts#L91)
+
+***
+
+### width
+
+```ts
+width: number;
+```
+
+Defined in: [packages/motion/src/Runner.ts:90](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Runner.ts#L90)

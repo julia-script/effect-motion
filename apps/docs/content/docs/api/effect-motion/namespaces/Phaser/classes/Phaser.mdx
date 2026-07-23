@@ -1,0 +1,166 @@
+---
+title: "Phaser"
+description: "An externally paced phaser (cf. java.util.concurrent.Phaser)."
+---
+# Class: Phaser
+
+Defined in: [packages/motion/src/Phaser.ts:11](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Phaser.ts#L11)
+
+An externally paced phaser (cf. java.util.concurrent.Phaser).
+
+Unlike java's Phaser, which advances the moment the last party arrives,
+this phaser HOLDS at quiescence until the controller calls `awaitAdvance`,
+which arms the advance and resolves once every registered party has
+arrived again. One call = one phase = one animation frame.
+
+## Extends
+
+- `Shape`\<`"motion/Phaser"`, \{
+  `arriveAndAwaitAdvance`: `Effect`\<`void`, `never`, `never`\>;
+  `awaitAdvance`: `Effect`\<`number`, `never`, `never`\>;
+  `deregister`: (`n`) => `void`;
+  `register`: (`n`) => `void`;
+  `snapshotUnsafe`: () => \{
+     `arrived`: `number`;
+     `parties`: `number`;
+     `phase`: `number`;
+     `state`: `"idle"` \| `"pending"` \| `"running"`;
+  \};
+\}, `this`\>
+
+## Constructors
+
+### Constructor
+
+```ts
+new Phaser(_): Phaser;
+```
+
+Defined in: node\_modules/.pnpm/effect@4.0.0-beta.98/node\_modules/effect/dist/Context.d.ts:115
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `_` | `never` |
+
+#### Returns
+
+`Phaser`
+
+#### Inherited from
+
+```ts
+Context.Service<Phaser>()("motion/Phaser", {
+	make: Effect.sync(() => {
+		let phase = 0;
+		let parties = 0;
+		let arrived = 0;
+		let phaseLatch = Latch.makeUnsafe();
+		let state: "idle" | "pending" | "running" = "idle";
+		const waiters = new Set<() => void>();
+
+		// The single invariant. Every event that touches arrived or
+		// parties re-runs this.
+		const checkQuiescence = (): void => {
+			if (arrived !== parties) {
+				return;
+			}
+			switch (state) {
+				case "idle": {
+					// all parties arrived, no waiter: hold until awaitAdvance
+					return;
+				}
+				case "pending": {
+					phase++;
+					arrived = 0;
+					const oldLatch = phaseLatch;
+					// swap BEFORE open: a party that synchronously re-arrives
+					// awaits the new latch and counts toward the new phase
+					phaseLatch = Latch.makeUnsafe();
+					state = "running";
+					oldLatch.openUnsafe();
+					// covers parties === 0 and synchronous re-arrivals
+					checkQuiescence();
+					return;
+				}
+				case "running": {
+					state = "idle";
+					const copy = new Set(waiters);
+					waiters.clear();
+					for (const waiter of copy) {
+						waiter();
+					}
+					return;
+				}
+			}
+		};
+
+		const register = (n: number): void => {
+			parties += n;
+		};
+
+		const deregister = (n: number): void => {
+			parties -= n;
+			checkQuiescence();
+		};
+
+		const arriveAndAwaitAdvance: Effect.Effect<void> =
+			Effect.uninterruptibleMask((restore) =>
+				Effect.suspend(() => {
+					const myLatch = phaseLatch; // generation token
+					arrived++;
+					checkQuiescence();
+					return restore(myLatch.await).pipe(
+						Effect.onInterrupt(() =>
+							Effect.sync(() => {
+								// undo the phantom arrival, but only if our
+								// generation is still the current one
+								if (myLatch === phaseLatch) {
+									arrived--;
+									checkQuiescence();
+								}
+							}),
+						),
+					);
+				}),
+			);
+
+		const awaitAdvance: Effect.Effect<number> = Effect.callback<number>(
+			(resume) => {
+				const waiter = () => resume(Effect.succeed(phase));
+				waiters.add(waiter);
+				if (waiters.size > 1) {
+					return Effect.sync(() => {
+						waiters.delete(waiter);
+					});
+				}
+				if (arrived === parties) {
+					// quiescent: arm an advance so parties run the next phase
+					state = "pending";
+					checkQuiescence();
+				} else {
+					// parties still running toward their next arrival (e.g.
+					// scene startup): resolve at the first quiescence, do not
+					// advance past it
+					state = "running";
+				}
+				return Effect.sync(() => {
+					// interrupted while suspended
+					waiters.delete(waiter);
+					state = "idle";
+				});
+			},
+		);
+
+		return {
+			register,
+			deregister,
+			arriveAndAwaitAdvance,
+			awaitAdvance,
+			/ debug/test view of the internal counters /
+			snapshotUnsafe: () => ({ phase, parties, arrived, state }),
+		};
+	}),
+}).constructor
+```

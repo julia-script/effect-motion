@@ -1,0 +1,36 @@
+---
+title: "makeInstance"
+description: "function makeInstance<Tag>(id, kind): Instance<Tag>;"
+---
+# Function: makeInstance()
+
+```ts
+function makeInstance<Tag>(id, kind): Instance<Tag>;
+```
+
+Defined in: [packages/motion/src/Instance.ts:60](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Instance.ts#L60)
+
+Build an instance handle from an id and a kind.
+
+## Type Parameters
+
+| Type Parameter |
+| ------ |
+| `Tag` *extends* \| `"Camera"` \| `"Line"` \| `"Path"` \| `"Rect"` \| `"Circle"` \| `"Ellipse"` \| `"Text"` \| `"Group"` \| `"Hud"` \| `"Image"` |
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `id` | `string` |
+| `kind` | `Tag` |
+
+## Returns
+
+[`Instance`](../interfaces/Instance.mdx)\<`Tag`\>
+
+## Remarks
+
+Internal plumbing — the scene runner calls this when creating entities.
+Author code gets handles from `Scene.instantiate` instead; constructing
+one by hand refers to an entity that may not exist.

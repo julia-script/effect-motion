@@ -1,0 +1,112 @@
+---
+title: "Scene"
+description: "A scene: an animation body plus the composition it plays in."
+---
+# Interface: Scene\<E, R\>
+
+Defined in: [packages/motion/src/Scene.ts:76](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L76)
+
+A scene: an animation body plus the composition it plays in.
+
+## Remarks
+
+Inert on its own — building one runs no animation and produces no frames.
+It is a description that [run](../functions/run.mdx), [stream](../functions/stream.mdx), or [play](../functions/play.mdx)
+later executes, which is what lets the same scene be replayed, nested, or
+rendered at different settings without change.
+
+## Type Parameters
+
+| Type Parameter | Default type | Description |
+| ------ | ------ | ------ |
+| `E` | `never` | How the scene can fail. |
+| `R` | `never` | What it needs to run (fonts, images, and other resources). |
+
+## Properties
+
+### ~motion/Scene
+
+```ts
+readonly ~motion/Scene: "~motion/Scene";
+```
+
+Defined in: [packages/motion/src/Scene.ts:77](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L77)
+
+***
+
+### ~resources
+
+```ts
+readonly ~resources: ExtractLoaders<R>;
+```
+
+Defined in: [packages/motion/src/Scene.ts:106](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L106)
+
+phantom: the loader members of R, carried to `Frame<Resources>`
+
+***
+
+### backgroundColor
+
+```ts
+readonly backgroundColor: Color;
+```
+
+Defined in: [packages/motion/src/Scene.ts:96](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L96)
+
+***
+
+### height
+
+```ts
+readonly height: number;
+```
+
+Defined in: [packages/motion/src/Scene.ts:95](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L95)
+
+***
+
+### name?
+
+```ts
+readonly optional name?: string;
+```
+
+Defined in: [packages/motion/src/Scene.ts:104](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L104)
+
+DISPLAY-ONLY name (a picker label, never an identifier) — set via the
+optional leading argument of [make](../variables/make.mdx). Names may collide; unique
+identity belongs to whatever registers the scene (e.g. a studio.ts
+record key). Never read by the runtime: playback is identical with
+and without a name.
+
+***
+
+### runner
+
+```ts
+readonly runner: Effect<void, E, 
+  | Scope
+| ExcludeLoaders<R>>;
+```
+
+Defined in: [packages/motion/src/Scene.ts:84](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L84)
+
+The scene body. Loader requirements are EXCLUDED here: frames are pure
+of resource bytes (the engine cannot measure text), so running a scene
+never needs a loader — only rendering its frames does (they re-surface
+on `Frame<Resources>` via `~resources`).
+
+***
+
+### width
+
+```ts
+readonly width: number;
+```
+
+Defined in: [packages/motion/src/Scene.ts:94](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L94)
+
+composition config, After Effects–style: what this comp IS. The
+runner inherits the ROOT scene's; a played scene keeps its own as
+its bounds (see [play](../functions/play.mdx)).

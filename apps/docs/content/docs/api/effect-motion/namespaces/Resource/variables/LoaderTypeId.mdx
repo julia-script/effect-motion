@@ -1,0 +1,17 @@
+---
+title: "LoaderTypeId"
+description: "const LoaderTypeId: \"~effect-motion/Resources/Loader\";"
+---
+# Variable: LoaderTypeId
+
+```ts
+const LoaderTypeId: "~effect-motion/Resources/Loader";
+```
+
+Defined in: [packages/motion/src/Resource.ts:11](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Resource.ts#L11)
+
+The shared loader brand. Every loader service (FontLoader, ImageLoader,
+future kinds) carries it, and it is the ONLY thing they share: loader
+shapes stay separate per kind (fonts grow font metadata, images image
+metadata) so nothing over-abstracts, while the type utilities below are
+written once against the brand.

@@ -1,0 +1,29 @@
+---
+title: "Loader"
+description: "function Loader<ID>(id): Service<ImageLoader<ID>, ImageLoader<ID>>;"
+---
+# Function: Loader()
+
+```ts
+function Loader<ID>(id): Service<ImageLoader<ID>, ImageLoader<ID>>;
+```
+
+Defined in: [packages/motion/src/Image.ts:42](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Image.ts#L42)
+
+The context key for an image's loader, derived from the id string alone.
+
+## Type Parameters
+
+| Type Parameter |
+| ------ |
+| `ID` *extends* `string` |
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `id` | `ID` |
+
+## Returns
+
+`Service`\<[`ImageLoader`](../interfaces/ImageLoader.mdx)\<`ID`\>, [`ImageLoader`](../interfaces/ImageLoader.mdx)\<`ID`\>\>

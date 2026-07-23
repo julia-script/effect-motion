@@ -1,0 +1,16 @@
+---
+title: "DEFAULT_FONT_URL"
+description: "const DEFAULT_FONT_URL: \"https://cdn.jsdelivr.net/npm/@expo-google-fonts/inter@0.2.3/Inter_400Regular.ttf\" = \"https://cdn.jsdelivr.net/npm/@expo-googl"
+---
+# Variable: DEFAULT\_FONT\_URL
+
+```ts
+const DEFAULT_FONT_URL: "https://cdn.jsdelivr.net/npm/@expo-google-fonts/inter@0.2.3/Inter_400Regular.ttf" = "https://cdn.jsdelivr.net/npm/@expo-google-fonts/inter@0.2.3/Inter_400Regular.ttf";
+```
+
+Defined in: [packages/motion/src/Font.ts:149](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Font.ts#L149)
+
+A CORS-open, static-weight TrueType mapped to the default family. Lived
+on the render engine before this refactor; now the render path fetches it
+(module-cached) only when a frame actually uses the default font and no
+caller-provided `"sans-serif"` loader is in context.

@@ -1,0 +1,35 @@
+---
+title: "advanceFrame"
+description: "function advanceFrame(self): Renderer;"
+---
+# Function: advanceFrame()
+
+```ts
+function advanceFrame(self): Renderer;
+```
+
+Defined in: [packages/three/src/Renderer.ts:320](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/Renderer.ts#L320)
+
+Advance three's internal frame counter by one.
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `self` | [`Renderer`](../interfaces/Renderer.mdx) |
+
+## Returns
+
+[`Renderer`](../interfaces/Renderer.mdx)
+
+## Remarks
+
+Only needed when driving renders yourself rather than through three's
+animation loop — a headless export, above all.
+
+Nodes that dedupe their work per frame (the scene pass especially) decide
+whether to recompute by comparing against this counter. three only ticks
+it inside its own rAF loop, which an export outruns, so consecutive
+exported frames would sample a stale texture and come out
+pairwise-duplicated. Calling this once per exported frame makes one
+exported frame mean one three frame.

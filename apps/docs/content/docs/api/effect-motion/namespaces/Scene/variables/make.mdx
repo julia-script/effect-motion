@@ -1,0 +1,121 @@
+---
+title: "make"
+description: "const make: {"
+---
+# Variable: make
+
+```ts
+const make: {
+<Eff, AEff>  (f, meta?): Scene<GeneratorE<Eff>, GeneratorR<Eff>>;
+<Eff, AEff>  (name, f, meta?): Scene<GeneratorE<Eff>, GeneratorR<Eff>>;
+};
+```
+
+Defined in: [packages/motion/src/Scene.ts:165](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L165)
+
+Declare a scene from a generator body.
+
+## Call Signature
+
+```ts
+<Eff, AEff>(f, meta?): Scene<GeneratorE<Eff>, GeneratorR<Eff>>;
+```
+
+### Type Parameters
+
+| Type Parameter |
+| ------ |
+| `Eff` *extends* `Effect`\<`any`, `any`, `any`\> |
+| `AEff` |
+
+### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `f` | () => `Generator`\<`Eff`, `AEff`, `never`\> |
+| `meta?` | `Partial`\<[`CompConfig`](../../Runner/type-aliases/CompConfig.mdx)\> |
+
+### Returns
+
+[`Scene`](../interfaces/Scene.mdx)\<`GeneratorE`\<`Eff`\>, `GeneratorR`\<`Eff`\>\>
+
+## Call Signature
+
+```ts
+<Eff, AEff>(
+   name, 
+   f, 
+meta?): Scene<GeneratorE<Eff>, GeneratorR<Eff>>;
+```
+
+### Type Parameters
+
+| Type Parameter |
+| ------ |
+| `Eff` *extends* `Effect`\<`any`, `any`, `any`\> |
+| `AEff` |
+
+### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `name` | `string` |
+| `f` | () => `Generator`\<`Eff`, `AEff`, `never`\> |
+| `meta?` | `Partial`\<[`CompConfig`](../../Runner/type-aliases/CompConfig.mdx)\> |
+
+### Returns
+
+[`Scene`](../interfaces/Scene.mdx)\<`GeneratorE`\<`Eff`\>, `GeneratorR`\<`Eff`\>\>
+
+## Remarks
+
+The generator is where a scene is written: `yield*` an
+[instantiate](./instantiate.mdx) to create something, `yield*` an animator to move it.
+Yielding is what makes time pass — statements between yields all happen on
+the same frame.
+
+The body does NOT run here. `make` captures it, so a scene can be
+declared once at module scope and run many times; each run re-executes
+the body from scratch with fresh entities.
+
+`meta` sets what the composition IS — its pixel dimensions and background.
+That is distinct from playback settings like frame rate and seed, which
+are chosen later at [run](../functions/run.mdx) / [stream](../functions/stream.mdx), because the same scene
+may legitimately be played back at different rates.
+
+An optional leading `name` is a display label for pickers and tooling
+only; it is never read during playback.
+
+## Param
+
+**f**
+
+The scene body.
+
+## Param
+
+**meta**
+
+Composition config: `width`, `height`, `backgroundColor`.
+
+## Default Value
+
+`meta` — 1920×1080, transparent background
+
+## Returns
+
+An inert [Scene](../interfaces/Scene.mdx), ready to run, stream, or play.
+
+## Example
+
+A named 500×300 scene on a dark background.
+```typescript
+const scene = Scene.make(
+	"intro",
+	function* () {
+		const dot = yield* Scene.instantiate("Circle", { radius: 20 });
+		yield* dot.pipe(Motion.moveTo({ x: 400 }, "1 second"));
+	},
+	{ width: 500, height: 300, backgroundColor: Color.hex("#16161d") },
+);
+```

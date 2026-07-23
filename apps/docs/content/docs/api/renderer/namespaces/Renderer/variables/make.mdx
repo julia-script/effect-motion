@@ -1,0 +1,43 @@
+---
+title: "make"
+description: "const make: (...args) => Effect<Renderer, ThreeException, Scope>;"
+---
+# Variable: make
+
+```ts
+const make: (...args) => Effect<Renderer, ThreeException, Scope>;
+```
+
+Defined in: [Renderer.ts:307](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Renderer.ts#L307)
+
+Acquire a renderer for a canvas.
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| ...`args` | \[[`MakeOptions`](../interfaces/MakeOptions.mdx)\] |
+
+## Returns
+
+`Effect`\<[`Renderer`](../interfaces/Renderer.mdx), `ThreeException`, `Scope`\>
+
+A renderer, valid for the current scope.
+
+## Remarks
+
+Scoped: the GPU device and every retained object are disposed when the
+scope closes, so a player that mounts and unmounts leaks nothing.
+
+Pass `renderers` to draw entity kinds the built-ins do not cover, or to
+override how a built-in kind is drawn — the map is merged over the
+built-in manifest by entity tag.
+
+## Example
+
+```typescript
+const renderer = yield* Renderer.make({ canvas, width: 500, height: 300 });
+yield* Renderer.resolveResources(renderer, frame);
+yield* Renderer.syncFrame(renderer, frame);
+yield* Renderer.render(renderer);
+```

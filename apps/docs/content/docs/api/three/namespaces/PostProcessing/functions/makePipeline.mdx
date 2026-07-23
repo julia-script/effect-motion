@@ -1,0 +1,42 @@
+---
+title: "makePipeline"
+description: "function makePipeline(renderer, outputNode): RenderPipeline;"
+---
+# Function: makePipeline()
+
+```ts
+function makePipeline(renderer, outputNode): RenderPipeline;
+```
+
+Defined in: [packages/three/src/PostProcessing.ts:130](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/PostProcessing.ts#L130)
+
+Build a pipeline that draws a shader graph to the renderer's output.
+
+## Parameters
+
+| Parameter | Type | Description |
+| ------ | ------ | ------ |
+| `renderer` | [`Renderer`](../../Renderer/interfaces/Renderer.mdx) | The renderer to draw with. |
+| `outputNode` | `unknown` | The TSL node graph producing the final color. |
+
+## Returns
+
+[`RenderPipeline`](../interfaces/RenderPipeline.mdx)
+
+## Remarks
+
+`outputNode` is the assembled TSL graph — a pass's texture straight
+through for a plain sRGB transform, or something composited from several
+sources. Its type is `unknown` on purpose; see the module overview.
+
+## Example
+
+A scene drawn through a pipeline, so the sRGB output transform applies.
+```typescript
+const scenePass = PostProcessing.pass(scene, camera);
+const pipeline = PostProcessing.makePipeline(
+	renderer,
+	scenePass.getTextureNode(),
+);
+yield* PostProcessing.render(pipeline);
+```

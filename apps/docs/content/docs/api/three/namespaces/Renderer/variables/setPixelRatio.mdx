@@ -1,0 +1,54 @@
+---
+title: "setPixelRatio"
+description: "const setPixelRatio: {"
+---
+# Variable: setPixelRatio
+
+```ts
+const setPixelRatio: {
+  (pixelRatio): (self) => Renderer;
+  (self, pixelRatio): Renderer;
+};
+```
+
+Defined in: [packages/three/src/Renderer.ts:366](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/Renderer.ts#L366)
+
+Set device pixels per logical pixel.
+
+## Call Signature
+
+```ts
+(pixelRatio): (self) => Renderer;
+```
+
+### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `pixelRatio` | `number` |
+
+### Returns
+
+(`self`) => [`Renderer`](../interfaces/Renderer.mdx)
+
+## Call Signature
+
+```ts
+(self, pixelRatio): Renderer;
+```
+
+### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `self` | [`Renderer`](../interfaces/Renderer.mdx) |
+| `pixelRatio` | `number` |
+
+### Returns
+
+[`Renderer`](../interfaces/Renderer.mdx)
+
+## Remarks
+
+Pass `window.devicePixelRatio` for a sharp result on a high-DPI display,
+or a fixed value above 1 to supersample an export for cleaner edges.

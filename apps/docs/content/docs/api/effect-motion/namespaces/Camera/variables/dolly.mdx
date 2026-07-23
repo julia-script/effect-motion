@@ -1,0 +1,46 @@
+---
+title: "dolly"
+description: "const dolly: (from, to, duration, timing?) => (cam) => CamEffect & (cam, from, to, duration, timing?) => CamEffect;"
+---
+# Variable: dolly
+
+```ts
+const dolly: (from, to, duration, timing?) => (cam) => CamEffect & (cam, from, to, duration, timing?) => CamEffect;
+```
+
+Defined in: [packages/motion/src/Camera.ts:555](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Camera.ts#L555)
+
+Like [dollyTo](./dollyTo.mdx), but starting from an explicit distance.
+
+## Remarks
+
+For a push-in that begins further out than the camera currently sits —
+the move starts at `from` regardless of where the camera was left.
+
+## Param
+
+**from**
+
+Starting distance from the point of interest.
+
+## Param
+
+**to**
+
+Target distance.
+
+## Param
+
+**duration**
+
+How long, in scene time.
+
+## Param
+
+**timing**
+
+An easing name or function.
+
+## Returns
+
+The camera, so animators chain.

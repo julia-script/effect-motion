@@ -1,0 +1,21 @@
+---
+title: "EntityByTag"
+description: "type EntityByTag<Tag> = Extract<Entity, {"
+---
+# Type Alias: EntityByTag\<Tag\>
+
+```ts
+type EntityByTag<Tag> = Extract<Entity, {
+  _tag: Tag;
+}>;
+```
+
+Defined in: [packages/motion/src/Entity.ts:327](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Entity.ts#L327)
+
+The data type of one entity kind, selected by its tag.
+
+## Type Parameters
+
+| Type Parameter |
+| ------ |
+| `Tag` *extends* [`EntityTag`](./EntityTag.mdx) |

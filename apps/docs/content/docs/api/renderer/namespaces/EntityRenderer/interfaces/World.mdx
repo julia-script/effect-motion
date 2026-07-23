@@ -1,0 +1,46 @@
+---
+title: "World"
+description: "A leaf's final position in scene space, with every ancestor group's"
+---
+# Interface: World
+
+Defined in: [EntityRenderer.ts:41](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L41)
+
+A leaf's final position in scene space, with every ancestor group's
+translation already folded in.
+
+## Remarks
+
+Absolute, not relative: a renderer never has to walk parents itself. Still
+in SCENE coordinates (y down, origin top-left) — use
+[RenderContext.toThree](./RenderContext.mdx#tothree) to convert.
+
+## Properties
+
+### x
+
+```ts
+readonly x: number;
+```
+
+Defined in: [EntityRenderer.ts:42](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L42)
+
+***
+
+### y
+
+```ts
+readonly y: number;
+```
+
+Defined in: [EntityRenderer.ts:43](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L43)
+
+***
+
+### z
+
+```ts
+readonly z: number;
+```
+
+Defined in: [EntityRenderer.ts:44](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L44)

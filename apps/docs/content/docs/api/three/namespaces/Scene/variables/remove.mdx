@@ -1,0 +1,54 @@
+---
+title: "remove"
+description: "const remove: {"
+---
+# Variable: remove
+
+```ts
+const remove: {
+  (objects): (self) => Scene;
+  (self, objects): Scene;
+};
+```
+
+Defined in: [packages/three/src/Scene.ts:142](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/Scene.ts#L142)
+
+Detach objects from the scene root.
+
+## Call Signature
+
+```ts
+(objects): (self) => Scene;
+```
+
+### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `objects` | readonly [`Object3D`](../../Object3D/type-aliases/Object3D.mdx)[] |
+
+### Returns
+
+(`self`) => [`Scene`](../interfaces/Scene.mdx)
+
+## Call Signature
+
+```ts
+(self, objects): Scene;
+```
+
+### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `self` | [`Scene`](../interfaces/Scene.mdx) |
+| `objects` | readonly [`Object3D`](../../Object3D/type-aliases/Object3D.mdx)[] |
+
+### Returns
+
+[`Scene`](../interfaces/Scene.mdx)
+
+## Remarks
+
+A no-op for objects that are not attached, and it does not dispose them —
+a removed object can be added back.

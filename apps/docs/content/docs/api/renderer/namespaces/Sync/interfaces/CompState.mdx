@@ -1,0 +1,119 @@
+---
+title: "CompState"
+description: "A nested scene (from `Scene.play`) as the renderer holds it."
+---
+# Interface: CompState
+
+Defined in: [Sync.ts:143](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L143)
+
+A nested scene (from `Scene.play`) as the renderer holds it.
+
+## Remarks
+
+A sub-composition is drawn to its OWN render target and the result is
+pasted onto a plane in the parent scene, like a precomp in After Effects.
+That is what lets a whole nested scene be moved, faded, or scaled as one
+object, and what makes its background and bounds mean something.
+
+The child renders through its own identity camera, so its content is
+flattened before compositing: depth inside a nested scene does not react
+to the outer camera.
+
+ponytail: world-camera parallax inside a precomp would need a frustum-clip
+design if a scene ever wants it.
+
+## Properties
+
+### height
+
+```ts
+height: number;
+```
+
+Defined in: [Sync.ts:154](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L154)
+
+***
+
+### holder
+
+```ts
+readonly holder: Group;
+```
+
+Defined in: [Sync.ts:146](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L146)
+
+billboarded holder at the group's world anchor (in a scene tier)
+
+***
+
+### hud
+
+```ts
+hud: boolean;
+```
+
+Defined in: [Sync.ts:155](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L155)
+
+***
+
+### material
+
+```ts
+readonly material: MeshBasicNodeMaterial;
+```
+
+Defined in: [Sync.ts:150](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L150)
+
+***
+
+### plane
+
+```ts
+readonly plane: Mesh;
+```
+
+Defined in: [Sync.ts:149](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L149)
+
+***
+
+### rt
+
+```ts
+rt: RenderTarget | null;
+```
+
+Defined in: [Sync.ts:152](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L152)
+
+created/resized by the render path (GPU-side)
+
+***
+
+### sync
+
+```ts
+readonly sync: Sync;
+```
+
+Defined in: [Sync.ts:144](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L144)
+
+***
+
+### transformHolder
+
+```ts
+readonly transformHolder: Group;
+```
+
+Defined in: [Sync.ts:148](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L148)
+
+carries the group's 2D affine about the bounds center
+
+***
+
+### width
+
+```ts
+width: number;
+```
+
+Defined in: [Sync.ts:153](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L153)

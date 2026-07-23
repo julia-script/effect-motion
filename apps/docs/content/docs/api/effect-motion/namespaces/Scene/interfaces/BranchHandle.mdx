@@ -1,0 +1,45 @@
+---
+title: "BranchHandle"
+description: "Handle to a branch of animation (a fork, background, or played scene)."
+---
+# Interface: BranchHandle\<A, E\>
+
+Defined in: [packages/motion/src/Scene.ts:776](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L776)
+
+Handle to a branch of animation (a fork, background, or played scene).
+`finished` resolves at the branch's SEMANTIC end — `Scene.finish` or
+completion, whichever comes first. Awaiting it from scene code HOLDS
+the scene (the waiter keeps ticking frames, like `Scene.sleep`), so
+the rest of the scene stays live while you wait. `fiber` is the
+branch's physical execution — interrupt it to bound a tail.
+
+## Extended by
+
+- [`PlayHandle`](./PlayHandle.mdx)
+
+## Type Parameters
+
+| Type Parameter | Default type |
+| ------ | ------ |
+| `A` | `unknown` |
+| `E` | `never` |
+
+## Properties
+
+### fiber
+
+```ts
+readonly fiber: Fiber<A, E>;
+```
+
+Defined in: [packages/motion/src/Scene.ts:778](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L778)
+
+***
+
+### finished
+
+```ts
+readonly finished: Effect<void, never, Runner>;
+```
+
+Defined in: [packages/motion/src/Scene.ts:777](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L777)

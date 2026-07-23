@@ -1,0 +1,1473 @@
+---
+title: "Color"
+description: "A color with an alpha channel."
+---
+# Class: Color
+
+Defined in: [packages/motion/src/Color.ts:47](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Color.ts#L47)
+
+A color with an alpha channel.
+
+## Remarks
+
+Build one with a constructor below — [hex](../functions/hex.mdx) for CSS strings,
+[rgba](../functions/rgba.mdx) for byte components, [tw](../functions/tw.mdx) for the Tailwind palette —
+rather than the class directly.
+
+RGB channels are 0–255 while alpha is 0–1, matching CSS. Colors are
+immutable and pipeable, so adjustments compose:
+`Color.hex("#7f5af0").pipe(Color.darken(0.5), Color.alpha(0.8))`.
+
+Colors are interpolable, so any fill or stroke can be animated with the
+ordinary tween animators.
+
+## Extends
+
+- `ReadonlySide`\<\{
+  `~a`: `Number`;
+  `~b`: `Number`;
+  `~g`: `Number`;
+  `~r`: `Number`;
+\}, `"Type"`\>
+
+## Implements
+
+- `Pipeable`
+
+## Constructors
+
+### Constructor
+
+```ts
+new Color(...args): Color;
+```
+
+Defined in: node\_modules/.pnpm/effect@4.0.0-beta.98/node\_modules/effect/dist/Schema.d.ts:8372
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| ...`args` | \[\{ `~a`: `number`; `~b`: `number`; `~g`: `number`; `~r`: `number`; \}, `MakeOptions`\] |
+
+#### Returns
+
+`Color`
+
+#### Inherited from
+
+```ts
+Schema.TaggedClass<Color>()("Color", {
+		"~r": Schema.Number,
+		"~g": Schema.Number,
+		"~b": Schema.Number,
+		"~a": Schema.Number,
+	}).constructor
+```
+
+## Properties
+
+### ~a
+
+```ts
+readonly ~a: number = Schema.Number;
+```
+
+Defined in: [packages/motion/src/Color.ts:52](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Color.ts#L52)
+
+#### Inherited from
+
+```ts
+Schema.TaggedClass<Color>()("Color", {
+		"~r": Schema.Number,
+		"~g": Schema.Number,
+		"~b": Schema.Number,
+		"~a": Schema.Number,
+	}).~a
+```
+
+***
+
+### ~b
+
+```ts
+readonly ~b: number = Schema.Number;
+```
+
+Defined in: [packages/motion/src/Color.ts:51](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Color.ts#L51)
+
+#### Inherited from
+
+```ts
+Schema.TaggedClass<Color>()("Color", {
+		"~r": Schema.Number,
+		"~g": Schema.Number,
+		"~b": Schema.Number,
+		"~a": Schema.Number,
+	}).~b
+```
+
+***
+
+### ~g
+
+```ts
+readonly ~g: number = Schema.Number;
+```
+
+Defined in: [packages/motion/src/Color.ts:50](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Color.ts#L50)
+
+#### Inherited from
+
+```ts
+Schema.TaggedClass<Color>()("Color", {
+		"~r": Schema.Number,
+		"~g": Schema.Number,
+		"~b": Schema.Number,
+		"~a": Schema.Number,
+	}).~g
+```
+
+***
+
+### ~r
+
+```ts
+readonly ~r: number = Schema.Number;
+```
+
+Defined in: [packages/motion/src/Color.ts:49](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Color.ts#L49)
+
+#### Inherited from
+
+```ts
+Schema.TaggedClass<Color>()("Color", {
+		"~r": Schema.Number,
+		"~g": Schema.Number,
+		"~b": Schema.Number,
+		"~a": Schema.Number,
+	}).~r
+```
+
+***
+
+### pipe
+
+```ts
+pipe: {
+<A>  (this): A;
+<A, B>  (this, ab): B;
+<A, B, C>  (this, ab, bc): C;
+<A, B, C, D>  (this, ab, bc, cd): D;
+<A, B, C, D, E>  (this, ab, bc, cd, de): E;
+<A, B, C, D, E, F>  (this, ab, bc, cd, de, ef): F;
+<A, B, C, D, E, F, G>  (this, ab, bc, cd, de, ef, fg): G;
+<A, B, C, D, E, F, G, H>  (this, ab, bc, cd, de, ef, fg, gh): H;
+<A, B, C, D, E, F, G, H, I>  (this, ab, bc, cd, de, ef, fg, gh, hi): I;
+<A, B, C, D, E, F, G, H, I, J>  (this, ab, bc, cd, de, ef, fg, gh, hi, ij): J;
+<A, B, C, D, E, F, G, H, I, J, K>  (this, ab, bc, cd, de, ef, fg, gh, hi, ij, jk): K;
+<A, B, C, D, E, F, G, H, I, J, K, L>  (this, ab, bc, cd, de, ef, fg, gh, hi, ij, jk, kl): L;
+<A, B, C, D, E, F, G, H, I, J, K, L, M>  (this, ab, bc, cd, de, ef, fg, gh, hi, ij, jk, kl, lm): M;
+<A, B, C, D, E, F, G, H, I, J, K, L, M, N>  (this, ab, bc, cd, de, ef, fg, gh, hi, ij, jk, kl, lm, mn): N;
+<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O>  (this, ab, bc, cd, de, ef, fg, gh, hi, ij, jk, kl, lm, mn, no): O;
+<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P>  (this, ab, bc, cd, de, ef, fg, gh, hi, ij, jk, kl, lm, mn, no, op): P;
+<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q>  (this, ab, bc, cd, de, ef, fg, gh, hi, ij, jk, kl, lm, mn, no, op, pq): Q;
+<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R>  (this, ab, bc, cd, de, ef, fg, gh, hi, ij, jk, kl, lm, mn, no, op, pq, qr): R;
+<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S>  (this, ab, bc, cd, de, ef, fg, gh, hi, ij, jk, kl, lm, mn, no, op, pq, qr, rs): S;
+<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T>  (this, ab, bc, cd, de, ef, fg, gh, hi, ij, jk, kl, lm, mn, no, op, pq, qr, rs, st): T;
+<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U>  (this, ab, bc, cd, de, ef, fg, gh, hi, ij, jk, kl, lm, mn, no, op, pq, qr, rs, st, tu): U;
+<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U>  (this, ab, bc, cd, de, ef, fg, gh, hi, ij, jk, kl, lm, mn, no, op, pq, qr, rs, st, tu): U;
+};
+```
+
+Defined in: [packages/motion/src/Color.ts:78](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Color.ts#L78)
+
+#### Call Signature
+
+```ts
+<A>(this): A;
+```
+
+##### Type Parameters
+
+| Type Parameter |
+| ------ |
+| `A` |
+
+##### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `this` | `A` |
+
+##### Returns
+
+`A`
+
+#### Call Signature
+
+```ts
+<A, B>(this, ab): B;
+```
+
+##### Type Parameters
+
+| Type Parameter | Default type |
+| ------ | ------ |
+| `A` | - |
+| `B` | `never` |
+
+##### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `this` | `A` |
+| `ab` | (`_`) => `B` |
+
+##### Returns
+
+`B`
+
+#### Call Signature
+
+```ts
+<A, B, C>(
+   this, 
+   ab, 
+   bc): C;
+```
+
+##### Type Parameters
+
+| Type Parameter | Default type |
+| ------ | ------ |
+| `A` | - |
+| `B` | `never` |
+| `C` | `never` |
+
+##### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `this` | `A` |
+| `ab` | (`_`) => `B` |
+| `bc` | (`_`) => `C` |
+
+##### Returns
+
+`C`
+
+#### Call Signature
+
+```ts
+<A, B, C, D>(
+   this, 
+   ab, 
+   bc, 
+   cd): D;
+```
+
+##### Type Parameters
+
+| Type Parameter | Default type |
+| ------ | ------ |
+| `A` | - |
+| `B` | `never` |
+| `C` | `never` |
+| `D` | `never` |
+
+##### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `this` | `A` |
+| `ab` | (`_`) => `B` |
+| `bc` | (`_`) => `C` |
+| `cd` | (`_`) => `D` |
+
+##### Returns
+
+`D`
+
+#### Call Signature
+
+```ts
+<A, B, C, D, E>(
+   this, 
+   ab, 
+   bc, 
+   cd, 
+   de): E;
+```
+
+##### Type Parameters
+
+| Type Parameter | Default type |
+| ------ | ------ |
+| `A` | - |
+| `B` | `never` |
+| `C` | `never` |
+| `D` | `never` |
+| `E` | `never` |
+
+##### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `this` | `A` |
+| `ab` | (`_`) => `B` |
+| `bc` | (`_`) => `C` |
+| `cd` | (`_`) => `D` |
+| `de` | (`_`) => `E` |
+
+##### Returns
+
+`E`
+
+#### Call Signature
+
+```ts
+<A, B, C, D, E, F>(
+   this, 
+   ab, 
+   bc, 
+   cd, 
+   de, 
+   ef): F;
+```
+
+##### Type Parameters
+
+| Type Parameter | Default type |
+| ------ | ------ |
+| `A` | - |
+| `B` | `never` |
+| `C` | `never` |
+| `D` | `never` |
+| `E` | `never` |
+| `F` | `never` |
+
+##### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `this` | `A` |
+| `ab` | (`_`) => `B` |
+| `bc` | (`_`) => `C` |
+| `cd` | (`_`) => `D` |
+| `de` | (`_`) => `E` |
+| `ef` | (`_`) => `F` |
+
+##### Returns
+
+`F`
+
+#### Call Signature
+
+```ts
+<A, B, C, D, E, F, G>(
+   this, 
+   ab, 
+   bc, 
+   cd, 
+   de, 
+   ef, 
+   fg): G;
+```
+
+##### Type Parameters
+
+| Type Parameter | Default type |
+| ------ | ------ |
+| `A` | - |
+| `B` | `never` |
+| `C` | `never` |
+| `D` | `never` |
+| `E` | `never` |
+| `F` | `never` |
+| `G` | `never` |
+
+##### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `this` | `A` |
+| `ab` | (`_`) => `B` |
+| `bc` | (`_`) => `C` |
+| `cd` | (`_`) => `D` |
+| `de` | (`_`) => `E` |
+| `ef` | (`_`) => `F` |
+| `fg` | (`_`) => `G` |
+
+##### Returns
+
+`G`
+
+#### Call Signature
+
+```ts
+<A, B, C, D, E, F, G, H>(
+   this, 
+   ab, 
+   bc, 
+   cd, 
+   de, 
+   ef, 
+   fg, 
+   gh): H;
+```
+
+##### Type Parameters
+
+| Type Parameter | Default type |
+| ------ | ------ |
+| `A` | - |
+| `B` | `never` |
+| `C` | `never` |
+| `D` | `never` |
+| `E` | `never` |
+| `F` | `never` |
+| `G` | `never` |
+| `H` | `never` |
+
+##### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `this` | `A` |
+| `ab` | (`_`) => `B` |
+| `bc` | (`_`) => `C` |
+| `cd` | (`_`) => `D` |
+| `de` | (`_`) => `E` |
+| `ef` | (`_`) => `F` |
+| `fg` | (`_`) => `G` |
+| `gh` | (`_`) => `H` |
+
+##### Returns
+
+`H`
+
+#### Call Signature
+
+```ts
+<A, B, C, D, E, F, G, H, I>(
+   this, 
+   ab, 
+   bc, 
+   cd, 
+   de, 
+   ef, 
+   fg, 
+   gh, 
+   hi): I;
+```
+
+##### Type Parameters
+
+| Type Parameter | Default type |
+| ------ | ------ |
+| `A` | - |
+| `B` | `never` |
+| `C` | `never` |
+| `D` | `never` |
+| `E` | `never` |
+| `F` | `never` |
+| `G` | `never` |
+| `H` | `never` |
+| `I` | `never` |
+
+##### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `this` | `A` |
+| `ab` | (`_`) => `B` |
+| `bc` | (`_`) => `C` |
+| `cd` | (`_`) => `D` |
+| `de` | (`_`) => `E` |
+| `ef` | (`_`) => `F` |
+| `fg` | (`_`) => `G` |
+| `gh` | (`_`) => `H` |
+| `hi` | (`_`) => `I` |
+
+##### Returns
+
+`I`
+
+#### Call Signature
+
+```ts
+<A, B, C, D, E, F, G, H, I, J>(
+   this, 
+   ab, 
+   bc, 
+   cd, 
+   de, 
+   ef, 
+   fg, 
+   gh, 
+   hi, 
+   ij): J;
+```
+
+##### Type Parameters
+
+| Type Parameter | Default type |
+| ------ | ------ |
+| `A` | - |
+| `B` | `never` |
+| `C` | `never` |
+| `D` | `never` |
+| `E` | `never` |
+| `F` | `never` |
+| `G` | `never` |
+| `H` | `never` |
+| `I` | `never` |
+| `J` | `never` |
+
+##### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `this` | `A` |
+| `ab` | (`_`) => `B` |
+| `bc` | (`_`) => `C` |
+| `cd` | (`_`) => `D` |
+| `de` | (`_`) => `E` |
+| `ef` | (`_`) => `F` |
+| `fg` | (`_`) => `G` |
+| `gh` | (`_`) => `H` |
+| `hi` | (`_`) => `I` |
+| `ij` | (`_`) => `J` |
+
+##### Returns
+
+`J`
+
+#### Call Signature
+
+```ts
+<A, B, C, D, E, F, G, H, I, J, K>(
+   this, 
+   ab, 
+   bc, 
+   cd, 
+   de, 
+   ef, 
+   fg, 
+   gh, 
+   hi, 
+   ij, 
+   jk): K;
+```
+
+##### Type Parameters
+
+| Type Parameter | Default type |
+| ------ | ------ |
+| `A` | - |
+| `B` | `never` |
+| `C` | `never` |
+| `D` | `never` |
+| `E` | `never` |
+| `F` | `never` |
+| `G` | `never` |
+| `H` | `never` |
+| `I` | `never` |
+| `J` | `never` |
+| `K` | `never` |
+
+##### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `this` | `A` |
+| `ab` | (`_`) => `B` |
+| `bc` | (`_`) => `C` |
+| `cd` | (`_`) => `D` |
+| `de` | (`_`) => `E` |
+| `ef` | (`_`) => `F` |
+| `fg` | (`_`) => `G` |
+| `gh` | (`_`) => `H` |
+| `hi` | (`_`) => `I` |
+| `ij` | (`_`) => `J` |
+| `jk` | (`_`) => `K` |
+
+##### Returns
+
+`K`
+
+#### Call Signature
+
+```ts
+<A, B, C, D, E, F, G, H, I, J, K, L>(
+   this, 
+   ab, 
+   bc, 
+   cd, 
+   de, 
+   ef, 
+   fg, 
+   gh, 
+   hi, 
+   ij, 
+   jk, 
+   kl): L;
+```
+
+##### Type Parameters
+
+| Type Parameter | Default type |
+| ------ | ------ |
+| `A` | - |
+| `B` | `never` |
+| `C` | `never` |
+| `D` | `never` |
+| `E` | `never` |
+| `F` | `never` |
+| `G` | `never` |
+| `H` | `never` |
+| `I` | `never` |
+| `J` | `never` |
+| `K` | `never` |
+| `L` | `never` |
+
+##### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `this` | `A` |
+| `ab` | (`_`) => `B` |
+| `bc` | (`_`) => `C` |
+| `cd` | (`_`) => `D` |
+| `de` | (`_`) => `E` |
+| `ef` | (`_`) => `F` |
+| `fg` | (`_`) => `G` |
+| `gh` | (`_`) => `H` |
+| `hi` | (`_`) => `I` |
+| `ij` | (`_`) => `J` |
+| `jk` | (`_`) => `K` |
+| `kl` | (`_`) => `L` |
+
+##### Returns
+
+`L`
+
+#### Call Signature
+
+```ts
+<A, B, C, D, E, F, G, H, I, J, K, L, M>(
+   this, 
+   ab, 
+   bc, 
+   cd, 
+   de, 
+   ef, 
+   fg, 
+   gh, 
+   hi, 
+   ij, 
+   jk, 
+   kl, 
+   lm): M;
+```
+
+##### Type Parameters
+
+| Type Parameter | Default type |
+| ------ | ------ |
+| `A` | - |
+| `B` | `never` |
+| `C` | `never` |
+| `D` | `never` |
+| `E` | `never` |
+| `F` | `never` |
+| `G` | `never` |
+| `H` | `never` |
+| `I` | `never` |
+| `J` | `never` |
+| `K` | `never` |
+| `L` | `never` |
+| `M` | `never` |
+
+##### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `this` | `A` |
+| `ab` | (`_`) => `B` |
+| `bc` | (`_`) => `C` |
+| `cd` | (`_`) => `D` |
+| `de` | (`_`) => `E` |
+| `ef` | (`_`) => `F` |
+| `fg` | (`_`) => `G` |
+| `gh` | (`_`) => `H` |
+| `hi` | (`_`) => `I` |
+| `ij` | (`_`) => `J` |
+| `jk` | (`_`) => `K` |
+| `kl` | (`_`) => `L` |
+| `lm` | (`_`) => `M` |
+
+##### Returns
+
+`M`
+
+#### Call Signature
+
+```ts
+<A, B, C, D, E, F, G, H, I, J, K, L, M, N>(
+   this, 
+   ab, 
+   bc, 
+   cd, 
+   de, 
+   ef, 
+   fg, 
+   gh, 
+   hi, 
+   ij, 
+   jk, 
+   kl, 
+   lm, 
+   mn): N;
+```
+
+##### Type Parameters
+
+| Type Parameter | Default type |
+| ------ | ------ |
+| `A` | - |
+| `B` | `never` |
+| `C` | `never` |
+| `D` | `never` |
+| `E` | `never` |
+| `F` | `never` |
+| `G` | `never` |
+| `H` | `never` |
+| `I` | `never` |
+| `J` | `never` |
+| `K` | `never` |
+| `L` | `never` |
+| `M` | `never` |
+| `N` | `never` |
+
+##### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `this` | `A` |
+| `ab` | (`_`) => `B` |
+| `bc` | (`_`) => `C` |
+| `cd` | (`_`) => `D` |
+| `de` | (`_`) => `E` |
+| `ef` | (`_`) => `F` |
+| `fg` | (`_`) => `G` |
+| `gh` | (`_`) => `H` |
+| `hi` | (`_`) => `I` |
+| `ij` | (`_`) => `J` |
+| `jk` | (`_`) => `K` |
+| `kl` | (`_`) => `L` |
+| `lm` | (`_`) => `M` |
+| `mn` | (`_`) => `N` |
+
+##### Returns
+
+`N`
+
+#### Call Signature
+
+```ts
+<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O>(
+   this, 
+   ab, 
+   bc, 
+   cd, 
+   de, 
+   ef, 
+   fg, 
+   gh, 
+   hi, 
+   ij, 
+   jk, 
+   kl, 
+   lm, 
+   mn, 
+   no): O;
+```
+
+##### Type Parameters
+
+| Type Parameter | Default type |
+| ------ | ------ |
+| `A` | - |
+| `B` | `never` |
+| `C` | `never` |
+| `D` | `never` |
+| `E` | `never` |
+| `F` | `never` |
+| `G` | `never` |
+| `H` | `never` |
+| `I` | `never` |
+| `J` | `never` |
+| `K` | `never` |
+| `L` | `never` |
+| `M` | `never` |
+| `N` | `never` |
+| `O` | `never` |
+
+##### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `this` | `A` |
+| `ab` | (`_`) => `B` |
+| `bc` | (`_`) => `C` |
+| `cd` | (`_`) => `D` |
+| `de` | (`_`) => `E` |
+| `ef` | (`_`) => `F` |
+| `fg` | (`_`) => `G` |
+| `gh` | (`_`) => `H` |
+| `hi` | (`_`) => `I` |
+| `ij` | (`_`) => `J` |
+| `jk` | (`_`) => `K` |
+| `kl` | (`_`) => `L` |
+| `lm` | (`_`) => `M` |
+| `mn` | (`_`) => `N` |
+| `no` | (`_`) => `O` |
+
+##### Returns
+
+`O`
+
+#### Call Signature
+
+```ts
+<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P>(
+   this, 
+   ab, 
+   bc, 
+   cd, 
+   de, 
+   ef, 
+   fg, 
+   gh, 
+   hi, 
+   ij, 
+   jk, 
+   kl, 
+   lm, 
+   mn, 
+   no, 
+   op): P;
+```
+
+##### Type Parameters
+
+| Type Parameter | Default type |
+| ------ | ------ |
+| `A` | - |
+| `B` | `never` |
+| `C` | `never` |
+| `D` | `never` |
+| `E` | `never` |
+| `F` | `never` |
+| `G` | `never` |
+| `H` | `never` |
+| `I` | `never` |
+| `J` | `never` |
+| `K` | `never` |
+| `L` | `never` |
+| `M` | `never` |
+| `N` | `never` |
+| `O` | `never` |
+| `P` | `never` |
+
+##### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `this` | `A` |
+| `ab` | (`_`) => `B` |
+| `bc` | (`_`) => `C` |
+| `cd` | (`_`) => `D` |
+| `de` | (`_`) => `E` |
+| `ef` | (`_`) => `F` |
+| `fg` | (`_`) => `G` |
+| `gh` | (`_`) => `H` |
+| `hi` | (`_`) => `I` |
+| `ij` | (`_`) => `J` |
+| `jk` | (`_`) => `K` |
+| `kl` | (`_`) => `L` |
+| `lm` | (`_`) => `M` |
+| `mn` | (`_`) => `N` |
+| `no` | (`_`) => `O` |
+| `op` | (`_`) => `P` |
+
+##### Returns
+
+`P`
+
+#### Call Signature
+
+```ts
+<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q>(
+   this, 
+   ab, 
+   bc, 
+   cd, 
+   de, 
+   ef, 
+   fg, 
+   gh, 
+   hi, 
+   ij, 
+   jk, 
+   kl, 
+   lm, 
+   mn, 
+   no, 
+   op, 
+   pq): Q;
+```
+
+##### Type Parameters
+
+| Type Parameter | Default type |
+| ------ | ------ |
+| `A` | - |
+| `B` | `never` |
+| `C` | `never` |
+| `D` | `never` |
+| `E` | `never` |
+| `F` | `never` |
+| `G` | `never` |
+| `H` | `never` |
+| `I` | `never` |
+| `J` | `never` |
+| `K` | `never` |
+| `L` | `never` |
+| `M` | `never` |
+| `N` | `never` |
+| `O` | `never` |
+| `P` | `never` |
+| `Q` | `never` |
+
+##### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `this` | `A` |
+| `ab` | (`_`) => `B` |
+| `bc` | (`_`) => `C` |
+| `cd` | (`_`) => `D` |
+| `de` | (`_`) => `E` |
+| `ef` | (`_`) => `F` |
+| `fg` | (`_`) => `G` |
+| `gh` | (`_`) => `H` |
+| `hi` | (`_`) => `I` |
+| `ij` | (`_`) => `J` |
+| `jk` | (`_`) => `K` |
+| `kl` | (`_`) => `L` |
+| `lm` | (`_`) => `M` |
+| `mn` | (`_`) => `N` |
+| `no` | (`_`) => `O` |
+| `op` | (`_`) => `P` |
+| `pq` | (`_`) => `Q` |
+
+##### Returns
+
+`Q`
+
+#### Call Signature
+
+```ts
+<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R>(
+   this, 
+   ab, 
+   bc, 
+   cd, 
+   de, 
+   ef, 
+   fg, 
+   gh, 
+   hi, 
+   ij, 
+   jk, 
+   kl, 
+   lm, 
+   mn, 
+   no, 
+   op, 
+   pq, 
+   qr): R;
+```
+
+##### Type Parameters
+
+| Type Parameter | Default type |
+| ------ | ------ |
+| `A` | - |
+| `B` | `never` |
+| `C` | `never` |
+| `D` | `never` |
+| `E` | `never` |
+| `F` | `never` |
+| `G` | `never` |
+| `H` | `never` |
+| `I` | `never` |
+| `J` | `never` |
+| `K` | `never` |
+| `L` | `never` |
+| `M` | `never` |
+| `N` | `never` |
+| `O` | `never` |
+| `P` | `never` |
+| `Q` | `never` |
+| `R` | `never` |
+
+##### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `this` | `A` |
+| `ab` | (`_`) => `B` |
+| `bc` | (`_`) => `C` |
+| `cd` | (`_`) => `D` |
+| `de` | (`_`) => `E` |
+| `ef` | (`_`) => `F` |
+| `fg` | (`_`) => `G` |
+| `gh` | (`_`) => `H` |
+| `hi` | (`_`) => `I` |
+| `ij` | (`_`) => `J` |
+| `jk` | (`_`) => `K` |
+| `kl` | (`_`) => `L` |
+| `lm` | (`_`) => `M` |
+| `mn` | (`_`) => `N` |
+| `no` | (`_`) => `O` |
+| `op` | (`_`) => `P` |
+| `pq` | (`_`) => `Q` |
+| `qr` | (`_`) => `R` |
+
+##### Returns
+
+`R`
+
+#### Call Signature
+
+```ts
+<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S>(
+   this, 
+   ab, 
+   bc, 
+   cd, 
+   de, 
+   ef, 
+   fg, 
+   gh, 
+   hi, 
+   ij, 
+   jk, 
+   kl, 
+   lm, 
+   mn, 
+   no, 
+   op, 
+   pq, 
+   qr, 
+   rs): S;
+```
+
+##### Type Parameters
+
+| Type Parameter | Default type |
+| ------ | ------ |
+| `A` | - |
+| `B` | `never` |
+| `C` | `never` |
+| `D` | `never` |
+| `E` | `never` |
+| `F` | `never` |
+| `G` | `never` |
+| `H` | `never` |
+| `I` | `never` |
+| `J` | `never` |
+| `K` | `never` |
+| `L` | `never` |
+| `M` | `never` |
+| `N` | `never` |
+| `O` | `never` |
+| `P` | `never` |
+| `Q` | `never` |
+| `R` | `never` |
+| `S` | `never` |
+
+##### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `this` | `A` |
+| `ab` | (`_`) => `B` |
+| `bc` | (`_`) => `C` |
+| `cd` | (`_`) => `D` |
+| `de` | (`_`) => `E` |
+| `ef` | (`_`) => `F` |
+| `fg` | (`_`) => `G` |
+| `gh` | (`_`) => `H` |
+| `hi` | (`_`) => `I` |
+| `ij` | (`_`) => `J` |
+| `jk` | (`_`) => `K` |
+| `kl` | (`_`) => `L` |
+| `lm` | (`_`) => `M` |
+| `mn` | (`_`) => `N` |
+| `no` | (`_`) => `O` |
+| `op` | (`_`) => `P` |
+| `pq` | (`_`) => `Q` |
+| `qr` | (`_`) => `R` |
+| `rs` | (`_`) => `S` |
+
+##### Returns
+
+`S`
+
+#### Call Signature
+
+```ts
+<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T>(
+   this, 
+   ab, 
+   bc, 
+   cd, 
+   de, 
+   ef, 
+   fg, 
+   gh, 
+   hi, 
+   ij, 
+   jk, 
+   kl, 
+   lm, 
+   mn, 
+   no, 
+   op, 
+   pq, 
+   qr, 
+   rs, 
+   st): T;
+```
+
+##### Type Parameters
+
+| Type Parameter | Default type |
+| ------ | ------ |
+| `A` | - |
+| `B` | `never` |
+| `C` | `never` |
+| `D` | `never` |
+| `E` | `never` |
+| `F` | `never` |
+| `G` | `never` |
+| `H` | `never` |
+| `I` | `never` |
+| `J` | `never` |
+| `K` | `never` |
+| `L` | `never` |
+| `M` | `never` |
+| `N` | `never` |
+| `O` | `never` |
+| `P` | `never` |
+| `Q` | `never` |
+| `R` | `never` |
+| `S` | `never` |
+| `T` | `never` |
+
+##### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `this` | `A` |
+| `ab` | (`_`) => `B` |
+| `bc` | (`_`) => `C` |
+| `cd` | (`_`) => `D` |
+| `de` | (`_`) => `E` |
+| `ef` | (`_`) => `F` |
+| `fg` | (`_`) => `G` |
+| `gh` | (`_`) => `H` |
+| `hi` | (`_`) => `I` |
+| `ij` | (`_`) => `J` |
+| `jk` | (`_`) => `K` |
+| `kl` | (`_`) => `L` |
+| `lm` | (`_`) => `M` |
+| `mn` | (`_`) => `N` |
+| `no` | (`_`) => `O` |
+| `op` | (`_`) => `P` |
+| `pq` | (`_`) => `Q` |
+| `qr` | (`_`) => `R` |
+| `rs` | (`_`) => `S` |
+| `st` | (`_`) => `T` |
+
+##### Returns
+
+`T`
+
+#### Call Signature
+
+```ts
+<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U>(
+   this, 
+   ab, 
+   bc, 
+   cd, 
+   de, 
+   ef, 
+   fg, 
+   gh, 
+   hi, 
+   ij, 
+   jk, 
+   kl, 
+   lm, 
+   mn, 
+   no, 
+   op, 
+   pq, 
+   qr, 
+   rs, 
+   st, 
+   tu): U;
+```
+
+##### Type Parameters
+
+| Type Parameter | Default type |
+| ------ | ------ |
+| `A` | - |
+| `B` | `never` |
+| `C` | `never` |
+| `D` | `never` |
+| `E` | `never` |
+| `F` | `never` |
+| `G` | `never` |
+| `H` | `never` |
+| `I` | `never` |
+| `J` | `never` |
+| `K` | `never` |
+| `L` | `never` |
+| `M` | `never` |
+| `N` | `never` |
+| `O` | `never` |
+| `P` | `never` |
+| `Q` | `never` |
+| `R` | `never` |
+| `S` | `never` |
+| `T` | `never` |
+| `U` | `never` |
+
+##### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `this` | `A` |
+| `ab` | (`_`) => `B` |
+| `bc` | (`_`) => `C` |
+| `cd` | (`_`) => `D` |
+| `de` | (`_`) => `E` |
+| `ef` | (`_`) => `F` |
+| `fg` | (`_`) => `G` |
+| `gh` | (`_`) => `H` |
+| `hi` | (`_`) => `I` |
+| `ij` | (`_`) => `J` |
+| `jk` | (`_`) => `K` |
+| `kl` | (`_`) => `L` |
+| `lm` | (`_`) => `M` |
+| `mn` | (`_`) => `N` |
+| `no` | (`_`) => `O` |
+| `op` | (`_`) => `P` |
+| `pq` | (`_`) => `Q` |
+| `qr` | (`_`) => `R` |
+| `rs` | (`_`) => `S` |
+| `st` | (`_`) => `T` |
+| `tu` | (`_`) => `U` |
+
+##### Returns
+
+`U`
+
+#### Call Signature
+
+```ts
+<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U>(
+   this, 
+   ab, 
+   bc, 
+   cd, 
+   de, 
+   ef, 
+   fg, 
+   gh, 
+   hi, 
+   ij, 
+   jk, 
+   kl, 
+   lm, 
+   mn, 
+   no, 
+   op, 
+   pq, 
+   qr, 
+   rs, 
+   st, 
+   tu): U;
+```
+
+##### Type Parameters
+
+| Type Parameter | Default type |
+| ------ | ------ |
+| `A` | - |
+| `B` | `never` |
+| `C` | `never` |
+| `D` | `never` |
+| `E` | `never` |
+| `F` | `never` |
+| `G` | `never` |
+| `H` | `never` |
+| `I` | `never` |
+| `J` | `never` |
+| `K` | `never` |
+| `L` | `never` |
+| `M` | `never` |
+| `N` | `never` |
+| `O` | `never` |
+| `P` | `never` |
+| `Q` | `never` |
+| `R` | `never` |
+| `S` | `never` |
+| `T` | `never` |
+| `U` | `never` |
+
+##### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `this` | `A` |
+| `ab` | (`_`) => `B` |
+| `bc` | (`_`) => `C` |
+| `cd` | (`_`) => `D` |
+| `de` | (`_`) => `E` |
+| `ef` | (`_`) => `F` |
+| `fg` | (`_`) => `G` |
+| `gh` | (`_`) => `H` |
+| `hi` | (`_`) => `I` |
+| `ij` | (`_`) => `J` |
+| `jk` | (`_`) => `K` |
+| `kl` | (`_`) => `L` |
+| `lm` | (`_`) => `M` |
+| `mn` | (`_`) => `N` |
+| `no` | (`_`) => `O` |
+| `op` | (`_`) => `P` |
+| `pq` | (`_`) => `Q` |
+| `qr` | (`_`) => `R` |
+| `rs` | (`_`) => `S` |
+| `st` | (`_`) => `T` |
+| `tu` | (`_`) => `U` |
+
+##### Returns
+
+`U`
+
+#### Implementation of
+
+```ts
+Pipeable.Pipeable.pipe
+```
+
+## Accessors
+
+### a
+
+#### Get Signature
+
+```ts
+get a(): number;
+```
+
+Defined in: [packages/motion/src/Color.ts:74](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Color.ts#L74)
+
+##### Returns
+
+`number`
+
+***
+
+### b
+
+#### Get Signature
+
+```ts
+get b(): number;
+```
+
+Defined in: [packages/motion/src/Color.ts:71](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Color.ts#L71)
+
+##### Returns
+
+`number`
+
+***
+
+### g
+
+#### Get Signature
+
+```ts
+get g(): number;
+```
+
+Defined in: [packages/motion/src/Color.ts:68](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Color.ts#L68)
+
+##### Returns
+
+`number`
+
+***
+
+### r
+
+#### Get Signature
+
+```ts
+get r(): number;
+```
+
+Defined in: [packages/motion/src/Color.ts:64](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Color.ts#L64)
+
+##### Returns
+
+`number`
+
+## Methods
+
+### of()
+
+```ts
+static of(
+   r, 
+   g, 
+   b, 
+   a?): Color;
+```
+
+Defined in: [packages/motion/src/Color.ts:56](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Color.ts#L56)
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `r` | `number` |
+| `g` | `number` |
+| `b` | `number` |
+| `a?` | `number` |
+
+#### Returns
+
+`Color`

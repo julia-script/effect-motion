@@ -1,0 +1,29 @@
+---
+title: "dispose"
+description: "function dispose(self): void;"
+---
+# Function: dispose()
+
+```ts
+function dispose(self): void;
+```
+
+Defined in: [packages/three/src/RenderTarget.ts:102](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/RenderTarget.ts#L102)
+
+Release the target's GPU memory.
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `self` | [`RenderTarget`](../interfaces/RenderTarget.mdx) |
+
+## Returns
+
+`void`
+
+## Remarks
+
+Only for targets from [makeUnsafe](./makeUnsafe.mdx) or [fromRaw](./fromRaw.mdx) — one from
+[make](../variables/make.mdx) disposes itself with its scope, and disposing it here would
+be a double free.

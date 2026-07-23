@@ -1,0 +1,38 @@
+---
+title: "Group"
+description: "const Group: TaggedStruct<\"Group\", {"
+---
+# Variable: Group
+
+```ts
+const Group: TaggedStruct<"Group", {
+  children: withConstructorDefault<$Array<String>>;
+  opacity: withConstructorDefault<Number>;
+  position: withConstructorDefault<TaggedStruct<"Vec3", {
+     x: withConstructorDefault<Number>;
+     y: withConstructorDefault<Number>;
+     z: withConstructorDefault<Number>;
+  }>>;
+  rotation: withConstructorDefault<TaggedStruct<"Vec3", {
+     x: withConstructorDefault<Number>;
+     y: withConstructorDefault<Number>;
+     z: withConstructorDefault<Number>;
+  }>>;
+  scale: withConstructorDefault<TaggedStruct<"Vec3", {
+     x: withConstructorDefault<Number>;
+     y: withConstructorDefault<Number>;
+     z: withConstructorDefault<Number>;
+  }>>;
+  visible: withConstructorDefault<Boolean>;
+}>;
+```
+
+Defined in: [packages/motion/src/Entity.ts:224](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Entity.ts#L224)
+
+A container: positions and structures its children, paints nothing
+itself. Its transform composes down the subtree like any entity's.
+
+It carries no composition bounds. `width`/`height`/`backgroundColor` used
+to live here so `Scene.play` could copy a nested scene's dimensions onto
+the mount group; a Scene owns those itself, and a render-to-texture
+boundary is `Scene.play`'s business, not a field on every group.

@@ -1,0 +1,31 @@
+---
+title: "TypeId"
+description: "const TypeId: \"~three/RenderPipeline\";"
+---
+# Variable: TypeId
+
+```ts
+const TypeId: "~three/RenderPipeline";
+```
+
+Defined in: [packages/three/src/PostProcessing.ts:31](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/PostProcessing.ts#L31)
+
+Post-processing: rendering a scene through a shader graph rather than
+straight to the output.
+
+## Remarks
+
+Two pieces. A [pass](../functions/pass.mdx) renders a scene and exposes its result as
+something a shader can sample; a [RenderPipeline](../interfaces/RenderPipeline.mdx) draws a node
+graph built from those samples. Together they cover compositing two
+scenes, applying a full-screen effect, or — the plainest use, and the
+reason the export path has one at all — getting the sRGB output
+transform applied, which a direct render-target readback does not do.
+
+Construction and graph assembly are synchronous and infallible;
+[render](../functions/render.mdx) drives the GPU, so it is the one Effect here.
+
+TSL node types are deliberately `unknown` throughout this module. three's
+published node types expand into unions large enough to send `tsc` into a
+multi-minute type check, so they are quarantined and consumers re-declare
+the minimal shape they actually use.

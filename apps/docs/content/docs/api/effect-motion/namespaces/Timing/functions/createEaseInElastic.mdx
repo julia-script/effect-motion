@@ -1,0 +1,35 @@
+---
+title: "createEaseInElastic"
+description: "function createEaseInElastic(s?): TimingFunction;"
+---
+# Function: createEaseInElastic()
+
+```ts
+function createEaseInElastic(s?): TimingFunction;
+```
+
+Defined in: [packages/motion/src/Timing.ts:203](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Timing.ts#L203)
+
+Build an Elastic easing with a custom oscillation frequency.
+
+## Parameters
+
+| Parameter | Type | Default value | Description |
+| ------ | ------ | ------ | ------ |
+| `s` | `number` | `2.094395` | Angular frequency; higher oscillates more times. |
+
+## Returns
+
+[`TimingFunction`](../type-aliases/TimingFunction.mdx)
+
+A [TimingFunction](../type-aliases/TimingFunction.mdx) to pass to any animator.
+
+## Remarks
+
+Elastic curves overshoot and ring like a plucked string before settling.
+Prefer [easeInElastic](../variables/easeInElastic.mdx) / [easeOutElastic](../variables/easeOutElastic.mdx) /
+[easeInOutElastic](../variables/easeInOutElastic.mdx) unless you want a different wobble rate.
+
+## Default Value
+
+`2.094395` (2π/3)

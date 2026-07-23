@@ -1,0 +1,18 @@
+---
+title: "EntityRenderers"
+description: "type EntityRenderers = { readonly Tag in Entity.EntityTag: EntityRenderer<Entity.EntityByTag<Tag>> };"
+---
+# Type Alias: EntityRenderers
+
+```ts
+type EntityRenderers = { readonly [Tag in Entity.EntityTag]: EntityRenderer<Entity.EntityByTag<Tag>> };
+```
+
+Defined in: [EntityRenderer.ts:198](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L198)
+
+An exhaustive map from every built-in entity tag to its renderer.
+
+## Remarks
+
+Exhaustive on purpose: adding an entity to the core library without a
+renderer here is a compile error rather than a blank space at runtime.

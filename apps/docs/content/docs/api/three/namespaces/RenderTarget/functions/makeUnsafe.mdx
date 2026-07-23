@@ -1,0 +1,30 @@
+---
+title: "makeUnsafe"
+description: "function makeUnsafe(width, height): RenderTarget;"
+---
+# Function: makeUnsafe()
+
+```ts
+function makeUnsafe(width, height): RenderTarget;
+```
+
+Defined in: [packages/three/src/RenderTarget.ts:82](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/RenderTarget.ts#L82)
+
+A render target WITHOUT scope-registered teardown.
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `width` | `number` |
+| `height` | `number` |
+
+## Returns
+
+[`RenderTarget`](../interfaces/RenderTarget.mdx)
+
+## Remarks
+
+For targets whose lifetime does not match a scope — one recreated on
+every resize, for instance, where a longer-lived owner tracks it and
+calls [dispose](./dispose.mdx). Prefer [make](../variables/make.mdx) whenever a scope will do.

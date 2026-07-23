@@ -1,0 +1,63 @@
+---
+title: "PlayHandle"
+description: "A played scene's handle: its branch, plus the group it is mounted under."
+---
+# Interface: PlayHandle\<A, E\>
+
+Defined in: [packages/motion/src/Scene.ts:1091](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L1091)
+
+A played scene's handle: its branch, plus the group it is mounted under.
+
+## Remarks
+
+`group` is what makes a nested scene manipulable as ONE object — move,
+fade, or scale it and the entire child scene follows, its bounds included.
+
+## Extends
+
+- [`BranchHandle`](./BranchHandle.mdx)\<`A`, `E`\>
+
+## Type Parameters
+
+| Type Parameter | Default type |
+| ------ | ------ |
+| `A` | `void` |
+| `E` | `never` |
+
+## Properties
+
+### fiber
+
+```ts
+readonly fiber: Fiber<A, E>;
+```
+
+Defined in: [packages/motion/src/Scene.ts:778](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L778)
+
+#### Inherited from
+
+[`BranchHandle`](./BranchHandle.mdx).[`fiber`](./BranchHandle.mdx#fiber)
+
+***
+
+### finished
+
+```ts
+readonly finished: Effect<void, never, Runner>;
+```
+
+Defined in: [packages/motion/src/Scene.ts:777](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L777)
+
+#### Inherited from
+
+[`BranchHandle`](./BranchHandle.mdx).[`finished`](./BranchHandle.mdx#finished)
+
+***
+
+### group
+
+```ts
+readonly group: GroupInstance;
+```
+
+Defined in: [packages/motion/src/Scene.ts:1092](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L1092)

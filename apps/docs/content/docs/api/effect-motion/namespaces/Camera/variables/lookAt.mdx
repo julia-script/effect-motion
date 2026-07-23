@@ -1,0 +1,71 @@
+---
+title: "lookAt"
+description: "const lookAt: (target, duration?, timing?, offset?) => (cam) => CamEffect & (cam, target, duration?, timing?, offset?) => CamEffect;"
+---
+# Variable: lookAt
+
+```ts
+const lookAt: (target, duration?, timing?, offset?) => (cam) => CamEffect & (cam, target, duration?, timing?, offset?) => CamEffect;
+```
+
+Defined in: [packages/motion/src/Camera.ts:228](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Camera.ts#L228)
+
+Point the camera at something.
+
+## Remarks
+
+Aiming is expressed as a point of interest rather than as rotation
+angles, which is what makes it composable: the target can be a live
+instance, and the camera keeps facing it as it moves. There is no
+`lookAtTo` — the verb already names its target — so an optional
+`duration` selects between the two behaviors:
+
+- **Omitted** — aim snaps this frame. Use it to establish the shot before
+  anything moves.
+- **Given** — the aim eases over that time as a RETARGETED tween: each
+  frame interpolates toward the target's current position, so it converges
+  exactly onto a moving target with no snap at the end.
+
+Setting a point of interest is also the prerequisite for
+[orbitTo](./orbitTo.mdx) and [dollyTo](./dollyTo.mdx), which are both defined relative to it.
+
+## Param
+
+**target**
+
+An instance to track, or a fixed world position.
+
+## Param
+
+**duration**
+
+Omit to snap; give a time to ease the re-aim.
+
+## Param
+
+**timing**
+
+An easing name or function.
+
+## Param
+
+**offset**
+
+Shifts the aim relative to the target, e.g. slightly above.
+
+## Default Value
+
+`timing` — `"linear"`
+
+## Returns
+
+The camera, so animators chain.
+
+## Example
+
+Snap to establish, then ease across to a second subject.
+```typescript
+const camera = yield* Scene.camera;
+yield* camera.pipe(Camera.lookAt(hero));
+yield* camera.pipe(Camera.lookAt(villain, "1 second", "easeInOutCubic"));
+```

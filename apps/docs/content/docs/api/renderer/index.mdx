@@ -1,0 +1,71 @@
+---
+title: "renderer"
+description: "`@effect-motion/renderer` — draws effect-motion frames with three.js and"
+---
+# @effect-motion/renderer
+
+`@effect-motion/renderer` — draws effect-motion frames with three.js and
+WebGPU.
+
+## Remarks
+
+The core library produces frames: plain data describing where everything
+is at one instant. This package turns those frames into pixels, and is the
+only place the two worlds meet.
+
+Rendering is RETAINED, not immediate. A long-lived three scene is kept in
+step with the frame stream: each frame is diffed against the last, so
+objects are built once, mutated when their data changes, and disposed when
+they leave. Playing a scene therefore does not rebuild the scene graph
+every frame.
+
+Two entry points, by environment:
+
+- **Browser** — [Renderer](./namespaces/Renderer/index.mdx), which draws to a canvas. Import from the
+  package root.
+- **Node** — `@effect-motion/renderer/node`, which renders headlessly on a
+  real GPU (Dawn) and reads frames back as PNGs. This is the export path.
+  It lives behind its own subpath so Node-only code never reaches a
+  browser bundle.
+
+Both are scoped: acquire one in a `Scope` and every GPU resource is
+released when it closes.
+
+Determinism note: the FRAME stream is deterministic, but pixels are not
+promised to be bit-identical across GPUs and drivers. Two runs of the same
+scene look the same; they are not guaranteed to hash the same.
+
+## Example
+
+Render one frame to a PNG, headlessly.
+```typescript
+import * as NodeRenderer from "@effect-motion/renderer/node";
+import { Effect } from "effect";
+
+const png = yield* Effect.scoped(
+	NodeRenderer.make({ width: 500, height: 300 }).pipe(
+		Effect.flatMap((renderer) => NodeRenderer.renderToPng(renderer, frame)),
+	),
+);
+```
+
+## Namespaces
+
+- [Builtins](./namespaces/Builtins/index.mdx)
+- [EntityRenderer](./namespaces/EntityRenderer/index.mdx)
+- [Images](./namespaces/Images/index.mdx)
+- [Renderer](./namespaces/Renderer/index.mdx)
+- [Sync](./namespaces/Sync/index.mdx)
+- [Text](./namespaces/Text/index.mdx)
+
+## References
+
+### builtinRegistry
+
+Re-exports [builtinRegistry](./namespaces/Builtins/variables/builtinRegistry.mdx)
+
+***
+
+### builtinRenderers
+
+Re-exports [builtinRenderers](./namespaces/Builtins/variables/builtinRenderers.mdx)

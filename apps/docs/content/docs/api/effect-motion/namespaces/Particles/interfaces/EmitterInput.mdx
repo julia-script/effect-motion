@@ -1,0 +1,203 @@
+---
+title: "EmitterInput"
+description: "props unique to a source emitter (launched particles with a lifetime)"
+---
+# Interface: EmitterInput
+
+Defined in: [packages/motion/src/particles/constructors.ts:54](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/particles/constructors.ts#L54)
+
+props unique to a source emitter (launched particles with a lifetime)
+
+## Extends
+
+- `CommonInput`
+
+## Properties
+
+### angle
+
+```ts
+readonly angle: Range;
+```
+
+Defined in: [packages/motion/src/particles/constructors.ts:58](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/particles/constructors.ts#L58)
+
+launch angle range (degrees; 0 = up, clockwise-positive)
+
+***
+
+### capacity?
+
+```ts
+readonly optional capacity?: number;
+```
+
+Defined in: [packages/motion/src/particles/constructors.ts:50](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/particles/constructors.ts#L50)
+
+fixed particle capacity
+
+#### Inherited from
+
+```ts
+CommonInput.capacity
+```
+
+***
+
+### gravity?
+
+```ts
+readonly optional gravity?: number;
+```
+
+Defined in: [packages/motion/src/particles/constructors.ts:46](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/particles/constructors.ts#L46)
+
+shared downward acceleration (px/sec²)
+
+#### Inherited from
+
+```ts
+CommonInput.gravity
+```
+
+***
+
+### life
+
+```ts
+readonly life: Range;
+```
+
+Defined in: [packages/motion/src/particles/constructors.ts:60](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/particles/constructors.ts#L60)
+
+lifetime range (seconds)
+
+***
+
+### opacityOverLife?
+
+```ts
+readonly optional opacityOverLife?: OverLifeInput;
+```
+
+Defined in: [packages/motion/src/particles/constructors.ts:48](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/particles/constructors.ts#L48)
+
+#### Inherited from
+
+```ts
+CommonInput.opacityOverLife
+```
+
+***
+
+### opacityRange?
+
+```ts
+readonly optional opacityRange?: Range;
+```
+
+Defined in: [packages/motion/src/particles/constructors.ts:42](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/particles/constructors.ts#L42)
+
+per-particle birth opacity range (0..1); over-life curve multiplies it
+
+#### Inherited from
+
+```ts
+CommonInput.opacityRange
+```
+
+***
+
+### palette?
+
+```ts
+readonly optional palette?: readonly Color[];
+```
+
+Defined in: [packages/motion/src/particles/constructors.ts:44](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/particles/constructors.ts#L44)
+
+colors drawn from uniformly at birth
+
+#### Inherited from
+
+```ts
+CommonInput.palette
+```
+
+***
+
+### size?
+
+```ts
+readonly optional size?: Range;
+```
+
+Defined in: [packages/motion/src/particles/constructors.ts:40](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/particles/constructors.ts#L40)
+
+birth size range (px radius)
+
+#### Inherited from
+
+```ts
+CommonInput.size
+```
+
+***
+
+### sizeOverLife?
+
+```ts
+readonly optional sizeOverLife?: OverLifeInput;
+```
+
+Defined in: [packages/motion/src/particles/constructors.ts:47](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/particles/constructors.ts#L47)
+
+#### Inherited from
+
+```ts
+CommonInput.sizeOverLife
+```
+
+***
+
+### speed
+
+```ts
+readonly speed: Range;
+```
+
+Defined in: [packages/motion/src/particles/constructors.ts:56](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/particles/constructors.ts#L56)
+
+launch speed range (px/sec)
+
+***
+
+### x?
+
+```ts
+readonly optional x?: number;
+```
+
+Defined in: [packages/motion/src/particles/constructors.ts:37](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/particles/constructors.ts#L37)
+
+#### Inherited from
+
+```ts
+CommonInput.x
+```
+
+***
+
+### y?
+
+```ts
+readonly optional y?: number;
+```
+
+Defined in: [packages/motion/src/particles/constructors.ts:38](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/particles/constructors.ts#L38)
+
+#### Inherited from
+
+```ts
+CommonInput.y
+```

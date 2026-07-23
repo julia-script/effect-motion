@@ -1,0 +1,41 @@
+---
+title: "Text"
+description: "const Text: TaggedStruct<\"Text\", {"
+---
+# Variable: Text
+
+```ts
+const Text: TaggedStruct<"Text", {
+  baseline: optionalKey<Literals<readonly ["auto", "middle", "hanging"]>>;
+  fillColor: withConstructorDefault<typeof Color>;
+  fontFamily: withConstructorDefault<TaggedStruct<"effect-motion/Resources/Font", {
+     id: String;
+  }>>;
+  fontSize: withConstructorDefault<Number>;
+  opacity: withConstructorDefault<Number>;
+  position: withConstructorDefault<TaggedStruct<"Vec3", {
+     x: withConstructorDefault<Number>;
+     y: withConstructorDefault<Number>;
+     z: withConstructorDefault<Number>;
+  }>>;
+  rotation: withConstructorDefault<TaggedStruct<"Vec3", {
+     x: withConstructorDefault<Number>;
+     y: withConstructorDefault<Number>;
+     z: withConstructorDefault<Number>;
+  }>>;
+  scale: withConstructorDefault<TaggedStruct<"Vec3", {
+     x: withConstructorDefault<Number>;
+     y: withConstructorDefault<Number>;
+     z: withConstructorDefault<Number>;
+  }>>;
+  text: String;
+  textAnchor: optionalKey<Literals<readonly ["start", "middle", "end"]>>;
+  visible: withConstructorDefault<Boolean>;
+}>;
+```
+
+Defined in: [packages/motion/src/Entity.ts:197](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Entity.ts#L197)
+
+A plain-string text leaf. The engine cannot measure text, so `text` has
+no dimensional fields — layout is the renderer's business. Inline
+formatting is expressed by composing several Texts, not by a rich tree.

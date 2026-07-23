@@ -1,0 +1,19 @@
+---
+title: "Child"
+description: "type Child ="
+---
+# Type Alias: Child
+
+```ts
+type Child = 
+  | string
+  | Instance
+| Effect.Effect<Instance, never, Runner>;
+```
+
+Defined in: [packages/motion/src/Runner.ts:111](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Runner.ts#L111)
+
+A child in a polymorphic `children` list: a plain string (→ a `Text`),
+an already-created `Instance`, or an `Effect` that resolves to one (a
+not-yet-yielded `instantiate` — yielded internally so JSX children need
+no `yield*`). Normalized to a stored child id in list order.

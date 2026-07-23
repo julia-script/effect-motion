@@ -1,0 +1,56 @@
+---
+title: "all"
+description: "const all: <Eff>(...args) => Effect<void, Eff extends Effect<any, E, any> ? E : never,"
+---
+# Variable: all
+
+```ts
+const all: <Eff>(...args) => Effect<void, Eff extends Effect<any, E, any> ? E : never, 
+  | Runner
+| Exclude<Eff extends Effect<any, any, R> ? R : never, Phaser>>;
+```
+
+Defined in: [packages/motion/src/Scene.ts:1214](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L1214)
+
+Run animations simultaneously, and resolve when the last one finishes.
+
+## Type Parameters
+
+| Type Parameter |
+| ------ |
+| `Eff` *extends* `Effect`\<`any`, `any`, `any`\> |
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| ...`args` | \[`Iterable`\<`Eff`, `any`, `any`\>\] |
+
+## Returns
+
+`Effect`\<`void`, `Eff` *extends* `Effect`\<`any`, `E`, `any`\> ? `E` : `never`, 
+  \| [`Runner`](../../Runner/classes/Runner.mdx)
+  \| `Exclude`\<`Eff` *extends* `Effect`\<`any`, `any`, `R`\> ? `R` : `never`, [`Phaser`](../../Phaser/classes/Phaser.mdx)\>\>
+
+## Remarks
+
+The everyday way to make things move at once. Every branch advances
+exactly one frame per tick in lockstep, so two one-second animations run
+as one second of frames — not two.
+
+Branches need not be the same length; `all` waits for the slowest. This
+is also the idiom for synchronizing springs, whose durations are emergent
+and unknown up front.
+
+There is deliberately no schedule parameter: pacing a list one-at-a-time
+is [chain](../functions/chain.mdx), and overlapping starts is [stagger](../functions/stagger.mdx).
+
+## Example
+
+A dot slides while the camera pushes in — one second of frames total.
+```typescript
+yield* Scene.all([
+	dot.pipe(Motion.moveTo({ x: 400 }, "1 second")),
+	camera.pipe(Motion.moveTo({ z: -300 }, "1 second")),
+]);
+```

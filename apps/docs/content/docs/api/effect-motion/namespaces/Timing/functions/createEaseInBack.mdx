@@ -1,0 +1,43 @@
+---
+title: "createEaseInBack"
+description: "function createEaseInBack(s?): TimingFunction;"
+---
+# Function: createEaseInBack()
+
+```ts
+function createEaseInBack(s?): TimingFunction;
+```
+
+Defined in: [packages/motion/src/Timing.ts:173](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Timing.ts#L173)
+
+Build a Back easing with a custom overshoot amount.
+
+## Parameters
+
+| Parameter | Type | Default value | Description |
+| ------ | ------ | ------ | ------ |
+| `s` | `number` | `1.70158` | Overshoot amount; larger goes further past the target. |
+
+## Returns
+
+[`TimingFunction`](../type-aliases/TimingFunction.mdx)
+
+A [TimingFunction](../type-aliases/TimingFunction.mdx) to pass to any animator.
+
+## Remarks
+
+Back curves pull slightly PAST the target and come back — the
+anticipation that makes an entrance feel deliberate. Use the ready-made
+[easeInBack](../variables/easeInBack.mdx) / [easeOutBack](../variables/easeOutBack.mdx) / [easeInOutBack](../variables/easeInOutBack.mdx) unless
+you specifically want a different amount of overshoot.
+
+## Default Value
+
+`1.70158` — the canonical ~10% overshoot
+
+## Example
+
+```typescript
+const subtle = Timing.createEaseOutBack(0.7);
+yield* card.pipe(Motion.moveTo({ y: 100 }, "600 millis", subtle));
+```

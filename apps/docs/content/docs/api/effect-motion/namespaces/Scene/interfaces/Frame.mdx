@@ -1,0 +1,134 @@
+---
+title: "Frame"
+description: "One rendered moment: every entity's state at a single instant, plus the"
+---
+# Interface: Frame\<Resources\>
+
+Defined in: [packages/motion/src/Scene.ts:325](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L325)
+
+One rendered moment: every entity's state at a single instant, plus the
+metadata needed to draw it.
+
+## Remarks
+
+A frame is self-describing — it carries its own resolution, background,
+frame rate, and camera view, so a renderer needs nothing but the frame to
+produce a picture. That is what lets frames be serialized, cached, or sent
+to a different process.
+
+`instances` is keyed by instance id and holds plain data, not handles. The
+active camera is deliberately absent from it (it is view state, surfaced
+as `camera` instead), and `root` names the group everything hangs from,
+which is never itself drawn.
+
+## Type Parameters
+
+| Type Parameter | Default type | Description |
+| ------ | ------ | ------ |
+| `Resources` | `never` | Fonts and images the renderer will need; frames carry the requirement, never the bytes. |
+
+## Properties
+
+### ~resources?
+
+```ts
+readonly optional ~resources?: Resources;
+```
+
+Defined in: [packages/motion/src/Scene.ts:331](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L331)
+
+phantom: the loader requirements the renderer will demand for this
+frame. Never a runtime value — an unused type parameter would be
+structurally erased, so it must anchor on an (always-absent) field.
+
+***
+
+### backgroundColor
+
+```ts
+backgroundColor: Color;
+```
+
+Defined in: [packages/motion/src/Scene.ts:340](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L340)
+
+***
+
+### camera
+
+```ts
+camera: CameraView & PointOfInterest;
+```
+
+Defined in: [packages/motion/src/Scene.ts:342](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L342)
+
+the active camera's view; the resting view when unused
+
+***
+
+### comps
+
+```ts
+comps: Record<string, CompConfig>;
+```
+
+Defined in: [packages/motion/src/Scene.ts:349](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L349)
+
+Mounted scenes (`Scene.play`), keyed by the id of the group they mount
+under. Each is a render-to-texture boundary: the renderer draws the
+subtree to its own target at these bounds, under an identity camera,
+and composites the result. An id absent here is a plain group.
+
+***
+
+### frameRate
+
+```ts
+frameRate: number;
+```
+
+Defined in: [packages/motion/src/Scene.ts:337](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L337)
+
+render metadata — frameRate from the runner settings, resolution and
+background from the ROOT scene's comp config; a frame is self-describing
+
+***
+
+### height
+
+```ts
+height: number;
+```
+
+Defined in: [packages/motion/src/Scene.ts:339](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L339)
+
+***
+
+### instances
+
+```ts
+instances: Record<string, FrameEntry>;
+```
+
+Defined in: [packages/motion/src/Scene.ts:332](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L332)
+
+***
+
+### root
+
+```ts
+root: string;
+```
+
+Defined in: [packages/motion/src/Scene.ts:334](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L334)
+
+id of the root group (conventionally "root"); never rendered itself
+
+***
+
+### width
+
+```ts
+width: number;
+```
+
+Defined in: [packages/motion/src/Scene.ts:338](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L338)

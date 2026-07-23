@@ -1,0 +1,29 @@
+---
+title: "clearDepth"
+description: "function clearDepth(self): Renderer;"
+---
+# Function: clearDepth()
+
+```ts
+function clearDepth(self): Renderer;
+```
+
+Defined in: [packages/three/src/Renderer.ts:301](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/Renderer.ts#L301)
+
+Clear the depth buffer.
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `self` | [`Renderer`](../interfaces/Renderer.mdx) |
+
+## Returns
+
+[`Renderer`](../interfaces/Renderer.mdx)
+
+## Remarks
+
+Paired with `setAutoClear(false)` for an overlay pass: without it, the
+overlay's geometry would be depth-tested against the world it is meant to
+sit above and could be hidden by it.

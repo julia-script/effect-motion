@@ -1,0 +1,65 @@
+---
+title: "play"
+description: "function play<E, R>(scene, options?): Effect<PlayHandle<void, E>, never, Runner | Exclude<R, Scope>>;"
+---
+# Function: play()
+
+```ts
+function play<E, R>(scene, options?): Effect<PlayHandle<void, E>, never, Runner | Exclude<R, Scope>>;
+```
+
+Defined in: [packages/motion/src/Scene.ts:1133](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L1133)
+
+Nest a whole scene inside the current one — the precomp.
+
+## Type Parameters
+
+| Type Parameter |
+| ------ |
+| `E` |
+| `R` |
+
+## Parameters
+
+| Parameter | Type | Description |
+| ------ | ------ | ------ |
+| `scene` | [`Scene`](../interfaces/Scene.mdx)\<`E`, `R`\> | The scene to nest. |
+| `options?` | [`PlayOptions`](../interfaces/PlayOptions.mdx) | `parent` to mount elsewhere, `seed` to vary this evaluation. |
+
+## Returns
+
+`Effect`\<[`PlayHandle`](../interfaces/PlayHandle.mdx)\<`void`, `E`\>, `never`, [`Runner`](../../Runner/classes/Runner.mdx) \| `Exclude`\<`R`, `Scope`\>\>
+
+A handle with `finished`, `fiber`, and the mount `group`.
+
+## Remarks
+
+The door to composing scenes rather than writing one flat timeline. A
+played scene is authored and tested independently, then dropped into a
+larger one as a unit: an intro built alone becomes the first beat of a
+longer piece without edits.
+
+The child mounts under an implicit group carrying its OWN bounds. Content
+clips to them, a non-transparent background paints within them, and the
+group is placed so those bounds sit centered in the enclosing composition
+— so a child smaller or larger than its parent still lands sensibly. The
+handle's `group` is that mount point: move or fade it to transform the
+entire nested scene as one object.
+
+The child shares the movie's frame clock but gets a FRESH seeded random
+stream, so a nested scene animates exactly as it did standalone under the
+same seed — nesting never perturbs a child's randomness.
+
+Awaited like a [fork](./fork.mdx): yield `handle.finished` to play children in
+sequence, or skip the await to run them concurrently.
+
+## Example
+
+Play one scene, then another, and fade the second out as a whole.
+```typescript
+const intro = yield* Scene.play(introScene);
+yield* intro.finished;
+
+const outro = yield* Scene.play(outroScene);
+yield* outro.group.pipe(Motion.fadeTo(0, "500 millis"));
+```

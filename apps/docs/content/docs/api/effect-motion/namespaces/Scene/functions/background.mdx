@@ -1,0 +1,72 @@
+---
+title: "background"
+description: "function background<A, E, R>(effect): Effect<BranchHandle<A, E>, never,"
+---
+# Function: background()
+
+```ts
+function background<A, E, R>(effect): Effect<BranchHandle<A, E>, never, 
+  | Runner
+| Exclude<Exclude<R, never>, Phaser>>;
+```
+
+Defined in: [packages/motion/src/Scene.ts:1069](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L1069)
+
+Like [fork](./fork.mdx), but the animation is CUT OFF at scene end rather than
+awaited.
+
+## Type Parameters
+
+| Type Parameter | Default type |
+| ------ | ------ |
+| `A` | - |
+| `E` | `never` |
+| `R` | `never` |
+
+## Parameters
+
+| Parameter | Type | Description |
+| ------ | ------ | ------ |
+| `effect` | `Effect`\<`A`, `E`, `R`\> | The ambient animation. |
+
+## Returns
+
+`Effect`\<[`BranchHandle`](../interfaces/BranchHandle.mdx)\<`A`, `E`\>, `never`, 
+  \| [`Runner`](../../Runner/classes/Runner.mdx)
+  \| `Exclude`\<`Exclude`\<`R`, `never`\>, [`Phaser`](../../Phaser/classes/Phaser.mdx)\>\>
+
+A handle with `finished` and `fiber`.
+
+## Remarks
+
+For ambient motion that should play for as long as the scene lasts
+without deciding how long that is — a pulsing indicator, a drifting
+backdrop, anything paired with `Schedule.forever`. A background never
+holds the scene open, so the scene's real content governs its length and
+the ambient loop simply stops when everything else is done.
+
+"Scene end" includes the fork drain: backgrounds keep animating while
+awaited forks finish, and are stopped only after the last one.
+
+Because backgrounds do not keep a scene alive, a scene whose body has
+nothing else to do will not end on its own — it has no content to
+finish, and the background is not content. Always pair one with
+something that defines the length, whether a real animation or an
+explicit [sleep](./sleep.mdx).
+
+## Example
+
+A pulse that runs the whole scene, with the scene's length set by the
+animation after it.
+```typescript
+yield* Scene.background(
+	Scene.repeat(
+		pulse.pipe(
+			Motion.tweenTo({ radius: 24 }, "400 millis"),
+			Motion.tweenTo({ radius: 10 }, "400 millis"),
+		),
+		Schedule.forever,
+	),
+);
+yield* title.pipe(Motion.moveTo({ y: 100 }, "2 seconds"));
+```

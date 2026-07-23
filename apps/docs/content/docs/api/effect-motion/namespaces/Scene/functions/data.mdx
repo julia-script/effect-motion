@@ -1,0 +1,55 @@
+---
+title: "data"
+description: "function data<Tag>(instance): Effect<EntityByTag<Tag>, never, Runner>;"
+---
+# Function: data()
+
+```ts
+function data<Tag>(instance): Effect<EntityByTag<Tag>, never, Runner>;
+```
+
+Defined in: [packages/motion/src/Scene.ts:634](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L634)
+
+Read an entity's current data.
+
+## Type Parameters
+
+| Type Parameter |
+| ------ |
+| `Tag` *extends* \| `"Camera"` \| `"Line"` \| `"Path"` \| `"Rect"` \| `"Circle"` \| `"Ellipse"` \| `"Text"` \| `"Group"` \| `"Hud"` \| `"Image"` |
+
+## Parameters
+
+| Parameter | Type | Description |
+| ------ | ------ | ------ |
+| `instance` | [`Instance`](../../Instance/interfaces/Instance.mdx)\<`Tag`\> | Handle to read. |
+
+## Returns
+
+`Effect`\<[`EntityByTag`](../../Entity/type-aliases/EntityByTag.mdx)\<`Tag`\>, `never`, [`Runner`](../../Runner/classes/Runner.mdx)\>
+
+The entity's data as of this frame.
+
+## Remarks
+
+An [Instance](../../Instance/index.mdx) is only a handle, so this is how you get at the live
+values behind it — to branch on where something is, or to compute a target
+relative to its current state.
+
+The result is a snapshot for THIS frame, not a live view; read again on a
+later frame to see later values. The returned type is narrowed by the
+handle's kind, so a Circle's `radius` is available without casting.
+
+Reading a destroyed entity is a loud defect rather than a silent
+`undefined`.
+
+## See
+
+[update](./update.mdx) to write it.
+
+## Example
+
+```typescript
+const { position, radius } = yield* Scene.data(dot);
+yield* dot.pipe(Motion.moveTo({ x: position.x + radius * 4 }, "1 second"));
+```

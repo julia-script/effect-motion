@@ -1,0 +1,24 @@
+---
+title: "EmitterEmission"
+description: "type EmitterEmission ="
+---
+# Type Alias: EmitterEmission
+
+```ts
+type EmitterEmission = 
+  | {
+  burst: number;
+}
+  | {
+  rate: number;
+};
+```
+
+Defined in: [packages/motion/src/particles/simulate.ts:27](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/particles/simulate.ts#L27)
+
+Emission model for a single `simulate` call:
+- `{ burst: n }` — birth `n` particles on the FIRST frame, then none
+- `{ rate: n }`  — birth `n` particles per second, continuously
+- `{ fill: n }`  — seed `n` particles EVENLY across the region on the
+  first frame; they drift and wrap at the edges forever (no source, no
+  lifecycle). This is the "floating field" model.

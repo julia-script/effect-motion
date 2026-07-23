@@ -1,0 +1,32 @@
+---
+title: "Loader"
+description: "function Loader<ID>(id): Service<FontLoader<ID>, FontLoader<ID>>;"
+---
+# Function: Loader()
+
+```ts
+function Loader<ID>(id): Service<FontLoader<ID>, FontLoader<ID>>;
+```
+
+Defined in: [packages/motion/src/Font.ts:47](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Font.ts#L47)
+
+The context key for a font's loader, derived from the id string alone —
+the bridge over literal erasure: frame data carries only `{ id: string }`,
+and rebuilding the key from that string resolves the same service the
+authored constant provides.
+
+## Type Parameters
+
+| Type Parameter |
+| ------ |
+| `ID` *extends* `string` |
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `id` | `ID` |
+
+## Returns
+
+`Service`\<[`FontLoader`](../interfaces/FontLoader.mdx)\<`ID`\>, [`FontLoader`](../interfaces/FontLoader.mdx)\<`ID`\>\>

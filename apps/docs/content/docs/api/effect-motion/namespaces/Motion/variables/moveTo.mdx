@@ -1,0 +1,71 @@
+---
+title: "moveTo"
+description: "const moveTo: <Tag>(to, duration, timing?) => <E, R>(instance) => Effect<Instance<Tag>, E, Runner | R> & <Tag, E, R>(instance, to, duration, timing?) "
+---
+# Variable: moveTo
+
+```ts
+const moveTo: <Tag>(to, duration, timing?) => <E, R>(instance) => Effect<Instance<Tag>, E, Runner | R> & <Tag, E, R>(instance, to, duration, timing?) => Effect<Instance<Tag>, E, Runner | R>;
+```
+
+Defined in: [packages/motion/src/Motion.ts:546](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Motion.ts#L546)
+
+Move an instance to a position over `duration`.
+
+## Remarks
+
+The semantic counterpart to tweening x/y/z by hand, and what you should
+reach for whenever you want something to travel. Because every entity's
+geometry is expressed RELATIVE to its `position`, one `moveTo` translates
+the whole shape rigidly: a Line carries both endpoints, a Path its whole
+command list, a Group its entire subtree. There is no per-entity special
+casing to remember.
+
+Targets are partial — naming only `x` holds `y` and `z` at their current
+values, which is what makes single-axis motion read cleanly. `z` is depth:
+moving along it changes an entity's size and parallax under a perspective
+camera rather than just its sort order.
+
+Accepted for any entity that carries a position, which is all of them —
+the Camera included, so this is also how you fly the camera.
+
+## Param
+
+**to**
+
+Target position; omitted axes hold their current value.
+
+## Param
+
+**duration**
+
+How long, in scene time.
+
+## Param
+
+**timing**
+
+An easing name or function.
+
+## Default Value
+
+`timing` — `"linear"`
+
+## Returns
+
+The instance, so animators chain.
+
+## See
+
+[move](./move.mdx) to start from an explicit position, and
+  `Physics.springTo` for durationless motion with momentum.
+
+## Example
+
+Slide right, then drop — the second leg holds the x reached by the first.
+```typescript
+yield* box.pipe(
+	Motion.moveTo({ x: 400 }, "1 second", "easeInOutCubic"),
+	Motion.moveTo({ y: 250 }, "600 millis", "easeInQuad"),
+);
+```

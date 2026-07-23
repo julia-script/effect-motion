@@ -1,0 +1,55 @@
+---
+title: "setAutoClear"
+description: "const setAutoClear: {"
+---
+# Variable: setAutoClear
+
+```ts
+const setAutoClear: {
+  (autoClear): (self) => Renderer;
+  (self, autoClear): Renderer;
+};
+```
+
+Defined in: [packages/three/src/Renderer.ts:285](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/Renderer.ts#L285)
+
+Whether the renderer clears the canvas before each render.
+
+## Call Signature
+
+```ts
+(autoClear): (self) => Renderer;
+```
+
+### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `autoClear` | `boolean` |
+
+### Returns
+
+(`self`) => [`Renderer`](../interfaces/Renderer.mdx)
+
+## Call Signature
+
+```ts
+(self, autoClear): Renderer;
+```
+
+### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `self` | [`Renderer`](../interfaces/Renderer.mdx) |
+| `autoClear` | `boolean` |
+
+### Returns
+
+[`Renderer`](../interfaces/Renderer.mdx)
+
+## Remarks
+
+Turning it off is how a second pass draws ON TOP of what is already
+there — an overlay or HUD tier. Turn it back on afterwards, or the next
+frame will accumulate over this one.

@@ -1,0 +1,21 @@
+---
+title: "Object3D"
+description: "type Object3D = THREE.Object3D;"
+---
+# Type Alias: Object3D
+
+```ts
+type Object3D = THREE.Object3D;
+```
+
+Defined in: [packages/three/src/Object3D.ts:14](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/Object3D.ts#L14)
+
+Leaf value type: an `Object3D` carries no lifecycle of its own — the
+disposables hang off it (geometries, materials), and those get their
+own modules — so it stays a plain alias to three's type rather than a
+branded handle. See "Wrapping a library that is already actor-shaped"
+in AGENTS.md.
+
+Imported from `three/webgpu` (not `three`) so it is the same nominal
+type the rest of the package uses; the two entries declare separate
+class identities to TypeScript.

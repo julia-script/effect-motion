@@ -7,3 +7,9 @@ allowBuilds:
 packages:
   - packages/*
   - apps/*
+
+# TypeDoc 0.28 reads TypeScript compiler internals that TS 7 no longer
+# exposes, so the doc generator gets its own supported TypeScript. The
+# packages themselves stay on TS 7 — this override is scoped to typedoc.
+overrides:
+  typedoc>typescript: 5.9.3

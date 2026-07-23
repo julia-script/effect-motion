@@ -1,0 +1,54 @@
+---
+title: "setBackground"
+description: "const setBackground: {"
+---
+# Variable: setBackground
+
+```ts
+const setBackground: {
+  (background): (self) => Scene;
+  (self, background): Scene;
+};
+```
+
+Defined in: [packages/three/src/Scene.ts:160](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/Scene.ts#L160)
+
+Set the background color or texture, or `null` for transparency.
+
+## Call Signature
+
+```ts
+(background): (self) => Scene;
+```
+
+### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `background` | `Texture`\<`unknown`, `TextureEventMap`\> \| `Color` \| `null` |
+
+### Returns
+
+(`self`) => [`Scene`](../interfaces/Scene.mdx)
+
+## Call Signature
+
+```ts
+(self, background): Scene;
+```
+
+### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `self` | [`Scene`](../interfaces/Scene.mdx) |
+| `background` | `Texture`\<`unknown`, `TextureEventMap`\> \| `Color` \| `null` |
+
+### Returns
+
+[`Scene`](../interfaces/Scene.mdx)
+
+## Remarks
+
+`null` is what an overlay tier wants: with nothing painted behind it,
+whatever was rendered first shows through.

@@ -1,0 +1,54 @@
+---
+title: "update"
+description: "function update<Tag>(instance, props): Effect<false | void, never, Runner>;"
+---
+# Function: update()
+
+```ts
+function update<Tag>(instance, props): Effect<false | void, never, Runner>;
+```
+
+Defined in: [packages/motion/src/Scene.ts:675](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L675)
+
+Set an entity's data immediately, with no animation.
+
+## Type Parameters
+
+| Type Parameter |
+| ------ |
+| `Tag` *extends* \| `"Camera"` \| `"Line"` \| `"Path"` \| `"Rect"` \| `"Circle"` \| `"Ellipse"` \| `"Text"` \| `"Group"` \| `"Hud"` \| `"Image"` |
+
+## Parameters
+
+| Parameter | Type | Description |
+| ------ | ------ | ------ |
+| `instance` | [`Instance`](../../Instance/interfaces/Instance.mdx)\<`Tag`\> | Handle to update. |
+| `props` | `Updater`\<[`EntityByTag`](../../Entity/type-aliases/EntityByTag.mdx)\<`Tag`\>\> | New data, or `(current) => next`. |
+
+## Returns
+
+`Effect`\<`false` \| `void`, `never`, [`Runner`](../../Runner/classes/Runner.mdx)\>
+
+## Remarks
+
+A hard cut on the current frame — the counterpart to the animators, which
+interpolate. Use it to set something up before animating (jolt the camera,
+then spring it back), or to change a field no animator covers, like
+`text`, `visible`, or a Path's `commands`.
+
+Pass an object to replace the data, or a function to derive it from the
+current values — the function form is preferred, since it reads and writes
+atomically.
+
+Updating a destroyed entity is a no-op returning `false`, not an error.
+
+## Example
+
+Retitle a label and jolt the camera, both on this frame.
+```typescript
+yield* Scene.update(label, (d) => ({ ...d, text: "done" }));
+yield* Scene.update(camera, (d) => ({
+	...d,
+	position: Entity.vec3({ ...d.position, x: 22 }),
+}));
+```

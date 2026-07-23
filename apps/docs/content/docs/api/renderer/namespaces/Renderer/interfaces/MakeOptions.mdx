@@ -1,0 +1,73 @@
+---
+title: "MakeOptions"
+description: "readonly optional canvas?: HTMLCanvasElement;"
+---
+# Interface: MakeOptions
+
+Defined in: [Renderer.ts:87](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Renderer.ts#L87)
+
+## Properties
+
+### canvas?
+
+```ts
+readonly optional canvas?: HTMLCanvasElement;
+```
+
+Defined in: [Renderer.ts:89](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Renderer.ts#L89)
+
+Canvas to draw into; one is created if omitted.
+
+***
+
+### height
+
+```ts
+readonly height: number;
+```
+
+Defined in: [Renderer.ts:93](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Renderer.ts#L93)
+
+Logical height in CSS pixels.
+
+***
+
+### pixelRatio?
+
+```ts
+readonly optional pixelRatio?: number;
+```
+
+Defined in: [Renderer.ts:100](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Renderer.ts#L100)
+
+Device pixels per logical pixel — pass `window.devicePixelRatio` for a
+sharp result on a high-DPI display.
+
+#### Default Value
+
+`1`
+
+***
+
+### renderers?
+
+```ts
+readonly optional renderers?: Record<string, AnyEntityRenderer>;
+```
+
+Defined in: [Renderer.ts:105](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Renderer.ts#L105)
+
+Renderers for custom entity kinds, or overrides for built-in ones.
+Merged over the built-in manifest by entity tag.
+
+***
+
+### width
+
+```ts
+readonly width: number;
+```
+
+Defined in: [Renderer.ts:91](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Renderer.ts#L91)
+
+Logical width in CSS pixels.

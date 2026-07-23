@@ -1,0 +1,37 @@
+---
+title: "render"
+description: "function render(renderer): Effect<void, EffectMotionError | ThreeException>;"
+---
+# Function: render()
+
+```ts
+function render(renderer): Effect<void, EffectMotionError | ThreeException>;
+```
+
+Defined in: [Renderer.ts:228](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Renderer.ts#L228)
+
+Draw the current retained scene to the canvas.
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `renderer` | [`Renderer`](../interfaces/Renderer.mdx) |
+
+## Returns
+
+`Effect`\<`void`, `EffectMotionError` \| `ThreeException`\>
+
+## Remarks
+
+Call after [syncFrame](./syncFrame.mdx). Before drawing, this waits for the async
+work that sync registered — glyph layouts and image decodes — so a frame
+never presents half-built text or a missing texture. A failed layout or
+decode surfaces as a typed error naming the resource.
+
+Nested sub-compositions are drawn to their own render targets first, then
+the world, then any HUD content composited on top through an identity
+camera so it ignores camera movement.
+
+Depth of field is not applied: every frame renders sharp, regardless of a
+camera's `aperture`.

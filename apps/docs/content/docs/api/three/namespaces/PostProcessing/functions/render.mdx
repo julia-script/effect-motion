@@ -1,0 +1,28 @@
+---
+title: "render"
+description: "function render(self): Effect<void, ThreeException>;"
+---
+# Function: render()
+
+```ts
+function render(self): Effect<void, ThreeException>;
+```
+
+Defined in: [packages/three/src/PostProcessing.ts:155](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/PostProcessing.ts#L155)
+
+Draw the pipeline to the renderer's current output.
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `self` | [`RenderPipeline`](../interfaces/RenderPipeline.mdx) |
+
+## Returns
+
+`Effect`\<`void`, [`ThreeException`](../../../classes/ThreeException.mdx)\>
+
+## Remarks
+
+Use this INSTEAD of `Renderer.render` when a pipeline is involved — it
+renders the passes the graph depends on and applies the output transform.

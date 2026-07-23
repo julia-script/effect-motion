@@ -1,0 +1,36 @@
+---
+title: "syncFrame"
+description: "function syncFrame(renderer, frame): Effect<void, RenderException>;"
+---
+# Function: syncFrame()
+
+```ts
+function syncFrame(renderer, frame): Effect<void, RenderException>;
+```
+
+Defined in: [Renderer.ts:187](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Renderer.ts#L187)
+
+Bring the retained three scene in step with a frame.
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `renderer` | [`Renderer`](../interfaces/Renderer.mdx) |
+| `frame` | `AnyFrame` |
+
+## Returns
+
+`Effect`\<`void`, `RenderException`\>
+
+## Remarks
+
+This is the diff: objects new to this frame are built, ones whose data or
+world position changed are updated, and ones that left are disposed.
+Unchanged objects are skipped entirely, which is what makes a mostly-still
+scene cheap to hold on screen.
+
+Scene-graph problems — an instance referenced twice, an unknown id, a Hud
+nested inside world content, an entity with no registered renderer —
+arrive as a typed RenderException naming the offender rather than
+as a thrown exception.

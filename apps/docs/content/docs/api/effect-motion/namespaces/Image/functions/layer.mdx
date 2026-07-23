@@ -1,0 +1,33 @@
+---
+title: "layer"
+description: "function layer<ID, E, R>(image, load): Layer<ImageLoader<ID>, E, R>;"
+---
+# Function: layer()
+
+```ts
+function layer<ID, E, R>(image, load): Layer<ImageLoader<ID>, E, R>;
+```
+
+Defined in: [packages/motion/src/Image.ts:94](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Image.ts#L94)
+
+Provide an image's encoded bytes. The load effect runs ONCE, at layer
+construction — never at frame time; compose retries on the load effect.
+
+## Type Parameters
+
+| Type Parameter |
+| ------ |
+| `ID` *extends* `string` |
+| `E` |
+| `R` |
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `image` | [`ImageResource`](../interfaces/ImageResource.mdx)\<`ID`\> |
+| `load` | `Effect`\<`Uint8Array`\<`ArrayBufferLike`\>, `E`, `R`\> |
+
+## Returns
+
+`Layer`\<[`ImageLoader`](../interfaces/ImageLoader.mdx)\<`ID`\>, `E`, `R`\>

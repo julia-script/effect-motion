@@ -1,0 +1,66 @@
+---
+title: "Instance"
+description: "A handle to something living in a scene — what `Scene.instantiate` returns"
+---
+# Interface: Instance\<Tag\>
+
+Defined in: [packages/motion/src/Instance.ts:32](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Instance.ts#L32)
+
+A handle to something living in a scene — what `Scene.instantiate` returns
+and what every animator takes.
+
+## Remarks
+
+An instance holds no entity data of its own, only an id and a kind. The
+data lives in the scene and changes every frame; the handle stays valid
+throughout, which is why it can be captured once and animated repeatedly.
+To read the current values, use `Scene.data`.
+
+The `Tag` parameter is what makes animators statically safe: `fadeTo`
+accepts only instances whose entity actually has an `opacity`, so fading a
+Camera fails at compile time with a message naming the missing field
+rather than misbehaving at runtime.
+
+Instances are pipeable, and are themselves Effects resolving to
+themselves — the two properties that let `circle.pipe(moveTo(…),
+fadeTo(…))` read as one chain.
+
+## Extends
+
+- `Pipeable`
+
+## Type Parameters
+
+| Type Parameter | Default type | Description |
+| ------ | ------ | ------ |
+| `Tag` *extends* [`EntityTag`](../../Entity/type-aliases/EntityTag.mdx) | [`EntityTag`](../../Entity/type-aliases/EntityTag.mdx) | Which entity this refers to, e.g. `"Circle"`. |
+
+## Properties
+
+### \_tag
+
+```ts
+readonly _tag: "Instance";
+```
+
+Defined in: [packages/motion/src/Instance.ts:34](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Instance.ts#L34)
+
+***
+
+### id
+
+```ts
+readonly id: string;
+```
+
+Defined in: [packages/motion/src/Instance.ts:35](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Instance.ts#L35)
+
+***
+
+### kind
+
+```ts
+readonly kind: Tag;
+```
+
+Defined in: [packages/motion/src/Instance.ts:36](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Instance.ts#L36)

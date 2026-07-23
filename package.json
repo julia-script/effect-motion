@@ -13,12 +13,15 @@
 		"lint:fix": "biome check --write --unsafe",
 		"changeset": "changeset",
 		"version-packages": "changeset version",
-		"release": "changeset publish"
+		"release": "changeset publish",
+		"docs:api": "node scripts/generate-api-docs.mjs"
 	},
 	"license": "MIT",
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.3",
 		"@changesets/cli": "^2.31.0",
-		"turbo": "^2.5.0"
+		"turbo": "^2.5.0",
+		"typedoc": "^0.28.20",
+		"typedoc-plugin-markdown": "^4.12.0"
 	}
 }

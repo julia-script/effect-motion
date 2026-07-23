@@ -1,0 +1,54 @@
+---
+title: "add"
+description: "const add: {"
+---
+# Variable: add
+
+```ts
+const add: {
+  (objects): (self) => Scene;
+  (self, objects): Scene;
+};
+```
+
+Defined in: [packages/three/src/Scene.ts:124](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/Scene.ts#L124)
+
+Attach objects to the scene root.
+
+## Call Signature
+
+```ts
+(objects): (self) => Scene;
+```
+
+### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `objects` | readonly [`Object3D`](../../Object3D/type-aliases/Object3D.mdx)[] |
+
+### Returns
+
+(`self`) => [`Scene`](../interfaces/Scene.mdx)
+
+## Call Signature
+
+```ts
+(self, objects): Scene;
+```
+
+### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `self` | [`Scene`](../interfaces/Scene.mdx) |
+| `objects` | readonly [`Object3D`](../../Object3D/type-aliases/Object3D.mdx)[] |
+
+### Returns
+
+[`Scene`](../interfaces/Scene.mdx)
+
+## Remarks
+
+Re-adding an object that is already parented moves it, as in three
+itself — an object has exactly one parent.

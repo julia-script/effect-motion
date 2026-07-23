@@ -1,0 +1,63 @@
+---
+title: "Retained"
+description: "What a renderer hands back from `build` and keeps for the life of an"
+---
+# Interface: Retained
+
+Defined in: [EntityRenderer.ts:100](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L100)
+
+What a renderer hands back from `build` and keeps for the life of an
+instance: the three object, its billboard behavior, and how to free it.
+
+## Properties
+
+### billboard
+
+```ts
+billboard: boolean;
+```
+
+Defined in: [EntityRenderer.ts:113](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L113)
+
+Whether the object turns to face the camera each frame.
+
+#### Remarks
+
+`true` keeps an authored silhouette intact under any camera orbit — a
+circle stays circular rather than foreshortening into an ellipse.
+`false` lets the object sit in the world as a real oriented plane.
+
+Mutable, because a shape can change its mind: a Rect billboards while
+its rotation is zero and stops the moment it tilts.
+
+***
+
+### dispose
+
+```ts
+readonly dispose: () => void;
+```
+
+Defined in: [EntityRenderer.ts:122](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L122)
+
+Release GPU resources — geometries, materials, textures.
+
+#### Returns
+
+`void`
+
+#### Remarks
+
+Called when the instance leaves the frame or the renderer's scope
+closes. Anything allocated in `build` that holds GPU memory is freed
+here; three does not do it for you.
+
+***
+
+### object
+
+```ts
+readonly object: Object3D;
+```
+
+Defined in: [EntityRenderer.ts:101](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L101)

@@ -1,0 +1,76 @@
+---
+title: "fork"
+description: "function fork<A, E, R>(effect): Effect<BranchHandle<A, E>, never,"
+---
+# Function: fork()
+
+```ts
+function fork<A, E, R>(effect): Effect<BranchHandle<A, E>, never, 
+  | Runner
+| Exclude<Exclude<R, never>, Phaser>>;
+```
+
+Defined in: [packages/motion/src/Scene.ts:1024](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L1024)
+
+Start an animation alongside the rest of the scene and continue
+immediately, without waiting for it.
+
+## Type Parameters
+
+| Type Parameter | Default type |
+| ------ | ------ |
+| `A` | - |
+| `E` | `never` |
+| `R` | `never` |
+
+## Parameters
+
+| Parameter | Type | Description |
+| ------ | ------ | ------ |
+| `effect` | `Effect`\<`A`, `E`, `R`\> | The animation to run alongside. |
+
+## Returns
+
+`Effect`\<[`BranchHandle`](../interfaces/BranchHandle.mdx)\<`A`, `E`\>, `never`, 
+  \| [`Runner`](../../Runner/classes/Runner.mdx)
+  \| `Exclude`\<`Exclude`\<`R`, `never`\>, [`Phaser`](../../Phaser/classes/Phaser.mdx)\>\>
+
+A handle with `finished` and `fiber`.
+
+## Remarks
+
+Where [all](../variables/all.mdx) blocks until its branches finish, `fork` returns at
+once — so the scene body carries on while the forked animation plays.
+That is what lets independent timelines overlap, and what makes spawning
+work in a loop possible.
+
+Note this INVERTS Effect's own `fork`: the scene's end waits for forked
+work. A body that returns while forks are still animating keeps producing
+frames until the last one finishes, so a scene consisting only of a fork
+still plays in full. For work that should instead be cut off when the
+scene ends, use [background](./background.mdx).
+
+The returned handle carries `finished` — yield it to wait for this branch
+specifically — and `fiber`, to interrupt it early.
+
+## See
+
+[background](./background.mdx) for work bounded by the scene's end.
+
+## Example
+
+Spawn overlapping dots; the scene lives until the last one has faded.
+```typescript
+yield* Scene.repeat(
+	Scene.fork(
+		Effect.gen(function* () {
+			const dot = yield* Scene.instantiate("Circle", { radius: 8 });
+			yield* dot.pipe(
+				Motion.moveTo({ x: 440 }, "1200 millis"),
+				Motion.fadeTo(0, "300 millis"),
+			);
+		}),
+	),
+	Schedule.fixed("200 millis").pipe(Schedule.upTo({ times: 5 })),
+);
+```

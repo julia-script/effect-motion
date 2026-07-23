@@ -1,0 +1,142 @@
+---
+title: "ParticleField"
+description: "const ParticleField: Entity<\"particles/ParticleField\", {"
+---
+# Variable: ParticleField
+
+```ts
+const ParticleField: Entity<"particles/ParticleField", {
+  angle: withConstructorDefault<Tuple<readonly [Number, Number]>>;
+  buffer: withConstructorDefault<$Array<Struct<{
+     age: Number;
+     alive: Boolean;
+     color: typeof Color;
+     life: Number;
+     opacity: Number;
+     rng: Number;
+     size: Number;
+     vx: Number;
+     vy: Number;
+     wrap: Boolean;
+     x: Number;
+     y: Number;
+  }>>>;
+  capacity: withConstructorDefault<Number>;
+  drift: optionalKey<Tuple<readonly [Number, Number]>>;
+  gravity: withConstructorDefault<Number>;
+  life: withConstructorDefault<Tuple<readonly [Number, Number]>>;
+  opacity: withConstructorDefault<Number>;
+  opacityOverLife: optionalKey<Struct<{
+     ease: optionalKey<String>;
+     from: Number;
+     to: Number;
+  }>>;
+  opacityRange: withConstructorDefault<Tuple<readonly [Number, Number]>>;
+  palette: withConstructorDefault<$Array<typeof Color>>;
+  region: optionalKey<Struct<{
+     h: Number;
+     w: Number;
+  }>>;
+  size: withConstructorDefault<Tuple<readonly [Number, Number]>>;
+  sizeOverLife: optionalKey<Struct<{
+     ease: optionalKey<String>;
+     from: Number;
+     to: Number;
+  }>>;
+  speed: withConstructorDefault<Tuple<readonly [Number, Number]>>;
+  x: withConstructorDefault<Number>;
+  y: withConstructorDefault<Number>;
+  z: withConstructorDefault<Number>;
+}, {
+  ~opacity: TraitLens<{
+     ~visible: boolean;
+     angle: readonly [number, number];
+     buffer: readonly ReadonlySide<{
+        age: Number;
+        alive: Boolean;
+        color: typeof Color;
+        life: Number;
+        opacity: Number;
+        rng: Number;
+        size: Number;
+        vx: Number;
+        vy: Number;
+        wrap: Boolean;
+        x: Number;
+        y: Number;
+     }, "Type">[];
+     capacity: number;
+     drift?: readonly [number, number];
+     gravity: number;
+     life: readonly [number, number];
+     opacity: number;
+     opacityOverLife?: {
+        ease?: string;
+        from: number;
+        to: number;
+     };
+     opacityRange: readonly [number, number];
+     palette: readonly Color[];
+     region?: ReadonlySide<{
+        h: Number;
+        w: Number;
+     }, "Type">;
+     size: readonly [number, number];
+     sizeOverLife?: {
+        ease?: string;
+        from: number;
+        to: number;
+     };
+     speed: readonly [number, number];
+     x: number;
+     y: number;
+     z: number;
+  }, number>;
+  ~position: TraitLens<{
+     ~visible: boolean;
+     angle: readonly [number, number];
+     buffer: readonly ReadonlySide<{
+        age: Number;
+        alive: Boolean;
+        color: typeof Color;
+        life: Number;
+        opacity: Number;
+        rng: Number;
+        size: Number;
+        vx: Number;
+        vy: Number;
+        wrap: Boolean;
+        x: Number;
+        y: Number;
+     }, "Type">[];
+     capacity: number;
+     drift?: readonly [number, number];
+     gravity: number;
+     life: readonly [number, number];
+     opacity: number;
+     opacityOverLife?: {
+        ease?: string;
+        from: number;
+        to: number;
+     };
+     opacityRange: readonly [number, number];
+     palette: readonly Color[];
+     region?: ReadonlySide<{
+        h: Number;
+        w: Number;
+     }, "Type">;
+     size: readonly [number, number];
+     sizeOverLife?: {
+        ease?: string;
+        from: number;
+        to: number;
+     };
+     speed: readonly [number, number];
+     x: number;
+     y: number;
+     z: number;
+  }, Position>;
+}>;
+```
+
+Defined in: [packages/motion/src/particles/ParticleField.ts:50](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/particles/ParticleField.ts#L50)

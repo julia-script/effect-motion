@@ -1,0 +1,61 @@
+---
+title: "bytes"
+description: "function bytes(self): {"
+---
+# Function: bytes()
+
+```ts
+function bytes(self): {
+  a: number;
+  b: number;
+  g: number;
+  r: number;
+};
+```
+
+Defined in: [packages/motion/src/Color.ts:446](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Color.ts#L446)
+
+RGBA as 0–255 bytes — the form ThorVG's setFillColor/setStrokeColor want.
+`a` is scaled from the 0–1 alpha, so this is the single conversion point
+for the raster boundary (the getters keep alpha 0–1 for authoring math).
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `self` | [`Color`](../classes/Color.mdx) |
+
+## Returns
+
+```ts
+{
+  a: number;
+  b: number;
+  g: number;
+  r: number;
+}
+```
+
+### a
+
+```ts
+a: number;
+```
+
+### b
+
+```ts
+b: number;
+```
+
+### g
+
+```ts
+g: number;
+```
+
+### r
+
+```ts
+r: number;
+```

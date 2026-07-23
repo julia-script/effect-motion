@@ -1,0 +1,31 @@
+---
+title: "wrap"
+description: "function wrap<A>(operation, fn): Effect<A, ThreeException, never>;"
+---
+# Function: wrap()
+
+```ts
+function wrap<A>(operation, fn): Effect<A, ThreeException, never>;
+```
+
+Defined in: [packages/three/src/Interop.ts:22](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/Interop.ts#L22)
+
+Run a synchronous three call, converting a throw into a
+[ThreeException](../../../classes/ThreeException.mdx).
+
+## Type Parameters
+
+| Type Parameter |
+| ------ |
+| `A` |
+
+## Parameters
+
+| Parameter | Type | Description |
+| ------ | ------ | ------ |
+| `operation` | `string` | Name of the three operation, used in the error. |
+| `fn` | () => `A` | The call to make. |
+
+## Returns
+
+`Effect`\<`A`, [`ThreeException`](../../../classes/ThreeException.mdx), `never`\>

@@ -1,0 +1,21 @@
+---
+title: "MakeInput"
+description: "type MakeInput<Tag> = EntityDefinitionByTag<Tag>\"~type.make.in\";"
+---
+# Type Alias: MakeInput\<Tag\>
+
+```ts
+type MakeInput<Tag> = EntityDefinitionByTag<Tag>["~type.make.in"];
+```
+
+Defined in: [packages/motion/src/Entity.ts:341](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Entity.ts#L341)
+
+The constructor input for one entity: what `make` accepts, with defaulted
+fields optional. This is the authoring surface — `instantiate` widens
+`children` on top of it (see Runner.InstantiateProps).
+
+## Type Parameters
+
+| Type Parameter |
+| ------ |
+| `Tag` *extends* [`EntityTag`](./EntityTag.mdx) |

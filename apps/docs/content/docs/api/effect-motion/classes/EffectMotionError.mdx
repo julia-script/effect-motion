@@ -1,0 +1,117 @@
+---
+title: "EffectMotionError"
+description: "The library's error type, raised when something outside the engine fails."
+---
+# Class: EffectMotionError
+
+Defined in: [packages/motion/src/EffectMotionError.ts:19](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/EffectMotionError.ts#L19)
+
+The library's error type, raised when something outside the engine fails.
+
+## Remarks
+
+Used at the boundaries where the outside world can go wrong — fetching a
+font, decoding an image, talking to the GPU. Because it is a tagged error,
+it appears in an Effect's error channel and can be caught by tag, rather
+than thrown.
+
+Author mistakes inside a scene are deliberately NOT this: animating a
+field that has no value, or orbiting without a point of interest, fail
+loudly as defects, because they are bugs to fix rather than conditions to
+handle.
+
+`cause` carries the underlying failure when there is one.
+
+## Extends
+
+- `YieldableError`\<`this`\> & \{
+\} & `Readonly`\<\{
+  `cause`: `unknown`;
+  `message`: `string`;
+\}\>
+
+## Constructors
+
+### Constructor
+
+```ts
+new EffectMotionError(args): EffectMotionError;
+```
+
+Defined in: node\_modules/.pnpm/effect@4.0.0-beta.98/node\_modules/effect/dist/Data.d.ts:986
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `args` | \{ `cause`: `unknown`; `message`: `string`; \} |
+| `args.cause` | `unknown` |
+| `args.message` | `string` |
+
+#### Returns
+
+`EffectMotionError`
+
+#### Inherited from
+
+```ts
+Data.TaggedError("EffectMotionError")<{
+	readonly message: string;
+	readonly cause: unknown;
+}>.constructor
+```
+
+## Properties
+
+### cause
+
+```ts
+cause: unknown;
+```
+
+Defined in: node\_modules/.pnpm/typescript@5.9.3/node\_modules/typescript/lib/lib.es2022.error.d.ts:26
+
+#### Inherited from
+
+```ts
+Data.TaggedError("EffectMotionError").cause
+```
+
+***
+
+### message
+
+```ts
+message: string;
+```
+
+Defined in: node\_modules/.pnpm/typescript@5.9.3/node\_modules/typescript/lib/lib.es5.d.ts:1077
+
+#### Inherited from
+
+```ts
+Data.TaggedError("EffectMotionError").message
+```
+
+## Methods
+
+### of()
+
+```ts
+static of(message, cause?): EffectMotionError;
+```
+
+Defined in: [packages/motion/src/EffectMotionError.ts:24](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/EffectMotionError.ts#L24)
+
+Build an error with a message and an optional underlying cause.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `message` | `string` |
+| `cause?` | `unknown` |
+
+#### Returns
+
+`EffectMotionError`

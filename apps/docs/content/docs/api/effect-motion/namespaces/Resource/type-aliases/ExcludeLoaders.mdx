@@ -1,0 +1,21 @@
+---
+title: "ExcludeLoaders"
+description: "type ExcludeLoaders<R> = R extends LoaderBrand ? never : R;"
+---
+# Type Alias: ExcludeLoaders\<R\>
+
+```ts
+type ExcludeLoaders<R> = R extends LoaderBrand ? never : R;
+```
+
+Defined in: [packages/motion/src/Resource.ts:29](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Resource.ts#L29)
+
+A requirements union with the loader members removed — what running a
+scene actually needs. Frames are pure of resource bytes (the engine
+cannot measure text), so `Scene.run`/`stream` require only this.
+
+## Type Parameters
+
+| Type Parameter |
+| ------ |
+| `R` |

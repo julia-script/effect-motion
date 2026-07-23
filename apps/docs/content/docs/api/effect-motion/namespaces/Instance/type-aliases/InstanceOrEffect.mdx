@@ -1,0 +1,29 @@
+---
+title: "InstanceOrEffect"
+description: "type InstanceOrEffect<Tag, E, R> ="
+---
+# Type Alias: InstanceOrEffect\<Tag, E, R\>
+
+```ts
+type InstanceOrEffect<Tag, E, R> = 
+  | Instance<Tag>
+| Effect.Effect<Instance<Tag>, E, R>;
+```
+
+Defined in: [packages/motion/src/Instance.ts:103](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Instance.ts#L103)
+
+An instance, or an un-yielded `instantiate` effect that produces one.
+
+## Type Parameters
+
+| Type Parameter | Default type |
+| ------ | ------ |
+| `Tag` *extends* [`EntityTag`](../../Entity/type-aliases/EntityTag.mdx) | [`EntityTag`](../../Entity/type-aliases/EntityTag.mdx) |
+| `E` | `never` |
+| `R` | `never` |
+
+## Remarks
+
+Animators accept both, so a scene can animate straight off an
+`instantiate` call without binding it to a variable first — the create
+step and the first animation read as one expression.

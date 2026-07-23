@@ -1,0 +1,44 @@
+---
+title: "finish"
+description: "const finish: Effect<undefined, never, never>;"
+---
+# Variable: finish
+
+```ts
+const finish: Effect<undefined, never, never>;
+```
+
+Defined in: [packages/motion/src/Scene.ts:861](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L861)
+
+Declare the current branch semantically over, while its code keeps
+running.
+
+## Remarks
+
+Separates "this is done as far as everyone else is concerned" from "this
+fiber has stopped". Anyone awaiting the branch's `finished` proceeds
+immediately, and the branch stops holding the scene open — but code after
+`finish` keeps running as a TAIL, bounded by the parent exactly like a
+[background](../functions/background.mdx).
+
+The use is a beat that should hand off early: an entrance whose successor
+starts as soon as the element has landed, while a slow ring-out continues
+underneath. Without `finish`, the successor would wait for the tail.
+
+Idempotent, and completion implies finish. Note that a failure in the tail
+is NOT reported — by then nothing is listening.
+
+Calling it outside a running scene is a loud defect.
+
+## Example
+
+Hand off after the landing; the wobble plays on borrowed time.
+```typescript
+yield* Scene.fork(
+	Effect.gen(function* () {
+		yield* badge.pipe(Motion.moveTo({ y: 100 }, "400 millis"));
+		yield* Scene.finish;
+		yield* badge.pipe(Physics.springTo({ y: 96 }, "bounce"));
+	}),
+);
+```

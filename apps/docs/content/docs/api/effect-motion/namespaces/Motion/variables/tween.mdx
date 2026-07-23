@@ -1,0 +1,66 @@
+---
+title: "tween"
+description: "const tween: <Tag>(from, to, duration, timing?) => <E, R>(instance) => Effect<Instance<Tag>, E, Runner | R> & <Tag, E, R>(instance, from, to, duration"
+---
+# Variable: tween
+
+```ts
+const tween: <Tag>(from, to, duration, timing?) => <E, R>(instance) => Effect<Instance<Tag>, E, Runner | R> & <Tag, E, R>(instance, from, to, duration, timing?) => Effect<Instance<Tag>, E, Runner | R>;
+```
+
+Defined in: [packages/motion/src/Motion.ts:393](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Motion.ts#L393)
+
+Like [tweenTo](./tweenTo.mdx), but with an explicit starting value.
+
+## Remarks
+
+Reach for this when the animation should not begin where the entity
+currently sits — a "flash in from nothing" that must start at 0 no matter
+what the last animation left behind, or a field with no current value at
+all (an optional one never set), which [tweenTo](./tweenTo.mdx) rejects as a
+defect.
+
+Keys present in `to` but missing from `from` still start at the current
+data, so a partial origin is a targeted override rather than an
+all-or-nothing switch.
+
+## Param
+
+**from**
+
+Starting values; keys omitted here start at the current data.
+
+## Param
+
+**to**
+
+Target values — this key set defines what gets animated.
+
+## Param
+
+**duration**
+
+How long, in scene time.
+
+## Param
+
+**timing**
+
+An easing name or function.
+
+## Default Value
+
+`timing` — `"linear"`
+
+## Returns
+
+The instance, so animators chain.
+
+## Example
+
+Pop a label in from zero size, regardless of its current `fontSize`.
+```typescript
+yield* label.pipe(
+	Motion.tween({ fontSize: 0 }, { fontSize: 32 }, "400 millis", "easeOutBack"),
+);
+```

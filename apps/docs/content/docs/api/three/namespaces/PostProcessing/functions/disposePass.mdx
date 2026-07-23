@@ -1,0 +1,28 @@
+---
+title: "disposePass"
+description: "function disposePass(self): void;"
+---
+# Function: disposePass()
+
+```ts
+function disposePass(self): void;
+```
+
+Defined in: [packages/three/src/PostProcessing.ts:104](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/PostProcessing.ts#L104)
+
+Release a pass's GPU resources.
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `self` | [`Pass`](../interfaces/Pass.mdx) |
+
+## Returns
+
+`void`
+
+## Remarks
+
+Passes are not scoped, so dispose one explicitly when its owner goes
+away.

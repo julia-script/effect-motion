@@ -1,0 +1,47 @@
+---
+title: "FontResource"
+description: "One font constant, two faces:"
+---
+# Interface: FontResource\<ID\>
+
+Defined in: [packages/motion/src/Font.ts:63](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Font.ts#L63)
+
+One font constant, two faces:
+
+- **author side**: `yield*` it in a scene to get the [Font](../variables/Font.mdx) value for
+  `fontFamily`, adding `FontLoader<ID>` to the scene's requirements. The
+  requirement is PHANTOM — the effect succeeds without touching context,
+  so `Scene.run`/`stream` stay loader-free and only the render path
+  (the first actual consumer of bytes) demands the loader.
+- **provider side**: `.Loader` is the context key; pair it with
+  [layer](../functions/layer.mdx) to provide bytes.
+
+## Extends
+
+- `Effect`\<[`Font`](./Font.mdx)\<`ID`\>, `never`, [`FontLoader`](./FontLoader.mdx)\<`ID`\>\>
+
+## Type Parameters
+
+| Type Parameter | Default type |
+| ------ | ------ |
+| `ID` *extends* `string` | `string` |
+
+## Properties
+
+### id
+
+```ts
+readonly id: ID;
+```
+
+Defined in: [packages/motion/src/Font.ts:65](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Font.ts#L65)
+
+***
+
+### Loader
+
+```ts
+readonly Loader: Service<FontLoader<ID>, FontLoader<ID>>;
+```
+
+Defined in: [packages/motion/src/Font.ts:66](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Font.ts#L66)

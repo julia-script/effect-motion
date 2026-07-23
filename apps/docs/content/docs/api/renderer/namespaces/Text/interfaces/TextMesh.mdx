@@ -1,0 +1,82 @@
+---
+title: "TextMesh"
+description: "A glyph mesh over the shared atlas, with its update and release hooks."
+---
+# Interface: TextMesh
+
+Defined in: [Text.ts:355](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Text.ts#L355)
+
+A glyph mesh over the shared atlas, with its update and release hooks.
+
+## Properties
+
+### dispose
+
+```ts
+readonly dispose: () => void;
+```
+
+Defined in: [Text.ts:362](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Text.ts#L362)
+
+Release the mesh's geometry and materials.
+
+#### Returns
+
+`void`
+
+***
+
+### mesh
+
+```ts
+readonly mesh: Object3D;
+```
+
+Defined in: [Text.ts:356](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Text.ts#L356)
+
+***
+
+### setColor
+
+```ts
+readonly setColor: (r, g, b, a) => void;
+```
+
+Defined in: [Text.ts:360](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Text.ts#L360)
+
+Set the fill color; `r`, `g`, `b` are 0–1, `a` is opacity.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `r` | `number` |
+| `g` | `number` |
+| `b` | `number` |
+| `a` | `number` |
+
+#### Returns
+
+`void`
+
+***
+
+### setQuads
+
+```ts
+readonly setQuads: (quads) => void;
+```
+
+Defined in: [Text.ts:358](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Text.ts#L358)
+
+Point the mesh at a new layout — call after [layout](../variables/layout.mdx) resolves.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `quads` | [`GlyphQuads`](./GlyphQuads.mdx) |
+
+#### Returns
+
+`void`

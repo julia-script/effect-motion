@@ -1,0 +1,66 @@
+---
+title: "setViewport"
+description: "const setViewport: {"
+---
+# Variable: setViewport
+
+```ts
+const setViewport: {
+  (width, height, pixelRatio): (renderer) => Renderer;
+  (renderer, width, height, pixelRatio): Renderer;
+};
+```
+
+Defined in: [Renderer.ts:152](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Renderer.ts#L152)
+
+Resize the drawing buffer.
+
+## Call Signature
+
+```ts
+(
+   width, 
+   height, 
+   pixelRatio): (renderer) => Renderer;
+```
+
+### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `width` | `number` |
+| `height` | `number` |
+| `pixelRatio` | `number` |
+
+### Returns
+
+(`renderer`) => [`Renderer`](../interfaces/Renderer.mdx)
+
+## Call Signature
+
+```ts
+(
+   renderer, 
+   width, 
+   height, 
+   pixelRatio): Renderer;
+```
+
+### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `renderer` | [`Renderer`](../interfaces/Renderer.mdx) |
+| `width` | `number` |
+| `height` | `number` |
+| `pixelRatio` | `number` |
+
+### Returns
+
+[`Renderer`](../interfaces/Renderer.mdx)
+
+## Remarks
+
+`width` and `height` are logical (CSS) pixels; `pixelRatio` scales to
+device pixels, so pass `window.devicePixelRatio` for a sharp result on a
+high-DPI display. Call on canvas resize.

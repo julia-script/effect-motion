@@ -5,6 +5,7 @@
 		"cli",
 		"concepts",
 		"going-further",
-		"examples"
+		"examples",
+		"api"
 	]
 }

@@ -1,0 +1,64 @@
+---
+title: "GlyphQuads"
+description: "A laid-out string: where each glyph goes and which part of the atlas it"
+---
+# Interface: GlyphQuads
+
+Defined in: [Text.ts:67](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Text.ts#L67)
+
+A laid-out string: where each glyph goes and which part of the atlas it
+samples.
+
+## Remarks
+
+Coordinates are mesh-local and y-UP (three's convention), not scene
+coordinates.
+
+## Properties
+
+### blockBounds
+
+```ts
+readonly blockBounds: [number, number, number, number];
+```
+
+Defined in: [Text.ts:78](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Text.ts#L78)
+
+The whole text block's bounds before the anchor offset — the measured
+size of the string.
+
+***
+
+### bounds
+
+```ts
+readonly bounds: Float32Array;
+```
+
+Defined in: [Text.ts:69](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Text.ts#L69)
+
+Per-glyph quad bounds, four numbers each: minX, minY, maxX, maxY.
+
+***
+
+### count
+
+```ts
+readonly count: number;
+```
+
+Defined in: [Text.ts:73](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Text.ts#L73)
+
+How many glyphs — `bounds` and `uvRects` hold four numbers per glyph.
+
+***
+
+### uvRects
+
+```ts
+readonly uvRects: Float32Array;
+```
+
+Defined in: [Text.ts:71](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Text.ts#L71)
+
+Per-glyph atlas UV rects, four numbers each: u0, v0, u1, v1.

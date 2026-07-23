@@ -1,0 +1,28 @@
+---
+title: "isEmpty"
+description: "function isEmpty(self): boolean;"
+---
+# Function: isEmpty()
+
+```ts
+function isEmpty(self): boolean;
+```
+
+Defined in: [packages/three/src/Scene.ts:114](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/Scene.ts#L114)
+
+Whether the scene root has no children.
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `self` | [`Scene`](../interfaces/Scene.mdx) |
+
+## Returns
+
+`boolean`
+
+## Remarks
+
+The "is there anything to draw" check — worth making before an optional
+pass, so an empty overlay tier costs nothing.

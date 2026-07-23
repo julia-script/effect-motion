@@ -1,0 +1,64 @@
+---
+title: "fadeTo"
+description: "const fadeTo: <Tag>(to, duration, timing?) => <E, R>(instance) => Effect<Instance<Tag>, E, Runner | R> & <Tag, E, R>(instance, to, duration, timing?) "
+---
+# Variable: fadeTo
+
+```ts
+const fadeTo: <Tag>(to, duration, timing?) => <E, R>(instance) => Effect<Instance<Tag>, E, Runner | R> & <Tag, E, R>(instance, to, duration, timing?) => Effect<Instance<Tag>, E, Runner | R>;
+```
+
+Defined in: [packages/motion/src/Motion.ts:637](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Motion.ts#L637)
+
+Fade an instance's `opacity` to `to` over `duration`.
+
+## Remarks
+
+Opacity runs 0 (invisible) to 1 (fully opaque), and applies to the whole
+subtree: fading a Group fades everything inside it, which is the usual way
+to dissolve a composed element as one piece.
+
+Only entities that actually paint carry `opacity`, so this is statically
+gated — fading a Camera is a compile error naming the missing field, not a
+runtime surprise.
+
+## Param
+
+**to**
+
+Target opacity, 0 to 1.
+
+## Param
+
+**duration**
+
+How long, in scene time.
+
+## Param
+
+**timing**
+
+An easing name or function.
+
+## Default Value
+
+`timing` — `"linear"`
+
+## Returns
+
+The instance, so animators chain.
+
+## See
+
+[fade](./fade.mdx) to start from an explicit opacity.
+
+## Example
+
+Land, hold, then dissolve out.
+```typescript
+yield* card.pipe(
+	Motion.moveTo({ y: 100 }, "500 millis"),
+	Motion.wait("1 second"),
+	Motion.fadeTo(0, "400 millis"),
+);
+```

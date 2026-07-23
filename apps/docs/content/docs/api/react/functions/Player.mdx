@@ -1,0 +1,61 @@
+---
+title: "Player"
+description: "function Player<S>(__namedParameters): Element;"
+---
+# Function: Player()
+
+```ts
+function Player<S>(__namedParameters): Element;
+```
+
+Defined in: [Player.tsx:717](https://github.com/julia-script/effect-motion/blob/main/packages/react/src/Player.tsx#L717)
+
+A video-style player for an effect-motion scene.
+
+## Type Parameters
+
+| Type Parameter |
+| ------ |
+| `S` *extends* `AnyScene` |
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `__namedParameters` | [`PlayerProps`](../type-aliases/PlayerProps.mdx)\<`S`\> |
+
+## Returns
+
+`Element`
+
+## Remarks
+
+Self-contained: a canvas plus play/pause, a scrubber with buffered-range
+indicator, a time readout, and a repeat toggle. Controls fade out during
+playback and return on hover. There is no stylesheet to import — the skin
+is inline styles and inline SVG — and no way to restyle it short of
+wrapping it.
+
+The canvas is `width: 100%` with automatic height, so the player fills its
+container at the scene's aspect ratio. Size it by sizing the parent.
+
+Frames stream in rather than being pre-rendered, so playback starts before
+the whole scene is computed. Playback keeps real time: if a frame renders
+slowly the player drops intermediate frames rather than falling behind.
+
+Each player owns its own GPU renderer and scene run, released on unmount.
+
+Failures — no WebGPU, a font that would not load, a render error — are
+shown in the player's own frame as an alert panel, not just logged to the
+console.
+
+## Examples
+
+```tsx
+<Player scene={scene} autoPlay />
+```
+
+An endless scene: bounded memory, and no scrubber or repeat button.
+```tsx
+<Player scene={ambientScene} isInfinite autoPlay />
+```

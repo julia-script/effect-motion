@@ -1,0 +1,19 @@
+---
+title: "DataOf"
+description: "type DataOf<I> = I extends Instance<infer Tag> ? EntityByTag<Tag> : never;"
+---
+# Type Alias: DataOf\<I\>
+
+```ts
+type DataOf<I> = I extends Instance<infer Tag> ? EntityByTag<Tag> : never;
+```
+
+Defined in: [packages/motion/src/Instance.ts:118](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Instance.ts#L118)
+
+The entity data type a given instance handle refers to.
+
+## Type Parameters
+
+| Type Parameter |
+| ------ |
+| `I` |

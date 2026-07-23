@@ -1,0 +1,66 @@
+---
+title: "FontLoader"
+description: "A loaded font, provided as a context service: bytes are already in memory"
+---
+# Interface: FontLoader\<ID\>
+
+Defined in: [packages/motion/src/Font.ts:34](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Font.ts#L34)
+
+A loaded font, provided as a context service: bytes are already in memory
+by the time any consumer reads this (loads run eagerly at layer
+construction — see [layer](../functions/layer.mdx)). `format` is optional; consumers sniff
+magic bytes when absent.
+
+## Extends
+
+- [`LoaderBrand`](../../Resource/interfaces/LoaderBrand.mdx)
+
+## Type Parameters
+
+| Type Parameter | Default type |
+| ------ | ------ |
+| `ID` *extends* `string` | `string` |
+
+## Properties
+
+### ~effect-motion/Resources/Loader
+
+```ts
+readonly ~effect-motion/Resources/Loader: "~effect-motion/Resources/Loader";
+```
+
+Defined in: [packages/motion/src/Resource.ts:14](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Resource.ts#L14)
+
+#### Inherited from
+
+[`LoaderBrand`](../../Resource/interfaces/LoaderBrand.mdx).[`~effect-motion/Resources/Loader`](../../Resource/interfaces/LoaderBrand.mdx#effect-motionresourcesloader)
+
+***
+
+### bytes
+
+```ts
+readonly bytes: Uint8Array;
+```
+
+Defined in: [packages/motion/src/Font.ts:37](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Font.ts#L37)
+
+***
+
+### format?
+
+```ts
+readonly optional format?: "ttf" | "otf";
+```
+
+Defined in: [packages/motion/src/Font.ts:38](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Font.ts#L38)
+
+***
+
+### id
+
+```ts
+readonly id: ID;
+```
+
+Defined in: [packages/motion/src/Font.ts:36](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Font.ts#L36)

@@ -1,0 +1,19 @@
+---
+title: "defaultSeed"
+description: "const defaultSeed: Seed = \"effect-motion\";"
+---
+# Variable: defaultSeed
+
+```ts
+const defaultSeed: Seed = "effect-motion";
+```
+
+Defined in: [packages/motion/src/Runner.ts:27](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Runner.ts#L27)
+
+The seed used when none is given.
+
+## Remarks
+
+Fixed rather than random on purpose: a scene using randomness still
+produces identical frames on every run unless you deliberately vary the
+seed.

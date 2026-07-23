@@ -1,0 +1,630 @@
+---
+title: "EntityMap"
+description: "const EntityMap: {"
+---
+# Variable: EntityMap
+
+```ts
+const EntityMap: {
+  Camera: TaggedStruct<"Camera", {
+     aperture: withConstructorDefault<Number>;
+     focalLength: withConstructorDefault<Number>;
+     focusDistance: withConstructorDefault<Number>;
+     poi: withConstructorDefault<NullOr<TaggedStruct<"Vec3", {
+        x: withConstructorDefault<Number>;
+        y: withConstructorDefault<Number>;
+        z: withConstructorDefault<Number>;
+     }>>>;
+     position: withConstructorDefault<TaggedStruct<"Vec3", {
+        x: withConstructorDefault<Number>;
+        y: withConstructorDefault<Number>;
+        z: withConstructorDefault<Number>;
+     }>>;
+     rotation: withConstructorDefault<TaggedStruct<"Vec3", {
+        x: withConstructorDefault<Number>;
+        y: withConstructorDefault<Number>;
+        z: withConstructorDefault<Number>;
+     }>>;
+  }>;
+  Circle: TaggedStruct<"Circle", {
+     fillColor: withConstructorDefault<typeof Color>;
+     opacity: withConstructorDefault<Number>;
+     position: withConstructorDefault<TaggedStruct<"Vec3", {
+        x: withConstructorDefault<Number>;
+        y: withConstructorDefault<Number>;
+        z: withConstructorDefault<Number>;
+     }>>;
+     radius: withConstructorDefault<Number>;
+     rotation: withConstructorDefault<TaggedStruct<"Vec3", {
+        x: withConstructorDefault<Number>;
+        y: withConstructorDefault<Number>;
+        z: withConstructorDefault<Number>;
+     }>>;
+     scale: withConstructorDefault<TaggedStruct<"Vec3", {
+        x: withConstructorDefault<Number>;
+        y: withConstructorDefault<Number>;
+        z: withConstructorDefault<Number>;
+     }>>;
+     strokeColor: withConstructorDefault<typeof Color>;
+     strokeWidth: withConstructorDefault<Number>;
+     visible: withConstructorDefault<Boolean>;
+  }>;
+  Ellipse: TaggedStruct<"Ellipse", {
+     fillColor: withConstructorDefault<typeof Color>;
+     opacity: withConstructorDefault<Number>;
+     position: withConstructorDefault<TaggedStruct<"Vec3", {
+        x: withConstructorDefault<Number>;
+        y: withConstructorDefault<Number>;
+        z: withConstructorDefault<Number>;
+     }>>;
+     radiusX: withConstructorDefault<Number>;
+     radiusY: withConstructorDefault<Number>;
+     rotation: withConstructorDefault<TaggedStruct<"Vec3", {
+        x: withConstructorDefault<Number>;
+        y: withConstructorDefault<Number>;
+        z: withConstructorDefault<Number>;
+     }>>;
+     scale: withConstructorDefault<TaggedStruct<"Vec3", {
+        x: withConstructorDefault<Number>;
+        y: withConstructorDefault<Number>;
+        z: withConstructorDefault<Number>;
+     }>>;
+     strokeColor: withConstructorDefault<typeof Color>;
+     strokeWidth: withConstructorDefault<Number>;
+     visible: withConstructorDefault<Boolean>;
+  }>;
+  Group: TaggedStruct<"Group", {
+     children: withConstructorDefault<$Array<String>>;
+     opacity: withConstructorDefault<Number>;
+     position: withConstructorDefault<TaggedStruct<"Vec3", {
+        x: withConstructorDefault<Number>;
+        y: withConstructorDefault<Number>;
+        z: withConstructorDefault<Number>;
+     }>>;
+     rotation: withConstructorDefault<TaggedStruct<"Vec3", {
+        x: withConstructorDefault<Number>;
+        y: withConstructorDefault<Number>;
+        z: withConstructorDefault<Number>;
+     }>>;
+     scale: withConstructorDefault<TaggedStruct<"Vec3", {
+        x: withConstructorDefault<Number>;
+        y: withConstructorDefault<Number>;
+        z: withConstructorDefault<Number>;
+     }>>;
+     visible: withConstructorDefault<Boolean>;
+  }>;
+  Hud: TaggedStruct<"Hud", {
+     children: withConstructorDefault<$Array<String>>;
+     opacity: withConstructorDefault<Number>;
+     position: withConstructorDefault<TaggedStruct<"Vec3", {
+        x: withConstructorDefault<Number>;
+        y: withConstructorDefault<Number>;
+        z: withConstructorDefault<Number>;
+     }>>;
+     rotation: withConstructorDefault<TaggedStruct<"Vec3", {
+        x: withConstructorDefault<Number>;
+        y: withConstructorDefault<Number>;
+        z: withConstructorDefault<Number>;
+     }>>;
+     scale: withConstructorDefault<TaggedStruct<"Vec3", {
+        x: withConstructorDefault<Number>;
+        y: withConstructorDefault<Number>;
+        z: withConstructorDefault<Number>;
+     }>>;
+     visible: withConstructorDefault<Boolean>;
+  }>;
+  Image: TaggedStruct<"Image", {
+     height: optionalKey<Number>;
+     image: TaggedStruct<"effect-motion/Resources/Image", {
+        id: String;
+     }>;
+     opacity: withConstructorDefault<Number>;
+     position: withConstructorDefault<TaggedStruct<"Vec3", {
+        x: withConstructorDefault<Number>;
+        y: withConstructorDefault<Number>;
+        z: withConstructorDefault<Number>;
+     }>>;
+     rotation: withConstructorDefault<TaggedStruct<"Vec3", {
+        x: withConstructorDefault<Number>;
+        y: withConstructorDefault<Number>;
+        z: withConstructorDefault<Number>;
+     }>>;
+     scale: withConstructorDefault<TaggedStruct<"Vec3", {
+        x: withConstructorDefault<Number>;
+        y: withConstructorDefault<Number>;
+        z: withConstructorDefault<Number>;
+     }>>;
+     visible: withConstructorDefault<Boolean>;
+     width: optionalKey<Number>;
+  }>;
+  Line: TaggedStruct<"Line", {
+     end: withConstructorDefault<TaggedStruct<"Vec3", {
+        x: withConstructorDefault<Number>;
+        y: withConstructorDefault<Number>;
+        z: withConstructorDefault<Number>;
+     }>>;
+     opacity: withConstructorDefault<Number>;
+     position: withConstructorDefault<TaggedStruct<"Vec3", {
+        x: withConstructorDefault<Number>;
+        y: withConstructorDefault<Number>;
+        z: withConstructorDefault<Number>;
+     }>>;
+     rotation: withConstructorDefault<TaggedStruct<"Vec3", {
+        x: withConstructorDefault<Number>;
+        y: withConstructorDefault<Number>;
+        z: withConstructorDefault<Number>;
+     }>>;
+     scale: withConstructorDefault<TaggedStruct<"Vec3", {
+        x: withConstructorDefault<Number>;
+        y: withConstructorDefault<Number>;
+        z: withConstructorDefault<Number>;
+     }>>;
+     start: withConstructorDefault<TaggedStruct<"Vec3", {
+        x: withConstructorDefault<Number>;
+        y: withConstructorDefault<Number>;
+        z: withConstructorDefault<Number>;
+     }>>;
+     strokeColor: withConstructorDefault<typeof Color>;
+     strokeWidth: withConstructorDefault<Number>;
+     visible: withConstructorDefault<Boolean>;
+  }>;
+  Path: TaggedStruct<"Path", {
+     commands: NonEmptyArray<TaggedUnion<{
+        L: TaggedStruct<"L", {
+           x: Number;
+           y: Number;
+           z: optionalKey<Number>;
+        }>;
+        M: TaggedStruct<"M", {
+           x: Number;
+           y: Number;
+           z: optionalKey<Number>;
+        }>;
+        Z: TaggedStruct<"Z", {
+        }>;
+     }>>;
+     fillColor: withConstructorDefault<typeof Color>;
+     opacity: withConstructorDefault<Number>;
+     position: withConstructorDefault<TaggedStruct<"Vec3", {
+        x: withConstructorDefault<Number>;
+        y: withConstructorDefault<Number>;
+        z: withConstructorDefault<Number>;
+     }>>;
+     rotation: withConstructorDefault<TaggedStruct<"Vec3", {
+        x: withConstructorDefault<Number>;
+        y: withConstructorDefault<Number>;
+        z: withConstructorDefault<Number>;
+     }>>;
+     scale: withConstructorDefault<TaggedStruct<"Vec3", {
+        x: withConstructorDefault<Number>;
+        y: withConstructorDefault<Number>;
+        z: withConstructorDefault<Number>;
+     }>>;
+     strokeColor: withConstructorDefault<typeof Color>;
+     strokeWidth: withConstructorDefault<Number>;
+     visible: withConstructorDefault<Boolean>;
+  }>;
+  Rect: TaggedStruct<"Rect", {
+     fillColor: withConstructorDefault<typeof Color>;
+     height: withConstructorDefault<Number>;
+     opacity: withConstructorDefault<Number>;
+     position: withConstructorDefault<TaggedStruct<"Vec3", {
+        x: withConstructorDefault<Number>;
+        y: withConstructorDefault<Number>;
+        z: withConstructorDefault<Number>;
+     }>>;
+     rotation: withConstructorDefault<TaggedStruct<"Vec3", {
+        x: withConstructorDefault<Number>;
+        y: withConstructorDefault<Number>;
+        z: withConstructorDefault<Number>;
+     }>>;
+     scale: withConstructorDefault<TaggedStruct<"Vec3", {
+        x: withConstructorDefault<Number>;
+        y: withConstructorDefault<Number>;
+        z: withConstructorDefault<Number>;
+     }>>;
+     strokeColor: withConstructorDefault<typeof Color>;
+     strokeWidth: withConstructorDefault<Number>;
+     visible: withConstructorDefault<Boolean>;
+     width: withConstructorDefault<Number>;
+  }>;
+  Text: TaggedStruct<"Text", {
+     baseline: optionalKey<Literals<readonly ["auto", "middle", "hanging"]>>;
+     fillColor: withConstructorDefault<typeof Color>;
+     fontFamily: withConstructorDefault<TaggedStruct<"effect-motion/Resources/Font", {
+        id: String;
+     }>>;
+     fontSize: withConstructorDefault<Number>;
+     opacity: withConstructorDefault<Number>;
+     position: withConstructorDefault<TaggedStruct<"Vec3", {
+        x: withConstructorDefault<Number>;
+        y: withConstructorDefault<Number>;
+        z: withConstructorDefault<Number>;
+     }>>;
+     rotation: withConstructorDefault<TaggedStruct<"Vec3", {
+        x: withConstructorDefault<Number>;
+        y: withConstructorDefault<Number>;
+        z: withConstructorDefault<Number>;
+     }>>;
+     scale: withConstructorDefault<TaggedStruct<"Vec3", {
+        x: withConstructorDefault<Number>;
+        y: withConstructorDefault<Number>;
+        z: withConstructorDefault<Number>;
+     }>>;
+     text: String;
+     textAnchor: optionalKey<Literals<readonly ["start", "middle", "end"]>>;
+     visible: withConstructorDefault<Boolean>;
+  }>;
+};
+```
+
+Defined in: [packages/motion/src/Entity.ts:297](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Entity.ts#L297)
+
+## Type Declaration
+
+### Camera
+
+```ts
+Camera: TaggedStruct<"Camera", {
+  aperture: withConstructorDefault<Number>;
+  focalLength: withConstructorDefault<Number>;
+  focusDistance: withConstructorDefault<Number>;
+  poi: withConstructorDefault<NullOr<TaggedStruct<"Vec3", {
+     x: withConstructorDefault<Number>;
+     y: withConstructorDefault<Number>;
+     z: withConstructorDefault<Number>;
+  }>>>;
+  position: withConstructorDefault<TaggedStruct<"Vec3", {
+     x: withConstructorDefault<Number>;
+     y: withConstructorDefault<Number>;
+     z: withConstructorDefault<Number>;
+  }>>;
+  rotation: withConstructorDefault<TaggedStruct<"Vec3", {
+     x: withConstructorDefault<Number>;
+     y: withConstructorDefault<Number>;
+     z: withConstructorDefault<Number>;
+  }>>;
+}>;
+```
+
+The viewpoint — the one entity that is never drawn.
+
+#### Remarks
+
+A camera is view state rather than content, so it carries `position` and
+`rotation` but no `scale`, `opacity`, or `visible`, and is absent from the
+frame's instance map. Every scene has one already; reach for it with
+`Scene.camera`.
+
+`focalLength` sets the perspective strength — a longer lens flattens
+depth, a shorter one exaggerates it. It and the resting `z` are
+width-relative and filled in by the runner at instantiate time (only the
+runner knows the composition width), so the zero defaults here are
+placeholders that are always overwritten. The resting values are chosen so
+content at `z = 0` renders exactly as flat 2D.
+
+`poi` is an optional point of interest: when set, the camera auto-aims at
+that world point and any explicit `rotation` composes on top of the aim.
+The `Camera` module's helpers are the ergonomic way to drive it.
+
+`aperture` and `focusDistance` describe depth of field. They are carried
+on the frame but currently have NO visual effect — depth-of-field
+rendering is not implemented, and every frame renders sharp.
+
+### Circle
+
+```ts
+Circle: TaggedStruct<"Circle", {
+  fillColor: withConstructorDefault<typeof Color>;
+  opacity: withConstructorDefault<Number>;
+  position: withConstructorDefault<TaggedStruct<"Vec3", {
+     x: withConstructorDefault<Number>;
+     y: withConstructorDefault<Number>;
+     z: withConstructorDefault<Number>;
+  }>>;
+  radius: withConstructorDefault<Number>;
+  rotation: withConstructorDefault<TaggedStruct<"Vec3", {
+     x: withConstructorDefault<Number>;
+     y: withConstructorDefault<Number>;
+     z: withConstructorDefault<Number>;
+  }>>;
+  scale: withConstructorDefault<TaggedStruct<"Vec3", {
+     x: withConstructorDefault<Number>;
+     y: withConstructorDefault<Number>;
+     z: withConstructorDefault<Number>;
+  }>>;
+  strokeColor: withConstructorDefault<typeof Color>;
+  strokeWidth: withConstructorDefault<Number>;
+  visible: withConstructorDefault<Boolean>;
+}>;
+```
+
+A filled circle of a given `radius`, centered on its `position`.
+
+### Ellipse
+
+```ts
+Ellipse: TaggedStruct<"Ellipse", {
+  fillColor: withConstructorDefault<typeof Color>;
+  opacity: withConstructorDefault<Number>;
+  position: withConstructorDefault<TaggedStruct<"Vec3", {
+     x: withConstructorDefault<Number>;
+     y: withConstructorDefault<Number>;
+     z: withConstructorDefault<Number>;
+  }>>;
+  radiusX: withConstructorDefault<Number>;
+  radiusY: withConstructorDefault<Number>;
+  rotation: withConstructorDefault<TaggedStruct<"Vec3", {
+     x: withConstructorDefault<Number>;
+     y: withConstructorDefault<Number>;
+     z: withConstructorDefault<Number>;
+  }>>;
+  scale: withConstructorDefault<TaggedStruct<"Vec3", {
+     x: withConstructorDefault<Number>;
+     y: withConstructorDefault<Number>;
+     z: withConstructorDefault<Number>;
+  }>>;
+  strokeColor: withConstructorDefault<typeof Color>;
+  strokeWidth: withConstructorDefault<Number>;
+  visible: withConstructorDefault<Boolean>;
+}>;
+```
+
+An ellipse with independent `radiusX` and `radiusY`.
+
+### Group
+
+```ts
+Group: TaggedStruct<"Group", {
+  children: withConstructorDefault<$Array<String>>;
+  opacity: withConstructorDefault<Number>;
+  position: withConstructorDefault<TaggedStruct<"Vec3", {
+     x: withConstructorDefault<Number>;
+     y: withConstructorDefault<Number>;
+     z: withConstructorDefault<Number>;
+  }>>;
+  rotation: withConstructorDefault<TaggedStruct<"Vec3", {
+     x: withConstructorDefault<Number>;
+     y: withConstructorDefault<Number>;
+     z: withConstructorDefault<Number>;
+  }>>;
+  scale: withConstructorDefault<TaggedStruct<"Vec3", {
+     x: withConstructorDefault<Number>;
+     y: withConstructorDefault<Number>;
+     z: withConstructorDefault<Number>;
+  }>>;
+  visible: withConstructorDefault<Boolean>;
+}>;
+```
+
+A container: positions and structures its children, paints nothing
+itself. Its transform composes down the subtree like any entity's.
+
+It carries no composition bounds. `width`/`height`/`backgroundColor` used
+to live here so `Scene.play` could copy a nested scene's dimensions onto
+the mount group; a Scene owns those itself, and a render-to-texture
+boundary is `Scene.play`'s business, not a field on every group.
+
+### Hud
+
+```ts
+Hud: TaggedStruct<"Hud", {
+  children: withConstructorDefault<$Array<String>>;
+  opacity: withConstructorDefault<Number>;
+  position: withConstructorDefault<TaggedStruct<"Vec3", {
+     x: withConstructorDefault<Number>;
+     y: withConstructorDefault<Number>;
+     z: withConstructorDefault<Number>;
+  }>>;
+  rotation: withConstructorDefault<TaggedStruct<"Vec3", {
+     x: withConstructorDefault<Number>;
+     y: withConstructorDefault<Number>;
+     z: withConstructorDefault<Number>;
+  }>>;
+  scale: withConstructorDefault<TaggedStruct<"Vec3", {
+     x: withConstructorDefault<Number>;
+     y: withConstructorDefault<Number>;
+     z: withConstructorDefault<Number>;
+  }>>;
+  visible: withConstructorDefault<Boolean>;
+}>;
+```
+
+A screen-space container: its subtree is projected through the identity
+camera rather than the active one, so HUD content ignores camera
+movement, zoom, and shake, and always paints on top.
+
+`position.z` is depth WITHIN the HUD tier — z consistently means depth in
+the entity's own coordinate space, world for world content and screen for
+HUD content. A Hud must be a top-level child of the root (or of another
+Hud); nesting one inside world content is a loud defect.
+
+### Image
+
+```ts
+Image: TaggedStruct<"Image", {
+  height: optionalKey<Number>;
+  image: TaggedStruct<"effect-motion/Resources/Image", {
+     id: String;
+  }>;
+  opacity: withConstructorDefault<Number>;
+  position: withConstructorDefault<TaggedStruct<"Vec3", {
+     x: withConstructorDefault<Number>;
+     y: withConstructorDefault<Number>;
+     z: withConstructorDefault<Number>;
+  }>>;
+  rotation: withConstructorDefault<TaggedStruct<"Vec3", {
+     x: withConstructorDefault<Number>;
+     y: withConstructorDefault<Number>;
+     z: withConstructorDefault<Number>;
+  }>>;
+  scale: withConstructorDefault<TaggedStruct<"Vec3", {
+     x: withConstructorDefault<Number>;
+     y: withConstructorDefault<Number>;
+     z: withConstructorDefault<Number>;
+  }>>;
+  visible: withConstructorDefault<Boolean>;
+  width: optionalKey<Number>;
+}>;
+```
+
+A raster/vector image leaf. `image` is an Image resource reference; the
+bytes live in the scene's requirements, never in frame data.
+
+`width`/`height` are optional and undefaulted: set BOTH to draw at that
+size (numeric, so they tween), leave both absent for the source's natural
+size. A lone dimension is ignored — aspect math needs the natural size,
+which frame data never sees.
+
+### Line
+
+```ts
+Line: TaggedStruct<"Line", {
+  end: withConstructorDefault<TaggedStruct<"Vec3", {
+     x: withConstructorDefault<Number>;
+     y: withConstructorDefault<Number>;
+     z: withConstructorDefault<Number>;
+  }>>;
+  opacity: withConstructorDefault<Number>;
+  position: withConstructorDefault<TaggedStruct<"Vec3", {
+     x: withConstructorDefault<Number>;
+     y: withConstructorDefault<Number>;
+     z: withConstructorDefault<Number>;
+  }>>;
+  rotation: withConstructorDefault<TaggedStruct<"Vec3", {
+     x: withConstructorDefault<Number>;
+     y: withConstructorDefault<Number>;
+     z: withConstructorDefault<Number>;
+  }>>;
+  scale: withConstructorDefault<TaggedStruct<"Vec3", {
+     x: withConstructorDefault<Number>;
+     y: withConstructorDefault<Number>;
+     z: withConstructorDefault<Number>;
+  }>>;
+  start: withConstructorDefault<TaggedStruct<"Vec3", {
+     x: withConstructorDefault<Number>;
+     y: withConstructorDefault<Number>;
+     z: withConstructorDefault<Number>;
+  }>>;
+  strokeColor: withConstructorDefault<typeof Color>;
+  strokeWidth: withConstructorDefault<Number>;
+  visible: withConstructorDefault<Boolean>;
+}>;
+```
+
+A segment. `start`/`end` are offsets from `position`, so moving the line
+translates it rigidly — no endpoint compensation anywhere in the system.
+Skeletal: parametrized by its endpoints, never by an anchor plus size.
+
+### Path
+
+```ts
+Path: TaggedStruct<"Path", {
+  commands: NonEmptyArray<TaggedUnion<{
+     L: TaggedStruct<"L", {
+        x: Number;
+        y: Number;
+        z: optionalKey<Number>;
+     }>;
+     M: TaggedStruct<"M", {
+        x: Number;
+        y: Number;
+        z: optionalKey<Number>;
+     }>;
+     Z: TaggedStruct<"Z", {
+     }>;
+  }>>;
+  fillColor: withConstructorDefault<typeof Color>;
+  opacity: withConstructorDefault<Number>;
+  position: withConstructorDefault<TaggedStruct<"Vec3", {
+     x: withConstructorDefault<Number>;
+     y: withConstructorDefault<Number>;
+     z: withConstructorDefault<Number>;
+  }>>;
+  rotation: withConstructorDefault<TaggedStruct<"Vec3", {
+     x: withConstructorDefault<Number>;
+     y: withConstructorDefault<Number>;
+     z: withConstructorDefault<Number>;
+  }>>;
+  scale: withConstructorDefault<TaggedStruct<"Vec3", {
+     x: withConstructorDefault<Number>;
+     y: withConstructorDefault<Number>;
+     z: withConstructorDefault<Number>;
+  }>>;
+  strokeColor: withConstructorDefault<typeof Color>;
+  strokeWidth: withConstructorDefault<Number>;
+  visible: withConstructorDefault<Boolean>;
+}>;
+```
+
+A polyline/polygon. Command points are relative to `position` (see
+`point`). The first command must be `M` — an open vocabulary of M/L/Z;
+curves and arcs arrive later via deterministic flattening.
+
+### Rect
+
+```ts
+Rect: TaggedStruct<"Rect", {
+  fillColor: withConstructorDefault<typeof Color>;
+  height: withConstructorDefault<Number>;
+  opacity: withConstructorDefault<Number>;
+  position: withConstructorDefault<TaggedStruct<"Vec3", {
+     x: withConstructorDefault<Number>;
+     y: withConstructorDefault<Number>;
+     z: withConstructorDefault<Number>;
+  }>>;
+  rotation: withConstructorDefault<TaggedStruct<"Vec3", {
+     x: withConstructorDefault<Number>;
+     y: withConstructorDefault<Number>;
+     z: withConstructorDefault<Number>;
+  }>>;
+  scale: withConstructorDefault<TaggedStruct<"Vec3", {
+     x: withConstructorDefault<Number>;
+     y: withConstructorDefault<Number>;
+     z: withConstructorDefault<Number>;
+  }>>;
+  strokeColor: withConstructorDefault<typeof Color>;
+  strokeWidth: withConstructorDefault<Number>;
+  visible: withConstructorDefault<Boolean>;
+  width: withConstructorDefault<Number>;
+}>;
+```
+
+The canonical 2.5D plane. All-zero rotation is a camera-facing billboard;
+non-zero tilts it as a real plane in 3D.
+
+### Text
+
+```ts
+Text: TaggedStruct<"Text", {
+  baseline: optionalKey<Literals<readonly ["auto", "middle", "hanging"]>>;
+  fillColor: withConstructorDefault<typeof Color>;
+  fontFamily: withConstructorDefault<TaggedStruct<"effect-motion/Resources/Font", {
+     id: String;
+  }>>;
+  fontSize: withConstructorDefault<Number>;
+  opacity: withConstructorDefault<Number>;
+  position: withConstructorDefault<TaggedStruct<"Vec3", {
+     x: withConstructorDefault<Number>;
+     y: withConstructorDefault<Number>;
+     z: withConstructorDefault<Number>;
+  }>>;
+  rotation: withConstructorDefault<TaggedStruct<"Vec3", {
+     x: withConstructorDefault<Number>;
+     y: withConstructorDefault<Number>;
+     z: withConstructorDefault<Number>;
+  }>>;
+  scale: withConstructorDefault<TaggedStruct<"Vec3", {
+     x: withConstructorDefault<Number>;
+     y: withConstructorDefault<Number>;
+     z: withConstructorDefault<Number>;
+  }>>;
+  text: String;
+  textAnchor: optionalKey<Literals<readonly ["start", "middle", "end"]>>;
+  visible: withConstructorDefault<Boolean>;
+}>;
+```
+
+A plain-string text leaf. The engine cannot measure text, so `text` has
+no dimensional fields — layout is the renderer's business. Inline
+formatting is expressed by composing several Texts, not by a rich tree.

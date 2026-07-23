@@ -1,0 +1,47 @@
+---
+title: "step"
+description: "const step: <E, R>(...args) => Effect<"
+---
+# Variable: step
+
+```ts
+const step: <E, R>(...args) => Effect<
+  | Frame<ExtractLoaders<R>>
+| null, E, never>;
+```
+
+Defined in: [packages/motion/src/Scene.ts:369](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L369)
+
+Advance a running scene by exactly one frame.
+
+## Type Parameters
+
+| Type Parameter |
+| ------ |
+| `E` |
+| `R` |
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| ...`args` | \[[`RunningScene`](../interfaces/RunningScene.mdx)\<`E`, `R`\>\] |
+
+## Returns
+
+`Effect`\<
+  \| [`Frame`](../interfaces/Frame.mdx)\<[`ExtractLoaders`](../../Resource/type-aliases/ExtractLoaders.mdx)\<`R`\>\>
+  \| `null`, `E`, `never`\>
+
+The next frame, or `null` when the scene has ended.
+
+## Remarks
+
+Returns the frame that was produced, or `null` once the scene is over —
+which is the signal to stop pulling. Every concurrent branch advances
+together on each call, which is what keeps concurrency from affecting the
+frames a scene produces.
+
+A scene that runs past its `maxFrames` cap dies here with a message
+naming the limit, rather than looping forever — the guard against an
+accidental `Schedule.forever` with nothing to stop it.

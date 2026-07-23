@@ -1,0 +1,25 @@
+---
+title: "easeInBack"
+description: "const easeInBack: TimingFunction;"
+---
+# Variable: easeInBack
+
+```ts
+const easeInBack: TimingFunction;
+```
+
+Defined in: [packages/motion/src/Timing.ts:300](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Timing.ts#L300)
+
+The ready-made overshoot and oscillation curves, at their canonical
+parameters — `Back` anticipates past the target, `Elastic` rings like a
+string, `Bounce` rebounds like a dropped ball.
+
+## Remarks
+
+These are how you get spring-LIKE character in a fixed, known duration.
+For real physics whose length emerges from the simulation, use `Physics`.
+
+## See
+
+[createEaseInBack](../functions/createEaseInBack.mdx), [createEaseInElastic](../functions/createEaseInElastic.mdx),
+  [createEaseOutBounce](../functions/createEaseOutBounce.mdx) to tune the parameters.

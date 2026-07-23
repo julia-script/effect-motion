@@ -1,0 +1,207 @@
+---
+title: "Sync"
+description: "The retained scene state: the world and HUD tiers, their cameras, the"
+---
+# Interface: Sync
+
+Defined in: [Sync.ts:170](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L170)
+
+The retained scene state: the world and HUD tiers, their cameras, the
+text and image actors, live sub-compositions, and the object diff map.
+
+## Remarks
+
+Mostly data — the API is the sibling functions ([syncFrame](../functions/syncFrame.mdx),
+[whenReady](../functions/whenReady.mdx), [resolveResources](../variables/resolveResources.mdx), [dispose](../variables/dispose.mdx)).
+
+Content lives in one of two tiers. The WORLD scene is drawn through the
+frame's camera, so it moves with it; the HUD scene is drawn through an
+identity camera, above everything, so it stays fixed to the glass.
+
+## Properties
+
+### background
+
+```ts
+readonly background: Color;
+```
+
+Defined in: [Sync.ts:198](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L198)
+
+internal: reused background color instance
+
+***
+
+### camera
+
+```ts
+readonly camera: PerspectiveCamera;
+```
+
+Defined in: [Sync.ts:173](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L173)
+
+***
+
+### comps
+
+```ts
+readonly comps: Map<string, CompState>;
+```
+
+Defined in: [Sync.ts:192](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L192)
+
+live sub-compositions, keyed by their group instance id
+
+***
+
+### ctx
+
+```ts
+readonly ctx: RenderContext;
+```
+
+Defined in: [Sync.ts:203](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L203)
+
+internal: the context handed to entity renderers
+
+***
+
+### dof
+
+```ts
+readonly dof: DofState;
+```
+
+Defined in: [Sync.ts:186](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L186)
+
+Depth-of-field request derived from the frame's camera — currently
+derived but not drawn. See [DofState](./DofState.mdx).
+
+***
+
+### height
+
+```ts
+height: number;
+```
+
+Defined in: [Sync.ts:201](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L201)
+
+***
+
+### hudCamera
+
+```ts
+readonly hudCamera: PerspectiveCamera;
+```
+
+Defined in: [Sync.ts:180](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L180)
+
+***
+
+### hudScene
+
+```ts
+readonly hudScene: Scene;
+```
+
+Defined in: [Sync.ts:179](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L179)
+
+The screen-space HUD tier: drawn through an identity camera, after and
+above world content, on a transparent background so the render paths
+can overlay it.
+
+***
+
+### images
+
+```ts
+readonly images: Images;
+```
+
+Defined in: [Sync.ts:190](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L190)
+
+decoded image textures, cached for this renderer's scope
+
+***
+
+### pending
+
+```ts
+readonly pending: Effect<unknown, EffectMotionError, never>[];
+```
+
+Defined in: [Sync.ts:206](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L206)
+
+internal: async work (SDF layouts, decodes) the next render must
+wait for — drained by `whenReady`
+
+***
+
+### registry
+
+```ts
+readonly registry: Record<string, AnyEntityRenderer>;
+```
+
+Defined in: [Sync.ts:194](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L194)
+
+internal: entity renderers by entity name
+
+***
+
+### retained
+
+```ts
+readonly retained: Map<string, RetainedEntry>;
+```
+
+Defined in: [Sync.ts:196](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L196)
+
+internal: retained objects by instance id
+
+***
+
+### scene
+
+```ts
+readonly scene: Scene;
+```
+
+Defined in: [Sync.ts:172](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L172)
+
+the world scene, branded — the render paths take the wrapper
+
+***
+
+### stats
+
+```ts
+readonly stats: SyncStats;
+```
+
+Defined in: [Sync.ts:181](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L181)
+
+***
+
+### text
+
+```ts
+readonly text: Text;
+```
+
+Defined in: [Sync.ts:188](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L188)
+
+the renderer's SDF text actor (fonts, atlas, layout)
+
+***
+
+### width
+
+```ts
+width: number;
+```
+
+Defined in: [Sync.ts:200](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L200)
+
+internal: current frame viewport

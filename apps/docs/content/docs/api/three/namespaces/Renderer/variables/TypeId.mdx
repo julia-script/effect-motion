@@ -1,0 +1,26 @@
+---
+title: "TypeId"
+description: "const TypeId: \"~three/Renderer\";"
+---
+# Variable: TypeId
+
+```ts
+const TypeId: "~three/Renderer";
+```
+
+Defined in: [packages/three/src/Renderer.ts:28](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/Renderer.ts#L28)
+
+The GPU renderer — a scoped handle over three's `WebGPURenderer`.
+
+## Remarks
+
+[make](../functions/make.mdx) hands back a renderer whose async initialization has already
+completed, so nothing downstream has to await a device that might not be
+ready. On scope close it drains the GPU queue before disposing, which is
+what prevents the "destroyed texture used in a submit" errors that
+disposing mid-flight would otherwise produce.
+
+Work that touches the GPU — [render](../functions/render.mdx), [readRenderTarget](../functions/readRenderTarget.mdx),
+[compile](../functions/compile.mdx) — is an Effect, typed as `ThreeException`. Sizing and
+output-target bookkeeping cannot fail, so those stay synchronous and
+chain through `.pipe`.

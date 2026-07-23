@@ -1,0 +1,54 @@
+---
+title: "Camera"
+description: "const Camera: TaggedStruct<\"Camera\", {"
+---
+# Variable: Camera
+
+```ts
+const Camera: TaggedStruct<"Camera", {
+  aperture: withConstructorDefault<Number>;
+  focalLength: withConstructorDefault<Number>;
+  focusDistance: withConstructorDefault<Number>;
+  poi: withConstructorDefault<NullOr<TaggedStruct<"Vec3", {
+     x: withConstructorDefault<Number>;
+     y: withConstructorDefault<Number>;
+     z: withConstructorDefault<Number>;
+  }>>>;
+  position: withConstructorDefault<TaggedStruct<"Vec3", {
+     x: withConstructorDefault<Number>;
+     y: withConstructorDefault<Number>;
+     z: withConstructorDefault<Number>;
+  }>>;
+  rotation: withConstructorDefault<TaggedStruct<"Vec3", {
+     x: withConstructorDefault<Number>;
+     y: withConstructorDefault<Number>;
+     z: withConstructorDefault<Number>;
+  }>>;
+}>;
+```
+
+Defined in: [packages/motion/src/Entity.ts:284](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Entity.ts#L284)
+
+The viewpoint — the one entity that is never drawn.
+
+## Remarks
+
+A camera is view state rather than content, so it carries `position` and
+`rotation` but no `scale`, `opacity`, or `visible`, and is absent from the
+frame's instance map. Every scene has one already; reach for it with
+`Scene.camera`.
+
+`focalLength` sets the perspective strength — a longer lens flattens
+depth, a shorter one exaggerates it. It and the resting `z` are
+width-relative and filled in by the runner at instantiate time (only the
+runner knows the composition width), so the zero defaults here are
+placeholders that are always overwritten. The resting values are chosen so
+content at `z = 0` renders exactly as flat 2D.
+
+`poi` is an optional point of interest: when set, the camera auto-aims at
+that world point and any explicit `rotation` composes on top of the aim.
+The `Camera` module's helpers are the ergonomic way to drive it.
+
+`aperture` and `focusDistance` describe depth of field. They are carried
+on the frame but currently have NO visual effect — depth-of-field
+rendering is not implemented, and every frame renders sharp.

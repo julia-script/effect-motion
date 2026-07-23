@@ -1,0 +1,29 @@
+---
+title: "TypeId"
+description: "const TypeId: \"~three/Scene\";"
+---
+# Variable: TypeId
+
+```ts
+const TypeId: "~three/Scene";
+```
+
+Defined in: [packages/three/src/Scene.ts:26](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/Scene.ts#L26)
+
+The scene graph root — a scoped handle over three's `Scene`.
+
+## Remarks
+
+three is already shaped the way this wrapper wants, so this is a
+branding-and-lifecycle layer rather than a redesign. Everything here —
+[add](./add.mdx), [remove](./remove.mdx), [clear](../functions/clear.mdx), [setBackground](./setBackground.mdx) — is
+infallible bookkeeping on an object already in hand, so it stays
+synchronous and chains through `.pipe`. Effect enters only at
+[make](./make.mdx), which registers teardown.
+
+## Example
+
+```typescript
+const scene = yield* Scene.make();
+scene.pipe(Scene.add([mesh]), Scene.setBackground(new Color(0x16161d)));
+```

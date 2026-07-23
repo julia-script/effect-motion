@@ -1,0 +1,62 @@
+---
+title: "stream"
+description: "function stream<E, R>(scene, settings?): Stream<Frame<ExtractLoaders<R>>, Exclude<E, Done<any>>, Exclude<Exclude<Exclude<Exclude<Exclude<ExcludeLoader"
+---
+# Function: stream()
+
+```ts
+function stream<E, R>(scene, settings?): Stream<Frame<ExtractLoaders<R>>, Exclude<E, Done<any>>, Exclude<Exclude<Exclude<Exclude<Exclude<ExcludeLoaders<R>, Scope>, never>, Phaser>, Runner>, Scope>>;
+```
+
+Defined in: [packages/motion/src/Scene.ts:589](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L589)
+
+Play a scene and get its frames as a lazy stream — the usual way to
+consume one.
+
+## Type Parameters
+
+| Type Parameter | Default type |
+| ------ | ------ |
+| `E` | `never` |
+| `R` | `never` |
+
+## Parameters
+
+| Parameter | Type | Description |
+| ------ | ------ | ------ |
+| `scene` | [`Scene`](../interfaces/Scene.mdx)\<`E`, `R`\> | The scene to play. |
+| `settings` | `Partial`\<[`Settings`](../../Runner/type-aliases/Settings.mdx)\> | Playback settings. |
+
+## Returns
+
+`Stream`\<[`Frame`](../interfaces/Frame.mdx)\<[`ExtractLoaders`](../../Resource/type-aliases/ExtractLoaders.mdx)\<`R`\>\>, `Exclude`\<`E`, `Done`\<`any`\>\>, `Exclude`\<`Exclude`\<`Exclude`\<`Exclude`\<`Exclude`\<[`ExcludeLoaders`](../../Resource/type-aliases/ExcludeLoaders.mdx)\<`R`\>, `Scope`\>, `never`\>, [`Phaser`](../../Phaser/classes/Phaser.mdx)\>, [`Runner`](../../Runner/classes/Runner.mdx)\>, `Scope`\>\>
+
+A stream of frames.
+
+## Remarks
+
+Frames are produced on demand, so a player can pull at its own pace and a
+long scene never has to be materialized all at once. The stream ends when
+the scene does.
+
+`settings` is where playback choices live — `frameRate`, `seed`,
+`maxFrames` — as opposed to what the composition IS (its size and
+background), which was fixed at [make](../variables/make.mdx). The same scene can therefore
+be streamed at 30fps for a preview and 60fps for a final render without
+being rewritten.
+
+Note the frame count depends on the frame rate: a one-second animation is
+30 frames at 30fps and 60 at 60fps, plus a final resting frame.
+
+## Default Value
+
+`frameRate` 60, `seed` `"effect-motion"`, `maxFrames` 36_000
+
+## Example
+
+Collect every frame of a scene at 30fps.
+```typescript
+const frames = yield* Scene.stream(scene, { frameRate: 30 }).pipe(
+	Stream.runCollect,
+);
+```

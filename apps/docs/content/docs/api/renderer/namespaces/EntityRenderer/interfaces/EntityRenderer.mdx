@@ -1,0 +1,112 @@
+---
+title: "EntityRenderer"
+description: "How to draw one kind of entity."
+---
+# Interface: EntityRenderer\<Ent\>
+
+Defined in: [EntityRenderer.ts:167](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L167)
+
+How to draw one kind of entity.
+
+## Remarks
+
+See the module overview for the retained `build` / `update` / `dispose`
+lifecycle. Pass an implementation via the `renderers` option on
+`Renderer.make` or the Node adapter's `make`, keyed by entity tag.
+
+## Example
+
+Override how Circles are drawn — a flat wireframe instead of the built-in.
+```typescript
+const wireCircle: EntityRenderer.EntityRenderer<Entity.EntityByTag<"Circle">> = {
+	build: (leaf, ctx) => {
+		const geometry = new THREE.CircleGeometry(leaf.data.radius, 32);
+		const material = new THREE.MeshBasicMaterial({ wireframe: true });
+		const object = new THREE.Mesh(geometry, material);
+		object.position.copy(ctx.toThree(leaf.world.x, leaf.world.y, leaf.world.z));
+		return {
+			object,
+			billboard: true,
+			dispose: () => {
+				geometry.dispose();
+				material.dispose();
+			},
+		};
+	},
+	update: (retained, leaf, ctx) => {
+		retained.object.position.copy(
+			ctx.toThree(leaf.world.x, leaf.world.y, leaf.world.z),
+		);
+	},
+};
+
+const renderer = yield* NodeRenderer.make({
+	width: 500,
+	height: 300,
+	renderers: { Circle: wireCircle },
+});
+```
+
+## Type Parameters
+
+| Type Parameter | Description |
+| ------ | ------ |
+| `Ent` | The entity data type this renderer draws. |
+
+## Properties
+
+### build
+
+```ts
+readonly build: (leaf, ctx) => Retained;
+```
+
+Defined in: [EntityRenderer.ts:175](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L175)
+
+Create the three object for a newly appeared instance.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `leaf` | [`Leaf`](./Leaf.mdx)\<`Ent`\> |
+| `ctx` | [`RenderContext`](./RenderContext.mdx) |
+
+#### Returns
+
+[`Retained`](./Retained.mdx)
+
+#### Remarks
+
+Called once per instance. Anything allocated here that holds GPU memory
+must be released by the returned [Retained](./Retained.mdx)'s `dispose`.
+
+***
+
+### update
+
+```ts
+readonly update: (retained, leaf, ctx) => void;
+```
+
+Defined in: [EntityRenderer.ts:184](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L184)
+
+Mutate an existing object because its data or world position changed.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `retained` | [`Retained`](./Retained.mdx) |
+| `leaf` | [`Leaf`](./Leaf.mdx)\<`Ent`\> |
+| `ctx` | [`RenderContext`](./RenderContext.mdx) |
+
+#### Returns
+
+`void`
+
+#### Remarks
+
+Called only when something actually changed, so this is where per-frame
+work belongs. Mutate the retained object in place rather than replacing
+it — the engine holds the reference already in the scene.

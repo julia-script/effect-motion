@@ -1,0 +1,24 @@
+---
+title: "removeChild"
+description: "function removeChild(parent, child): Effect<void, never, Runner>;"
+---
+# Function: removeChild()
+
+```ts
+function removeChild(parent, child): Effect<void, never, Runner>;
+```
+
+Defined in: [packages/motion/src/Scene.ts:708](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L708)
+
+Detach `child` from `parent` (no-op unless it is currently its child).
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `parent` | [`GroupInstance`](../../Runner/type-aliases/GroupInstance.mdx) |
+| `child` | [`Instance`](../../Instance/interfaces/Instance.mdx) |
+
+## Returns
+
+`Effect`\<`void`, `never`, [`Runner`](../../Runner/classes/Runner.mdx)\>

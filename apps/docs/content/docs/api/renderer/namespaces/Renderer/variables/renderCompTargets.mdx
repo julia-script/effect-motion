@@ -1,0 +1,30 @@
+---
+title: "renderCompTargets"
+description: "const renderCompTargets: (...args) => Effect<void, ThreeException, never>;"
+---
+# Variable: renderCompTargets
+
+```ts
+const renderCompTargets: (...args) => Effect<void, ThreeException, never>;
+```
+
+Defined in: [Renderer.ts:52](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Renderer.ts#L52)
+
+Draw every nested sub-composition into its own render target.
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| ...`args` | \[`Renderer`, [`Sync`](../../Sync/interfaces/Sync.mdx), `number`\] |
+
+## Returns
+
+`Effect`\<`void`, `ThreeException`, `never`\>
+
+## Remarks
+
+Internal, called by both render paths before their main pass. Depth-first,
+so a comp nested inside another is drawn before its parent samples it, and
+the previously bound target is always restored — including when a render
+fails.

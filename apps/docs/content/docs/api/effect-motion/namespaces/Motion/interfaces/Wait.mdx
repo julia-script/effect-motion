@@ -1,0 +1,55 @@
+---
+title: "Wait"
+description: "you can drop into a `pipe` chain."
+---
+# Interface: Wait()
+
+Defined in: [packages/motion/src/Motion.ts:706](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Motion.ts#L706)
+
+The dual nature of [wait](../functions/wait.mdx): an Effect you can yield, and a function
+you can drop into a `pipe` chain.
+
+## Remarks
+
+Being callable is what lets a hold sit BETWEEN two animators in the same
+chain — it wraps the preceding step, waits after it completes, and passes
+that step's value (the instance) through untouched, so the chain keeps
+flowing.
+
+## Extends
+
+- `Effect`\<`void`, `never`, [`Runner`](../../Runner/classes/Runner.mdx)\>
+
+```ts
+Wait<A, E, R>(effect): Effect<A, E, Runner | R>;
+```
+
+Defined in: [packages/motion/src/Motion.ts:707](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Motion.ts#L707)
+
+The dual nature of [wait](../functions/wait.mdx): an Effect you can yield, and a function
+you can drop into a `pipe` chain.
+
+## Type Parameters
+
+| Type Parameter |
+| ------ |
+| `A` |
+| `E` |
+| `R` |
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `effect` | `Effect`\<`A`, `E`, `R`\> |
+
+## Returns
+
+`Effect`\<`A`, `E`, [`Runner`](../../Runner/classes/Runner.mdx) \| `R`\>
+
+## Remarks
+
+Being callable is what lets a hold sit BETWEEN two animators in the same
+chain — it wraps the preceding step, waits after it completes, and passes
+that step's value (the instance) through untouched, so the chain keeps
+flowing.

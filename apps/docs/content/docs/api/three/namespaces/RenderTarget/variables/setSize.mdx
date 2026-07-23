@@ -1,0 +1,60 @@
+---
+title: "setSize"
+description: "const setSize: {"
+---
+# Variable: setSize
+
+```ts
+const setSize: {
+  (nextWidth, nextHeight): (self) => RenderTarget;
+  (self, nextWidth, nextHeight): RenderTarget;
+};
+```
+
+Defined in: [packages/three/src/RenderTarget.ts:129](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/RenderTarget.ts#L129)
+
+Resize the target in place.
+
+## Call Signature
+
+```ts
+(nextWidth, nextHeight): (self) => RenderTarget;
+```
+
+### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `nextWidth` | `number` |
+| `nextHeight` | `number` |
+
+### Returns
+
+(`self`) => [`RenderTarget`](../interfaces/RenderTarget.mdx)
+
+## Call Signature
+
+```ts
+(
+   self, 
+   nextWidth, 
+   nextHeight): RenderTarget;
+```
+
+### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `self` | [`RenderTarget`](../interfaces/RenderTarget.mdx) |
+| `nextWidth` | `number` |
+| `nextHeight` | `number` |
+
+### Returns
+
+[`RenderTarget`](../interfaces/RenderTarget.mdx)
+
+## Remarks
+
+three reallocates the underlying GPU textures, so the handle stays valid
+and nothing needs re-registering with the scope. Contents are not
+preserved — redraw after resizing.

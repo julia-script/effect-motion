@@ -1,0 +1,29 @@
+---
+title: "createEaseInOutElastic"
+description: "function createEaseInOutElastic(s?): TimingFunction;"
+---
+# Function: createEaseInOutElastic()
+
+```ts
+function createEaseInOutElastic(s?): TimingFunction;
+```
+
+Defined in: [packages/motion/src/Timing.ts:228](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Timing.ts#L228)
+
+Build an in-out Elastic easing with a custom oscillation frequency.
+
+## Parameters
+
+| Parameter | Type | Default value | Description |
+| ------ | ------ | ------ | ------ |
+| `s` | `number` | `1.39626` | Angular frequency; higher oscillates more times. |
+
+## Returns
+
+[`TimingFunction`](../type-aliases/TimingFunction.mdx)
+
+A [TimingFunction](../type-aliases/TimingFunction.mdx) to pass to any animator.
+
+## Default Value
+
+`1.39626` (2π/4.5)

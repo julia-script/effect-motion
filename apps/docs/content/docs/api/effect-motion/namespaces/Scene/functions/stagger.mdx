@@ -1,0 +1,75 @@
+---
+title: "stagger"
+description: "function stagger<Eff, ScheduleE, ScheduleR>(effects, schedule): Effect<{"
+---
+# Function: stagger()
+
+```ts
+function stagger<Eff, ScheduleE, ScheduleR>(effects, schedule): Effect<{
+  released: number;
+}, 
+  | ScheduleE
+  | Eff extends Effect<any, E, any> ? E : never, 
+  | Runner
+  | ScheduleR
+| Eff extends Effect<any, any, R> ? R : never>;
+```
+
+Defined in: [packages/motion/src/Scene.ts:1332](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L1332)
+
+Start animations one after another WITHOUT waiting for each to finish —
+the cascade.
+
+## Type Parameters
+
+| Type Parameter | Default type |
+| ------ | ------ |
+| `Eff` *extends* `Effect`\<`any`, `any`, `any`\> | - |
+| `ScheduleE` | `never` |
+| `ScheduleR` | `never` |
+
+## Parameters
+
+| Parameter | Type | Description |
+| ------ | ------ | ------ |
+| `effects` | `Iterable`\<`Eff`\> | The animations to release in order. |
+| `schedule` | `Schedule`\<`unknown`, `void`, `ScheduleE`, `ScheduleR`\> | When to release each subsequent one. |
+
+## Returns
+
+`Effect`\<\{
+  `released`: `number`;
+\}, 
+  \| `ScheduleE`
+  \| `Eff` *extends* `Effect`\<`any`, `E`, `any`\> ? `E` : `never`, 
+  \| [`Runner`](../../Runner/classes/Runner.mdx)
+  \| `ScheduleR`
+  \| `Eff` *extends* `Effect`\<`any`, `any`, `R`\> ? `R` : `never`\>
+
+`{ released }` — how many actually started.
+
+## Remarks
+
+The first starts immediately and each next one on the schedule's next
+emission, so earlier items are still running when later ones begin. That
+overlap is the entire point, and the difference from [chain](./chain.mdx): use
+`stagger` for a ripple across many elements, `chain` when items must not
+coincide.
+
+The schedule paces the STARTS here, not the gaps. Resolution waits for
+every released animation to finish, not merely for the last one to be
+released — so the whole cascade is complete when this returns.
+
+When the schedule ends before the list does, the remaining effects are
+skipped.
+
+## Example
+
+A row of bars rising in a ripple, each starting 80ms after the last while
+the earlier ones keep going.
+```typescript
+yield* Scene.stagger(
+	bars.map((bar) => bar.pipe(Motion.moveTo({ y: 40 }, "600 millis"))),
+	Schedule.spaced("80 millis"),
+);
+```

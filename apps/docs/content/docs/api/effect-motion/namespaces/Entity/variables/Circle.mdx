@@ -1,0 +1,35 @@
+---
+title: "Circle"
+description: "const Circle: TaggedStruct<\"Circle\", {"
+---
+# Variable: Circle
+
+```ts
+const Circle: TaggedStruct<"Circle", {
+  fillColor: withConstructorDefault<typeof Color>;
+  opacity: withConstructorDefault<Number>;
+  position: withConstructorDefault<TaggedStruct<"Vec3", {
+     x: withConstructorDefault<Number>;
+     y: withConstructorDefault<Number>;
+     z: withConstructorDefault<Number>;
+  }>>;
+  radius: withConstructorDefault<Number>;
+  rotation: withConstructorDefault<TaggedStruct<"Vec3", {
+     x: withConstructorDefault<Number>;
+     y: withConstructorDefault<Number>;
+     z: withConstructorDefault<Number>;
+  }>>;
+  scale: withConstructorDefault<TaggedStruct<"Vec3", {
+     x: withConstructorDefault<Number>;
+     y: withConstructorDefault<Number>;
+     z: withConstructorDefault<Number>;
+  }>>;
+  strokeColor: withConstructorDefault<typeof Color>;
+  strokeWidth: withConstructorDefault<Number>;
+  visible: withConstructorDefault<Boolean>;
+}>;
+```
+
+Defined in: [packages/motion/src/Entity.ts:176](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Entity.ts#L176)
+
+A filled circle of a given `radius`, centered on its `position`.

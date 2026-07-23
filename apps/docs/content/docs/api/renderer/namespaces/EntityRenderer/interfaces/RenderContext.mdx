@@ -1,0 +1,120 @@
+---
+title: "RenderContext"
+description: "The services a renderer implementation gets from the engine: coordinate"
+---
+# Interface: RenderContext
+
+Defined in: [EntityRenderer.ts:52](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L52)
+
+The services a renderer implementation gets from the engine: coordinate
+conversion, viewport size, async registration, and the shared text and
+image actors.
+
+## Properties
+
+### height
+
+```ts
+readonly height: number;
+```
+
+Defined in: [EntityRenderer.ts:67](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L67)
+
+Current viewport height in scene units.
+
+***
+
+### images
+
+```ts
+readonly images: Images;
+```
+
+Defined in: [EntityRenderer.ts:81](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L81)
+
+Decoded image textures, cached for the renderer's scope.
+
+***
+
+### text
+
+```ts
+readonly text: Text;
+```
+
+Defined in: [EntityRenderer.ts:79](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L79)
+
+The shared SDF text actor: registered fonts, the glyph atlas, layout.
+
+***
+
+### toThree
+
+```ts
+readonly toThree: (x, y, z) => Vector3;
+```
+
+Defined in: [EntityRenderer.ts:63](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L63)
+
+Convert scene coordinates to three coordinates.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `x` | `number` |
+| `y` | `number` |
+| `z` | `number` |
+
+#### Returns
+
+`Vector3`
+
+#### Remarks
+
+The two spaces disagree about the origin and the y axis: scene space
+puts (0, 0) at the top-left with y increasing DOWNWARD, three puts it at
+the viewport center with y increasing upward. `z` means the same in
+both. Always position objects through this rather than converting by
+hand.
+
+***
+
+### waitFor
+
+```ts
+readonly waitFor: (work) => void;
+```
+
+Defined in: [EntityRenderer.ts:77](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L77)
+
+Register async work the frame must not be drawn without.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `work` | `Effect`\<`unknown`, `EffectMotionError`\> |
+
+#### Returns
+
+`void`
+
+#### Remarks
+
+`build` and `update` are synchronous, but some content is not ready
+immediately — a glyph layout, a texture decode. Hand that work here and
+the render path waits for it before presenting, so a frame never ships
+half-built. Failures surface in the render call's error channel.
+
+***
+
+### width
+
+```ts
+readonly width: number;
+```
+
+Defined in: [EntityRenderer.ts:65](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L65)
+
+Current viewport width in scene units.

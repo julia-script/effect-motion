@@ -1,0 +1,50 @@
+---
+title: "MakeOptions"
+description: "Everything three's `WebGPURenderer` accepts, plus initial sizing applied"
+---
+# Interface: MakeOptions
+
+Defined in: [packages/three/src/Renderer.ts:78](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/Renderer.ts#L78)
+
+Everything three's `WebGPURenderer` accepts, plus initial sizing applied
+before initialization.
+
+## Remarks
+
+Sizing here rather than after `make` avoids an initial render at the
+wrong size. Canvas CSS is never touched — callers own the element's
+styling.
+
+## Extends
+
+- `WebGPURendererParameters`
+
+## Properties
+
+### height?
+
+```ts
+readonly optional height?: number;
+```
+
+Defined in: [packages/three/src/Renderer.ts:80](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/Renderer.ts#L80)
+
+***
+
+### pixelRatio?
+
+```ts
+readonly optional pixelRatio?: number;
+```
+
+Defined in: [packages/three/src/Renderer.ts:81](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/Renderer.ts#L81)
+
+***
+
+### width?
+
+```ts
+readonly optional width?: number;
+```
+
+Defined in: [packages/three/src/Renderer.ts:79](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/Renderer.ts#L79)

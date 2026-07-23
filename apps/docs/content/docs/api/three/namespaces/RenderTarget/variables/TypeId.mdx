@@ -1,0 +1,24 @@
+---
+title: "TypeId"
+description: "const TypeId: \"~three/RenderTarget\";"
+---
+# Variable: TypeId
+
+```ts
+const TypeId: "~three/RenderTarget";
+```
+
+Defined in: [packages/three/src/RenderTarget.ts:21](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/RenderTarget.ts#L21)
+
+An offscreen render destination — draw into it instead of the canvas.
+
+## Remarks
+
+Rendering to a target is how a rendered result becomes something you can
+use: read its pixels back for export, or sample its texture in another
+pass.
+
+Construction cannot fail — the GPU allocation is deferred until first
+use — so [make](./make.mdx) is an Effect purely to register teardown. That is
+also the only reason this is a branded handle rather than a plain alias:
+a render target owns GPU memory that has to be released.

@@ -1,0 +1,34 @@
+---
+title: "one"
+description: "function one<A, E, R>(effect): Effect<A, E, Phaser | R>;"
+---
+# Function: one()
+
+```ts
+function one<A, E, R>(effect): Effect<A, E, Phaser | R>;
+```
+
+Defined in: [packages/motion/src/Phaser.ts:153](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Phaser.ts#L153)
+
+Run `effect`, then arrive at the phase boundary.
+
+Borrows the caller's party slot (no register/deregister) — that is what
+makes consecutive `one` calls handoff-gap-free.
+
+## Type Parameters
+
+| Type Parameter |
+| ------ |
+| `A` |
+| `E` |
+| `R` |
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `effect` | `Effect`\<`A`, `E`, `R`\> |
+
+## Returns
+
+`Effect`\<`A`, `E`, [`Phaser`](../classes/Phaser.mdx) \| `R`\>

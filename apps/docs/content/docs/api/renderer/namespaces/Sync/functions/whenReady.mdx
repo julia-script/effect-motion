@@ -1,0 +1,31 @@
+---
+title: "whenReady"
+description: "function whenReady(sync): Effect<void, EffectMotionError>;"
+---
+# Function: whenReady()
+
+```ts
+function whenReady(sync): Effect<void, EffectMotionError>;
+```
+
+Defined in: [Sync.ts:259](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L259)
+
+Wait for the async work a sync registered — glyph layouts and image
+decodes — including inside nested sub-compositions.
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `sync` | [`Sync`](../interfaces/Sync.mdx) |
+
+## Returns
+
+`Effect`\<`void`, `EffectMotionError`\>
+
+## Remarks
+
+Both render paths call this before drawing, which is what guarantees a
+frame never presents half-built text or a missing texture. A failed layout
+or decode surfaces as a typed error naming the resource, rather than
+silently rendering nothing.

@@ -1,0 +1,31 @@
+---
+title: "PrngState"
+description: "type PrngState = number;"
+---
+# Type Alias: PrngState
+
+```ts
+type PrngState = number;
+```
+
+Defined in: [packages/motion/src/particles/Prng.ts:23](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/particles/Prng.ts#L23)
+
+A plain, seedable pseudo-random generator carried BY each particle.
+
+Why not the scene's `Random` service? That service is fiber-scoped —
+reading it needs an Effect and a running fiber. A particle is data in a
+buffer, not a fiber; it can't `yield*`. So each particle carries its own
+generator state (a single uint32) advanced by pure arithmetic. The
+generator's SEED is drawn once from the scene's seeded `Random` at birth
+(see Particle.emit), so the whole thing stays deterministic under the
+scene seed while every particle's stream is independent: consuming one
+particle's randomness cannot shift another's.
+
+The algorithm is mulberry32 — a well-known 32-bit generator: one
+multiply-xor-shift chain per draw, good enough for visual scatter and
+byte-identical across platforms (all math forced through `| 0` / `>>> 0`
+so it stays in 32-bit integer space).
+
+State is a bare number so it packs into a particle buffer with no object
+overhead; `next` returns the new state alongside the drawn value rather
+than mutating, keeping the per-frame step a pure fold.

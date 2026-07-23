@@ -1,0 +1,35 @@
+---
+title: "resolveResources"
+description: "const resolveResources: (...args) => Effect<undefined, never, Scope>;"
+---
+# Variable: resolveResources
+
+```ts
+const resolveResources: (...args) => Effect<undefined, never, Scope>;
+```
+
+Defined in: [Sync.ts:652](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L652)
+
+Load the fonts and images a frame references into the sync actor.
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| ...`args` | \[[`Sync`](../interfaces/Sync.mdx), `AnyFrame`\] |
+
+## Returns
+
+`Effect`\<`undefined`, `never`, `Scope`\>
+
+## Remarks
+
+Frames carry resource REFERENCES, never bytes, so the bytes are resolved
+here from the caller's context. Only resources not already loaded are
+fetched, so this is cheap to call every frame.
+
+The built-in default font is auto-provided beneath caller context, so
+plain text works with no setup — and providing your own loader under the
+same `"sans-serif"` id overrides it. Any other font or image with no
+loader in context is a defect naming the id and the `Font.layer` /
+`Image.layer` call that would fix it.

@@ -1,0 +1,40 @@
+---
+title: "rgba"
+description: "function rgba("
+---
+# Function: rgba()
+
+```ts
+function rgba(
+   r, 
+   g, 
+   b, 
+   alpha?): Color;
+```
+
+Defined in: [packages/motion/src/Color.ts:111](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Color.ts#L111)
+
+A color from red, green, blue (each 0–255) and optional alpha (0–1).
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `r` | `number` |
+| `g` | `number` |
+| `b` | `number` |
+| `alpha?` | `number` |
+
+## Returns
+
+[`Color`](../classes/Color.mdx)
+
+## Default Value
+
+`alpha` — `1`
+
+## Example
+
+```typescript
+Color.rgba(22, 22, 29)
+```
