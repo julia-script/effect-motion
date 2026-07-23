@@ -1,27 +1,40 @@
 import { Line2NodeMaterial, NormalBlending } from "three/webgpu";
 
 /**
- * Fat-line rendering: `Line2` (WebGPU variant) with `LineGeometry` and its
- * node material. Stable import point over three's addon subpaths;
- * construction and mutation are sync raw three.
+ * Thick lines — strokes with a real pixel width.
+ *
+ * @remarks
+ * A plain three `Line` is always one pixel wide regardless of its material,
+ * because that is all the GPU's line primitive offers. `Line2` draws
+ * strokes as geometry instead, so a width in pixels means something.
+ *
+ * This module is a stable import point over three's addon subpaths, which
+ * move between versions, plus one behavioral fix — see
+ * {@link BlendedLine2NodeMaterial}. Construction and mutation are ordinary
+ * synchronous three.
  */
 
 type SetupDiffuseColorArgs = Parameters<Line2NodeMaterial["setupDiffuseColor"]>;
 
 /**
- * `Line2NodeMaterial` with real alpha blending. Upstream, a transparent fat
- * line does NOT blend: it samples `viewportOpaqueMipTexture()` — a
- * module-level singleton framebuffer copy — to fake transparency against
- * opaque content only ("transparency is not supported, yet"). That copy is
- * destroyed/recreated per render and shared across every renderer on the
- * page, spamming "destroyed texture used in a submit" validation errors
- * whenever more than one renderer (or the copy's resize) is in play, and it
- * blends wrongly against other translucent content besides.
+ * A `Line2NodeMaterial` whose transparency actually blends.
  *
- * Here: skip the viewport-copy branch during shader setup and use ordinary
- * `NormalBlending`, so a translucent stroke alpha-blends like every other
- * material. Drop this subclass if upstream ever supports true fat-line
- * transparency.
+ * @remarks
+ * Use this instead of three's `Line2NodeMaterial` for any stroke that is
+ * not fully opaque.
+ *
+ * Upstream, a transparent fat line does not truly blend. It fakes
+ * transparency by sampling a copy of the framebuffer's opaque content —
+ * three's own comment says "transparency is not supported, yet". That copy
+ * is a module-level singleton, recreated per render and shared by every
+ * renderer on the page, which produces two problems: validation errors
+ * about destroyed textures whenever more than one renderer is alive, and
+ * wrong results against other translucent content, which the copy does not
+ * contain.
+ *
+ * This subclass skips that branch during shader setup and uses ordinary
+ * alpha blending, so a translucent stroke composites like every other
+ * material. Drop it if upstream ever supports real fat-line transparency.
  */
 export class BlendedLine2NodeMaterial extends Line2NodeMaterial {
 	constructor(...parameters: ConstructorParameters<typeof Line2NodeMaterial>) {

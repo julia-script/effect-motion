@@ -35,9 +35,12 @@ import * as Timing from "./Timing.js";
 export type CameraState = Projection.CameraView & Projection.PointOfInterest;
 
 /**
- * A helper target: an Instance (position read live each frame), an Effect
- * resolving to one (resolved once at helper start, then read live), or a
- * plain position (inherently fixed — the no-entity escape hatch).
+ * What the camera helpers accept as something to aim at.
+ *
+ * @remarks
+ * An instance is read LIVE each frame, so aiming tracks it as it moves — the
+ * usual case. A plain position is fixed, for aiming at a spot where no
+ * entity exists.
  */
 export type CameraTarget =
 	| Instance.Instance
@@ -189,11 +192,38 @@ const lookAtImpl = Effect.fnUntraced(function* (
 });
 
 /**
- * Aim the camera at a target. No duration: set the point of interest this
- * frame. With a duration: eased re-aim as a retargeted tween (lands
- * exactly on a moving target, no terminal snap). `offset` shifts the aim
- * relative to the target ("slightly above their head"). Dual:
- * `lookAt(cam, target, ...)` or `cam.pipe(lookAt(target, ...))`.
+ * Point the camera at something.
+ *
+ * @remarks
+ * Aiming is expressed as a point of interest rather than as rotation
+ * angles, which is what makes it composable: the target can be a live
+ * instance, and the camera keeps facing it as it moves. There is no
+ * `lookAtTo` — the verb already names its target — so an optional
+ * `duration` selects between the two behaviors:
+ *
+ * - **Omitted** — aim snaps this frame. Use it to establish the shot before
+ *   anything moves.
+ * - **Given** — the aim eases over that time as a RETARGETED tween: each
+ *   frame interpolates toward the target's current position, so it converges
+ *   exactly onto a moving target with no snap at the end.
+ *
+ * Setting a point of interest is also the prerequisite for
+ * {@link orbitTo} and {@link dollyTo}, which are both defined relative to it.
+ *
+ * @param target - An instance to track, or a fixed world position.
+ * @param duration - Omit to snap; give a time to ease the re-aim.
+ * @param timing - An easing name or function.
+ * @param offset - Shifts the aim relative to the target, e.g. slightly above.
+ * @defaultValue `timing` — `"linear"`
+ * @returns The camera, so animators chain.
+ *
+ * @example
+ * Snap to establish, then ease across to a second subject.
+ * ```typescript
+ * const camera = yield* Scene.camera;
+ * yield* camera.pipe(Camera.lookAt(hero));
+ * yield* camera.pipe(Camera.lookAt(villain, "1 second", "easeInOutCubic"));
+ * ```
  */
 export const lookAt = Function.dual<
 	(
@@ -212,13 +242,35 @@ export const lookAt = Function.dual<
 >(dataFirst, lookAtImpl as never);
 
 /**
- * Track a target for the duration: the point of interest is a hard
- * per-frame copy of the target position (+offset). A plain animator — it
- * pipes, `Scene.all`s, staggers, repeats. No timing input (lag is
- * expressed by springing the POI instead). Ordering practice: within a
- * tick, branches run in fork order — a follow forked before its target's
- * animator reads the previous frame's position, a deterministic one-frame
- * trail. Dual like `lookAt`.
+ * Keep the camera locked onto a moving target for `duration`.
+ *
+ * @remarks
+ * Where {@link lookAt} with a duration EASES toward a target and stops,
+ * `follow` holds the aim on it: every frame copies the target's position, so
+ * the subject stays pinned while it moves. Run it concurrently with the
+ * subject's own animation — typically inside `Scene.all` or a `Scene.fork`.
+ *
+ * There is no timing parameter, because tracking is a hard per-frame copy
+ * rather than an interpolation. For a lagging, weighted camera, animate the
+ * point of interest with a spring instead.
+ *
+ * Ordering note: within a frame, branches run in the order they were forked.
+ * A follow forked BEFORE its target's animator reads the previous frame's
+ * position — a deterministic one-frame trail, not a bug.
+ *
+ * @param target - An instance to track, or a fixed world position.
+ * @param duration - How long to keep tracking.
+ * @param offset - Shifts the aim relative to the target.
+ * @returns The camera, so animators chain.
+ *
+ * @example
+ * Track the runner for the two seconds it is crossing frame.
+ * ```typescript
+ * yield* Scene.all([
+ * 	runner.pipe(Motion.moveTo({ x: 900 }, "2 seconds")),
+ * 	camera.pipe(Camera.follow(runner, "2 seconds")),
+ * ]);
+ * ```
  */
 export const follow = Function.dual<
 	(
@@ -303,11 +355,36 @@ const orbitImpl = Effect.fnUntraced(function* (
 });
 
 /**
- * Turntable the camera to an absolute azimuth around its point of
- * interest (angle about the world-Y axis through the POI; 0 = directly +z
- * of it). Position travels the arc — orientation comes entirely from the
- * POI, so there is no orientation math to get wrong. Radius and height
- * are preserved. Dies loudly without a POI. Dual like `moveTo`.
+ * Swing the camera around its point of interest, like a turntable.
+ *
+ * @remarks
+ * The camera travels an arc at a fixed radius and height while continuing to
+ * face the subject — the standard "orbit the product" move. Only the
+ * position is animated; the aim follows from the point of interest, so there
+ * is no orientation math to get wrong.
+ *
+ * `azimuth` is an ABSOLUTE angle in radians about the world-Y axis through
+ * the point of interest, where 0 is directly in front (+z of it). A full
+ * turn is `Math.PI * 2`; the sign chooses direction.
+ *
+ * Requires a point of interest — call {@link lookAt} first, or this fails
+ * loudly telling you so.
+ *
+ * @param azimuth - Target angle in radians; 0 is directly in front.
+ * @param duration - How long, in scene time.
+ * @param timing - An easing name or function.
+ * @defaultValue `timing` — `"linear"`
+ * @returns The camera, so animators chain.
+ * @see {@link orbit} to start from an explicit angle.
+ *
+ * @example
+ * A quarter turn around a subject.
+ * ```typescript
+ * yield* camera.pipe(
+ * 	Camera.lookAt(subject),
+ * 	Camera.orbitTo(Math.PI / 2, "2 seconds", "easeInOutCubic"),
+ * );
+ * ```
  */
 export const orbitTo = Function.dual<
 	(
@@ -328,7 +405,26 @@ export const orbitTo = Function.dual<
 	timing?: Timing.TimingInput,
 ) => orbitImpl(cam, undefined, azimuth, duration, timing)) as never);
 
-/** Like `orbitTo`, but from an explicit start azimuth. */
+/**
+ * Like {@link orbitTo}, but starting from an explicit azimuth.
+ *
+ * @remarks
+ * Stating both ends is what makes a full revolution expressible: `orbit(0,
+ * Math.PI * 2, …)` sweeps all the way around, whereas `orbitTo(Math.PI * 2)`
+ * from a resting camera would already be at its target and not move.
+ *
+ * @param from - Starting angle in radians.
+ * @param to - Target angle in radians.
+ * @param duration - How long, in scene time.
+ * @param timing - An easing name or function.
+ * @returns The camera, so animators chain.
+ *
+ * @example
+ * One full revolution.
+ * ```typescript
+ * yield* camera.pipe(Camera.orbit(0, Math.PI * 2, "4 seconds"));
+ * ```
+ */
 export const orbit = Function.dual<
 	(
 		from: number,
@@ -396,9 +492,33 @@ const dollyImpl = Effect.fnUntraced(function* (
 });
 
 /**
- * Move the camera along its view axis to an absolute distance from the
- * point of interest (in: toward it, out: away), aim unchanged. Dies
- * loudly without a POI. Dual like `moveTo`.
+ * Move the camera toward or away from its point of interest along the view
+ * axis.
+ *
+ * @remarks
+ * A push-in or pull-back that keeps the subject centered and the aim
+ * unchanged — only the distance changes. Distinct from tweening the camera's
+ * `z`, which moves along the WORLD axis and would slide the subject off
+ * center once the camera is aimed obliquely.
+ *
+ * Requires a point of interest — call {@link lookAt} first.
+ *
+ * @param distance - Target distance from the point of interest; smaller is
+ *   closer.
+ * @param duration - How long, in scene time.
+ * @param timing - An easing name or function.
+ * @defaultValue `timing` — `"linear"`
+ * @returns The camera, so animators chain.
+ * @see {@link dolly} to start from an explicit distance.
+ *
+ * @example
+ * Push in on a subject.
+ * ```typescript
+ * yield* camera.pipe(
+ * 	Camera.lookAt(subject),
+ * 	Camera.dollyTo(300, "1500 millis", "easeInOutCubic"),
+ * );
+ * ```
  */
 export const dollyTo = Function.dual<
 	(
@@ -419,7 +539,19 @@ export const dollyTo = Function.dual<
 	timing?: Timing.TimingInput,
 ) => dollyImpl(cam, undefined, distance, duration, timing)) as never);
 
-/** Like `dollyTo`, but from an explicit start distance. */
+/**
+ * Like {@link dollyTo}, but starting from an explicit distance.
+ *
+ * @remarks
+ * For a push-in that begins further out than the camera currently sits —
+ * the move starts at `from` regardless of where the camera was left.
+ *
+ * @param from - Starting distance from the point of interest.
+ * @param to - Target distance.
+ * @param duration - How long, in scene time.
+ * @param timing - An easing name or function.
+ * @returns The camera, so animators chain.
+ */
 export const dolly = Function.dual<
 	(
 		from: number,

@@ -10,21 +10,37 @@ import type * as Scene from "./Scene.js";
 import type { ThreeException } from "./ThreeException.js";
 
 /**
- * The GPU renderer actor: a branded handle over `THREE.WebGPURenderer`,
- * acquired with its async init awaited and disposed on scope close.
+ * The GPU renderer — a scoped handle over three's `WebGPURenderer`.
  *
- * Rendering, readback and compilation can fail or are async, so those are
- * Effects; sizing is infallible field bookkeeping, so it stays sync and
- * chains (see the wrapper conventions in AGENTS.md).
+ * @remarks
+ * {@link make} hands back a renderer whose async initialization has already
+ * completed, so nothing downstream has to await a device that might not be
+ * ready. On scope close it drains the GPU queue before disposing, which is
+ * what prevents the "destroyed texture used in a submit" errors that
+ * disposing mid-flight would otherwise produce.
+ *
+ * Work that touches the GPU — {@link render}, {@link readRenderTarget},
+ * {@link compile} — is an Effect, typed as `ThreeException`. Sizing and
+ * output-target bookkeeping cannot fail, so those stay synchronous and
+ * chain through `.pipe`.
  */
 
 export const TypeId = "~three/Renderer" as const;
 
+/**
+ * A handle to an initialized GPU renderer.
+ *
+ * @remarks
+ * The three renderer stays reachable through `~three.renderer` for anything
+ * this wrapper does not cover — a deliberate escape hatch, not the front
+ * door.
+ */
 export interface Renderer extends Pipeable.Pipeable {
 	readonly [TypeId]: typeof TypeId;
 	readonly "~three.renderer": THREE.WebGPURenderer;
 }
 
+/** Whether `u` is a {@link Renderer} handle. */
 export const isRenderer = (u: unknown): u is Renderer =>
 	Predicate.hasProperty(u, TypeId);
 
@@ -51,9 +67,13 @@ type WebGPURendererParameters = NonNullable<
 >;
 
 /**
- * three's `WebGPURenderer` constructor parameters, plus the initial sizing
- * applied before init (`setPixelRatio`/`setSize` — style untouched, callers
- * own the canvas CSS).
+ * Everything three's `WebGPURenderer` accepts, plus initial sizing applied
+ * before initialization.
+ *
+ * @remarks
+ * Sizing here rather than after `make` avoids an initial render at the
+ * wrong size. Canvas CSS is never touched — callers own the element's
+ * styling.
  */
 export interface MakeOptions extends WebGPURendererParameters {
 	readonly width?: number;
@@ -101,14 +121,37 @@ const release = (self: Renderer) => {
 	);
 };
 
+/**
+ * Acquire a renderer, initialization already awaited.
+ *
+ * @remarks
+ * Scoped: on close the renderer waits for in-flight GPU work to land,
+ * drains the queue, and disposes. A failure during that teardown is logged
+ * rather than raised, so it never masks the scope's real outcome.
+ *
+ * Without a `canvas`, three creates one. For headless use, pass the canvas
+ * and device from `@effect-motion/three/node`.
+ *
+ * @param options - Renderer parameters plus optional initial sizing.
+ * @returns A renderer, valid for the current scope.
+ *
+ * @example
+ * ```typescript
+ * const renderer = yield* Renderer.make({ width: 640, height: 360 });
+ * ```
+ */
 export const make = (
 	options: MakeOptions = {},
 ): Effect.Effect<Renderer, ThreeException, Scope.Scope> =>
 	Effect.acquireRelease(acquire(options), release);
 
 /**
- * Render a scene through a camera. Sync-safe after `make` (init already
- * awaited); failures still surface as typed errors.
+ * Draw a scene through a camera.
+ *
+ * @remarks
+ * Output goes wherever {@link setRenderTarget} last pointed — the canvas by
+ * default, or an offscreen target. Safe to call immediately after
+ * {@link make}, since initialization is already complete by then.
  */
 export const render = (
 	self: Renderer,
@@ -120,11 +163,23 @@ export const render = (
 	);
 
 /**
- * Read a render target back as tightly-packed, top-down RGBA rows.
- * WebGPU readback keeps a 256-byte row alignment — destrided here, so the
- * result is `width * height * 4` bytes ready for image encoding. Render
- * through a `RenderPipeline` first: it applies the sRGB output transform
- * (a raw render-target readback is linear).
+ * Read rendered pixels back off the GPU as RGBA bytes.
+ *
+ * @remarks
+ * The result is exactly `width * height * 4` bytes, top-down and tightly
+ * packed — ready to hand to an image encoder. WebGPU itself pads each row
+ * to a 256-byte boundary; that padding is stripped here so callers never
+ * deal with stride.
+ *
+ * Colors come back LINEAR. Render through a
+ * {@link PostProcessing.RenderPipeline} first if you want the sRGB output
+ * transform applied — reading a raw render target and encoding it directly
+ * produces a visibly dark image.
+ *
+ * @param target - The target to read.
+ * @param width - Region width in device pixels.
+ * @param height - Region height in device pixels.
+ * @returns `width * height * 4` bytes of RGBA.
  */
 export const readRenderTarget = (
 	self: Renderer,
@@ -164,9 +219,13 @@ export const readRenderTarget = (
 	);
 
 /**
- * Compile the pipelines a scene needs before its first presented frame —
- * the pre-warm that keeps first-frame pipeline compilation (~40–80ms) out
- * of playback.
+ * Compile the shader pipelines a scene needs, ahead of drawing it.
+ *
+ * @remarks
+ * WebGPU compiles a pipeline the first time it is used, which lands as a
+ * visible hitch (roughly 40–80ms) on the first frame. Calling this after
+ * the scene is populated but before anything is shown moves that cost into
+ * startup.
  */
 export const compile = (
 	self: Renderer,
@@ -179,7 +238,16 @@ export const compile = (
 			.then(() => undefined),
 	);
 
-/** Direct the renderer's output at a target, or `null` for the canvas. */
+/**
+ * Point the renderer's output at an offscreen target, or `null` to draw to
+ * the canvas.
+ *
+ * @remarks
+ * Rendering to a target is how a result becomes something to sample —
+ * reading pixels back, or feeding a texture into another pass. Save and
+ * restore the previous target around nested renders; {@link getRenderTarget}
+ * is there for exactly that.
+ */
 export const setRenderTarget: {
 	(target: RenderTarget.RenderTarget | null): (self: Renderer) => Renderer;
 	(self: Renderer, target: RenderTarget.RenderTarget | null): Renderer;
@@ -193,7 +261,12 @@ export const setRenderTarget: {
 	},
 );
 
-/** The current output target, or `null` when drawing to the canvas. */
+/**
+ * The current output target, or `null` when drawing to the canvas.
+ *
+ * @remarks
+ * Read it before redirecting output so you can restore it afterwards.
+ */
 export const getRenderTarget = (
 	self: Renderer,
 ): RenderTarget.RenderTarget | null => {
@@ -202,8 +275,12 @@ export const getRenderTarget = (
 };
 
 /**
- * Whether the renderer clears before each render. Turning it off is how
- * an overlay pass (a HUD tier) draws above already-rendered content.
+ * Whether the renderer clears the canvas before each render.
+ *
+ * @remarks
+ * Turning it off is how a second pass draws ON TOP of what is already
+ * there — an overlay or HUD tier. Turn it back on afterwards, or the next
+ * frame will accumulate over this one.
  */
 export const setAutoClear: {
 	(autoClear: boolean): (self: Renderer) => Renderer;
@@ -213,20 +290,32 @@ export const setAutoClear: {
 	return self;
 });
 
-/** Clear the depth buffer, so a following pass draws over what is there. */
+/**
+ * Clear the depth buffer.
+ *
+ * @remarks
+ * Paired with `setAutoClear(false)` for an overlay pass: without it, the
+ * overlay's geometry would be depth-tested against the world it is meant to
+ * sit above and could be hidden by it.
+ */
 export const clearDepth = (self: Renderer): Renderer => {
 	self["~three.renderer"].clearDepth();
 	return self;
 };
 
 /**
- * Advance three's node-graph frame counter.
+ * Advance three's internal frame counter by one.
  *
- * three only ticks this inside its rAF-driven animation loop, which a
- * headless export outruns — FRAME-deduped nodes (the scene pass above
- * all) then skip their per-frame work and consecutive frames sample a
- * stale texture. An export drives it explicitly: one exported frame IS
- * one three frame. `_nodes` is private, hence the cast.
+ * @remarks
+ * Only needed when driving renders yourself rather than through three's
+ * animation loop — a headless export, above all.
+ *
+ * Nodes that dedupe their work per frame (the scene pass especially) decide
+ * whether to recompute by comparing against this counter. three only ticks
+ * it inside its own rAF loop, which an export outruns, so consecutive
+ * exported frames would sample a stale texture and come out
+ * pairwise-duplicated. Calling this once per exported frame makes one
+ * exported frame mean one three frame.
  */
 export const advanceFrame = (self: Renderer): Renderer => {
 	(
@@ -237,7 +326,16 @@ export const advanceFrame = (self: Renderer): Renderer => {
 	return self;
 };
 
-/** Logical size in CSS pixels; the drawing buffer is this × pixelRatio. */
+/**
+ * Set the renderer's logical size in CSS pixels.
+ *
+ * @remarks
+ * The actual drawing buffer is this multiplied by the pixel ratio. Canvas
+ * CSS is left alone unless `updateStyle` is true, since callers usually own
+ * the element's layout.
+ *
+ * @defaultValue `updateStyle` — `false`
+ */
 export const setSize: {
 	(
 		width: number,
@@ -258,6 +356,13 @@ export const setSize: {
 	},
 );
 
+/**
+ * Set device pixels per logical pixel.
+ *
+ * @remarks
+ * Pass `window.devicePixelRatio` for a sharp result on a high-DPI display,
+ * or a fixed value above 1 to supersample an export for cleaner edges.
+ */
 export const setPixelRatio: {
 	(pixelRatio: number): (self: Renderer) => Renderer;
 	(self: Renderer, pixelRatio: number): Renderer;
@@ -266,10 +371,14 @@ export const setPixelRatio: {
 	return self;
 });
 
+/** The current device-pixels-per-logical-pixel ratio. */
 export const getPixelRatio = (self: Renderer): number =>
 	self["~three.renderer"].getPixelRatio();
 
-/** Drawing-buffer size in device pixels (logical size × pixelRatio). */
+/**
+ * The drawing buffer's size in device pixels — the logical size multiplied
+ * by the pixel ratio, and therefore the dimensions to read pixels back at.
+ */
 export const getDrawingBufferSize = (
 	self: Renderer,
 ): { readonly width: number; readonly height: number } => {

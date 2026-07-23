@@ -18,6 +18,18 @@ import * as ImageResource from "./Image.js";
  * live entity in the runner tree — see `Instance.ts`.
  */
 
+/**
+ * A point or offset in 3D space.
+ *
+ * @remarks
+ * Screen coordinates with depth: `x` right, `y` DOWN (the screen
+ * convention, not the mathematical one), `z` toward the viewer. Every axis
+ * defaults to 0, so `vec3({ x: 100 })` is a valid horizontal offset.
+ *
+ * At `z = 0` content renders exactly as flat 2D. Non-zero `z` is only
+ * meaningful under a perspective camera, where it changes apparent size and
+ * parallax.
+ */
 export const Vec3 = Schema.TaggedStruct("Vec3", {
 	x: Schema.Number.pipe(Schema.withConstructorDefault(Effect.succeed(0))),
 	y: Schema.Number.pipe(Schema.withConstructorDefault(Effect.succeed(0))),
@@ -26,7 +38,14 @@ export const Vec3 = Schema.TaggedStruct("Vec3", {
 
 export type Vec3 = typeof Vec3.Type;
 
-/** utility alias to build a Vec3 */
+/**
+ * Build a {@link Vec3}; omitted axes are 0.
+ *
+ * @example
+ * ```typescript
+ * Entity.vec3({ x: 100, y: 50 })
+ * ```
+ */
 export const vec3 = Vec3.make;
 
 const vec3Default = (x: number, y: number, z: number) =>
@@ -153,6 +172,7 @@ export const Rect = Schema.TaggedStruct("Rect", {
 	height: defaultedNumber(100),
 });
 
+/** A filled circle of a given `radius`, centered on its `position`. */
 export const Circle = Schema.TaggedStruct("Circle", {
 	...paintableMixin,
 	...fillMixin,
@@ -160,6 +180,7 @@ export const Circle = Schema.TaggedStruct("Circle", {
 	radius: defaultedNumber(10),
 });
 
+/** An ellipse with independent `radiusX` and `radiusY`. */
 export const Ellipse = Schema.TaggedStruct("Ellipse", {
 	...paintableMixin,
 	...fillMixin,
@@ -208,7 +229,7 @@ export const Group = Schema.TaggedStruct("Group", {
 /**
  * A screen-space container: its subtree is projected through the identity
  * camera rather than the active one, so HUD content ignores camera
- * movement, zoom, shake, and depth of field, and always paints on top.
+ * movement, zoom, and shake, and always paints on top.
  *
  * `position.z` is depth WITHIN the HUD tier — z consistently means depth in
  * the entity's own coordinate space, world for world content and screen for
@@ -237,13 +258,28 @@ export const Image = Schema.TaggedStruct("Image", {
 });
 
 /**
- * The viewpoint. The ONE non-paintable entity: it is view state, omitted
- * from the frame's instance map, and never renders. It therefore carries
- * position and rotation but no scale, opacity, or visibility.
+ * The viewpoint — the one entity that is never drawn.
  *
- * `z`, `focalLength`, and `focusDistance` are width-relative and filled by
- * the Runner at instantiate — only it knows the comp width. The zero
- * defaults here are placeholders that the Runner always overwrites.
+ * @remarks
+ * A camera is view state rather than content, so it carries `position` and
+ * `rotation` but no `scale`, `opacity`, or `visible`, and is absent from the
+ * frame's instance map. Every scene has one already; reach for it with
+ * `Scene.camera`.
+ *
+ * `focalLength` sets the perspective strength — a longer lens flattens
+ * depth, a shorter one exaggerates it. It and the resting `z` are
+ * width-relative and filled in by the runner at instantiate time (only the
+ * runner knows the composition width), so the zero defaults here are
+ * placeholders that are always overwritten. The resting values are chosen so
+ * content at `z = 0` renders exactly as flat 2D.
+ *
+ * `poi` is an optional point of interest: when set, the camera auto-aims at
+ * that world point and any explicit `rotation` composes on top of the aim.
+ * The `Camera` module's helpers are the ergonomic way to drive it.
+ *
+ * `aperture` and `focusDistance` describe depth of field. They are carried
+ * on the frame but currently have NO visual effect — depth-of-field
+ * rendering is not implemented, and every frame renders sharp.
  */
 export const Camera = Schema.TaggedStruct("Camera", {
 	...transformMixin,
@@ -271,13 +307,23 @@ export const EntityMap = {
 	Camera,
 } as const;
 
-/** decoded entity data — the union every consumer narrows on */
+/**
+ * Any entity's data — the union of every kind the library knows.
+ *
+ * @remarks
+ * Closed by design: `_tag` identifies the member, so the runner, the
+ * animators, and renderers all narrow on it instead of casting. Consumers
+ * switch on `_tag` and get the exact field set for that entity.
+ */
 export type Entity = (typeof EntityMap)[keyof typeof EntityMap]["Type"];
 
-/** every entity's tag: the discriminant, and the entity's identity */
+/**
+ * Every entity kind's name — `"Circle"`, `"Rect"`, `"Text"`, and the rest.
+ * This is what you pass to `Scene.instantiate`.
+ */
 export type EntityTag = Entity["_tag"];
 
-/** the data type of one entity, by tag */
+/** The data type of one entity kind, selected by its tag. */
 export type EntityByTag<Tag extends EntityTag> = Extract<Entity, { _tag: Tag }>;
 
 /** the definition (schema) of one entity, by tag */
@@ -306,7 +352,7 @@ export type TagsWith<Field extends string> = Extract<
 	Record<Field, unknown>
 >["_tag"];
 
-/** the entities that hold children: containers */
+/** The entity kinds that can hold children: `Group` and `Hud`. */
 export type ContainerTag = TagsWith<"children">;
 
 /** entity data narrowed to a container */

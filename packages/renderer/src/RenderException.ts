@@ -1,23 +1,28 @@
 import { Data } from "effect";
 
 /**
- * A scene-graph violation found while walking a frame: an instance
- * referenced twice (duplicate parent or cycle), an unknown instance id, a
- * Hud nested inside world content, or a leaf whose entity has no
- * registered renderer.
+ * A malformed scene graph, found while walking a frame.
  *
- * These are authoring bugs, not recoverable conditions — but they are
- * discovered inside a recursive walk, where threading a result type
- * through every frame would mean checking and re-propagating at each
- * level for a case that always aborts. The walk therefore throws to
- * escape, and the public seam catches once and maps to this error, so
- * callers still see a typed channel rather than an exception crossing an
- * unrelated Effect boundary.
+ * @remarks
+ * Raised for four situations, each an authoring bug rather than a
+ * recoverable condition:
+ *
+ * - an instance referenced more than once (a duplicate parent, or a cycle);
+ * - a reference to an instance id that is not in the frame;
+ * - a `Hud` nested inside world content, when it must be a top-level child
+ *   of the root or of another Hud;
+ * - an entity whose kind has no registered renderer.
+ *
+ * The message names the offending instance. It arrives as a typed error
+ * rather than a thrown exception: the walk itself throws to escape a deep
+ * recursion, but that is caught once at the sync seam so callers never see
+ * an exception cross an unrelated Effect boundary.
  */
 export class RenderException extends Data.TaggedError("RenderException")<{
 	readonly message: string;
 	readonly cause?: unknown;
 }> {
+	/** Build the error with a message and an optional underlying cause. */
 	static of(message: string, cause?: unknown): RenderException {
 		return new RenderException({ message, cause });
 	}

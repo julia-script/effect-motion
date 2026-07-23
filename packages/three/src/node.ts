@@ -4,20 +4,52 @@ import { wrapPromise } from "./Interop.js";
 import type { ThreeException } from "./ThreeException.js";
 
 /**
- * The Node runtime: a real GPU without a browser. Dawn (the `webgpu` npm
- * bindings) provides WebGPU; this module installs the environment three
- * expects and acquires a core-feature device. Node-only — never import from
- * the browser-safe `.` entry.
+ * Running three.js on a real GPU in Node, with no browser.
  *
- * Import this module BEFORE creating a renderer: its top-level side effects
- * install `navigator.gpu`, the WebGPU constants, and the rAF/`self` shims
- * three's internals touch.
+ * @remarks
+ * WebGPU comes from Dawn (Chrome's implementation, via the `webgpu` npm
+ * bindings). Importing this module installs the browser environment three
+ * expects as a TOP-LEVEL SIDE EFFECT: `navigator.gpu`, the WebGPU
+ * constants, `self`, a `requestAnimationFrame` shim, and a minimal
+ * `XMLHttpRequest` that font loaders need. Import it before creating a
+ * renderer.
  *
- * Note: three's internal animation loop keeps rescheduling the rAF shim, so
- * the Node event loop never drains on its own — a standalone render script
- * must end with `process.exit(0)` (or run under `NodeRuntime.runMain`,
- * which exits explicitly). The export pipeline and test runners handle
- * this; plain `node script.mjs` will otherwise hang after finishing.
+ * Node-only. Never import it from the browser-safe root entry.
+ *
+ * Two gotchas worth knowing before your first script:
+ *
+ * - **Your script will hang on exit.** three's animation loop keeps
+ *   rescheduling the rAF shim, so Node's event loop never drains. End a
+ *   standalone script with `process.exit(0)`, or run it under
+ *   `NodeRuntime.runMain`, which exits explicitly. Test runners and the
+ *   export pipeline already handle this.
+ * - **There is no canvas**, so render into a `RenderTarget` and read it
+ *   back. {@link stubCanvas} supplies the canvas-shaped object the renderer
+ *   constructor insists on.
+ *
+ * @example
+ * The headless setup, start to finish.
+ * ```typescript
+ * import * as NodeThree from "@effect-motion/three/node";
+ * import { Renderer, RenderTarget, Scene } from "@effect-motion/three";
+ * import { Effect } from "effect";
+ *
+ * const program = Effect.gen(function* () {
+ * 	const device = yield* NodeThree.makeDevice();
+ * 	const { canvas, context } = NodeThree.stubCanvas(640, 360);
+ * 	const renderer = yield* Renderer.make({
+ * 		canvas: canvas as unknown as HTMLCanvasElement,
+ * 		context: context as never,
+ * 		device,
+ * 		width: 640,
+ * 		height: 360,
+ * 	});
+ * 	const target = yield* RenderTarget.make(640, 360);
+ * 	Renderer.setRenderTarget(renderer, target);
+ * 	yield* Renderer.render(renderer, scene, camera);
+ * 	return yield* Renderer.readRenderTarget(renderer, target, 640, 360);
+ * }).pipe(Effect.scoped);
+ * ```
  */
 
 // WebGPU constants (GPUBufferUsage etc.) that browser code assumes global
@@ -81,10 +113,16 @@ if (g.XMLHttpRequest === undefined) {
 }
 
 /**
- * Request a core-feature Dawn device. three's own adapter request asks for
- * `featureLevel: 'compatibility'` (Dawn honors it, losing MSAA etc.;
- * Chrome upgrades it) — so acquire a core device ourselves and hand it to
- * the renderer constructor.
+ * Acquire a GPU device from Dawn.
+ *
+ * @remarks
+ * Pass the result to `Renderer.make` rather than letting three request its
+ * own. three asks for a "compatibility" feature level, which Chrome quietly
+ * upgrades but Dawn honors literally — costing MSAA and other core features,
+ * so headless output would be visibly worse than the browser's for the same
+ * scene. This requests a core device with every feature the adapter offers.
+ *
+ * Fails with a `ThreeException` when no adapter is available.
  */
 export const makeDevice = (): Effect.Effect<GPUDevice, ThreeException> =>
 	wrapPromise("requestAdapter", async () => {
@@ -101,9 +139,16 @@ export const makeDevice = (): Effect.Effect<GPUDevice, ThreeException> =>
 	});
 
 /**
- * A stub canvas + context pair for a renderer that only ever draws into
- * render targets: the default framebuffer is never touched, and using it
- * is a loud error.
+ * A canvas-shaped stand-in for headless rendering.
+ *
+ * @remarks
+ * three's renderer requires a canvas and a context even when nothing is
+ * displayed. These satisfy that without a DOM. The renderer must draw only
+ * into render targets: asking this context for the default framebuffer
+ * throws, deliberately, rather than silently rendering nowhere.
+ *
+ * @param width - Buffer width in device pixels.
+ * @param height - Buffer height in device pixels.
  */
 export const stubCanvas = (width: number, height: number) => {
 	const context = {

@@ -5,21 +5,34 @@ import * as Pipeable from "effect/Pipeable";
 import * as THREE from "three/webgpu";
 
 /**
- * An offscreen render destination: a branded handle over
- * `THREE.RenderTarget`, whose GPU allocation is released with the scope.
+ * An offscreen render destination — draw into it instead of the canvas.
  *
- * Construction is infallible (allocation is deferred to first use), so
- * `make` is an Effect only because it registers teardown — that is the
- * whole reason this type is branded rather than aliased.
+ * @remarks
+ * Rendering to a target is how a rendered result becomes something you can
+ * use: read its pixels back for export, or sample its texture in another
+ * pass.
+ *
+ * Construction cannot fail — the GPU allocation is deferred until first
+ * use — so {@link make} is an Effect purely to register teardown. That is
+ * also the only reason this is a branded handle rather than a plain alias:
+ * a render target owns GPU memory that has to be released.
  */
 
 export const TypeId = "~three/RenderTarget" as const;
 
+/**
+ * A handle to an offscreen render destination.
+ *
+ * @remarks
+ * The underlying target stays reachable through `~three.renderTarget` for
+ * anything this wrapper does not cover.
+ */
 export interface RenderTarget extends Pipeable.Pipeable {
 	readonly [TypeId]: typeof TypeId;
 	readonly "~three.renderTarget": THREE.RenderTarget;
 }
 
+/** Whether `u` is a {@link RenderTarget} handle. */
 export const isRenderTarget = (u: unknown): u is RenderTarget =>
 	Predicate.hasProperty(u, TypeId);
 
@@ -41,7 +54,14 @@ const brand = (target: THREE.RenderTarget): RenderTarget => {
 	return self;
 };
 
-/** A scoped render target of `width × height` device pixels. */
+/**
+ * A render target of `width × height` device pixels, freed when the scope
+ * closes.
+ *
+ * @remarks
+ * Dimensions are DEVICE pixels, so multiply by the pixel ratio yourself
+ * when supersampling.
+ */
 export const make = Effect.fnUntraced(function* (
 	width: number,
 	height: number,
@@ -52,38 +72,59 @@ export const make = Effect.fnUntraced(function* (
 });
 
 /**
- * A target WITHOUT scope-registered teardown — for one whose lifetime a
- * longer-lived owner already tracks (the renderer's per-comp targets,
- * recreated on resize and disposed with their comp). Prefer `make`.
+ * A render target WITHOUT scope-registered teardown.
+ *
+ * @remarks
+ * For targets whose lifetime does not match a scope — one recreated on
+ * every resize, for instance, where a longer-lived owner tracks it and
+ * calls {@link dispose}. Prefer {@link make} whenever a scope will do.
  */
 export const makeUnsafe = (width: number, height: number): RenderTarget =>
 	brand(new THREE.RenderTarget(width, height));
 
-/** Brand an existing target (same caveat as `makeUnsafe`). */
+/**
+ * Wrap an existing three render target, without registering teardown.
+ *
+ * @remarks
+ * Same caveat as {@link makeUnsafe}: whoever owns it must dispose it.
+ */
 export const fromRaw = (target: THREE.RenderTarget): RenderTarget =>
 	brand(target);
 
 /**
- * Release the target's GPU allocation. Only for targets created with
- * `makeUnsafe`/`fromRaw` — a scoped `make` disposes itself.
+ * Release the target's GPU memory.
+ *
+ * @remarks
+ * Only for targets from {@link makeUnsafe} or {@link fromRaw} — one from
+ * {@link make} disposes itself with its scope, and disposing it here would
+ * be a double free.
  */
 export const dispose = (self: RenderTarget): void => {
 	self["~three.renderTarget"].dispose();
 };
 
-/** The color attachment, for sampling the rendered result. */
+/**
+ * The target's color texture — what you sample to use the rendered result
+ * in another pass.
+ */
 export const texture = (self: RenderTarget): THREE.Texture =>
 	self["~three.renderTarget"].texture;
 
+/** The target's width in device pixels. */
 export const width = (self: RenderTarget): number =>
 	self["~three.renderTarget"].width;
 
+/** The target's height in device pixels. */
 export const height = (self: RenderTarget): number =>
 	self["~three.renderTarget"].height;
 
 /**
- * Resize in place. Three reallocates the underlying GPU textures, so the
- * handle stays valid and nothing needs re-registering with the scope.
+ * Resize the target in place.
+ *
+ * @remarks
+ * three reallocates the underlying GPU textures, so the handle stays valid
+ * and nothing needs re-registering with the scope. Contents are not
+ * preserved — redraw after resizing.
  */
 export const setSize: {
 	(nextWidth: number, nextHeight: number): (self: RenderTarget) => RenderTarget;

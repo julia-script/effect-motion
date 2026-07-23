@@ -26,21 +26,35 @@ import { RenderException } from "./RenderException.js";
 import * as Text from "./Text.js";
 
 /**
- * The GPU-free sync actor: walks frames into a retained `THREE.Scene`.
- * Everything here is plain three objects — testable without a GPU;
- * `Renderer.make` wires a `Sync` to a real WebGPU renderer.
+ * The GPU-free half of rendering: turning frames into a retained three
+ * scene.
  *
- * The frame walk and retained diff are a documented hot path: they run
- * per frame over every instance, so the inner loops are raw sync
- * mutation, split into phases (`syncCameras`, `walkTree`, `diffRetained`,
- * `syncBillboards`) that `syncFrame` orchestrates.
+ * @remarks
+ * Everything here is plain three objects and no GPU, which is what makes
+ * the whole frame-to-scene-graph path testable without a device.
+ * `Renderer.make` and the Node adapter each wire a `Sync` to a real WebGPU
+ * renderer; this module never draws anything itself.
  *
- * Scene-graph violations (duplicate ids, unknown ids, misplaced Huds,
- * unregistered entities) THROW from inside the walk — threading a result
- * type through a recursive descent would mean checking and re-propagating
- * at every level for a case that always aborts. `syncFrame` contains that
- * with a single `Effect.try` at the seam, mapping to `RenderException`,
- * so callers see a typed channel and never a stray exception.
+ * Each frame runs four phases:
+ *
+ * 1. **Cameras** — resolve the world camera (including its point-of-interest
+ *    aim) into three's coordinate conventions, and set the background.
+ * 2. **Walk** — descend the instance tree, folding ancestor translations
+ *    into each leaf's world position and routing HUD subtrees to their own
+ *    tier.
+ * 3. **Diff** — build objects that are new, update ones that changed,
+ *    dispose ones that left.
+ * 4. **Billboards** — turn billboarded objects to face their tier's camera.
+ *
+ * This is the hot path — it runs per frame over every instance — so the
+ * inner loops are deliberately raw synchronous mutation rather than Effect
+ * combinators.
+ *
+ * Scene-graph violations throw from inside the recursive walk and are caught
+ * once at {@link syncFrame}'s seam, where they become a typed
+ * `RenderException`. Threading a result type through every level of a
+ * descent would cost checking and re-propagation at each step for a case
+ * that always aborts.
  */
 
 const NEAR = 1;
@@ -84,30 +98,47 @@ interface RetainedEntry {
 	lastWorld: World;
 }
 
+/** Diagnostics for the last synced frame. */
 export interface SyncStats {
+	/** How many objects are currently retained. */
 	objects: number;
+	/** How long the last sync took, in milliseconds. */
 	lastSyncMs: number;
 }
 
+/**
+ * The depth-of-field request derived from a frame's camera.
+ *
+ * @remarks
+ * Currently computed but NOT consumed: depth-of-field rendering is not
+ * implemented, and both render paths draw every frame sharp. The values are
+ * kept in step with the camera so the feature can be rebuilt without
+ * re-deriving them.
+ */
 export interface DofState {
+	/** Whether the camera asked for DoF (`aperture` and `focusDistance` both > 0). */
 	on: boolean;
+	/** View-space distance to the intended sharp plane. */
 	focusDistance: number;
-	/** CoC scale in uv units (0 = off) — consumed by the DoF rebuild */
+	/** Blur radius in uv units, derived from the aperture; 0 is off. */
 	strengthUv: number;
 }
 
 /**
- * A sized-group sub-composition: its subtree syncs into a nested `Sync`
- * (comp-local identity camera, own background) whose scene the render
- * path draws into a render target; the target texture rides a billboard
- * plane at the group's anchor, carrying the group's opacity and 2D
- * transform.
+ * A nested scene (from `Scene.play`) as the renderer holds it.
  *
- * ponytail: comp content renders through the comp-LOCAL identity camera
- * (the AE-precomp flattening model) — child z inside a comp no longer
- * reacts to the WORLD camera as the ThorVG compositor's screen-space clip
- * did. World-camera parallax inside a precomp needs a frustum-clip design
- * if a scene ever wants it.
+ * @remarks
+ * A sub-composition is drawn to its OWN render target and the result is
+ * pasted onto a plane in the parent scene, like a precomp in After Effects.
+ * That is what lets a whole nested scene be moved, faded, or scaled as one
+ * object, and what makes its background and bounds mean something.
+ *
+ * The child renders through its own identity camera, so its content is
+ * flattened before compositing: depth inside a nested scene does not react
+ * to the outer camera.
+ *
+ * ponytail: world-camera parallax inside a precomp would need a frustum-clip
+ * design if a scene ever wants it.
  */
 export interface CompState {
 	readonly sync: Sync;
@@ -125,24 +156,33 @@ export interface CompState {
 }
 
 /**
- * Retained sync state: the world and HUD scenes, cameras, the text and
- * image actors, live comps, and the retained-object diff map. Mostly
- * data — the API is the sibling functions (`syncFrame`, `whenReady`,
- * `resolveResources`, `dispose`).
+ * The retained scene state: the world and HUD tiers, their cameras, the
+ * text and image actors, live sub-compositions, and the object diff map.
+ *
+ * @remarks
+ * Mostly data — the API is the sibling functions ({@link syncFrame},
+ * {@link whenReady}, {@link resolveResources}, {@link dispose}).
+ *
+ * Content lives in one of two tiers. The WORLD scene is drawn through the
+ * frame's camera, so it moves with it; the HUD scene is drawn through an
+ * identity camera, above everything, so it stays fixed to the glass.
  */
 export interface Sync {
 	/** the world scene, branded — the render paths take the wrapper */
 	readonly scene: ThreeScene.Scene;
 	readonly camera: THREE.PerspectiveCamera;
 	/**
-	 * screen-space HUD tier: rendered through the identity camera, after
-	 * and above world content, exempt from DoF. Transparent background so
-	 * the render paths overlay it.
+	 * The screen-space HUD tier: drawn through an identity camera, after and
+	 * above world content, on a transparent background so the render paths
+	 * can overlay it.
 	 */
 	readonly hudScene: ThreeScene.Scene;
 	readonly hudCamera: THREE.PerspectiveCamera;
 	readonly stats: SyncStats;
-	/** per-frame DoF request, consumed by the render path */
+	/**
+	 * Depth-of-field request derived from the frame's camera — currently
+	 * derived but not drawn. See {@link DofState}.
+	 */
 	readonly dof: DofState;
 	/** the renderer's SDF text actor (fonts, atlas, layout) */
 	readonly text: Text.Text;
@@ -207,10 +247,14 @@ export const make = (registry: Record<string, AnyEntityRenderer>): Sync => {
 };
 
 /**
- * Drain the async work registered during sync (glyph layouts, decodes)
- * so a render never presents half-built content, recursing into nested
- * comps. A failed layout or decode is a typed error naming the resource,
- * not a silently missing string.
+ * Wait for the async work a sync registered — glyph layouts and image
+ * decodes — including inside nested sub-compositions.
+ *
+ * @remarks
+ * Both render paths call this before drawing, which is what guarantees a
+ * frame never presents half-built text or a missing texture. A failed layout
+ * or decode surfaces as a typed error naming the resource, rather than
+ * silently rendering nothing.
  */
 export const whenReady = (sync: Sync): Effect.Effect<void, EffectMotionError> =>
 	Effect.suspend(() => {
@@ -456,12 +500,17 @@ const syncFrameUnsafe = (sync: Sync, frame: AnyFrame): void => {
 };
 
 /**
- * Sync a frame into the retained scenes.
+ * Bring the retained scenes in step with a frame.
  *
- * The walk's throws are contained here — one `Effect.try` at the seam
- * turns a scene-graph violation into a typed `RenderException` naming the
- * offending instance, instead of an exception escaping into whatever
- * Effect the caller happened to be inside.
+ * @remarks
+ * Runs the four phases described in the module overview. Objects are built,
+ * updated, or disposed as the frame demands; unchanged ones are skipped by
+ * reference equality on their data and world position, so a still scene
+ * costs almost nothing to hold.
+ *
+ * Scene-graph violations arrive as a typed `RenderException` naming the
+ * offending instance — never as a thrown exception escaping into the
+ * caller's Effect.
  */
 export const syncFrame = (
 	sync: Sync,
@@ -562,8 +611,12 @@ const disposeComp = Effect.fnUntraced(function* (comp: CompState) {
 });
 
 /**
- * Dispose every retained object (scope teardown). Effectful because the
- * image store's textures live behind Deferreds.
+ * Release every retained object, texture, and sub-composition.
+ *
+ * @remarks
+ * Called automatically when a renderer's scope closes; you rarely call it
+ * directly. Effectful because decoded image textures live behind Deferreds
+ * that may still be in flight.
  */
 export const dispose = Effect.fnUntraced(function* (sync: Sync) {
 	for (const entry of sync.retained.values()) {
@@ -583,11 +636,18 @@ export const dispose = Effect.fnUntraced(function* (sync: Sync) {
 });
 
 /**
- * Resolve the frame's font and image resources into the sync actor:
- * loaders resolve from the caller's live context by their string-derived
- * tag; the reserved `"sans-serif"` default is auto-provided beneath
- * caller context; a missing loader dies with a defect naming the id (the
- * `font-loading` backstop).
+ * Load the fonts and images a frame references into the sync actor.
+ *
+ * @remarks
+ * Frames carry resource REFERENCES, never bytes, so the bytes are resolved
+ * here from the caller's context. Only resources not already loaded are
+ * fetched, so this is cheap to call every frame.
+ *
+ * The built-in default font is auto-provided beneath caller context, so
+ * plain text works with no setup — and providing your own loader under the
+ * same `"sans-serif"` id overrides it. Any other font or image with no
+ * loader in context is a defect naming the id and the `Font.layer` /
+ * `Image.layer` call that would fix it.
  */
 export const resolveResources = Effect.fnUntraced(function* (
 	sync: Sync,

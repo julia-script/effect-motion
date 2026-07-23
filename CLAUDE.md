@@ -33,7 +33,7 @@ Note: `packages/react` tests alias `effect-motion` to `../motion/src` (see its `
 - `packages/motion` — core library, published as `effect-motion`: scenes, entities, frame production. Renderer-free — no renderer dependency in its tree. Depends on `effect` (a pinned beta — an intentional pin, tracked in the roadmap's maintenance budget; upgrading effect can change seeded random sequences).
 - `packages/three` — `@effect-motion/three`: bindings-only Effect wrapper over three.js (knows nothing about frames or entities). Browser entry plus `/node` entry (Dawn WebGPU + environment shims).
 - `packages/renderer` — `@effect-motion/renderer`: the single frame renderer — the only place frames meet three. Retained scene graph, `build`/`update`/`dispose` entity contract, GPU DoF, browser canvas + Node PNG adapters.
-- `packages/react` — `@effect-motion/react`: `usePlayer` hook (buffered streaming playback on a rAF clock) and the `Player` component.
+- `packages/react` — `@effect-motion/react`: the `Player` component (buffered streaming playback on a wall-clock accumulator). `Player` and `PlayerProps` are the whole public surface; the `useScene` engine behind it is private.
 - `apps/docs` — Fumadocs/Next.js docs site. Runnable examples live in `apps/docs/examples/*.scene.ts` and are registered in `examples/registry.ts` (the key doubles as the displayed source filename). MDX content in `content/docs/`.
 
 ## Core architecture (packages/motion)
@@ -63,6 +63,7 @@ Nontrivial features should go through a change (propose → apply → archive) r
 
 - Biome enforces formatting: tab indentation, double quotes, organized imports. Run `pnpm lint:fix` before committing.
 - Never write code that breaks Biome rules — not even in tests. In particular, no non-null assertions (`!`) and no biome-ignore suppressions. Where a value is known present but typed nullable, use the `unreachable` helper (`packages/motion/test/support/raise.ts`, `packages/renderer/test/support/raise.ts`): `frames.at(-1) ?? unreachable()`.
+- Don't `throw`. Errors are values — fail with `Effect.fail` or a tagged error. The one exception is a deep recursive function that genuinely needs to short-circuit the whole call stack; even then keep the `throw` inside a plain sync function and wrap it in `Effect.try`/`Effect.tryPromise`, mapping the thrown value to a typed error. See "Don't `throw`" in AGENTS.md.
 - Stay type-safe. Casts (`as`) are an escape hatch for what TypeScript can't express (conditional return types, generic variance gaps) — use sparingly, and fix the signature before casting at the call site. See "Stay type-safe" in AGENTS.md.
 - `ponytail:` comments are this repo's deferred-upgrade markers — a known ceiling plus its upgrade path (e.g. the player's unbounded frame buffer → ring buffer). Preserve them; add one when you consciously defer.
 - Every animator ships as a base/To pair and as a dual (data-first `verb(instance, ...)` or pipeable `instance.pipe(verb(...))`); dispatch is by `Instance.isInstance` on the first argument, never arity. See AGENTS.md.

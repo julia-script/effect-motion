@@ -1,3 +1,44 @@
+/**
+ * Authoring and running scenes — the module you start from.
+ *
+ * @remarks
+ * A scene is a generator function that creates entities and yields
+ * animations. It is a pure description: running it twice produces the same
+ * frames, because scene time is counted in FRAMES rather than read from a
+ * clock, and randomness comes from a seeded generator.
+ *
+ * The surface divides into three jobs:
+ *
+ * - **Authoring** — {@link make} to declare a scene, {@link instantiate} to
+ *   put something in it, {@link sleep} to hold, {@link data} / {@link update}
+ *   to read and write entity state directly.
+ * - **Composition** — {@link all} (together), {@link chain} (one after
+ *   another), {@link stagger} (overlapping), {@link repeat} (again, on a
+ *   schedule), {@link fork} / {@link background} (alongside), {@link play}
+ *   (a whole scene nested inside another).
+ * - **Consumption** — {@link run} to start one, {@link stream} to pull its
+ *   frames lazily, {@link step} to advance it a frame at a time.
+ *
+ * Concurrency is frame-synchronized. Animations running "at the same time"
+ * all advance exactly one frame per tick and wait for each other at a
+ * barrier, so adding concurrency never changes the frames a scene produces —
+ * only how they are written.
+ *
+ * @example
+ * A complete scene: two shapes, one moving after the other.
+ * ```typescript
+ * import * as Motion from "effect-motion/Motion";
+ * import * as Scene from "effect-motion/Scene";
+ *
+ * const scene = Scene.make(
+ * 	function* () {
+ * 		const dot = yield* Scene.instantiate("Circle", { radius: 20 });
+ * 		yield* dot.pipe(Motion.moveTo({ x: 400 }, "1 second"));
+ * 	},
+ * 	{ width: 500, height: 300 },
+ * );
+ * ```
+ */
 import { Latch, Layer } from "effect";
 import * as Cause from "effect/Cause";
 import * as Context from "effect/Context";
@@ -19,6 +60,19 @@ import * as Runner from "./Runner.js";
 import * as Time from "./Time.js";
 
 export const TypeId = "~motion/Scene" as const;
+
+/**
+ * A scene: an animation body plus the composition it plays in.
+ *
+ * @remarks
+ * Inert on its own — building one runs no animation and produces no frames.
+ * It is a description that {@link run}, {@link stream}, or {@link play}
+ * later executes, which is what lets the same scene be replayed, nested, or
+ * rendered at different settings without change.
+ *
+ * @typeParam E - How the scene can fail.
+ * @typeParam R - What it needs to run (fonts, images, and other resources).
+ */
 export interface Scene<E = never, R = never> {
 	readonly [TypeId]: typeof TypeId;
 	/**
@@ -69,6 +123,45 @@ type GeneratorR<Eff> = [Eff] extends [never]
 		? R
 		: never;
 
+/**
+ * Declare a scene from a generator body.
+ *
+ * @remarks
+ * The generator is where a scene is written: `yield*` an
+ * {@link instantiate} to create something, `yield*` an animator to move it.
+ * Yielding is what makes time pass — statements between yields all happen on
+ * the same frame.
+ *
+ * The body does NOT run here. `make` captures it, so a scene can be
+ * declared once at module scope and run many times; each run re-executes
+ * the body from scratch with fresh entities.
+ *
+ * `meta` sets what the composition IS — its pixel dimensions and background.
+ * That is distinct from playback settings like frame rate and seed, which
+ * are chosen later at {@link run} / {@link stream}, because the same scene
+ * may legitimately be played back at different rates.
+ *
+ * An optional leading `name` is a display label for pickers and tooling
+ * only; it is never read during playback.
+ *
+ * @param f - The scene body.
+ * @param meta - Composition config: `width`, `height`, `backgroundColor`.
+ * @defaultValue `meta` — 1920×1080, transparent background
+ * @returns An inert {@link Scene}, ready to run, stream, or play.
+ *
+ * @example
+ * A named 500×300 scene on a dark background.
+ * ```typescript
+ * const scene = Scene.make(
+ * 	"intro",
+ * 	function* () {
+ * 		const dot = yield* Scene.instantiate("Circle", { radius: 20 });
+ * 		yield* dot.pipe(Motion.moveTo({ x: 400 }, "1 second"));
+ * 	},
+ * 	{ width: 500, height: 300, backgroundColor: Color.hex("#16161d") },
+ * );
+ * ```
+ */
 export const make: {
 	<const Eff extends Effect.Effect<any, any, any>, const AEff>(
 		f: () => Generator<Eff, AEff, never>,
@@ -111,6 +204,51 @@ const makeScene = <E = never, R = never>(
 	backgroundColor: meta.backgroundColor ?? Runner.defaultComp.backgroundColor,
 });
 
+/**
+ * Create an entity and put it in the scene.
+ *
+ * @remarks
+ * `kind` selects the entity and, with it, the exact props allowed — asking
+ * for a `"Circle"` gets you `radius`, a `"Text"` gets `text` and
+ * `fontSize`. Everything is optional and defaulted, so `instantiate("Circle",
+ * {})` is a valid white circle at the origin.
+ *
+ * The entity appears immediately and stays for the rest of the scene. It is
+ * mounted under the ambient parent — the root, or the enclosing Group when
+ * created inside one.
+ *
+ * What you get back is a lightweight HANDLE, not the entity's data. It is
+ * what animators take, and it stays valid as the data changes underneath;
+ * to read the current state use {@link data}. Because the handle is itself
+ * pipeable, you can animate straight off the call without binding it first.
+ *
+ * Containers (`Group`, `Hud`) accept a `children` array that is deliberately
+ * permissive: a bare string becomes a Text, an existing handle is adopted,
+ * and an un-yielded `instantiate` is resolved for you.
+ *
+ * @param kind - Which entity: `"Circle"`, `"Rect"`, `"Text"`, `"Line"`,
+ *   `"Path"`, `"Ellipse"`, `"Group"`, `"Hud"`, `"Image"`, or `"Camera"`.
+ * @param props - Initial field values; all optional.
+ * @returns A handle to the live entity.
+ *
+ * @example
+ * A shape, and a Group adopting mixed children.
+ * ```typescript
+ * const dot = yield* Scene.instantiate("Circle", {
+ * 	position: Entity.vec3({ x: 100, y: 50 }),
+ * 	radius: 20,
+ * 	fillColor: Color.hex("#7f5af0"),
+ * });
+ *
+ * const panel = yield* Scene.instantiate("Group", {
+ * 	children: [
+ * 		"a bare string becomes a Text",
+ * 		Scene.instantiate("Rect", { width: 200, height: 40 }),
+ * 		dot,
+ * 	],
+ * });
+ * ```
+ */
 export const instantiate = Effect.fnUntraced(function* <
 	Tag extends Entity.EntityTag,
 >(
@@ -128,9 +266,25 @@ export const tick = Effect.gen(function* () {
 });
 
 /**
- * Hold the scene for `duration` of scene time (frames at the runner's
- * frame rate) — `Effect.sleep`'s sibling, but in frames, not wall time.
- * A zero-length duration is a no-op.
+ * Hold the scene still for `duration`.
+ *
+ * @remarks
+ * `Effect.sleep`'s sibling, but counted in FRAMES at the runner's frame
+ * rate rather than read from a clock. That distinction is load-bearing:
+ * a wall-clock sleep would produce a different number of frames on a slow
+ * machine, and scenes must be reproducible.
+ *
+ * A zero-length duration is a no-op — unlike an animator, which always
+ * consumes at least one frame.
+ *
+ * Use `Motion.wait` instead when the hold belongs inside an animator chain.
+ *
+ * @param duration - How long to hold, in scene time.
+ *
+ * @example
+ * ```typescript
+ * yield* Scene.sleep("500 millis");
+ * ```
  */
 export const sleep = (duration: Duration.Input) =>
 	Effect.gen(function* () {
@@ -150,6 +304,24 @@ export interface FrameEntry {
 	data: Entity.Entity;
 }
 
+/**
+ * One rendered moment: every entity's state at a single instant, plus the
+ * metadata needed to draw it.
+ *
+ * @remarks
+ * A frame is self-describing — it carries its own resolution, background,
+ * frame rate, and camera view, so a renderer needs nothing but the frame to
+ * produce a picture. That is what lets frames be serialized, cached, or sent
+ * to a different process.
+ *
+ * `instances` is keyed by instance id and holds plain data, not handles. The
+ * active camera is deliberately absent from it (it is view state, surfaced
+ * as `camera` instead), and `root` names the group everything hangs from,
+ * which is never itself drawn.
+ *
+ * @typeParam Resources - Fonts and images the renderer will need; frames
+ *   carry the requirement, never the bytes.
+ */
 export interface Frame<out Resources = never> {
 	/**
 	 * phantom: the loader requirements the renderer will demand for this
@@ -176,6 +348,22 @@ export interface Frame<out Resources = never> {
 	 */
 	comps: Record<string, Runner.CompConfig>;
 }
+/**
+ * Advance a running scene by exactly one frame.
+ *
+ * @remarks
+ * Returns the frame that was produced, or `null` once the scene is over —
+ * which is the signal to stop pulling. Every concurrent branch advances
+ * together on each call, which is what keeps concurrency from affecting the
+ * frames a scene produces.
+ *
+ * A scene that runs past its `maxFrames` cap dies here with a message
+ * naming the limit, rather than looping forever — the guard against an
+ * accidental `Schedule.forever` with nothing to stop it.
+ *
+ * @param runningScene - The handle from {@link run}.
+ * @returns The next frame, or `null` when the scene has ended.
+ */
 // R is never: everything step touches is bound to the runningScene value
 // (runner instance, phaser, fiber) — no ambient service is read
 export const step = Effect.fnUntraced(function* <E, R>(
@@ -231,6 +419,31 @@ export interface RunningScene<E, R> {
 	/** frames delivered so far — mutated by `step` for the maxFrames cap */
 	framesDelivered: number;
 }
+/**
+ * Start a scene and hand back a handle for advancing it manually.
+ *
+ * @remarks
+ * The low-level entry point, for drivers that need to own the frame loop —
+ * an exporter writing files, or a player synchronizing to its own clock.
+ * Starting a scene does not produce any frames; pair this with {@link step}
+ * to pull them one at a time.
+ *
+ * Most code wants {@link stream} instead, which wraps exactly this pairing
+ * in a stream.
+ *
+ * @param scene - The scene to start.
+ * @param settings - Playback settings.
+ * @returns A running-scene handle to pass to {@link step}.
+ *
+ * @example
+ * ```typescript
+ * const running = yield* Scene.run(scene, { frameRate: 30 });
+ * let frame = yield* Scene.step(running);
+ * while (frame !== null) {
+ * 	frame = yield* Scene.step(running);
+ * }
+ * ```
+ */
 export const run = <E, R>(
 	scene: Scene<E, R>,
 	settings: Partial<Runner.Settings> = {},
@@ -342,6 +555,37 @@ export const run = <E, R>(
 		return runningScene;
 	});
 
+/**
+ * Play a scene and get its frames as a lazy stream — the usual way to
+ * consume one.
+ *
+ * @remarks
+ * Frames are produced on demand, so a player can pull at its own pace and a
+ * long scene never has to be materialized all at once. The stream ends when
+ * the scene does.
+ *
+ * `settings` is where playback choices live — `frameRate`, `seed`,
+ * `maxFrames` — as opposed to what the composition IS (its size and
+ * background), which was fixed at {@link make}. The same scene can therefore
+ * be streamed at 30fps for a preview and 60fps for a final render without
+ * being rewritten.
+ *
+ * Note the frame count depends on the frame rate: a one-second animation is
+ * 30 frames at 30fps and 60 at 60fps, plus a final resting frame.
+ *
+ * @param scene - The scene to play.
+ * @param settings - Playback settings.
+ * @defaultValue `frameRate` 60, `seed` `"effect-motion"`, `maxFrames` 36_000
+ * @returns A stream of frames.
+ *
+ * @example
+ * Collect every frame of a scene at 30fps.
+ * ```typescript
+ * const frames = yield* Scene.stream(scene, { frameRate: 30 }).pipe(
+ * 	Stream.runCollect,
+ * );
+ * ```
+ */
 export const stream = <E = never, R = never>(
 	scene: Scene<E, R>,
 	settings: Partial<Runner.Settings> = {},
@@ -362,6 +606,31 @@ const isUpdaterFn = <Data>(
 	props: Updater<Data>,
 ): props is (data: Data) => Data => typeof props === "function";
 
+/**
+ * Read an entity's current data.
+ *
+ * @remarks
+ * An {@link Instance} is only a handle, so this is how you get at the live
+ * values behind it — to branch on where something is, or to compute a target
+ * relative to its current state.
+ *
+ * The result is a snapshot for THIS frame, not a live view; read again on a
+ * later frame to see later values. The returned type is narrowed by the
+ * handle's kind, so a Circle's `radius` is available without casting.
+ *
+ * Reading a destroyed entity is a loud defect rather than a silent
+ * `undefined`.
+ *
+ * @param instance - Handle to read.
+ * @returns The entity's data as of this frame.
+ * @see {@link update} to write it.
+ *
+ * @example
+ * ```typescript
+ * const { position, radius } = yield* Scene.data(dot);
+ * yield* dot.pipe(Motion.moveTo({ x: position.x + radius * 4 }, "1 second"));
+ * ```
+ */
 export const data = <Tag extends Entity.EntityTag>(
 	instance: Instance.Instance<Tag>,
 ) =>
@@ -375,6 +644,34 @@ export const data = <Tag extends Entity.EntityTag>(
 		}
 		return current;
 	});
+/**
+ * Set an entity's data immediately, with no animation.
+ *
+ * @remarks
+ * A hard cut on the current frame — the counterpart to the animators, which
+ * interpolate. Use it to set something up before animating (jolt the camera,
+ * then spring it back), or to change a field no animator covers, like
+ * `text`, `visible`, or a Path's `commands`.
+ *
+ * Pass an object to replace the data, or a function to derive it from the
+ * current values — the function form is preferred, since it reads and writes
+ * atomically.
+ *
+ * Updating a destroyed entity is a no-op returning `false`, not an error.
+ *
+ * @param instance - Handle to update.
+ * @param props - New data, or `(current) => next`.
+ *
+ * @example
+ * Retitle a label and jolt the camera, both on this frame.
+ * ```typescript
+ * yield* Scene.update(label, (d) => ({ ...d, text: "done" }));
+ * yield* Scene.update(camera, (d) => ({
+ * 	...d,
+ * 	position: Entity.vec3({ ...d.position, x: 22 }),
+ * }));
+ * ```
+ */
 export const update = <Tag extends Entity.EntityTag>(
 	instance: Instance.Instance<Tag>,
 	props: Updater<Entity.EntityByTag<Tag>>,
@@ -429,15 +726,30 @@ export const comp = Effect.fnUntraced(function* () {
 });
 
 /**
- * The active camera instance — an ordinary instance carrying `position`
- * (world x/y/z), Euler orientation (`rotX`/`rotY`/`rotZ`), and
- * `focalLength` (perspective strength — see Projection.defaultFocalLength),
- * so the existing animators drive it: `Scene.make(function* () { const cam
- * = yield* Scene.camera; yield* cam.pipe(Motion.moveTo({ z: -400 })) })`.
- * A default resting camera is always present (width-relative 50mm-equivalent
- * focal length, projecting z=0 content to plain-2D placement); animate it
- * directly, or `Scene.setCamera` to swap in another instance. The camera is
- * never drawn.
+ * The active camera, as an ordinary animatable instance.
+ *
+ * @remarks
+ * There is always a camera — a resting one is present from the first frame,
+ * placed so that content at `z = 0` renders exactly as flat 2D. A scene that
+ * never touches the camera looks like a plain 2D scene, and reaching for
+ * `Scene.camera` is how you opt into depth.
+ *
+ * It is a normal instance, so every animator drives it with no special
+ * vocabulary: `moveTo` flies it (including along `z` to push in or pull
+ * back), `tweenTo` on `focalLength` changes the lens, springs and forks work
+ * as they do anywhere. `Camera` helpers add aiming on top.
+ *
+ * The camera is view state and is never itself drawn.
+ *
+ * @returns A handle to the active camera.
+ * @see {@link setCamera} to swap in a different one.
+ *
+ * @example
+ * Push the camera in, revealing depth in the scene.
+ * ```typescript
+ * const camera = yield* Scene.camera;
+ * yield* camera.pipe(Motion.moveTo({ z: -300 }, "1200 millis", "easeInOutCubic"));
+ * ```
  */
 export const camera = Effect.gen(function* () {
 	const runner = yield* Runner.Runner;
@@ -515,13 +827,36 @@ const makeBranch = <A, E = never>(
 };
 
 /**
- * Finish the innermost enclosing branch (the current fork, played scene,
- * or the scene body itself): whoever awaits the branch's `finished`
- * proceeds, the branch stops blocking its parent's end, and the code
- * after `finish` keeps running as a TAIL — bounded by the parent, which
- * interrupts it at scene end like a background. Idempotent; completion
- * implies finish. NOTE: a failure in the tail (after finish) is NOT
- * reported — by then nothing is listening.
+ * Declare the current branch semantically over, while its code keeps
+ * running.
+ *
+ * @remarks
+ * Separates "this is done as far as everyone else is concerned" from "this
+ * fiber has stopped". Anyone awaiting the branch's `finished` proceeds
+ * immediately, and the branch stops holding the scene open — but code after
+ * `finish` keeps running as a TAIL, bounded by the parent exactly like a
+ * {@link background}.
+ *
+ * The use is a beat that should hand off early: an entrance whose successor
+ * starts as soon as the element has landed, while a slow ring-out continues
+ * underneath. Without `finish`, the successor would wait for the tail.
+ *
+ * Idempotent, and completion implies finish. Note that a failure in the tail
+ * is NOT reported — by then nothing is listening.
+ *
+ * Calling it outside a running scene is a loud defect.
+ *
+ * @example
+ * Hand off after the landing; the wobble plays on borrowed time.
+ * ```typescript
+ * yield* Scene.fork(
+ * 	Effect.gen(function* () {
+ * 		yield* badge.pipe(Motion.moveTo({ y: 100 }, "400 millis"));
+ * 		yield* Scene.finish;
+ * 		yield* badge.pipe(Physics.springTo({ y: 96 }, "bounce"));
+ * 	}),
+ * );
+ * ```
  */
 export const finish = Effect.gen(function* () {
 	const branch = yield* currentBranch<void, never>();
@@ -593,13 +928,35 @@ const frameOf = (runner: Runner.Runner["Service"]) =>
 	runner.phaser.snapshotUnsafe().phase;
 
 /**
- * Run `effect`, then repeat it as long as `schedule` recurs, with the
- * schedule evaluated in scene time (frames at the runner's frame rate) —
- * `Effect.repeat`'s sibling, but paced by frames instead of the wall
- * clock. The first run is immediate; the schedule paces the gaps after
- * runs; each run's result is fed to the schedule as input. Resolves with
- * the schedule's final output once it is done; a failed run fails
- * immediately without consulting the schedule again.
+ * Play an animation again and again, on a schedule.
+ *
+ * @remarks
+ * `Effect.repeat`'s sibling, paced by FRAMES rather than the wall clock —
+ * which is what keeps a looping scene deterministic.
+ *
+ * The first run happens immediately, and the schedule paces the gaps AFTER
+ * each run. So `Schedule.spaced("400 millis")` means "run, rest 400ms, run
+ * again", and the loop count comes from the schedule: `Schedule.forever`
+ * for ambient motion (usually inside {@link background}), or
+ * `Schedule.upTo({ times: 2 })` for a bounded three-run sequence.
+ *
+ * A failing run fails immediately, without consulting the schedule again.
+ *
+ * @param effect - The animation to repeat.
+ * @param schedule - How often, and how many times.
+ * @returns The schedule's final output.
+ *
+ * @example
+ * Three round-trips, resting 400ms between them.
+ * ```typescript
+ * yield* Scene.repeat(
+ * 	ball.pipe(
+ * 		Motion.moveTo({ x: 430 }, "600 millis", "easeInOutCubic"),
+ * 		Motion.moveTo({ x: 70 }, "600 millis", "easeInOutCubic"),
+ * 	),
+ * 	Schedule.spaced("400 millis").pipe(Schedule.upTo({ times: 2 })),
+ * );
+ * ```
  */
 export const repeat = <A, E, R, Output, ScheduleE, ScheduleR>(
 	effect: Effect.Effect<A, E, R>,
@@ -625,16 +982,44 @@ export const repeat = <A, E, R, Output, ScheduleE, ScheduleR>(
 	});
 
 /**
- * Run `effect` concurrently with the rest of the scene, sharing frame
- * phases, and return its fiber immediately.
+ * Start an animation alongside the rest of the scene and continue
+ * immediately, without waiting for it.
  *
- * NOTE: this inverts Effect's own `fork` semantics — the scene's end
- * WAITS for forked work. A scene whose body returns while forks are
- * still animating keeps producing frames until the last fork finishes
- * (so a scene containing only a fork still plays). Use
- * {@link background} for work that should be cut off at scene end
- * instead. Forks are supervised by the fiber that spawned them: a fork
- * made inside another fork is interrupted when its spawner completes.
+ * @remarks
+ * Where {@link all} blocks until its branches finish, `fork` returns at
+ * once — so the scene body carries on while the forked animation plays.
+ * That is what lets independent timelines overlap, and what makes spawning
+ * work in a loop possible.
+ *
+ * Note this INVERTS Effect's own `fork`: the scene's end waits for forked
+ * work. A body that returns while forks are still animating keeps producing
+ * frames until the last one finishes, so a scene consisting only of a fork
+ * still plays in full. For work that should instead be cut off when the
+ * scene ends, use {@link background}.
+ *
+ * The returned handle carries `finished` — yield it to wait for this branch
+ * specifically — and `fiber`, to interrupt it early.
+ *
+ * @param effect - The animation to run alongside.
+ * @returns A handle with `finished` and `fiber`.
+ * @see {@link background} for work bounded by the scene's end.
+ *
+ * @example
+ * Spawn overlapping dots; the scene lives until the last one has faded.
+ * ```typescript
+ * yield* Scene.repeat(
+ * 	Scene.fork(
+ * 		Effect.gen(function* () {
+ * 			const dot = yield* Scene.instantiate("Circle", { radius: 8 });
+ * 			yield* dot.pipe(
+ * 				Motion.moveTo({ x: 440 }, "1200 millis"),
+ * 				Motion.fadeTo(0, "300 millis"),
+ * 			);
+ * 		}),
+ * 	),
+ * 	Schedule.fixed("200 millis").pipe(Schedule.upTo({ times: 5 })),
+ * );
+ * ```
  */
 export const fork = <A, E = never, R = never>(effect: Effect.Effect<A, E, R>) =>
 	Effect.gen(function* () {
@@ -643,11 +1028,43 @@ export const fork = <A, E = never, R = never>(effect: Effect.Effect<A, E, R>) =>
 	});
 
 /**
- * Like {@link fork}, but the fiber is INTERRUPTED at scene end instead
- * of awaited — for indefinite work (`Scene.repeat(…, Schedule.forever)`)
- * that should play for the duration of the scene without keeping it
- * alive. "Scene end" includes the fork drain: backgrounds keep animating
- * while awaited forks finish, and are stopped after the last one.
+ * Like {@link fork}, but the animation is CUT OFF at scene end rather than
+ * awaited.
+ *
+ * @remarks
+ * For ambient motion that should play for as long as the scene lasts
+ * without deciding how long that is — a pulsing indicator, a drifting
+ * backdrop, anything paired with `Schedule.forever`. A background never
+ * holds the scene open, so the scene's real content governs its length and
+ * the ambient loop simply stops when everything else is done.
+ *
+ * "Scene end" includes the fork drain: backgrounds keep animating while
+ * awaited forks finish, and are stopped only after the last one.
+ *
+ * Because backgrounds do not keep a scene alive, a scene whose body has
+ * nothing else to do will not end on its own — it has no content to
+ * finish, and the background is not content. Always pair one with
+ * something that defines the length, whether a real animation or an
+ * explicit {@link sleep}.
+ *
+ * @param effect - The ambient animation.
+ * @returns A handle with `finished` and `fiber`.
+ *
+ * @example
+ * A pulse that runs the whole scene, with the scene's length set by the
+ * animation after it.
+ * ```typescript
+ * yield* Scene.background(
+ * 	Scene.repeat(
+ * 		pulse.pipe(
+ * 			Motion.tweenTo({ radius: 24 }, "400 millis"),
+ * 			Motion.tweenTo({ radius: 10 }, "400 millis"),
+ * 		),
+ * 		Schedule.forever,
+ * 	),
+ * );
+ * yield* title.pipe(Motion.moveTo({ y: 100 }, "2 seconds"));
+ * ```
  */
 export const background = <A, E = never, R = never>(
 	effect: Effect.Effect<A, E, R>,
@@ -665,28 +1082,53 @@ export interface PlayOptions {
 }
 
 /**
- * A played scene's branch handle plus its mount group — the child comp as
- * one unit. Move/fade the group (trait lenses) or scale it (transform
- * operations) to transform the whole nested scene, bounds included.
+ * A played scene's handle: its branch, plus the group it is mounted under.
+ *
+ * @remarks
+ * `group` is what makes a nested scene manipulable as ONE object — move,
+ * fade, or scale it and the entire child scene follows, its bounds included.
  */
 export interface PlayHandle<A = void, E = never> extends BranchHandle<A, E> {
 	readonly group: Runner.GroupInstance;
 }
 
 /**
- * Play a scene as a branch of the current scene — the explicit door to
- * nesting, After Effects–precomp-style. The child shares the movie's
- * runner, phaser, frame rate, and frame cap, and gets its own scope,
- * branch handle, and a FRESH seeded Random stream: `play(scene)` inside a
- * movie seeded `S` animates exactly like `run(scene, { seed: S })`
- * standalone. Each evaluation mounts the child under an implicit group
- * carrying the child scene's bounds (width/height/backgroundColor):
- * content clips to them, a non-transparent background paints within them,
- * and the group is placed so the child's bounds CENTER in the enclosing
- * comp (the movie, or the enclosing played scene) — a child smaller or
- * bigger than the movie renders centered. Awaited like a fork —
- * `yield* handle.finished` for sequential nesting, or don't await for
- * concurrent scenes.
+ * Nest a whole scene inside the current one — the precomp.
+ *
+ * @remarks
+ * The door to composing scenes rather than writing one flat timeline. A
+ * played scene is authored and tested independently, then dropped into a
+ * larger one as a unit: an intro built alone becomes the first beat of a
+ * longer piece without edits.
+ *
+ * The child mounts under an implicit group carrying its OWN bounds. Content
+ * clips to them, a non-transparent background paints within them, and the
+ * group is placed so those bounds sit centered in the enclosing composition
+ * — so a child smaller or larger than its parent still lands sensibly. The
+ * handle's `group` is that mount point: move or fade it to transform the
+ * entire nested scene as one object.
+ *
+ * The child shares the movie's frame clock but gets a FRESH seeded random
+ * stream, so a nested scene animates exactly as it did standalone under the
+ * same seed — nesting never perturbs a child's randomness.
+ *
+ * Awaited like a {@link fork}: yield `handle.finished` to play children in
+ * sequence, or skip the await to run them concurrently.
+ *
+ * @param scene - The scene to nest.
+ * @param options - `parent` to mount elsewhere, `seed` to vary this
+ *   evaluation.
+ * @returns A handle with `finished`, `fiber`, and the mount `group`.
+ *
+ * @example
+ * Play one scene, then another, and fade the second out as a whole.
+ * ```typescript
+ * const intro = yield* Scene.play(introScene);
+ * yield* intro.finished;
+ *
+ * const outro = yield* Scene.play(outroScene);
+ * yield* outro.group.pipe(Motion.fadeTo(0, "500 millis"));
+ * ```
  */
 export const play = <E, R>(
 	scene: Scene<E, R>,
@@ -744,10 +1186,30 @@ export const play = <E, R>(
 	}) as never;
 
 /**
- * Run effects in lockstep parallel, sharing frame phases — the public
- * counterpart to the low-level `Phaser.all`. Takes no schedule: pacing a
- * list sequentially belongs to {@link chain}, overlapping staggered
- * starts to {@link stagger}.
+ * Run animations simultaneously, and resolve when the last one finishes.
+ *
+ * @remarks
+ * The everyday way to make things move at once. Every branch advances
+ * exactly one frame per tick in lockstep, so two one-second animations run
+ * as one second of frames — not two.
+ *
+ * Branches need not be the same length; `all` waits for the slowest. This
+ * is also the idiom for synchronizing springs, whose durations are emergent
+ * and unknown up front.
+ *
+ * There is deliberately no schedule parameter: pacing a list one-at-a-time
+ * is {@link chain}, and overlapping starts is {@link stagger}.
+ *
+ * @param effects - The animations to run together.
+ *
+ * @example
+ * A dot slides while the camera pushes in — one second of frames total.
+ * ```typescript
+ * yield* Scene.all([
+ * 	dot.pipe(Motion.moveTo({ x: 400 }, "1 second")),
+ * 	camera.pipe(Motion.moveTo({ z: -300 }, "1 second")),
+ * ]);
+ * ```
  */
 export const all = Effect.fnUntraced(function* <
 	Eff extends Effect.Effect<any, any, any>,
@@ -760,16 +1222,34 @@ export const all = Effect.fnUntraced(function* <
 });
 
 /**
- * Run items one at a time, in order — items NEVER overlap, mirroring
- * Effect's guarantee for scheduled effects. The first item runs
- * immediately; after each item completes, `schedule` is stepped once
- * (with the item's result as input) to pace the next start. `fixed`
- * gives a start cadence with catch-up, `spaced` gives rests between
- * items. When the schedule ends early, the remaining items are skipped —
- * it is the release policy, including how many. Without a schedule,
- * plain sequential composition. Resolves with how many items completed.
- * For overlapping runs, reach for {@link stagger} or {@link fork}
- * explicitly.
+ * Run animations one at a time, in order, optionally resting between them.
+ *
+ * @remarks
+ * Items NEVER overlap — each begins only after the previous one has fully
+ * finished. That guarantee is the difference between this and
+ * {@link stagger}, and it holds no matter what schedule you pass.
+ *
+ * Without a schedule this is plain sequencing, equivalent to yielding each
+ * item in turn but composable as a list. With one, the schedule paces the
+ * GAPS after each item: `Schedule.spaced("400 millis")` rests 400ms between
+ * items, while `Schedule.fixed` targets a steady start-to-start cadence.
+ *
+ * The schedule also decides how many items run: when it ends, the remaining
+ * items are skipped. `Schedule.recurs(2)` therefore plays three items — the
+ * first, plus two more the schedule released.
+ *
+ * @param effects - The animations, in order.
+ * @param schedule - Optional pacing for the gaps between them.
+ * @returns `{ completed }` — how many items actually ran.
+ *
+ * @example
+ * Three shapes flashing in turn, resting 400ms between each.
+ * ```typescript
+ * const { completed } = yield* Scene.chain(
+ * 	[a, b, c].map((shape) => shape.pipe(Motion.fadeTo(1, "300 millis"))),
+ * 	Schedule.spaced("400 millis"),
+ * );
+ * ```
  */
 export const chain = <
 	Eff extends Effect.Effect<any, any, any>,
@@ -818,14 +1298,36 @@ export const chain = <
 	});
 
 /**
- * Release effects on `schedule` with OVERLAP: the first starts
- * immediately, each next one on the schedule's next emission, and
- * released effects run concurrently — semantically
- * `chain(effects.map(Scene.fork))`, but resolving when all released
- * effects finish rather than at the last release. When the schedule ends
- * early, the remaining effects are skipped. Overlap is this
- * combinator's purpose; the schedule-paced default ({@link chain})
- * never overlaps.
+ * Start animations one after another WITHOUT waiting for each to finish —
+ * the cascade.
+ *
+ * @remarks
+ * The first starts immediately and each next one on the schedule's next
+ * emission, so earlier items are still running when later ones begin. That
+ * overlap is the entire point, and the difference from {@link chain}: use
+ * `stagger` for a ripple across many elements, `chain` when items must not
+ * coincide.
+ *
+ * The schedule paces the STARTS here, not the gaps. Resolution waits for
+ * every released animation to finish, not merely for the last one to be
+ * released — so the whole cascade is complete when this returns.
+ *
+ * When the schedule ends before the list does, the remaining effects are
+ * skipped.
+ *
+ * @param effects - The animations to release in order.
+ * @param schedule - When to release each subsequent one.
+ * @returns `{ released }` — how many actually started.
+ *
+ * @example
+ * A row of bars rising in a ripple, each starting 80ms after the last while
+ * the earlier ones keep going.
+ * ```typescript
+ * yield* Scene.stagger(
+ * 	bars.map((bar) => bar.pipe(Motion.moveTo({ y: 40 }, "600 millis"))),
+ * 	Schedule.spaced("80 millis"),
+ * );
+ * ```
  */
 export const stagger = <
 	Eff extends Effect.Effect<any, any, any>,

@@ -22,6 +22,14 @@ import {
 	useState,
 } from "react";
 
+/**
+ * Anything that went wrong inside the player: acquiring the renderer, a
+ * resource load, pulling a frame, or rendering one.
+ *
+ * @remarks
+ * Internal. The first failure is captured and shown in the player's error
+ * panel; `message` says which stage failed and `cause` carries the original.
+ */
 class PlayerError extends Data.TaggedError("PlayerError")<{
 	message: string;
 	cause: unknown;
@@ -32,10 +40,16 @@ class PlayerError extends Data.TaggedError("PlayerError")<{
 }
 
 /**
- * Softened device-pixel-ratio: interpolate 75% of the way from 1 to the
- * native dpr — visually indistinguishable from full dpr at a fraction of the
- * rendered pixels. Read per render call so moving the window across monitors
- * picks up the new ratio.
+ * The device pixel ratio to render at — 75% of the way from 1 to the
+ * display's native ratio.
+ *
+ * @remarks
+ * Rendering at full native ratio on a high-DPI display costs several times
+ * the pixels for a difference nobody sees in motion. Softening it keeps text
+ * and edges sharp at a fraction of the fill cost.
+ *
+ * Read on every render, so dragging a window between monitors picks up the
+ * new ratio.
  */
 const calculateDpr = () =>
 	typeof window === "undefined" ? 1 : 1 + (window.devicePixelRatio - 1) * 0.75;
@@ -50,15 +64,20 @@ const PlayerScene = Context.Service<{
 }>("PlayerScene");
 
 /**
- * Frame-data buffer keyed by absolute frame index, retaining at most
- * `capacity` of the most-recently-pulled frames. Frames are pulled from the
- * scene monotonically forward (never re-derivable at a random index — the
- * scene is a forward-only stream), so the ring drops the oldest frames once
- * the window is full. A finite scene that fits within `capacity` behaves like
- * a plain array (nothing is ever evicted). Seeking below the retained window
- * clamps to `oldest` — the earliest frame still in memory.
+ * The frame buffer: keeps the most recent `capacity` frames, keyed by
+ * absolute frame index.
+ *
+ * @remarks
+ * A scene is a forward-only stream — frame 400 can only be reached by
+ * pulling frames 0 through 399 — so a frame that has been evicted cannot be
+ * recomputed on demand. That is why seeking below the retained window clamps
+ * to {@link FrameRing.oldest} rather than replaying.
+ *
+ * With an infinite `capacity` nothing is ever evicted and this behaves like
+ * a plain array, which is the finite-scene default.
  */
 class FrameRing {
+	/** slots indexed by `absoluteIndex % capacity`, or densely when unbounded */
 	// ponytail: fixed-capacity ring keyed by absolute index. capacity=Infinity
 	// keeps everything (finite scenes that fit); a finite cap bounds memory for
 	// long/infinite scenes at the cost of losing far-back seek. Bump the cap if
@@ -69,7 +88,7 @@ class FrameRing {
 	constructor(private readonly capacity: number) {
 		this.slots = Number.isFinite(capacity) ? new Array(capacity) : [];
 	}
-	/** oldest absolute index still retained */
+	/** The earliest frame index still in memory — the floor for any seek. */
 	get oldest(): number {
 		return Number.isFinite(this.capacity)
 			? Math.max(0, this.pulled - this.capacity)
@@ -86,7 +105,7 @@ class FrameRing {
 			? this.slots[index % this.capacity]
 			: this.slots[index];
 	}
-	/** append the next frame at the edge, evicting the oldest if full */
+	/** Append the next frame, evicting the oldest once the window is full. */
 	push(frame: Scene.Frame): void {
 		if (Number.isFinite(this.capacity)) {
 			this.slots[this.pulled % this.capacity] = frame;
@@ -97,6 +116,21 @@ class FrameRing {
 	}
 }
 
+/**
+ * The player's engine: runs the scene, buffers frames, drives the playback
+ * clock, and renders to a canvas.
+ *
+ * @remarks
+ * Internal — {@link Player} is the public surface. Returns the canvas ref,
+ * playback state, and the controls the chrome is wired to.
+ *
+ * Two things worth knowing when reading this. All the Effect work runs in
+ * ONE `ManagedRuntime` created per mount and disposed on unmount, which is
+ * what releases the GPU renderer and interrupts in-flight fibers. And the
+ * playback clock is wall-clock on purpose: it drives real-time playback
+ * speed, not scene time, so the determinism rule banning clocks inside
+ * scenes does not apply to it.
+ */
 const useScene = (
 	sceneProp: Scene.AnyScene,
 	options: {
@@ -105,14 +139,18 @@ const useScene = (
 		autoPlay: boolean;
 		isInfinite: boolean;
 		loop: boolean;
-		/** max frames retained in memory; Infinity keeps everything */
+		/** Max frames retained; `Infinity` keeps everything. */
 		bufferCapacity: number;
-		/** extra playback settings for Scene.run (frameRate comes from fps) */
+		/** Extra `Scene.run` settings; `frameRate` comes from `fps`. */
 		settings?: Partial<Runner.Settings> | undefined;
 		/**
-		 * loader layers for the scene's resources. The props boundary
-		 * (PlayerProps) enforces coverage; inside, the layer merges into the
-		 * per-mount runtime so loads run at runtime construction.
+		 * Loader layers for the scene's resources.
+		 *
+		 * @remarks
+		 * Coverage is enforced at the props boundary ({@link PlayerProps}); by
+		 * the time it reaches here it is known complete. Merged into the
+		 * per-mount runtime, so every provided load runs when the runtime is
+		 * built.
 		 */
 		renderLayers?: Layer.Layer<never, unknown, never> | undefined;
 	},
@@ -480,85 +518,202 @@ const useScene = (
 			: null;
 
 	return {
+		/** Attach to the canvas the player draws into. */
 		ref: canvasRef,
+		/** The frame currently shown. */
 		currentFrame,
+		/** How many frames have been pulled from the scene so far. */
 		bufferedFrames,
+		/** Total frames, or `null` until the scene has been pulled to its end. */
 		totalFrames,
+		/** Scene time of the current frame, in seconds. */
 		currentTime,
+		/** Total duration in seconds, or `null` while unknown. */
 		totalTime,
 		play,
 		pause,
+		/** Jump to a frame; clamps to the buffered window. */
 		seek: render,
 		isPlaying,
+		/** Whether repeat is on (player-owned after mount). */
 		loop,
 		setLoop,
+		/** Buffer ahead to a frame without displaying it. */
 		load,
+		/** The first failure, or `null`. Rendered as the error panel. */
 		error,
 	};
 };
 
+/**
+ * Props for {@link Player}.
+ *
+ * @typeParam S - The scene's type, which decides whether `renderLayers` is
+ *   required.
+ *
+ * @remarks
+ * Only `scene` is required — and `renderLayers`, if the scene declares
+ * resources. Everything else has a working default.
+ */
 export type PlayerProps<S extends Scene.AnyScene = Scene.AnyScene> = {
-	// number of frames to prebuffer ahead of the current frame
-	// also the number of frames buffered before playing
-	// some edge cases:
-	// 1. We need to prebuffer all frames
-	//    to be able to display the total time
-	//    and to update the progress bar
-	//    so the default behavior is to prebuffer all frames (Infinity)
-	// 2. if the animation is infinite, though,
-	//    we cant ever try to prebuffer all frames,
-	// 		because it would never end
-	//    so the default behavior is to prebuffer 60 frames
-	// 3. if the animation is finite, but user decides to not prebuffer it entirely,
-	//    the progress bar should consider the frames that are actually buffered,
-	//    but the time should not display the total frames number
-
+	/**
+	 * How many frames to buffer ahead before playing.
+	 *
+	 * @remarks
+	 * The default buffers the WHOLE scene, which is what makes the total
+	 * duration and a complete progress bar available immediately. Lower it to
+	 * start playing sooner on a long scene: the progress bar then tracks how
+	 * much is buffered so far, and the total time stays hidden until the
+	 * scene has been pulled to its end.
+	 *
+	 * An infinite scene can never be fully buffered, so it falls back to 60
+	 * frames.
+	 *
+	 * @defaultValue `Infinity` (60 when `isInfinite`)
+	 */
 	prebufferedFrames?: number;
+	/**
+	 * Start playing on mount instead of waiting for the play button.
+	 *
+	 * @defaultValue `false`
+	 */
 	autoPlay?: boolean;
+	/**
+	 * Frames per second, for both the scene and the playback clock.
+	 *
+	 * @remarks
+	 * Overridden by `settings.frameRate` when both are given, so the two can
+	 * never disagree.
+	 *
+	 * @defaultValue `60`
+	 */
 	fps?: number;
 
-	// if true, it means that animation itself never ends, so we need to be sure we dont save all frames in memory
-	// in this case we dont even show the progress bar, the user can only play and pause
+	/**
+	 * Declare that the scene never ends.
+	 *
+	 * @remarks
+	 * Set this for a scene built to run forever — an ambient loop, a
+	 * `Schedule.forever` background. It changes three things: frames are
+	 * buffered in a bounded window rather than kept forever, only a prefix is
+	 * prebuffered, and the scrubber and repeat toggle are hidden, since
+	 * neither means anything without an end. Play and pause remain.
+	 *
+	 * @defaultValue `false`
+	 */
 	isInfinite?: boolean;
 
-	// initial repeat mode for a finite animation: when on, it restarts from the
-	// beginning after reaching the end. The player owns repeat state after mount
-	// (a toggle button), so this is an initial value, not a controlled prop.
-	// noop if the animation is infinite.
+	/**
+	 * Whether repeat starts switched on.
+	 *
+	 * @remarks
+	 * An INITIAL value, not a controlled prop — the player owns repeat state
+	 * once mounted, because the user can toggle it with the repeat button.
+	 * Ignored for an infinite scene.
+	 *
+	 * @defaultValue `false`
+	 */
 	defaultRepeatMode?: boolean;
 
-	// max frames retained in memory (frame data, not pixels). Default keeps
-	// everything for a finite scene; an infinite scene is windowed so it can't
-	// grow forever. Seeking before the retained window clamps to its start.
+	/**
+	 * How many frames of scene DATA to keep in memory.
+	 *
+	 * @remarks
+	 * Frame data, not rendered pixels. A finite scene keeps everything so
+	 * seeking anywhere works; an infinite scene keeps a window, since
+	 * retaining every frame of an endless scene would grow without bound.
+	 *
+	 * Seeking before the retained window clamps to its oldest frame — a scene
+	 * is a forward-only stream, so frames that fell out cannot be recomputed.
+	 * Raise this if deep backward scrubbing on a long scene matters.
+	 *
+	 * @defaultValue `Infinity` for a finite scene; `1800` (~30s at 60fps) when
+	 *   `isInfinite`
+	 */
 	bufferCapacity?: number;
 
-	// extra playback settings for the scene run (seed/maxFrames/…) —
-	// resolution and background are the SCENE's own comp config. A
-	// settings.frameRate takes precedence over the fps prop so the playback
-	// clock and the scene always agree on one rate.
+	/**
+	 * Playback settings passed to the scene run — `seed`, `maxFrames`, and
+	 * `frameRate`.
+	 *
+	 * @remarks
+	 * Resolution and background are NOT here: those belong to the scene's own
+	 * composition config, fixed when it was made. A `frameRate` given here
+	 * wins over the `fps` prop.
+	 */
 	settings?: Partial<Runner.Settings>;
 
+	/** The scene to play. */
 	scene: S;
 } & (Scene.Resources<S> extends never
 	? {
-			// a loader-free scene takes no renderLayers — passing one is an error
+			/**
+			 * Not accepted: this scene declares no resources, so passing
+			 * loaders is a compile error.
+			 */
 			renderLayers?: never;
 		}
 	: {
 			/**
-			 * Loader layers covering EVERY resource the scene's frames carry
-			 * (`Scene.Resources<S>`): `Layer.mergeAll(Font.layer(...), ...)`.
-			 * REQUIRED when the scene declares resources — the player will not
-			 * compile without full coverage. Loads run eagerly at runtime
-			 * construction; a failure surfaces as the player's error state.
+			 * Loaders for the fonts and images the scene uses.
+			 *
+			 * @remarks
+			 * REQUIRED when the scene declares resources, and it must cover
+			 * every one of them — the types will not let you mount a player
+			 * that is missing a loader, so a missing font is a compile error
+			 * rather than blank text at runtime. Combine several with
+			 * `Layer.mergeAll(...)`.
+			 *
+			 * Loads run once, eagerly, when the player mounts. A failed load
+			 * shows in the player's error panel.
 			 */
 			renderLayers: Layer.Layer<Scene.Resources<S>, unknown, never>;
 		});
 
-// keep-everything cap for an infinite scene: enough for ~30s of backward seek
-// at 60fps, ~1MB of frame data. Bump via bufferCapacity for deeper scrubbing.
+/**
+ * Frames retained for an infinite scene — about 30 seconds of backward seek
+ * at 60fps, roughly 1MB of frame data.
+ *
+ * @remarks
+ * An endless scene cannot keep every frame, so this bounds the window.
+ * Callers who need deeper scrubbing raise it with `bufferCapacity`.
+ */
 const INFINITE_BUFFER_CAP = 1800;
 
+/**
+ * A video-style player for an effect-motion scene.
+ *
+ * @remarks
+ * Self-contained: a canvas plus play/pause, a scrubber with buffered-range
+ * indicator, a time readout, and a repeat toggle. Controls fade out during
+ * playback and return on hover. There is no stylesheet to import — the skin
+ * is inline styles and inline SVG — and no way to restyle it short of
+ * wrapping it.
+ *
+ * The canvas is `width: 100%` with automatic height, so the player fills its
+ * container at the scene's aspect ratio. Size it by sizing the parent.
+ *
+ * Frames stream in rather than being pre-rendered, so playback starts before
+ * the whole scene is computed. Playback keeps real time: if a frame renders
+ * slowly the player drops intermediate frames rather than falling behind.
+ *
+ * Each player owns its own GPU renderer and scene run, released on unmount.
+ *
+ * Failures — no WebGPU, a font that would not load, a render error — are
+ * shown in the player's own frame as an alert panel, not just logged to the
+ * console.
+ *
+ * @example
+ * ```tsx
+ * <Player scene={scene} autoPlay />
+ * ```
+ *
+ * @example
+ * An endless scene: bounded memory, and no scrubber or repeat button.
+ * ```tsx
+ * <Player scene={ambientScene} isInfinite autoPlay />
+ * ```
+ */
 export const Player = <S extends Scene.AnyScene>({
 	scene,
 	fps: fpsProp = 60,
@@ -793,12 +948,15 @@ export const Player = <S extends Scene.AnyScene>({
 };
 
 // ---------------------------------------------------------------------------
-// chrome: Vimeo-style player skin. Self-contained by design — inline style
-// objects and inline SVG icons only, no stylesheet/tailwind/image deps.
+// chrome: the player skin. Self-contained by design — inline style objects
+// and inline SVG icons only, so the package ships no stylesheet and pulls in
+// no CSS framework or image assets. The tradeoff is that the look is fixed:
+// restyling means wrapping the player, not overriding classes.
 // ---------------------------------------------------------------------------
 
 const ACCENT = "#00adef"; // Vimeo blue
 
+/** Seconds as `m:ss`, for the time readout and the scrubber chip. */
 const formatTime = (seconds: number) => {
 	const s = Math.max(0, Math.floor(seconds));
 	return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;

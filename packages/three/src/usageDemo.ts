@@ -5,9 +5,18 @@ import * as RenderTarget from "./RenderTarget.js";
 import * as Scene from "./Scene.js";
 
 /**
- * Shape reference for the wrapper conventions (AGENTS.md): scoped
- * construction, sync chaining for infallible mutation, Effects only where
- * a call can fail or is async. Not part of the package's public surface.
+ * A worked example of this package's conventions, kept compiling so it
+ * cannot drift.
+ *
+ * @remarks
+ * Demonstrates the three rules the wrapper is built on: scoped
+ * construction that cleans itself up, synchronous chaining for mutation
+ * that cannot fail, and Effects only where a call is fallible or async.
+ *
+ * Internal — a reference to read, not part of the public surface. It is
+ * written for the browser and kept compiling rather than kept running:
+ * executing it in Node fails at renderer init, since it takes no canvas or
+ * device. See `@effect-motion/three/node` for the headless equivalent.
  */
 export const program = Effect.gen(function* () {
 	// scoped construction: the scene detaches its children on close, the

@@ -3,25 +3,30 @@ import { Deferred, Effect } from "effect";
 import { EffectMotionError } from "effect-motion";
 
 /**
- * The image-store actor: encoded bytes (from loader services) decode once
- * per renderer scope into three textures, released with that scope.
+ * Decoded image textures, cached per renderer.
  *
- * This module is the decode boundary — browser decodes natively via
- * `createImageBitmap`, Node sniffs magic bytes and decodes PNG/JPEG with
- * pure-JS decoders (no canvas, no native deps); neither decoder is
- * touched from anywhere else.
+ * @remarks
+ * Encoded bytes arrive from loader services and are decoded once per
+ * renderer scope into three textures, released when that scope closes. An
+ * image used on a thousand frames is decoded once.
  *
- * Each image is a `Deferred`: `register` forks the decode immediately (so
- * it overlaps the rest of the frame's sync) and completes the Deferred
- * with the texture or a typed failure; `ready` awaits it. A second
- * `register` for the same id is a no-op — the Deferred is already there,
- * and completing an already-completed Deferred is a no-op by contract, so
- * a racing decode cannot clobber the first result.
+ * This module is the decode boundary. In a browser, decoding goes through
+ * the platform's own `createImageBitmap`; in Node it sniffs magic bytes and
+ * decodes PNG or JPEG with pure-JS decoders — no canvas and no native
+ * dependencies, which is what keeps headless export portable. On the Node
+ * path, PNG and JPEG are the supported formats.
+ *
+ * Decodes are forked so they overlap the rest of the frame's sync rather
+ * than blocking it, and `whenReady` on the sync actor is what waits for
+ * them before a frame is drawn.
  */
 
+/** A decoded image: its GPU texture and natural pixel dimensions. */
 export interface DecodedImage {
 	readonly texture: THREE.Texture;
+	/** Natural width in pixels, before any scaling. */
 	readonly width: number;
+	/** Natural height in pixels, before any scaling. */
 	readonly height: number;
 }
 
@@ -82,7 +87,10 @@ const decodeBrowser = async (bytes: Uint8Array): Promise<DecodedImage> => {
 	return { texture, width: bitmap.width, height: bitmap.height };
 };
 
-/** The decode itself, as an Effect with a typed failure naming the image. */
+/**
+ * Decode bytes to a texture, picking the platform's decoder. Internal —
+ * failures are typed and name the image.
+ */
 const decode = (
 	id: string,
 	bytes: Uint8Array,
@@ -97,8 +105,9 @@ const decode = (
 	});
 
 /**
- * Per-renderer decoded-image cache. Mostly data — the API is the sibling
- * functions.
+ * The per-renderer image cache. Mostly data — the API is the sibling
+ * functions ({@link register}, {@link ready}, {@link has},
+ * {@link dispose}).
  */
 export interface Images {
 	/** internal: image id → its in-flight or completed decode */
@@ -114,9 +123,13 @@ export const has = (images: Images, id: string): boolean =>
 	images.entries.has(id);
 
 /**
- * Start decoding an image's bytes under its id (idempotent per id). The
- * decode is forked, so it runs while the rest of the frame syncs; `ready`
- * awaits the result.
+ * Begin decoding an image's bytes under an id.
+ *
+ * @remarks
+ * Idempotent per id: registering the same image twice does nothing the
+ * second time, and a racing decode cannot clobber the first result. The
+ * decode is forked so it overlaps the rest of the frame's sync; use
+ * {@link ready} to await the texture.
  */
 export const register = Effect.fnUntraced(function* (
 	images: Images,
@@ -140,9 +153,13 @@ export const register = Effect.fnUntraced(function* (
 });
 
 /**
- * The decoded texture for an id — `register` must have run first (a
- * missing registration is a defect; `Sync.resolveResources` guarantees
- * it). Decode failures arrive as a typed error naming the image.
+ * Await the decoded texture for an id.
+ *
+ * @remarks
+ * {@link register} must have run first — asking for an unregistered image is
+ * a defect, though in practice `Sync.resolveResources` guarantees
+ * registration for anything a frame references. A failed decode arrives as a
+ * typed error naming the image.
  */
 export const ready = (
 	images: Images,
@@ -157,8 +174,11 @@ export const ready = (
 };
 
 /**
- * Release every decoded texture. Only completed decodes hold one; an
- * in-flight or failed decode has nothing to free.
+ * Release every decoded texture.
+ *
+ * @remarks
+ * Called when the renderer's scope closes. Only completed decodes hold a
+ * texture — an in-flight or failed one has nothing to free.
  */
 export const dispose = Effect.fnUntraced(function* (images: Images) {
 	for (const entry of images.entries.values()) {

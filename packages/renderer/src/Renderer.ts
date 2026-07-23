@@ -14,10 +14,26 @@ import type { RenderException } from "./RenderException.js";
 import * as Sync from "./Sync.js";
 
 /**
- * The browser frame-renderer actor: a `Sync` wired to a real WebGPU
- * renderer and the DoF post chain. Scoped — the GPU renderer and every
- * retained object dispose with the scope. Frames flow `resolveResources`
- * → `syncFrame` → `render`; DoF is bypassed structurally at aperture 0.
+ * The browser renderer: draws frames to a canvas with WebGPU.
+ *
+ * @remarks
+ * Acquire one with {@link make} inside a `Scope`, then drive it once per
+ * frame in three steps:
+ *
+ * 1. {@link resolveResources} — make sure fonts and images the frame needs
+ *    are loaded.
+ * 2. {@link syncFrame} — bring the retained three scene in step with the
+ *    frame.
+ * 3. {@link render} — draw it.
+ *
+ * The split exists so resource loading and scene-graph work can be paid for
+ * separately from drawing; a player can sync ahead of presenting.
+ *
+ * Everything is scoped: the GPU renderer and every retained object are
+ * released when the scope closes.
+ *
+ * For headless rendering and PNG export, use
+ * `@effect-motion/renderer/node` instead.
  */
 
 type AnyFrame = Frame<unknown>;
@@ -25,10 +41,13 @@ type AnyFrame = Frame<unknown>;
 type AnyEntityRenderer = EntityRenderer<never>;
 
 /**
- * Render every live sub-composition into its render target, depth-first
- * (nested comps first), leaving the renderer's previous target restored.
- * GPU-side companion to the sync actor's comp walk; both render paths
- * call it before their main pass.
+ * Draw every nested sub-composition into its own render target.
+ *
+ * @remarks
+ * Internal, called by both render paths before their main pass. Depth-first,
+ * so a comp nested inside another is drawn before its parent samples it, and
+ * the previously bound target is always restored — including when a render
+ * fails.
  */
 export const renderCompTargets = Effect.fnUntraced(function* (
 	renderer: Gpu.Renderer,
@@ -66,11 +85,23 @@ export const renderCompTargets = Effect.fnUntraced(function* (
 });
 
 export interface MakeOptions {
+	/** Canvas to draw into; one is created if omitted. */
 	readonly canvas?: HTMLCanvasElement;
+	/** Logical width in CSS pixels. */
 	readonly width: number;
+	/** Logical height in CSS pixels. */
 	readonly height: number;
+	/**
+	 * Device pixels per logical pixel — pass `window.devicePixelRatio` for a
+	 * sharp result on a high-DPI display.
+	 *
+	 * @defaultValue `1`
+	 */
 	readonly pixelRatio?: number;
-	/** custom entity renderers, merged over the built-in manifest */
+	/**
+	 * Renderers for custom entity kinds, or overrides for built-in ones.
+	 * Merged over the built-in manifest by entity tag.
+	 */
 	readonly renderers?: Record<string, AnyEntityRenderer>;
 }
 
@@ -90,9 +121,13 @@ const firstArgIsRenderer = (args: IArguments): boolean => {
 };
 
 /**
- * A `Sync` wired to a real WebGPU renderer. Mostly data — the API is the
- * sibling functions (`syncFrame`, `resolveResources`, `render`,
- * `prewarm`).
+ * A live browser renderer.
+ *
+ * @remarks
+ * Mostly data — the API is the sibling functions ({@link syncFrame},
+ * {@link resolveResources}, {@link render}, {@link prewarm}). `sync.stats`
+ * is useful for diagnostics: it reports how many objects are retained and
+ * how long the last sync took.
  */
 export interface Renderer {
 	readonly sync: Sync.Sync;
@@ -107,9 +142,12 @@ export interface Renderer {
 }
 
 /**
- * Resize the drawing buffer to a frame's logical size at a device pixel
- * ratio. Infallible field bookkeeping, so sync — mirrors the wrapper's
- * own rule.
+ * Resize the drawing buffer.
+ *
+ * @remarks
+ * `width` and `height` are logical (CSS) pixels; `pixelRatio` scales to
+ * device pixels, so pass `window.devicePixelRatio` for a sharp result on a
+ * high-DPI display. Call on canvas resize.
  */
 export const setViewport: {
 	(
@@ -133,8 +171,18 @@ export const setViewport: {
 );
 
 /**
- * Sync a frame into the retained scene. Scene-graph violations arrive as
- * a typed `RenderException` naming the offending instance.
+ * Bring the retained three scene in step with a frame.
+ *
+ * @remarks
+ * This is the diff: objects new to this frame are built, ones whose data or
+ * world position changed are updated, and ones that left are disposed.
+ * Unchanged objects are skipped entirely, which is what makes a mostly-still
+ * scene cheap to hold on screen.
+ *
+ * Scene-graph problems — an instance referenced twice, an unknown id, a Hud
+ * nested inside world content, an entity with no registered renderer —
+ * arrive as a typed {@link RenderException} naming the offender rather than
+ * as a thrown exception.
  */
 export const syncFrame = (
 	renderer: Renderer,
@@ -142,9 +190,16 @@ export const syncFrame = (
 ): Effect.Effect<void, RenderException> => Sync.syncFrame(renderer.sync, frame);
 
 /**
- * Resolve the frame's resources (font loaders, the auto-provided default
- * font, image loaders) into the renderer before syncing it — a missing
- * loader dies with a defect naming the id.
+ * Load the fonts and images a frame needs, before syncing it.
+ *
+ * @remarks
+ * Resources are resolved from the CALLER's context, so the loaders a scene
+ * declared must be provided around this call. Work is done once per resource
+ * per renderer: already-loaded fonts and images are skipped.
+ *
+ * The built-in default font is auto-provided, so plain text needs no setup.
+ * A font or image the frame references with no loader in context is a defect
+ * naming the id and the `Font.layer` / `Image.layer` call that would fix it.
  */
 export const resolveResources = (
 	renderer: Renderer,
@@ -155,12 +210,20 @@ export const resolveResources = (
 	);
 
 /**
- * Render the current retained scene: through the DoF pipeline when the
- * frame's camera asks for it, the plain path otherwise (aperture 0 is
- * structurally off — the post chain is bypassed entirely). Waits for
- * async content (glyph layouts, image decodes) registered during sync,
- * so no frame presents half-built; a failed layout or decode arrives as
- * a typed error naming the resource.
+ * Draw the current retained scene to the canvas.
+ *
+ * @remarks
+ * Call after {@link syncFrame}. Before drawing, this waits for the async
+ * work that sync registered — glyph layouts and image decodes — so a frame
+ * never presents half-built text or a missing texture. A failed layout or
+ * decode surfaces as a typed error naming the resource.
+ *
+ * Nested sub-compositions are drawn to their own render targets first, then
+ * the world, then any HUD content composited on top through an identity
+ * camera so it ignores camera movement.
+ *
+ * Depth of field is not applied: every frame renders sharp, regardless of a
+ * camera's `aperture`.
  */
 export const render = (
 	renderer: Renderer,
@@ -205,9 +268,13 @@ export const render = (
 	);
 
 /**
- * Compile the retained scene's pipelines ahead of presentation — call
- * after the first `syncFrame`, before revealing the canvas, to keep
- * first-frame pipeline compilation out of playback.
+ * Compile shader pipelines ahead of showing anything.
+ *
+ * @remarks
+ * Call once after the first {@link syncFrame} and before revealing the
+ * canvas. WebGPU compiles a pipeline the first time it is used, which would
+ * otherwise land as a visible hitch on frame one; doing it here moves that
+ * cost into startup.
  */
 export const prewarm = (
 	renderer: Renderer,
@@ -215,9 +282,27 @@ export const prewarm = (
 	Gpu.compile(renderer.gpu, renderer.sync.scene, renderer.sync.camera);
 
 /**
- * Scoped renderer acquisition: the wrapper's WebGPU renderer (init
- * awaited, disposed on scope close) wired to a fresh sync actor.
- * Retained objects are disposed with the scope.
+ * Acquire a renderer for a canvas.
+ *
+ * @remarks
+ * Scoped: the GPU device and every retained object are disposed when the
+ * scope closes, so a player that mounts and unmounts leaks nothing.
+ *
+ * Pass `renderers` to draw entity kinds the built-ins do not cover, or to
+ * override how a built-in kind is drawn — the map is merged over the
+ * built-in manifest by entity tag.
+ *
+ * @param options - Canvas, dimensions, pixel ratio, and any custom entity
+ *   renderers.
+ * @returns A renderer, valid for the current scope.
+ *
+ * @example
+ * ```typescript
+ * const renderer = yield* Renderer.make({ canvas, width: 500, height: 300 });
+ * yield* Renderer.resolveResources(renderer, frame);
+ * yield* Renderer.syncFrame(renderer, frame);
+ * yield* Renderer.render(renderer);
+ * ```
  */
 export const make = Effect.fn("Renderer.make")(function* (
 	options: MakeOptions,

@@ -362,6 +362,45 @@ The explicit `Effect.fn.Return<A, E, R>` annotation is optional — use it
 when you want the signature pinned rather than inferred (public API,
 recursive functions).
 
+## Don't `throw`
+
+Errors are values: fail with `Effect.fail` / a tagged error, not `throw`.
+A thrown exception escapes the type system, skips the error channel, and
+turns a recoverable failure into a defect at whatever boundary catches it.
+
+The one exception: a deep recursive function where throwing is genuinely
+the cheapest way to short-circuit the whole call stack (a parser bailing
+out of nested descent, a tree walk aborting on the first hit). Even then,
+keep the `throw` **inside** one plain non-Effect function, and isolate it
+behind `Effect.try` / `Effect.tryPromise` that maps the thrown value into a
+typed error — the throw never crosses the module boundary.
+
+```ts
+// ✓ throw confined to the recursion, mapped at the edge
+class CycleDetected extends Data.TaggedError("CycleDetected")<{
+	readonly id: string;
+}> {}
+
+const walkSync = (node: Node, seen: Set<string>): void => {
+	if (seen.has(node.id)) throw new CycleDetected({ id: node.id });
+	seen.add(node.id);
+	for (const child of node.children) walkSync(child, seen);
+};
+
+const walk = (root: Node) =>
+	Effect.try({
+		try: () => walkSync(root, new Set()),
+		catch: (cause) =>
+			cause instanceof CycleDetected
+				? cause
+				: new CycleDetected({ id: root.id }),
+	});
+```
+
+Loud defects for programmer errors (see "Determinism invariants") stay as
+they are — those are `Effect.die`/defect territory, not `throw` in the
+happy path.
+
 ## Stay type-safe
 
 The type system is one of Effect's greatest strengths — leverage it, don't

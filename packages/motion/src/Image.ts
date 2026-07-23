@@ -56,6 +56,27 @@ export interface ImageResource<ID extends string = string>
 	readonly Loader: Context.Service<ImageLoader<ID>, ImageLoader<ID>>;
 }
 
+/**
+ * Declare an image your scene uses.
+ *
+ * @remarks
+ * Follows the same two-faced contract as `Font.Font`: `yield*` the constant
+ * in a scene to get the reference for an Image entity, and pair it with
+ * {@link layer} to provide the encoded bytes. Yielding is what puts the
+ * requirement into the scene's type.
+ *
+ * @param id - An identifier for this image, as a literal string.
+ *
+ * @example
+ * ```typescript
+ * const Logo = Image.Image("logo");
+ *
+ * const scene = Scene.make(function* () {
+ * 	const logo = yield* Logo;
+ * 	yield* Scene.instantiate("Image", { image: logo, width: 200, height: 80 });
+ * });
+ * ```
+ */
 export const Image = <const ID extends string>(
 	id: ID & EnsureLiteral<ID, "Image id must be a literal string">,
 ): ImageResource<ID> => {

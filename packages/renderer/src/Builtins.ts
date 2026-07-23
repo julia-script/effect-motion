@@ -720,6 +720,18 @@ const neverRendered = <T>(tag: string): EntityRenderer<T> =>
 		dispose: () => {},
 	}) as unknown as EntityRenderer<T>;
 
+/**
+ * The renderer for every built-in entity kind.
+ *
+ * @remarks
+ * Typed as an exhaustive map, so adding an entity to the core library
+ * without a renderer here fails the build rather than silently drawing
+ * nothing.
+ *
+ * To change how a kind is drawn, pass a replacement in the `renderers`
+ * option of `Renderer.make` or the Node adapter's `make` — it is merged over
+ * this map by tag — rather than editing this manifest.
+ */
 export const builtinRenderers: EntityRenderers = {
 	Circle: circle,
 	Ellipse: ellipse,
@@ -746,6 +758,14 @@ export const builtinRenderers: EntityRenderers = {
  * ponytail: the ParticleField entry is the D10 escape hatch. It is the ONE
  * key here that is not a member of the entity union, added explicitly rather
  * than by leaving the registry open. Delete it with the particles rewrite.
+ */
+/**
+ * {@link builtinRenderers} as the loosely-typed map the renderer's registry
+ * actually holds, keyed by entity tag.
+ *
+ * @remarks
+ * Same contents, widened: a heterogeneous registry cannot be read at any one
+ * entity type. Custom renderers are merged over this.
  */
 export const builtinRegistry: Record<string, EntityRenderer<never>> = {
 	...(builtinRenderers as unknown as Record<string, EntityRenderer<never>>),

@@ -9,15 +9,25 @@ import type { EntityByTag, EntityTag } from "./Entity.js";
  */
 
 /**
- * A reference to an entry in the runner tree: an id plus the tag of what it
- * is. Instances deliberately do NOT carry their entity definition — the tag
- * resolves it through {@link getEntityDefinitionByTag}, and the runner owns
- * the data.
+ * A handle to something living in a scene — what `Scene.instantiate` returns
+ * and what every animator takes.
  *
- * The `Tag` parameter is what keeps animators statically gated: an operation
- * needing `opacity` accepts `Instance<TagsWith<"opacity">>`, so the compiler
- * rejects a Camera. One string-literal parameter replaces the three-parameter
- * `Instance<Name, Data, Traits>` generic and its variance problems.
+ * @remarks
+ * An instance holds no entity data of its own, only an id and a kind. The
+ * data lives in the scene and changes every frame; the handle stays valid
+ * throughout, which is why it can be captured once and animated repeatedly.
+ * To read the current values, use `Scene.data`.
+ *
+ * The `Tag` parameter is what makes animators statically safe: `fadeTo`
+ * accepts only instances whose entity actually has an `opacity`, so fading a
+ * Camera fails at compile time with a message naming the missing field
+ * rather than misbehaving at runtime.
+ *
+ * Instances are pipeable, and are themselves Effects resolving to
+ * themselves — the two properties that let `circle.pipe(moveTo(…),
+ * fadeTo(…))` read as one chain.
+ *
+ * @typeParam Tag - Which entity this refers to, e.g. `"Circle"`.
  */
 export interface Instance<Tag extends EntityTag = EntityTag>
 	extends Pipeable.Pipeable {
@@ -39,18 +49,44 @@ const InstanceProto = {
 	},
 };
 
+/**
+ * Build an instance handle from an id and a kind.
+ *
+ * @remarks
+ * Internal plumbing — the scene runner calls this when creating entities.
+ * Author code gets handles from `Scene.instantiate` instead; constructing
+ * one by hand refers to an entity that may not exist.
+ */
 export const makeInstance = <Tag extends EntityTag>(
 	id: string,
 	kind: Tag,
 ): Instance<Tag> => Object.assign(Object.create(InstanceProto), { id, kind });
 
+/**
+ * Whether `u` is an {@link Instance}.
+ *
+ * @remarks
+ * The dispatch behind every dual animator: `moveTo(circle, …)` and
+ * `circle.pipe(moveTo(…))` are told apart by testing the first argument
+ * with this, rather than by counting arguments — trailing optional
+ * parameters make arity ambiguous.
+ */
 export const isInstance = (u: unknown): u is Instance =>
 	typeof u === "object" &&
 	u !== null &&
 	"_tag" in u &&
 	(u as { _tag: unknown })._tag === "Instance";
 
-/** whether an instance refers to a given entity kind */
+/**
+ * Whether `u` is an instance of one specific entity kind.
+ *
+ * @remarks
+ * Narrows to `Instance<Tag>`, so a heterogeneous list can be filtered down
+ * to the circles and then animated with circle-only fields.
+ *
+ * @param tag - The kind to test for, e.g. `"Circle"`.
+ * @param u - The value to test.
+ */
 export const isInstanceOf = <Tag extends EntityTag>(
 	tag: Tag,
 	u: unknown,
@@ -58,8 +94,11 @@ export const isInstanceOf = <Tag extends EntityTag>(
 
 /**
  * An instance, or an un-yielded `instantiate` effect that produces one.
- * Animators accept both so a scene can chain straight off `instantiate`
- * without a separate `yield*`.
+ *
+ * @remarks
+ * Animators accept both, so a scene can animate straight off an
+ * `instantiate` call without binding it to a variable first — the create
+ * step and the first animation read as one expression.
  */
 export type InstanceOrEffect<
 	Tag extends EntityTag = EntityTag,
@@ -67,7 +106,7 @@ export type InstanceOrEffect<
 	R = never,
 > = Instance<Tag> | Effect.Effect<Instance<Tag>, E, R>;
 
-/** resolve an {@link InstanceOrEffect} to the instance */
+/** Resolve an {@link InstanceOrEffect} to the instance itself. */
 export const flattenInstance = <Tag extends EntityTag, E = never, R = never>(
 	instance: InstanceOrEffect<Tag, E, R>,
 ): Effect.Effect<Instance<Tag>, E, R> =>
@@ -75,6 +114,6 @@ export const flattenInstance = <Tag extends EntityTag, E = never, R = never>(
 		? Effect.succeed(instance as Instance<Tag>)
 		: (instance as Effect.Effect<Instance<Tag>, E, R>);
 
-/** the data type an instance resolves to */
+/** The entity data type a given instance handle refers to. */
 export type DataOf<I> =
 	I extends Instance<infer Tag> ? EntityByTag<Tag> : never;

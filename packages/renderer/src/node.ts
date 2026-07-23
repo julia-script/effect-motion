@@ -19,10 +19,48 @@ import { renderCompTargets } from "./Renderer.js";
 import * as Sync from "./Sync.js";
 
 /**
- * The Node adapter: render frames on a real GPU (Dawn) without a browser
- * and read them back as PNG buffers — the export path. One renderer per
- * scope, fixed to the scene's dimensions; frames render through a
- * `RenderPipeline` (sRGB output transform) into a render target.
+ * Headless rendering for Node — the export path.
+ *
+ * @remarks
+ * Renders frames on a real GPU without a browser (through Dawn, Chrome's
+ * WebGPU implementation) and reads them back as PNG buffers. This is how a
+ * scene becomes files on disk, or gets piped into a video encoder.
+ *
+ * Importing this module installs the WebGPU globals and browser shims three
+ * expects, as a side effect, before any renderer exists. That is why it is a
+ * separate subpath: none of it should reach a browser bundle.
+ *
+ * A renderer is fixed to one size for its lifetime, and rendering a
+ * differently-sized frame is a defect rather than a silent rescale. Acquire
+ * one per export, not one per frame — setup cost is paid once, and every
+ * frame after reuses the same device, retained scene, and font atlas.
+ *
+ * @example
+ * Export every frame of a scene to PNG files.
+ * ```typescript
+ * import * as NodeRenderer from "@effect-motion/renderer/node";
+ * import * as Scene from "effect-motion/Scene";
+ * import { Effect } from "effect";
+ * import * as Stream from "effect/Stream";
+ * import { writeFile } from "node:fs/promises";
+ *
+ * yield* Effect.scoped(
+ * 	Effect.gen(function* () {
+ * 		const renderer = yield* NodeRenderer.make({ width: 500, height: 300 });
+ * 		let index = 0;
+ * 		yield* Scene.stream(scene, { frameRate: 30 }).pipe(
+ * 			Stream.runForEach((frame) =>
+ * 				Effect.gen(function* () {
+ * 					const png = yield* NodeRenderer.renderToPng(renderer, frame);
+ * 					yield* Effect.promise(() =>
+ * 						writeFile(`out/${String(index++).padStart(5, "0")}.png`, png),
+ * 					);
+ * 				}),
+ * 			),
+ * 		);
+ * 	}),
+ * );
+ * ```
  */
 
 type AnyFrame = Frame<unknown>;
@@ -67,7 +105,21 @@ const chunk = (type: string, data: Uint8Array): Uint8Array => {
 	return out;
 };
 
-/** Encode a raw RGBA8888 buffer (`width * height * 4` bytes) as a PNG. */
+/**
+ * Encode a raw RGBA buffer as a PNG.
+ *
+ * @remarks
+ * {@link renderToPng} already does this, so reach for it directly only when
+ * you have pixels from somewhere else. The encoder is deliberately minimal —
+ * no filtering, just zlib — which keeps it fast at the cost of somewhat
+ * larger files than an optimizing encoder would produce.
+ *
+ * @param rgba - Exactly `width * height * 4` bytes, 8 bits per channel.
+ * @param width - Image width in pixels.
+ * @param height - Image height in pixels.
+ * @returns The PNG file bytes.
+ * @throws If `rgba` is not exactly `width * height * 4` bytes.
+ */
 export const encodePng = (
 	rgba: Uint8Array,
 	width: number,
@@ -113,24 +165,38 @@ export const encodePng = (
 // ── the node renderer ─────────────────────────────────────────────────────
 
 export interface NodeRendererOptions {
+	/** Logical width; frames rendered must match it. */
 	readonly width: number;
+	/** Logical height; frames rendered must match it. */
 	readonly height: number;
-	/** supersampling factor: pixels are `width×height` × pixelRatio */
+	/**
+	 * Supersampling factor — output is `width × height` scaled by this, so 2
+	 * renders four times the pixels for cleaner edges.
+	 *
+	 * @defaultValue `1`
+	 */
 	readonly pixelRatio?: number;
-	/** custom entity renderers, merged over the built-in manifest */
+	/**
+	 * Renderers for custom entity kinds, or overrides for built-in ones.
+	 * Merged over the built-in manifest by entity tag.
+	 */
 	readonly renderers?: Record<string, AnyEntityRenderer>;
 }
 
 /**
- * A `Sync` wired to a headless Dawn renderer and a readback target.
- * Mostly data — the API is `renderToPng` and the encode helper.
+ * A live headless renderer.
+ *
+ * @remarks
+ * Mostly data — the API is {@link renderToPng}. `pixelWidth` and
+ * `pixelHeight` are the actual output dimensions, which differ from `width`
+ * and `height` when supersampling.
  */
 export interface NodeRenderer {
 	readonly sync: Sync.Sync;
 	readonly gpu: Gpu.Renderer;
 	/** the acquisition scope — image decodes fork into it (see Renderer.ts) */
 	readonly scope: Scope.Scope;
-	/** internal: plain pipeline (world + DoF blur) */
+	/** internal: the plain render pipeline (world content only) */
 	readonly post: PostProcessing.RenderPipeline;
 	/** internal: pipeline with the HUD pass composited over the world */
 	readonly postWithHud: PostProcessing.RenderPipeline;
@@ -143,7 +209,27 @@ export interface NodeRenderer {
 	readonly pixelRatio: number;
 }
 
-/** Sync a frame into the retained scene, render, read back, PNG-encode. */
+/**
+ * Render one frame and return it as PNG bytes.
+ *
+ * @remarks
+ * The whole export path in one call: resolve the frame's fonts and images,
+ * sync the retained scene, wait for glyph layouts and decodes, render, read
+ * the pixels back off the GPU, and encode.
+ *
+ * Call it once per frame on the SAME renderer; state is retained between
+ * calls, so consecutive frames only pay for what changed.
+ *
+ * The frame's dimensions must match the renderer's. A mismatch is a defect
+ * naming both sizes, not a silent rescale.
+ *
+ * Output is `pixelWidth × pixelHeight` — larger than the logical size when
+ * a `pixelRatio` was given.
+ *
+ * @param renderer - A renderer from {@link make}.
+ * @param frame - The frame to draw.
+ * @returns PNG file bytes.
+ */
 export const renderToPng = Effect.fnUntraced(function* (
 	renderer: NodeRenderer,
 	frame: AnyFrame,
@@ -193,12 +279,26 @@ export const renderToPng = Effect.fnUntraced(function* (
 });
 
 /**
- * Scoped Node renderer acquisition: Dawn device, headless WebGPU renderer
- * over a stub canvas, retained sync actor, and the render-target
- * pipeline.
+ * Acquire a headless renderer.
  *
- * DoF here is a custom gather blur (see the pipeline construction below)
- * — three's own TSL DoF node is broken under Dawn.
+ * @remarks
+ * Scoped: the GPU device, render targets, and every retained object are
+ * released when the scope closes. Acquire one per export and reuse it for
+ * every frame — startup involves creating a GPU device, so per-frame
+ * acquisition is dramatically slower.
+ *
+ * `width` and `height` fix the renderer's size for its lifetime and must
+ * match the frames you render.
+ *
+ * Use `pixelRatio` to supersample: a ratio of 2 renders at twice the linear
+ * resolution (four times the pixels), which is the usual way to get cleaner
+ * edges in an export.
+ *
+ * Depth of field is not applied — every frame renders sharp.
+ *
+ * @param options - Dimensions, supersampling, and any custom entity
+ *   renderers.
+ * @returns A renderer, valid for the current scope.
  */
 export const make = Effect.fn("NodeRenderer.make")(function* (
 	options: NodeRendererOptions,

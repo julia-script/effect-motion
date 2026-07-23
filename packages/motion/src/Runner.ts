@@ -16,35 +16,75 @@ export { ROOT_ID };
 
 export type Seed = number | string;
 
-/** the fixed default: scenes are deterministic even with no seed set */
+/**
+ * The seed used when none is given.
+ *
+ * @remarks
+ * Fixed rather than random on purpose: a scene using randomness still
+ * produces identical frames on every run unless you deliberately vary the
+ * seed.
+ */
 export const defaultSeed: Seed = "effect-motion";
 
 /**
- * Playback settings — how the movie RUNS. What the movie IS (resolution,
- * background) lives on the root scene as its composition config.
+ * Playback settings — how a scene RUNS, as opposed to what it IS.
+ *
+ * @remarks
+ * Passed to `Scene.run` / `Scene.stream`, so the same scene can be played
+ * back at different rates or seeds without being rewritten. Resolution and
+ * background are NOT here: those are the composition's own identity, fixed
+ * at `Scene.make`.
  */
 export type Settings = {
+	/**
+	 * Frames produced per second of scene time.
+	 *
+	 * @remarks
+	 * Determines how many frames a given duration becomes: a one-second
+	 * animation is 30 frames at 30fps and 60 at 60fps. It changes the
+	 * sampling, never the motion — the same scene looks the same, just
+	 * smoother.
+	 *
+	 * @defaultValue `60`
+	 */
 	frameRate: number;
 	/**
-	 * seeds the scene's pseudo-random service (effect's Random via
-	 * withSeed); the fixed default keeps default-constructed scenes
-	 * byte-identical across runs. Note: the generator algorithm belongs
-	 * to effect, so upgrading effect may change seeded sequences.
+	 * Seeds the scene's random number generator.
+	 *
+	 * @remarks
+	 * Randomness in a scene comes from this seed rather than
+	 * `Math.random()`, so the "random" scatter of a particle field is
+	 * identical on every run. Change the seed to get a different arrangement
+	 * that is itself reproducible.
+	 *
+	 * Note the generator belongs to `effect`, so upgrading it can change the
+	 * sequence a given seed produces.
+	 *
+	 * @defaultValue `"effect-motion"`
 	 */
 	seed: Seed;
 	/**
-	 * hard cap on frames a scene may produce (default 36_000 — 10 minutes
-	 * at 60fps): a scene that exceeds it dies instead of hanging the
-	 * consumer. Set to `Infinity` to declare an intentionally infinite
-	 * scene.
+	 * Hard cap on how many frames a scene may produce.
+	 *
+	 * @remarks
+	 * A safety net: a scene that exceeds it fails with a message naming the
+	 * limit instead of hanging whatever is consuming it. The usual cause is
+	 * an unbounded loop with nothing to end it.
+	 *
+	 * Set it to `Infinity` to declare a deliberately endless scene.
+	 *
+	 * @defaultValue `36_000` — ten minutes at 60fps
 	 */
 	maxFrames: number;
 };
 
 /**
- * A scene's composition config, After Effects–style: what the comp IS.
- * The runner inherits the ROOT scene's config; a nested scene keeps its
- * own as its bounds (see Scene.play).
+ * What a composition IS: its pixel dimensions and background.
+ *
+ * @remarks
+ * Set at `Scene.make` and carried on every frame, so a frame is
+ * self-describing. A nested scene keeps its own config as its bounds — that
+ * is what a played scene clips and paints within.
  */
 export type CompConfig = {
 	width: number;
@@ -59,7 +99,7 @@ export const defaultComp: CompConfig = {
 	backgroundColor: Color.transparent,
 };
 
-/** a container instance — the only thing children may be mounted under */
+/** A handle to a container (`Group` or `Hud`) — the only mountable parents. */
 export type GroupInstance = Instance.Instance<Entity.ContainerTag>;
 
 /**

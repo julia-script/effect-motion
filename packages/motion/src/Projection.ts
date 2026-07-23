@@ -40,11 +40,20 @@ export interface CameraView {
 	readonly rotZ: number;
 	readonly focalLength: number;
 	/**
-	 * view-space distance to the sharp plane (depth of field). Runner-filled
-	 * to the resting camera distance, so the z=0 plane is in focus untouched.
+	 * View-space distance to the intended sharp plane. Runner-filled to the
+	 * resting camera distance.
+	 *
+	 * @remarks
+	 * Currently inert: depth-of-field rendering is not implemented, so every
+	 * frame renders sharp regardless of this value.
 	 */
 	readonly focusDistance: number;
-	/** depth-of-field blur strength; 0 (the default) = pinhole, DoF off */
+	/**
+	 * Intended depth-of-field blur strength; 0 is a pinhole.
+	 *
+	 * @remarks
+	 * Currently inert — see {@link CameraView.focusDistance}.
+	 */
 	readonly aperture: number;
 }
 

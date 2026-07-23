@@ -66,6 +66,33 @@ export interface FontResource<ID extends string = string>
 	readonly Loader: Context.Service<FontLoader<ID>, FontLoader<ID>>;
 }
 
+/**
+ * Declare a font your scene uses.
+ *
+ * @remarks
+ * Call it once at module scope to get a constant with two faces: `yield*` it
+ * inside a scene to obtain the value for a Text's `fontFamily`, and pair it
+ * with {@link layer} to supply the actual bytes when rendering.
+ *
+ * Yielding the constant is what records the font in the scene's
+ * requirements, so a scene that uses a font it was never given fails to
+ * typecheck instead of rendering in the wrong face.
+ *
+ * The id must be a literal string — that literal is what ties the
+ * requirement to the provider.
+ *
+ * @param id - The family name, as a literal string.
+ *
+ * @example
+ * ```typescript
+ * const Inter = Font.Font("Inter");
+ *
+ * const scene = Scene.make(function* () {
+ * 	const inter = yield* Inter;
+ * 	yield* Scene.instantiate("Text", { text: "hello", fontFamily: inter });
+ * });
+ * ```
+ */
 export const Font = <const ID extends string>(
 	id: ID & EnsureLiteral<ID, "Font id must be a literal string">,
 ): FontResource<ID> => {

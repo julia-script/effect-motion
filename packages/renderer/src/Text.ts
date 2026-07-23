@@ -5,20 +5,27 @@ import { typesetterWorkerModule } from "troika-three-text";
 import createSdfGenerator from "webgl-sdf-generator";
 
 /**
- * The SDF text actor: registered font bytes, the atlas texture, the glyph
- * cache, and layout. troika's typesetter (font parsing + layout + glyph
- * paths, run on the main thread — no workers, no DOM) feeds
- * webgl-sdf-generator's pure-JS SDF into a package-owned DataTexture
- * atlas, rendered by a TSL node material. One uniform code path for
- * browser and Node — troika's stock pipeline (GLSL-derived material,
- * WebGL/canvas atlas) is unusable under WebGPU/headless, so only its
- * typesetting layer is consumed. This module is the boundary: troika and
- * the SDF generator never cross into the rest of the package raw.
+ * Text rendering: fonts, glyph atlas, and layout.
  *
- * ponytail: pure-JS SDF generation only (no WebGL acceleration) and one
- * glyph per atlas cell (no 4-per-RGBA packing) — both trade some speed and
- * memory for a uniform, canvas-free pipeline; revisit if atlas build time
- * or size ever shows up.
+ * @remarks
+ * Text is drawn from a signed-distance-field atlas rather than as geometry,
+ * which is what lets a string stay crisp at any scale without re-tessellating
+ * as it grows.
+ *
+ * Each glyph is rasterized into a shared atlas texture the first time it is
+ * seen, then reused. A scene that animates one word costs one atlas build,
+ * not one per frame.
+ *
+ * The pipeline deliberately uses only troika's typesetting layer — font
+ * parsing, shaping, and glyph outlines — and none of its rendering, which
+ * assumes WebGL and a canvas. The SDF generation and the atlas material
+ * belong to this package, so the same code path serves browser and headless
+ * Node.
+ *
+ * ponytail: the atlas is fixed-capacity (256 glyphs) with one glyph per
+ * cell, and SDF generation is pure JS with no GPU acceleration. Both trade
+ * speed and memory for a uniform, canvas-free pipeline; overflow is a typed
+ * error naming the remedy.
  */
 
 const SDF_GLYPH_SIZE = 64;
@@ -49,29 +56,56 @@ interface GlyphSlot {
 	readonly viewBox: [number, number, number, number];
 }
 
+/**
+ * A laid-out string: where each glyph goes and which part of the atlas it
+ * samples.
+ *
+ * @remarks
+ * Coordinates are mesh-local and y-UP (three's convention), not scene
+ * coordinates.
+ */
 export interface GlyphQuads {
-	/** per-glyph quad bounds [minX, minY, maxX, maxY], mesh-local (y-up) */
+	/** Per-glyph quad bounds, four numbers each: minX, minY, maxX, maxY. */
 	readonly bounds: Float32Array;
-	/** per-glyph atlas uv rects [u0, v0, u1, v1] */
+	/** Per-glyph atlas UV rects, four numbers each: u0, v0, u1, v1. */
 	readonly uvRects: Float32Array;
+	/** How many glyphs — `bounds` and `uvRects` hold four numbers per glyph. */
 	readonly count: number;
-	/** text block [minX, minY, maxX, maxY] before anchor offset, y-up */
+	/**
+	 * The whole text block's bounds before the anchor offset — the measured
+	 * size of the string.
+	 */
 	readonly blockBounds: [number, number, number, number];
 }
 
+/** What to lay out: the string, the font, its size, and its alignment. */
 export interface LayoutRequest {
 	readonly text: string;
+	/** Id of a font registered with {@link registerFont}. */
 	readonly fontId: string;
 	readonly fontSize: number;
+	/**
+	 * Horizontal alignment relative to the entity's position.
+	 *
+	 * @defaultValue `"start"`
+	 */
 	readonly textAnchor?: "start" | "middle" | "end" | undefined;
+	/**
+	 * Vertical alignment relative to the entity's position.
+	 *
+	 * @defaultValue `"auto"` — the text's own baseline
+	 */
 	readonly baseline?: "auto" | "middle" | "hanging" | undefined;
 }
 
 /**
- * Per-renderer text state: registered font data URIs, the shared SDF
- * atlas (single channel, one glyph per cell), and the glyph cache. Owned
- * by a `Sync`; the atlas texture is disposed with it. Mostly data — the
- * API is the sibling functions.
+ * The per-renderer text state: registered fonts, the shared SDF atlas, and
+ * the glyph cache.
+ *
+ * @remarks
+ * Owned by a `Sync` and disposed with it. Mostly data — the API is the
+ * sibling functions ({@link registerFont}, {@link layout},
+ * {@link makeMesh}).
  */
 export interface Text {
 	readonly atlas: THREE.DataTexture;
@@ -112,7 +146,14 @@ export const make = (): Text => {
 	};
 };
 
-/** Provide a font's bytes under its id (idempotent per id). */
+/**
+ * Register a font's bytes under its id.
+ *
+ * @remarks
+ * Idempotent per id — registering the same font twice does nothing the
+ * second time. A font must be registered before any string using it can be
+ * laid out; `Sync.resolveResources` handles that for frames.
+ */
 export const registerFont = (
 	text: Text,
 	id: string,
@@ -197,12 +238,19 @@ const glyphSlot = (
 };
 
 /**
- * Layout a string: typeset, generate any unseen glyph SDFs into the
- * atlas, and return quad bounds + uv rects with the anchor/baseline
- * offset applied (baseline-left at local (0,0) by default). Typesetting
- * and SDF failures land in the error channel naming the font; an
- * unregistered font is a defect — `Sync.resolveResources` guarantees
- * registration before any layout runs.
+ * Lay out a string into positioned glyph quads.
+ *
+ * @remarks
+ * Typesets the text, rasterizes any glyph not already in the atlas, and
+ * returns per-glyph quad bounds and atlas UV rects with the anchor and
+ * baseline offsets applied. By default the text's baseline-left sits at
+ * local (0, 0).
+ *
+ * Asynchronous because typesetting and SDF generation are; the renderer
+ * registers the work so a frame is never drawn with half its glyphs.
+ * Typesetting and SDF failures arrive as typed errors naming the font.
+ *
+ * The font must be registered first — an unregistered font is a defect.
  */
 export const layout = Effect.fnUntraced(function* (
 	text: Text,
@@ -303,17 +351,25 @@ const makeQuadGeometry = (): THREE.InstancedBufferGeometry => {
 	return geometry;
 };
 
+/** A glyph mesh over the shared atlas, with its update and release hooks. */
 export interface TextMesh {
 	readonly mesh: THREE.Object3D;
+	/** Point the mesh at a new layout — call after {@link layout} resolves. */
 	readonly setQuads: (quads: GlyphQuads) => void;
+	/** Set the fill color; `r`, `g`, `b` are 0–1, `a` is opacity. */
 	readonly setColor: (r: number, g: number, b: number, a: number) => void;
+	/** Release the mesh's geometry and materials. */
 	readonly dispose: () => void;
 }
 
 /**
- * A glyph mesh over the actor's atlas, in two passes so overlapping glyph
- * ink (connected scripts, tight kerning) blends exactly ONCE per pixel at
- * any string opacity:
+ * Build a mesh that draws glyphs from the shared atlas.
+ *
+ * @remarks
+ * Rendered in two passes so overlapping glyph ink — connected scripts, tight
+ * kerning — blends exactly ONCE per pixel at any opacity. A single-pass
+ * approach would double-blend the joins and show them as darker seams on
+ * semi-transparent text.
  *
  * - core pass: fragments with SDF coverage ≥ 0.5 draw flat at the string
  *   opacity, write depth with `LessDepth` — a second glyph's core at the

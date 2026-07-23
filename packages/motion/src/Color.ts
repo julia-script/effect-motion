@@ -1,3 +1,24 @@
+/**
+ * Colors: construction, adjustment, and conversion.
+ *
+ * @remarks
+ * Reach for {@link hex} for CSS strings, {@link rgba} for byte components,
+ * or {@link tw} for the built-in Tailwind palette. Perceptual spaces
+ * ({@link oklch}, {@link lab}) are available when you want even lightness
+ * across hues.
+ *
+ * Values are immutable and every adjustment is a dual, so operations
+ * compose in either call style. Colors interpolate, so any fill or stroke
+ * animates with the ordinary tween animators.
+ *
+ * @example
+ * ```typescript
+ * import * as Color from "effect-motion/Color";
+ *
+ * const brand = Color.hex("#7f5af0");
+ * const dim = brand.pipe(Color.darken(0.6), Color.alpha(0.75));
+ * ```
+ */
 import chroma from "chroma-js";
 import { Schema } from "effect";
 import * as Function from "effect/Function";
@@ -8,6 +29,21 @@ const clamp = (value: number, minimum: number, maximum: number) =>
 
 export type InterpolationMode = chroma.InterpolationMode;
 
+/**
+ * A color with an alpha channel.
+ *
+ * @remarks
+ * Build one with a constructor below — {@link hex} for CSS strings,
+ * {@link rgba} for byte components, {@link tw} for the Tailwind palette —
+ * rather than the class directly.
+ *
+ * RGB channels are 0–255 while alpha is 0–1, matching CSS. Colors are
+ * immutable and pipeable, so adjustments compose:
+ * `Color.hex("#7f5af0").pipe(Color.darken(0.5), Color.alpha(0.8))`.
+ *
+ * Colors are interpolable, so any fill or stroke can be animated with the
+ * ordinary tween animators.
+ */
 export class Color
 	extends Schema.TaggedClass<Color>()("Color", {
 		"~r": Schema.Number,
@@ -58,13 +94,37 @@ const fromChroma = (color: chroma.Color) => {
 		"~a": color._rgb._unclipped[3],
 	});
 };
+/** Whether `value` is a {@link Color}. */
 export const is = (value: unknown): value is Color => {
 	return value instanceof Color;
 };
+/**
+ * A color from red, green, blue (each 0–255) and optional alpha (0–1).
+ *
+ * @defaultValue `alpha` — `1`
+ *
+ * @example
+ * ```typescript
+ * Color.rgba(22, 22, 29)
+ * ```
+ */
 export const rgba = (r: number, g: number, b: number, alpha?: number) =>
 	Color.of(r, g, b, alpha);
 
-/** Parse a CSS color string (`#rgb`, `#rrggbb`, `#rrggbbaa`, named, `rgb()`, …). */
+/**
+ * Parse a CSS color string — the most convenient constructor.
+ *
+ * @remarks
+ * Accepts everything CSS does: `#rgb`, `#rrggbb`, `#rrggbbaa`, named colors
+ * like `"rebeccapurple"`, and functional forms like `rgb()` / `hsl()`.
+ *
+ * @param value - A CSS color string.
+ *
+ * @example
+ * ```typescript
+ * Color.hex("#7f5af0")
+ * ```
+ */
 export const hex = (value: string) => {
 	const c = chroma(value);
 	const [r, g, b] = c.rgb();
@@ -157,6 +217,7 @@ export const gl = (g: number, l: number, r: number, alpha?: number) => {
 const secondIsColor = (args: IArguments) => is(args[1]);
 const firstIsColor = (args: IArguments) => is(args[0]);
 
+/** Set a color's opacity (0–1), leaving its channels untouched. */
 export const alpha = Function.dual<
 	(amount: number) => (self: Color) => Color,
 	(self: Color, amount: number) => Color
@@ -169,12 +230,14 @@ export const alpha = Function.dual<
 	});
 });
 
+/** Darken by `amount` steps in Lab space. @defaultValue `amount` — `1` */
 export const darken = Function.dual<
 	(amount?: number) => (self: Color) => Color,
 	(self: Color, amount?: number) => Color
 >(firstIsColor, (self, amount) => {
 	return fromChroma(toChroma(self).darken(amount));
 });
+/** Brighten by `amount` steps in Lab space. @defaultValue `amount` — `1` */
 export const brighten = Function.dual<
 	(amount?: number) => (self: Color) => Color,
 	(self: Color, amount?: number) => Color
@@ -182,6 +245,7 @@ export const brighten = Function.dual<
 	return fromChroma(toChroma(self).brighten(amount));
 });
 
+/** Increase saturation by `amount` steps. @defaultValue `amount` — `1` */
 export const saturate = Function.dual<
 	(amount?: number) => (self: Color) => Color,
 	(self: Color, amount?: number) => Color
@@ -189,6 +253,7 @@ export const saturate = Function.dual<
 	return fromChroma(toChroma(self).saturate(amount));
 });
 
+/** Reduce saturation by `amount` steps. @defaultValue `amount` — `1` */
 export const desaturate = Function.dual<
 	(amount?: number) => (self: Color) => Color,
 	(self: Color, amount?: number) => Color
@@ -210,6 +275,18 @@ export type ChannelMap = {
 	oklab: "l" | "a" | "b";
 	oklch: "l" | "c" | "h";
 };
+/**
+ * Blend two colors, `amount` of the way from `self` to `color`.
+ *
+ * @remarks
+ * `mode` picks the color space the blend travels through, which changes the
+ * intermediate hues considerably: `"lab"` (the animators' default) keeps
+ * perceptual evenness, while `"rgb"` can pass through muddy midpoints.
+ *
+ * @param color - The color to blend toward.
+ * @param amount - 0 keeps `self`, 1 gives `color`.
+ * @param mode - Interpolation space.
+ */
 export const mix = Function.dual<
 	(
 		color: Color,
@@ -373,9 +450,15 @@ export const bytes = (self: Color) => ({
 	a: Math.round(self.a * 255),
 });
 
+/** Opaque black. */
 export const black = rgba(0, 0, 0, 1);
+/** Opaque white. */
 export const white = rgba(255, 255, 255, 1);
 
+/**
+ * Fully transparent — the default scene background, which leaves whatever
+ * is behind the composition showing through.
+ */
 export const transparent = rgba(0, 0, 0, 0);
 
 export const twMap = {
@@ -721,6 +804,23 @@ export const twMap = {
 } as const;
 
 type TwColor = keyof typeof twMap;
+/**
+ * A color from the Tailwind palette.
+ *
+ * @remarks
+ * A ready-made, perceptually even set of hues — handy for getting a scene
+ * looking coherent without hand-picking values.
+ *
+ * @param color - Palette name, e.g. `"violet"`.
+ * @param shade - Lightness step, `"50"` (lightest) to `"950"` (darkest).
+ * @param alpha - Opacity, 0–1.
+ * @defaultValue `shade` — `"400"`; `alpha` — `1`
+ *
+ * @example
+ * ```typescript
+ * Color.tw("violet", "500")
+ * ```
+ */
 export const tw = (
 	color: TwColor,
 	shade:

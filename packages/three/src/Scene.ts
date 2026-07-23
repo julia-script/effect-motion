@@ -6,23 +6,38 @@ import * as THREE from "three/webgpu";
 import type * as Object3D from "./Object3D.js";
 
 /**
- * The scene-graph root actor: a branded handle over `THREE.Scene`.
+ * The scene graph root — a scoped handle over three's `Scene`.
  *
- * Three is already actor-shaped, so this is a branding + lifecycle layer,
- * not a redesign (see AGENTS.md). Mutation here — `add`, `remove`,
- * `clear`, `setBackground` — is infallible field bookkeeping on an object
- * we already hold, so it stays sync and chains through `.pipe`; Effect
- * enters at construction (which registers teardown) and at anything that
- * can fail or is async.
+ * @remarks
+ * three is already shaped the way this wrapper wants, so this is a
+ * branding-and-lifecycle layer rather than a redesign. Everything here —
+ * {@link add}, {@link remove}, {@link clear}, {@link setBackground} — is
+ * infallible bookkeeping on an object already in hand, so it stays
+ * synchronous and chains through `.pipe`. Effect enters only at
+ * {@link make}, which registers teardown.
+ *
+ * @example
+ * ```typescript
+ * const scene = yield* Scene.make();
+ * scene.pipe(Scene.add([mesh]), Scene.setBackground(new Color(0x16161d)));
+ * ```
  */
 
 export const TypeId = "~three/Scene" as const;
 
+/**
+ * A handle to a three scene.
+ *
+ * @remarks
+ * The underlying scene stays reachable through `~three.scene` for anything
+ * this wrapper does not cover.
+ */
 export interface Scene extends Pipeable.Pipeable {
 	readonly [TypeId]: typeof TypeId;
 	readonly "~three.scene": THREE.Scene;
 }
 
+/** Whether `u` is a {@link Scene} handle. */
 export const isScene = (u: unknown): u is Scene =>
 	Predicate.hasProperty(u, TypeId);
 
@@ -34,8 +49,12 @@ export const isScene = (u: unknown): u is Scene =>
 const firstArgIsScene = (args: IArguments) => isScene(args[0]);
 
 /**
- * Brand an existing `THREE.Scene` WITHOUT registering teardown — for a
- * scene whose lifetime something else already owns. Prefer `make`.
+ * Wrap an existing three scene WITHOUT registering teardown.
+ *
+ * @remarks
+ * For a scene whose lifetime something else already owns and will clean up.
+ * Prefer {@link make}, which ties teardown to a scope; reach for this only
+ * when a longer-lived owner is genuinely in charge.
  */
 export const makeUnsafe = (scene: THREE.Scene): Scene => {
 	const self: Scene = {
@@ -52,12 +71,13 @@ export const makeUnsafe = (scene: THREE.Scene): Scene => {
 };
 
 /**
- * A scoped scene: detaches its children on scope close.
+ * A scoped scene that detaches its children when the scope closes.
  *
- * `clear` only unparents — it does NOT dispose geometries, materials, or
- * textures, because a scene does not own them (they are shared across
- * objects and outlive any one graph). Whoever created those disposes
- * them; in this repo that is the renderer's retained entries.
+ * @remarks
+ * Detaching is NOT disposal. A scene does not own the geometries,
+ * materials, and textures hanging off its objects — those are routinely
+ * shared between objects and outlive any one graph — so whoever created
+ * them is responsible for freeing them.
  */
 export const make = Effect.fnUntraced(function* (): Effect.fn.Return<
 	Scene,
@@ -69,21 +89,38 @@ export const make = Effect.fnUntraced(function* (): Effect.fn.Return<
 	return makeUnsafe(scene);
 });
 
-/** Detach every child (see `make` on what this deliberately does not do). */
+/**
+ * Detach every child from the scene root.
+ *
+ * @remarks
+ * Unparents only — see {@link make} on why this does not dispose anything.
+ */
 export const clear = (self: Scene): Scene => {
 	self["~three.scene"].clear();
 	return self;
 };
 
-/** The scene root's direct children. */
+/** The scene root's direct children (not a deep traversal). */
 export const children = (self: Scene): ReadonlyArray<Object3D.Object3D> =>
 	self["~three.scene"].children;
 
-/** Whether the scene root has no children — the "nothing to render" check. */
+/**
+ * Whether the scene root has no children.
+ *
+ * @remarks
+ * The "is there anything to draw" check — worth making before an optional
+ * pass, so an empty overlay tier costs nothing.
+ */
 export const isEmpty = (self: Scene): boolean =>
 	self["~three.scene"].children.length === 0;
 
-/** Attach objects to the scene root. */
+/**
+ * Attach objects to the scene root.
+ *
+ * @remarks
+ * Re-adding an object that is already parented moves it, as in three
+ * itself — an object has exactly one parent.
+ */
 export const add: {
 	(objects: ReadonlyArray<Object3D.Object3D>): (self: Scene) => Scene;
 	(self: Scene, objects: ReadonlyArray<Object3D.Object3D>): Scene;
@@ -95,7 +132,13 @@ export const add: {
 	},
 );
 
-/** Detach objects from the scene root (no-op for objects not attached). */
+/**
+ * Detach objects from the scene root.
+ *
+ * @remarks
+ * A no-op for objects that are not attached, and it does not dispose them —
+ * a removed object can be added back.
+ */
 export const remove: {
 	(objects: ReadonlyArray<Object3D.Object3D>): (self: Scene) => Scene;
 	(self: Scene, objects: ReadonlyArray<Object3D.Object3D>): Scene;
@@ -108,8 +151,11 @@ export const remove: {
 );
 
 /**
- * Set the clear background, or `null` for a transparent scene (what a
- * HUD tier and a comp with no background color want).
+ * Set the background color or texture, or `null` for transparency.
+ *
+ * @remarks
+ * `null` is what an overlay tier wants: with nothing painted behind it,
+ * whatever was rendered first shows through.
  */
 export const setBackground: {
 	(background: THREE.Color | THREE.Texture | null): (self: Scene) => Scene;
