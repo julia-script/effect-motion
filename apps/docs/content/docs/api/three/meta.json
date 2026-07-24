@@ -1,7 +1,4 @@
 {
 	"title": "three",
-	"pages": [
-		"index",
-		"..."
-	]
+	"pages": ["index", "..."]
 }

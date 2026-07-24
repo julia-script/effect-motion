@@ -1,10 +1,4 @@
 {
 	"title": "API Reference",
-	"pages": [
-		"index",
-		"effect-motion",
-		"renderer",
-		"three",
-		"react"
-	]
+	"pages": ["index", "effect-motion", "renderer", "three", "react"]
 }

@@ -1,7 +1,4 @@
 {
 	"title": "renderer",
-	"pages": [
-		"index",
-		"..."
-	]
+	"pages": ["index", "..."]
 }
