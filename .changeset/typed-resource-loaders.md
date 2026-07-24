@@ -2,7 +2,6 @@
 "effect-motion": minor
 "@effect-motion/react": minor
 "@effect-motion/export": minor
-"@effect-motion/thorvg": minor
 ---
 
 Typed resource loaders: fonts and images are scene requirements, not annotations.
