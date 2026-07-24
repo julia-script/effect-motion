@@ -51,8 +51,9 @@ generate, and render in CI.
 ### `effect-motion` — scenes as programs
 
 The core. Entities are a closed union of schema-backed shapes (Circle, Rect,
-Square, Ellipse, Line, Path, Text, Group, Image) plus a Camera that is an
-ordinary instance — the same animators that move a circle orbit the camera.
+Ellipse, Line, Path, Text, Group, Image, a screen-space Hud) plus a Camera
+that is an ordinary instance — the same animators that move a circle orbit
+the camera.
 Animators come in two layers: raw `Motion.tween`/`tweenTo` on any numeric
 field the entity's schema declares, and semantic `move`/`fade`/`spring`
 helpers that treat the entity as one unit (geometry is relative to
@@ -128,12 +129,13 @@ machine that has never opened a browser.
 
 ### `@effect-motion/cli` — studio and render
 
-The project-level workflow, driven by one `motion.config.ts`: `motion
-studio` serves the Player over your scenes with hot reload (unregistered
-scenes preview too — registration is never required to look), and `motion
-render` renders every configured target to video, deriving output paths from
-target names. Registered scenes preview with their target settings, so the
-preview aspect matches the export.
+The project-level workflow, driven by two code entrypoints rather than a
+config format. `motion studio` serves the Player over the scenes a
+`studio.ts` registers — a typed record whose scene modules are imported as
+values, so declared resources typecheck at authoring time — with hot reload
+via Vite HMR. `motion render` executes a `render.ts`: an ordinary program
+default-exporting a `Video.render(…)` effect, which also runs standalone
+under `tsx`. Even the render pipeline is code, not configuration.
 
 **Useful alone for:** the daily loop — edit, watch, ship — without writing
 any playback or export code.
@@ -141,8 +143,9 @@ any playback or export code.
 ### `create-effect-motion` — the first five minutes
 
 `pnpm create effect-motion` scaffolds a working project: a hello-world
-scene, a `main.ts` movie composing scenes, `motion.config.ts`, exact version
-pins, git init, and — notably — an `AGENTS.md` of authoring rules aimed at
+scene, a `main.ts` movie composing scenes, `studio.ts` and `render.ts`
+entrypoints, exact version pins, git init, and — notably — an `AGENTS.md`
+of authoring rules aimed at
 AI coding agents, because schema-backed entities and typed animators are an
 API agents can be taught to write correctly. Every prompt has a flag twin,
 so it scaffolds non-interactively in scripts and CI.
