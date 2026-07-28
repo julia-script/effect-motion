@@ -5,11 +5,11 @@ import { Color, Motion, Entity as S, Scene } from "effect-motion";
 const sceneA = Scene.make(
 	function* () {
 		const c = yield* Scene.instantiate("Circle", {
-			position: S.vec3({ x: 60, y: 110 }),
+			position: S.vec3({ x: -190, y: 40 }),
 			radius: 16,
 			fillColor: Color.hex("#e53170"),
 		});
-		yield* Motion.moveTo(c, { x: 440 }, "1 second", "easeInOutCubic");
+		yield* Motion.moveTo(c, { x: 190 }, "1 second", "easeInOutCubic");
 		yield* Scene.finish;
 		yield* Motion.fadeTo(c, 0, "1 second");
 	},
@@ -19,12 +19,12 @@ const sceneA = Scene.make(
 const sceneB = Scene.make(
 	function* () {
 		const c = yield* Scene.instantiate("Circle", {
-			position: S.vec3({ x: 60, y: 190 }),
+			position: S.vec3({ x: -190, y: -40 }),
 			radius: 16,
 			fillColor: Color.hex("#2cb67d"),
 		});
 		yield* Motion.fade(c, 0, 1, "600 millis");
-		yield* Motion.moveTo(c, { x: 440 }, "1 second", "easeInOutCubic");
+		yield* Motion.moveTo(c, { x: 190 }, "1 second", "easeInOutCubic");
 	},
 	{ width: 500, height: 300 },
 );

@@ -16,36 +16,35 @@ const identity: P.CameraView = {
 	focusDistance: P.defaultCameraZ(F),
 	aperture: 0,
 };
-const origin: P.Vec2 = { x: 250, y: 150 }; // viewport center of a 500x300 frame
 
 describe("identity camera preserves plain-2D placement", () => {
 	it("z=0 point projects to its own (x,y) at scale 1", () => {
 		// resting camera reproduces plain-2D: world (x,y) == screen (x,y)
-		const p = P.project(identity, { x: 40, y: -20, z: 0 }, origin);
+		const p = P.project(identity, { x: 40, y: -20, z: 0 });
 		expect(p.scale).toBeCloseTo(1, 10);
 		expect(p.x).toBeCloseTo(40, 10);
 		expect(p.y).toBeCloseTo(-20, 10);
 	});
 
-	it("a point at the viewport center maps to the center", () => {
-		const p = P.project(identity, { x: origin.x, y: origin.y, z: 0 }, origin);
-		expect(p.x).toBeCloseTo(origin.x, 10);
-		expect(p.y).toBeCloseTo(origin.y, 10);
+	it("a point at the world origin maps to the viewport center", () => {
+		const p = P.project(identity, { x: 0, y: 0, z: 0 });
+		expect(p.x).toBeCloseTo(0, 10);
+		expect(p.y).toBeCloseTo(0, 10);
 	});
 });
 
 describe("determinism", () => {
 	it("same camera + point projects bit-for-bit equal", () => {
-		const a = P.project(identity, { x: 13, y: 7, z: -211 }, origin);
-		const b = P.project(identity, { x: 13, y: 7, z: -211 }, origin);
+		const a = P.project(identity, { x: 13, y: 7, z: -211 });
+		const b = P.project(identity, { x: 13, y: 7, z: -211 });
 		expect(a).toEqual(b);
 	});
 });
 
 describe("depth drives scale (perspective foreshortening)", () => {
 	it("a farther point is smaller", () => {
-		const near = P.project(identity, { x: 0, y: 0, z: 0 }, origin);
-		const far = P.project(identity, { x: 0, y: 0, z: -500 }, origin);
+		const near = P.project(identity, { x: 0, y: 0, z: 0 });
+		const far = P.project(identity, { x: 0, y: 0, z: -500 });
 		expect(far.scale).toBeLessThan(near.scale);
 		expect(far.depth).toBeGreaterThan(near.depth);
 	});
@@ -61,7 +60,7 @@ describe("depth drives scale (perspective foreshortening)", () => {
 
 	it("a point behind the camera has zero scale (no valid projection)", () => {
 		// world z beyond the camera's own z is behind it → view-z <= 0
-		const behind = P.project(identity, { x: 0, y: 0, z: F + 10 }, origin);
+		const behind = P.project(identity, { x: 0, y: 0, z: F + 10 });
 		expect(behind.scale).toBe(0);
 	});
 });

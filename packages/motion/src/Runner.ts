@@ -431,9 +431,6 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 			registerComp: (id: string, config: CompConfig): void => {
 				comps.set(id, config);
 			},
-			// the bounds of the mounted scene at `id`, or null if it is a plain
-			// group. Never inferred from fields — a comp is declared.
-			compBounds: (id: string): CompConfig | null => comps.get(id) ?? null,
 
 			// the default resting camera (animate it, or swap via setCamera)
 			camera,

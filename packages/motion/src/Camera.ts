@@ -121,13 +121,12 @@ const setPoi = (data: CameraShape, p: Motion.Position): CameraShape => ({
 	poi: Entity.vec3(p),
 });
 
-// the camera's WORLD position: x/y are pan-from-viewport-center
+// the camera's WORLD position (center-origin frame: position IS world)
 const worldPosition = Effect.fnUntraced(function* (cam: CamInstance) {
-	const { comp } = yield* Runner.Runner;
 	const data = yield* Scene.data(cam);
 	return {
-		x: comp.width / 2 + data.position.x,
-		y: comp.height / 2 + data.position.y,
+		x: data.position.x,
+		y: data.position.y,
 		z: data.position.z,
 	};
 });
@@ -326,15 +325,14 @@ const orbitImpl = Effect.fnUntraced(function* (
 	timing?: Timing.TimingInput,
 ) {
 	const cam = yield* Instance.flattenInstance(camOrEffect);
-	const { comp } = yield* Runner.Runner;
-	const origin = { x: comp.width / 2, y: comp.height / 2 };
 	const startData = yield* Scene.data(cam);
 	const poi = poiOrDie(startData);
 	const world = {
-		x: origin.x + startData.position.x,
+		x: startData.position.x,
 		z: startData.position.z,
 	};
-	// azimuth 0 = directly +z of the POI (the resting side); radius = the
+	// azimuth 0 = directly +z of the POI (the resting side); positive sweeps
+	// by the right-hand rule about world +y (+z toward +x). radius = the
 	// current horizontal distance, preserved through the arc; height too
 	const radius = Math.hypot(world.x - poi.x, world.z - poi.z);
 	const startAzimuth = from ?? Math.atan2(world.x - poi.x, world.z - poi.z);
@@ -346,7 +344,7 @@ const orbitImpl = Effect.fnUntraced(function* (
 		return {
 			...d,
 			position: Entity.vec3({
-				x: p.x + radius * Math.sin(angle) - origin.x,
+				x: p.x + radius * Math.sin(angle),
 				y: d.position.y,
 				z: p.z + radius * Math.cos(angle),
 			}),
@@ -449,13 +447,11 @@ const dollyImpl = Effect.fnUntraced(function* (
 	timing?: Timing.TimingInput,
 ) {
 	const cam = yield* Instance.flattenInstance(camOrEffect);
-	const { comp } = yield* Runner.Runner;
-	const origin = { x: comp.width / 2, y: comp.height / 2 };
 	const startData = yield* Scene.data(cam);
 	const poi = poiOrDie(startData);
 	const world = {
-		x: origin.x + startData.position.x,
-		y: origin.y + startData.position.y,
+		x: startData.position.x,
+		y: startData.position.y,
 		z: startData.position.z,
 	};
 	const startDistance = Math.hypot(
@@ -483,8 +479,8 @@ const dollyImpl = Effect.fnUntraced(function* (
 		return {
 			...d,
 			position: Entity.vec3({
-				x: p.x + u.x * dist - origin.x,
-				y: p.y + u.y * dist - origin.y,
+				x: p.x + u.x * dist,
+				y: p.y + u.y * dist,
 				z: p.z + u.z * dist,
 			}),
 		};

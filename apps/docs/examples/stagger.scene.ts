@@ -15,7 +15,7 @@ export const scene = Scene.make(
 		for (const [i, fill] of colors.entries()) {
 			dots.push(
 				yield* Scene.instantiate("Circle", {
-					position: S.vec3({ x: 60, y: 60 + i * 60 }),
+					position: S.vec3({ x: -190, y: 90 - i * 60 }),
 					radius: 14,
 					fillColor: fill,
 				}),
@@ -26,7 +26,7 @@ export const scene = Scene.make(
 		// concurrently once released
 		yield* Scene.stagger(
 			dots.map((dot) =>
-				Motion.moveTo(dot, { x: 440 }, "1 second", "easeInOutCubic"),
+				Motion.moveTo(dot, { x: 190 }, "1 second", "easeInOutCubic"),
 			),
 			Schedule.spaced("250 millis"),
 		);

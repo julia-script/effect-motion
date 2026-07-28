@@ -8,8 +8,8 @@ export const scene = Scene.make(
 	function* () {
 		const snow = yield* Particles.emitter({
 			// emit from near the top, angled downward (180° = straight down)
-			x: 250,
-			y: 20,
+			x: 0,
+			y: 130,
 			speed: [20, 50],
 			angle: [150, 210], // a downward cone
 			life: [3, 5],

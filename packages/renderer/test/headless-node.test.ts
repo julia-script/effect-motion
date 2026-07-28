@@ -30,7 +30,8 @@ describe("headless Dawn rendering", () => {
 	it("renders a frame to a PNG with content", async () => {
 		const frames = await framesOf(function* () {
 			yield* Scene.instantiate("Circle", {
-				position: S.vec3({ x: 64, y: 32 }),
+				// center-origin frame: (0, 0) is the middle of the viewport
+				position: S.vec3({}),
 				radius: 20,
 				fillColor: Color.rgba(255, 60, 60),
 			});
@@ -60,7 +61,8 @@ describe("headless Dawn rendering", () => {
 	it("readback rgba shows both background and circle pixels", async () => {
 		const frames = await framesOf(function* () {
 			yield* Scene.instantiate("Circle", {
-				position: S.vec3({ x: 64, y: 32 }),
+				// center-origin frame: (0, 0) is the middle of the viewport
+				position: S.vec3({}),
 				radius: 20,
 				fillColor: Color.rgba(255, 60, 60),
 			});

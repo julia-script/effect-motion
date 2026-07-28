@@ -15,8 +15,8 @@ export const scene = Scene.make(
 			const row = Math.floor(i / 6);
 			yield* Scene.instantiate("Circle", {
 				position: S.vec3({
-					x: 40 + col * 84,
-					y: 40 + row * 74,
+					x: col * 84 - 210,
+					y: 110 - row * 74,
 					z: -150 - ((i * 137) % 500),
 				}),
 				radius: 3,
@@ -25,12 +25,12 @@ export const scene = Scene.make(
 		}
 
 		const a = yield* Scene.instantiate("Circle", {
-			position: S.vec3({ x: 80, y: 120 }),
+			position: S.vec3({ x: -170, y: 30 }),
 			radius: 14,
 			fillColor: Color.hex("#e53170"),
 		});
 		const b = yield* Scene.instantiate("Circle", {
-			position: S.vec3({ x: 380, y: 210, z: -400 }),
+			position: S.vec3({ x: 130, y: -60, z: -400 }),
 			radius: 14,
 			fillColor: Color.hex("#ff8906"),
 		});
@@ -41,7 +41,7 @@ export const scene = Scene.make(
 		yield* Scene.all([
 			a.pipe(
 				Motion.moveTo(
-					{ x: 190, y: 80, z: -300 },
+					{ x: -60, y: 70, z: -300 },
 					"3 seconds",
 					"easeInOutCubic",
 				),
@@ -53,11 +53,7 @@ export const scene = Scene.make(
 		// seamlessly the frame it lands
 		yield* Scene.all([
 			b.pipe(
-				Motion.moveTo(
-					{ x: 260, y: 140, z: -100 },
-					"4 seconds",
-					"easeInOutCubic",
-				),
+				Motion.moveTo({ x: 10, y: 10, z: -100 }, "4 seconds", "easeInOutCubic"),
 			),
 			cam.pipe(
 				Camera.lookAt(b, "1 second", "easeInOutCubic"),

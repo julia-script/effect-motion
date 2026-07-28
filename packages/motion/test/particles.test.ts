@@ -204,7 +204,8 @@ describe("step (pure fold)", () => {
 		// advance without new births — both should gain the same vy delta
 		step(buffer, 10, 1 / 60, [], cfg);
 		buffer.forEach((p, i) => {
-			expect(p.vy - (vyBefore[i] ?? 0)).toBeCloseTo(1000 / 60, 6);
+			// positive gravity pulls screen-down: vy decreases
+			expect(p.vy - (vyBefore[i] ?? 0)).toBeCloseTo(-1000 / 60, 6);
 		});
 		expect(liveCount(buffer)).toBe(0);
 	});
@@ -232,10 +233,11 @@ describe("fill mode (evenly-spread floating field)", () => {
 	it("birthFill scatters within the region and marks wrap/persistent", () => {
 		for (let i = 0; i < 200; i++) {
 			const p = birthFill(Prng.seedFrom(i / 200), fillConfig);
-			expect(p.x).toBeGreaterThanOrEqual(0);
-			expect(p.x).toBeLessThanOrEqual(200);
-			expect(p.y).toBeGreaterThanOrEqual(0);
-			expect(p.y).toBeLessThanOrEqual(100);
+			// the region is CENTERED on the field origin
+			expect(p.x).toBeGreaterThanOrEqual(-100);
+			expect(p.x).toBeLessThanOrEqual(100);
+			expect(p.y).toBeGreaterThanOrEqual(-50);
+			expect(p.y).toBeLessThanOrEqual(50);
 			expect(p.wrap).toBe(true);
 			expect(p.life).toBe(Number.POSITIVE_INFINITY);
 			// drift speed within [5,15]
@@ -249,8 +251,8 @@ describe("fill mode (evenly-spread floating field)", () => {
 			{ length: 100 },
 			(_, i) => birthFill(Prng.seedFrom(i / 100), fillConfig).x,
 		);
-		expect(Math.min(...xs)).toBeLessThan(50); // some on the left
-		expect(Math.max(...xs)).toBeGreaterThan(150); // some on the right
+		expect(Math.min(...xs)).toBeLessThan(-50); // some on the left
+		expect(Math.max(...xs)).toBeGreaterThan(50); // some on the right
 	});
 
 	it("fill particles never die and wrap at edges", () => {
@@ -264,12 +266,12 @@ describe("fill mode (evenly-spread floating field)", () => {
 			step(buffer, 100, 1 / 60, [], fillConfig, "fill");
 		}
 		expect(liveCount(buffer)).toBe(20);
-		// every particle stays inside the wrapped region
+		// every particle stays inside the wrapped region (centered on origin)
 		for (const p of buffer) {
-			expect(p.x).toBeGreaterThanOrEqual(0);
-			expect(p.x).toBeLessThanOrEqual(200);
-			expect(p.y).toBeGreaterThanOrEqual(0);
-			expect(p.y).toBeLessThanOrEqual(100);
+			expect(p.x).toBeGreaterThanOrEqual(-100);
+			expect(p.x).toBeLessThanOrEqual(100);
+			expect(p.y).toBeGreaterThanOrEqual(-50);
+			expect(p.y).toBeLessThanOrEqual(50);
 		}
 	});
 });
@@ -335,9 +337,9 @@ describe("simulate (scene integration)", () => {
 		const buffer = (entry?.data as { buffer?: Particle[] })?.buffer ?? [];
 		const live = buffer.filter((p) => p.alive);
 		expect(live.length).toBe(120);
-		// spread across the full frame, not clustered at the origin
+		// spread across the full centered frame, not clustered at the origin
 		const xs = live.map((p) => p.x);
-		expect(Math.min(...xs)).toBeLessThan(100);
-		expect(Math.max(...xs)).toBeGreaterThan(400);
+		expect(Math.min(...xs)).toBeLessThan(-150);
+		expect(Math.max(...xs)).toBeGreaterThan(150);
 	});
 });

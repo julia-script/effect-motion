@@ -10,12 +10,12 @@ export const scene = Scene.make(
 	function* () {
 		// a flat closed diamond, filled — plain-2D under the resting camera
 		yield* Scene.instantiate("Path", {
-			position: S.vec3({ x: 120, y: 160 }),
+			position: S.vec3({ x: -130, y: -10 }),
 			fillColor: Color.hex("#7f5af0"),
 			commands: [
-				{ _tag: "M", x: 0, y: -60 },
+				{ _tag: "M", x: 0, y: 60 },
 				{ _tag: "L", x: 50, y: 0 },
-				{ _tag: "L", x: 0, y: 60 },
+				{ _tag: "L", x: 0, y: -60 },
 				{ _tag: "L", x: -50, y: 0 },
 				{ _tag: "Z" },
 			],
@@ -25,25 +25,25 @@ export const scene = Scene.make(
 		// spans foreshorten toward the vanishing point while the near ones stay
 		// full size
 		const trace = yield* Scene.instantiate("Path", {
-			position: S.vec3({ x: 280, y: 160 }),
+			position: S.vec3({ x: 30, y: -10 }),
 			fillColor: Color.rgba(0, 0, 0, 0),
 			strokeColor: Color.hex("#ff8906"),
 			strokeWidth: 4,
 			commands: [
 				{ _tag: "M", x: 0, y: 0 },
-				{ _tag: "L", x: 80, y: -40, z: -600 },
+				{ _tag: "L", x: 80, y: 40, z: -600 },
 				{ _tag: "L", x: 160, y: 0 },
-				{ _tag: "L", x: 240, y: -40, z: -1200 },
+				{ _tag: "L", x: 240, y: 40, z: -1200 },
 				{ _tag: "L", x: 320, y: 0 },
 			],
 		});
 
 		// the whole trace moves as one rigid unit — anchor animates, commands don't
 		yield* trace.pipe(
-			Motion.moveTo({ y: 120 }, "1.5 seconds", "easeInOutCubic"),
+			Motion.moveTo({ y: 30 }, "1.5 seconds", "easeInOutCubic"),
 		);
 		yield* trace.pipe(
-			Motion.moveTo({ y: 160 }, "1.5 seconds", "easeInOutCubic"),
+			Motion.moveTo({ y: -10 }, "1.5 seconds", "easeInOutCubic"),
 		);
 	},
 	{ width: 500, height: 300, backgroundColor: Color.rgba(22, 22, 29) },

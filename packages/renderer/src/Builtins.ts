@@ -26,12 +26,10 @@ import * as Text from "./Text.js";
 const CIRCLE_SEGMENTS = 64;
 
 // shared unit geometries — shapes scale them, so there are no per-frame
-// geometry rebuilds for circles/ellipses/rects at all
+// geometry rebuilds for circles/ellipses/rects at all. Both are CENTERED on
+// their anchor: `position` is the shape's center, like Manim/Motion Canvas.
 const unitCircle = new THREE.CircleGeometry(1, CIRCLE_SEGMENTS);
-// unit plane with its origin at the TOP-LEFT corner (scene rect anchor):
-// in three coords the rect extends +x and -y from the anchor
 const unitPlane = new THREE.PlaneGeometry(1, 1);
-unitPlane.translate(0.5, -0.5, 0);
 
 const setColor = (
 	material: THREE.MeshBasicNodeMaterial | THREE.Line2NodeMaterial,
@@ -145,16 +143,16 @@ const ellipsePoints = (
 	return points;
 };
 
-// rect outline points, top-left-anchored local frame (+x, -y). Sharp
+// rect outline points, center-anchored local frame (±w/2, ±h/2). Sharp
 // corners only — rounded rects were removed with the entity-model rewrite.
 const rectPoints = (
 	width: number,
 	height: number,
 ): Array<readonly [number, number]> => [
-	[0, 0],
-	[width, 0],
-	[width, -height],
-	[0, -height],
+	[-width / 2, height / 2],
+	[width / 2, height / 2],
+	[width / 2, -height / 2],
+	[-width / 2, -height / 2],
 ];
 
 const placeFillGroup = (
@@ -256,10 +254,11 @@ const rect: EntityRenderer<Entity.EntityByTag<"Rect">> = {
 		const tilted = rotX !== 0 || rotY !== 0 || rotZ !== 0;
 		retained.billboard = !tilted;
 		if (tilted) {
-			// object-rotation conjugation (scene y-down → three y-up):
-			// R_three = Rz(-rz)·Ry(ry)·Rx(-rx), three Euler order "ZYX"
+			// scene Eulers apply X→Y→Z extrinsically (matrix Rz·Ry·Rx), which
+			// is three's Euler order "ZYX" verbatim — no conjugation; rotation
+			// is about the shape's center (the centered unitPlane's origin)
 			parts.group.rotation.order = "ZYX";
-			parts.group.rotation.set(-rotX, rotY, -rotZ);
+			parts.group.rotation.set(rotX, rotY, rotZ);
 		} else {
 			parts.group.rotation.set(0, 0, 0);
 		}
@@ -400,7 +399,7 @@ const path: EntityRenderer<Entity.EntityByTag<"Path">> = {
 		for (const subpath of subpaths) {
 			// fill: closed subpaths only, triangulated in x/y
 			if (subpath.closed && subpath.points.length >= 3) {
-				const contour = subpath.points.map((p) => new THREE.Vector2(p.x, -p.y));
+				const contour = subpath.points.map((p) => new THREE.Vector2(p.x, p.y));
 				const triangles = THREE.ShapeUtils.triangulateShape(contour, []);
 				const positions = new Float32Array(subpath.points.length * 3);
 				for (const [i, p] of subpath.points.entries()) {
@@ -512,8 +511,9 @@ const text: EntityRenderer<Entity.EntityByTag<"Text">> = {
 };
 
 // ── images: decoded once per renderer scope, billboard planes ────────────
-// (data.position.x, data.position.y) is the top-left like Rect; both dimensions set draw at
-// that size, else the natural decoded size; a lone dimension is ignored.
+// (data.position.x, data.position.y) is the picture's CENTER like Rect; both
+// dimensions set draw at that size, else the natural decoded size; a lone
+// dimension is ignored.
 
 const image: EntityRenderer<Entity.EntityByTag<"Image">> = {
 	build: (leaf, ctx) => {
@@ -672,9 +672,9 @@ const particleField: EntityRenderer<ParticleFieldData> = {
 			if (count >= offsets.count) {
 				break;
 			}
-			// local offsets in scene orientation: y flips into the billboard's
-			// y-up local space; the mesh itself sits at the field's anchor
-			offsets.setXYZ(count, p.x, -p.y, radius);
+			// local offsets pass through (scene space = three local space);
+			// the mesh itself sits at the field's anchor
+			offsets.setXYZ(count, p.x, p.y, radius);
 			const { r, g, b } = Color.bytes(p.color);
 			colors.setXYZW(count, r / 255, g / 255, b / 255, alpha);
 			count++;

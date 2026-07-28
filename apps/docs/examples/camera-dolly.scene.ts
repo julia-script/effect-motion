@@ -17,19 +17,19 @@ export const scene = Scene.make(
 		const FAR = -1400;
 
 		// floor rails running into depth (skeletal Lines: per-endpoint z)
-		for (const x of [150, 350]) {
+		for (const x of [-100, 100]) {
 			yield* Scene.instantiate("Line", {
-				position: S.vec3({ x, y: 260, z: 120 }),
+				position: S.vec3({ x, y: -110, z: 120 }),
 				end: S.vec3({ z: FAR - 120 }),
 				strokeColor: Color.hex("#3d4266"),
 				strokeWidth: 2,
 			});
 		}
-		// pillar pairs marching toward the far end
+		// pillar pairs marching toward the far end, standing on the rails
 		for (let k = 0; k < 5; k++) {
-			for (const x of [130, 350]) {
+			for (const x of [-110, 110]) {
 				yield* Scene.instantiate("Rect", {
-					position: S.vec3({ x, y: 60, z: -120 - k * 260 }),
+					position: S.vec3({ x, y: -10, z: -120 - k * 260 }),
 					width: 20,
 					height: 200,
 					fillColor: Color.hex("#544f80"),
@@ -38,7 +38,7 @@ export const scene = Scene.make(
 		}
 		// the subject at the end of the corridor
 		yield* Scene.instantiate("Circle", {
-			position: S.vec3({ x: 250, y: 160, z: FAR }),
+			position: S.vec3({ x: 0, y: -10, z: FAR }),
 			radius: 30,
 			fillColor: Color.hex("#ff8906"),
 		});
@@ -50,7 +50,7 @@ export const scene = Scene.make(
 
 		const cam = yield* Scene.camera;
 		yield* cam.pipe(
-			Camera.lookAt({ x: 250, y: 160, z: FAR }),
+			Camera.lookAt({ x: 0, y: -10, z: FAR }),
 			Camera.dollyTo(startDistance * 0.35, "2.5 seconds", "easeInOutCubic"),
 		);
 		yield* Motion.wait("500 millis");

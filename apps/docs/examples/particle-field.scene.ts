@@ -21,8 +21,8 @@ export const scene = Scene.make(
 		// confetti: 120 particles born at once, launched in a wide cone, pulled
 		// down by gravity, shrinking and fading as they age
 		const confetti = yield* Particles.emitter({
-			x: 250,
-			y: 90,
+			x: 0,
+			y: 60,
 			speed: [140, 320],
 			angle: [-70, 70],
 			life: [1.2, 2.2],
@@ -37,8 +37,8 @@ export const scene = Scene.make(
 		// ambience: a slow upward stream, low gravity, long-lived, with a random
 		// per-particle opacity so the embers vary in brightness
 		const embers = yield* Particles.emitter({
-			x: 250,
-			y: 300,
+			x: 0,
+			y: -150,
 			speed: [20, 60],
 			angle: [-15, 15],
 			life: [2.5, 4],

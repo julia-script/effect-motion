@@ -106,9 +106,10 @@ describe("Scene.play mounts a bounded sub-composition", () => {
 			{ data: { position: { x: number; y: number } } },
 		];
 		// the mount group is an ordinary group; the child's bounds are
-		// DECLARED against its id rather than copied onto it (design D13)
-		expect(group.data.position.x).toBe(50); // (200 - 100) / 2
-		expect(group.data.position.y).toBe(25); // (100 - 50) / 2
+		// DECLARED against its id rather than copied onto it (design D13).
+		// center-anchored comps center in the movie at (0, 0) by construction
+		expect(group.data.position.x).toBe(0);
+		expect(group.data.position.y).toBe(0);
 		const bounds = frame.comps[groupId] ?? unreachable();
 		expect(bounds.width).toBe(100);
 		expect(bounds.height).toBe(50);
@@ -164,10 +165,10 @@ describe("Scene.play mounts a bounded sub-composition", () => {
 		const nested =
 			groups.find(([id]) => frame.comps[id]?.width === 100) ?? unreachable();
 		// the inner bounds group is a child of the outer bounds group,
-		// centered in ITS comp: (150 - 100) / 2, (80 - 50) / 2
+		// centered in ITS comp — position (0, 0) under center anchoring
 		expect(outer[1].data.children).toContain(nested[0]);
-		expect(nested[1].data.position.x).toBe(25);
-		expect(nested[1].data.position.y).toBe(15);
+		expect(nested[1].data.position.x).toBe(0);
+		expect(nested[1].data.position.y).toBe(0);
 	});
 
 	it("two parallel plays get independent groups", async () => {
@@ -175,7 +176,7 @@ describe("Scene.play mounts a bounded sub-composition", () => {
 			function* () {
 				const a = yield* Scene.play(child() as never);
 				const b = yield* Scene.play(child() as never);
-				yield* a.group.pipe(Motion.moveTo({ x: 0, y: 0 }, "100 millis"));
+				yield* a.group.pipe(Motion.moveTo({ x: 50, y: 0 }, "100 millis"));
 				yield* a.finished;
 				yield* b.finished;
 			} as never,

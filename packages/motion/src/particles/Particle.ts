@@ -61,7 +61,7 @@ export interface EmitterConfig {
 	readonly y: number;
 	/** launch speed range (px/sec) */
 	readonly speed: Range;
-	/** launch angle range (degrees; 0 = up, clockwise-positive) */
+	/** launch angle range (degrees; 0 = up, counterclockwise-positive) */
 	readonly angle: Range;
 	/** lifetime range (seconds) */
 	readonly life: Range;
@@ -70,7 +70,7 @@ export interface EmitterConfig {
 	/** birth opacity range (0..1), drawn per particle; the over-life opacity
 	 * curve (if any) multiplies this baseline. Omit → every particle 1. */
 	readonly opacity?: Range;
-	/** shared downward acceleration (px/sec²); not ranged */
+	/** shared screen-downward (-y) acceleration (px/sec²); not ranged */
 	readonly gravity: number;
 	/** colors drawn from uniformly at birth */
 	readonly palette: ReadonlyArray<Color.Color>;

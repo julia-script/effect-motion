@@ -6,7 +6,7 @@ import { Color, Motion, Entity as S, Scene } from "effect-motion";
 export const scene = Scene.make(
 	function* () {
 		const pulse = yield* Scene.instantiate("Circle", {
-			position: S.vec3({ x: 250, y: 70 }),
+			position: S.vec3({ y: 80 }),
 			radius: 10,
 			fillColor: Color.hex("#2cb67d"),
 		});
@@ -26,12 +26,12 @@ export const scene = Scene.make(
 			Scene.fork(
 				Effect.gen(function* () {
 					const dot = yield* Scene.instantiate("Circle", {
-						position: S.vec3({ x: 60, y: 210 }),
+						position: S.vec3({ x: -190, y: -60 }),
 						radius: 8,
 						fillColor: Color.hex("#e53170"),
 					});
 					yield* dot.pipe(
-						Motion.moveTo({ x: 440 }, "1.2 seconds", "easeInOutCubic"),
+						Motion.moveTo({ x: 190 }, "1.2 seconds", "easeInOutCubic"),
 						Motion.fadeTo(0, "300 millis"),
 					);
 				}),

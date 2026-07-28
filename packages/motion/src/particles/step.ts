@@ -58,7 +58,8 @@ export const birth = (
 	[rng, colorPick] = Prng.nextBetween(rng, 0, config.palette.length);
 	let opacity: number;
 	[rng, opacity] = drawOpacity(rng, config);
-	// angle 0 = straight up; clockwise-positive
+	// angle 0 = straight up (+y); counterclockwise-positive (the scene
+	// rotation convention)
 	const rad = angle * DEG;
 	const color =
 		config.palette[
@@ -67,8 +68,8 @@ export const birth = (
 	return {
 		x: config.x,
 		y: config.y,
-		vx: Math.sin(rad) * speed,
-		vy: -Math.cos(rad) * speed,
+		vx: -Math.sin(rad) * speed,
+		vy: Math.cos(rad) * speed,
 		age: 0,
 		life,
 		size,
@@ -116,9 +117,11 @@ export const birthFill = (
 			Math.min(config.palette.length - 1, Math.floor(colorPick))
 		] ?? Color.white;
 	return {
-		// scattered across the region, offset by the field's own origin
-		x: config.x + px,
-		y: config.y + py,
+		// scattered across the region, CENTERED on the field's own origin
+		// (same [0, w) draw as before — only the interpretation shifts, so
+		// seeded streams are unchanged)
+		x: config.x + px - w / 2,
+		y: config.y + py - h / 2,
 		vx: Math.cos(rad) * dspeed,
 		vy: Math.sin(rad) * dspeed,
 		age: 0,
@@ -158,16 +161,17 @@ export const step = (
 		if (!p.alive) {
 			continue;
 		}
-		p.vy += config.gravity * dt;
+		// positive gravity pulls toward the bottom of the screen (-y)
+		p.vy -= config.gravity * dt;
 		p.x += p.vx * dt;
 		p.y += p.vy * dt;
 		if (p.wrap) {
-			// wrap within the region, which sits at the field origin (config.x/y)
+			// wrap within the region, CENTERED on the field origin (config.x/y)
 			if (rw > 0) {
-				p.x = config.x + mod(p.x - config.x, rw);
+				p.x = config.x + mod(p.x - config.x + rw / 2, rw) - rw / 2;
 			}
 			if (rh > 0) {
-				p.y = config.y + mod(p.y - config.y, rh);
+				p.y = config.y + mod(p.y - config.y + rh / 2, rh) - rh / 2;
 			}
 			continue;
 		}

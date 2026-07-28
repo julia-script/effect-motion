@@ -6,7 +6,7 @@ import { Color, Motion, Entity as S, Scene } from "effect-motion";
 export const scene = Scene.make(
 	function* () {
 		const ball = yield* Scene.instantiate("Circle", {
-			position: S.vec3({ x: 70, y: 150 }),
+			position: S.vec3({ x: -180 }),
 			radius: 16,
 			fillColor: Color.hex("#7f5af0"),
 		});
@@ -14,8 +14,8 @@ export const scene = Scene.make(
 		// three round-trips, resting 400ms between them
 		yield* Scene.repeat(
 			ball.pipe(
-				Motion.moveTo({ x: 430 }, "600 millis", "easeInOutCubic"),
-				Motion.moveTo({ x: 70 }, "600 millis", "easeInOutCubic"),
+				Motion.moveTo({ x: 180 }, "600 millis", "easeInOutCubic"),
+				Motion.moveTo({ x: -180 }, "600 millis", "easeInOutCubic"),
 			),
 			Schedule.spaced("400 millis").pipe(Schedule.upTo({ times: 2 })),
 		);

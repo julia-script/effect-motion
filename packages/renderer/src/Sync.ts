@@ -76,18 +76,19 @@ const dispatch = (renderer: AnyEntityRenderer) =>
 	renderer as unknown as EntityRenderer<Entity.Entity>;
 
 // ── coordinate mapping ────────────────────────────────────────────────────
-// Scene space: x right, y down, origin top-left, +z toward the viewer,
-// camera at rest on +z looking down -z. Three space: x right, y up, +z
-// toward the viewer. Mapping: shift origin to the viewport center, flip y,
-// keep z. Rotations conjugate accordingly (derived from Projection.ts's
-// rotate/rotateInverse conventions):
-//   objects (N = diag(1,-1,1)):  R_three = Rz(-rz)·Ry(ry)·Rx(-rx)
-//   camera  (M = diag(1,-1,-1)): R_three = Rz(-rz)·Ry(-ry)·Rx(rx)
-// Three's Euler order "ZYX" composes exactly Rz·Ry·Rx.
+// Scene space: x right, y up, origin at the viewport center, +z toward the
+// viewer, camera at rest on +z looking down -z — axis-identical to three.
+// Positions map by the IDENTITY, kept as the named `ctx.toThree` seam so
+// the boundary stays explicit. OBJECT rotations pass through unnegated:
+// scene Eulers apply X→Y→Z extrinsically (matrix Rz·Ry·Rx — see
+// Projection.ts's rotate), which is three's Euler order "ZYX" verbatim.
+// The CAMERA still conjugates: the scene view transform flips z before
+// rotating (in-front is +z view depth — see Projection.toView), so with
+// F = diag(1,1,-1) the three camera matrix is F-conjugated per axis:
+//   R_three = Rz(rz)·Ry(-ry)·Rx(-rx)  →  order "ZYX", set(-rx, -ry, rz)
 
-// unit plane with a TOP-LEFT origin (matches the Builtins module's anchor)
+// unit plane centered on its anchor (matches the Builtins module's anchor)
 const unitPlaneShared = new THREE.PlaneGeometry(1, 1);
-unitPlaneShared.translate(0.5, -0.5, 0);
 
 interface RetainedEntry {
 	readonly renderer: AnyEntityRenderer;
@@ -229,8 +230,9 @@ export const make = (registry: Record<string, AnyEntityRenderer>): Sync => {
 		pending: [] as Array<Effect.Effect<unknown, EffectMotionError>>,
 	};
 	const ctx: RenderContext = {
-		toThree: (x, y, z) =>
-			new THREE.Vector3(x - base.width / 2, -(y - base.height / 2), z),
+		// scene space is axis-identical to three space — identity, kept as
+		// the named boundary seam
+		toThree: (x, y, z) => new THREE.Vector3(x, y, z),
 		get width() {
 			return base.width;
 		},
@@ -272,14 +274,16 @@ export const whenReady = (sync: Sync): Effect.Effect<void, EffectMotionError> =>
  * Phase 1 — cameras, background, and the DoF request.
  *
  * The world camera resolves its point-of-interest aim and conjugates into
- * three's space; the HUD camera is the identity view, so z=0 HUD content
- * lands exactly where authored regardless of where the world camera went.
+ * three's view convention (the scene view flips z — see the module's
+ * coordinate-mapping note); the HUD camera is the identity view, so z=0
+ * HUD content lands exactly where authored regardless of where the world
+ * camera went.
  */
 const syncCameras = (sync: Sync, frame: AnyFrame): void => {
-	const origin = { x: frame.width / 2, y: frame.height / 2 };
-	const camera = Projection.resolveCamera(frame.camera, origin);
-	sync.camera.position.set(camera.x, -camera.y, camera.z);
-	sync.camera.rotation.set(camera.rotX, -camera.rotY, -camera.rotZ);
+	const camera = Projection.resolveCamera(frame.camera);
+	sync.camera.position.set(camera.x, camera.y, camera.z);
+	// camera conjugation (view z-flip) — see the coordinate-mapping note
+	sync.camera.rotation.set(-camera.rotX, -camera.rotY, camera.rotZ);
 	sync.camera.aspect = frame.width / frame.height;
 	sync.camera.fov =
 		(2 * Math.atan(frame.height / (2 * camera.focalLength)) * 180) / Math.PI;
@@ -358,7 +362,11 @@ const walkTree = (sync: Sync, frame: AnyFrame): WalkResult => {
 			);
 		}
 		const subtreeHud = hud || isHud;
-		const local = entry.data.position;
+		// ponytail: ParticleField (the D10 escape hatch) carries flat x/y/z
+		// instead of a nested position; delete the fallback with the rewrite
+		const local =
+			(entry.data as { position?: World }).position ??
+			(entry.data as unknown as World);
 		const world: World = {
 			x: offset.x + local.x,
 			y: offset.y + local.y,
@@ -367,7 +375,10 @@ const walkTree = (sync: Sync, frame: AnyFrame): WalkResult => {
 			z: offset.z + local.z,
 		};
 		const childIds = childIdsOf(entry.data);
-		if (childIds.length > 0 || isHud) {
+		// container-ness comes from the entity CARRYING children, not from
+		// having any: an empty Group (children appended later) renders
+		// nothing rather than dispatching to the throwing leaf slot
+		if ("children" in entry.data || isHud) {
 			// a comp is DECLARED by Scene.play, not inferred from a group
 			// carrying a size (design D13)
 			const size = frame.comps[id] ?? null;
@@ -584,9 +595,8 @@ const syncComp = (
 	if (background === null || Color.bytes(background).a === 0) {
 		ThreeScene.setBackground(comp.sync.scene, null);
 	}
-	// outer placement: top-left-anchored plane, group opacity on the
-	// composite, 2D affine about the bounds center (y-down → y-up
-	// conjugation: negate b and c off-diagonals and the f translation)
+	// outer placement: center-anchored plane (a comp places like an Image of
+	// its own size), group opacity on the composite
 	comp.holder.position.copy(sync.ctx.toThree(world.x, world.y, world.z));
 	comp.plane.scale.set(compConfig.width, compConfig.height, 1);
 	comp.material.opacity = Math.max(

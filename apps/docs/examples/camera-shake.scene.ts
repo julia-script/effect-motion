@@ -7,22 +7,24 @@ import { Color, Motion, Physics, Entity as S, Scene } from "effect-motion";
 // The ring-back oscillation IS the shake, no keyframed wobble.
 export const scene = Scene.make(
 	function* () {
+		// the block starts above the top edge of the frame
 		const block = yield* Scene.instantiate("Rect", {
-			position: S.vec3({ x: 234, y: -70 }),
+			position: S.vec3({ x: 15, y: 190 }),
 			width: 64,
 			height: 64,
 			fillColor: Color.hex("#e53170"),
 		});
 		// ground line so the impact reads
 		yield* Scene.instantiate("Line", {
-			position: S.vec3({ x: 40, y: 210 }),
+			position: S.vec3({ x: -210, y: -60 }),
 			end: S.vec3({ x: 420, y: 0 }),
 			strokeColor: Color.hex("#544f80"),
 		});
 
 		// fall and land on the ground on an exact frame — easeInQuad reads as
-		// gravity accelerating the block into the floor
-		yield* block.pipe(Motion.moveTo({ y: 146 }, "500 millis", "easeInQuad"));
+		// gravity accelerating the block into the floor (its bottom edge, half
+		// a height below the centre, meets the ground line)
+		yield* block.pipe(Motion.moveTo({ y: -28 }, "500 millis", "easeInQuad"));
 
 		const cam = yield* Scene.camera;
 		// impact came from above, so jolt the view mostly DOWN (a little lateral),
@@ -30,7 +32,7 @@ export const scene = Scene.make(
 		// to oscillate a few times, damped enough to die in ~1s.
 		yield* Scene.update(cam, (d) => ({
 			...d,
-			position: S.vec3({ x: 5, y: 20 }),
+			position: S.vec3({ x: 5, y: -20 }),
 		}));
 		yield* cam.pipe(
 			Physics.springTo(

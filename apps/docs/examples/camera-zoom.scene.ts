@@ -7,12 +7,12 @@ import { Color, Motion, Runner, Entity as S, Scene } from "effect-motion";
 // it changes perspective; focal length does not.
 export const scene = Scene.make(
 	function* () {
-		// a field of dots; we punch in on the red one at (350, 90)
+		// a field of dots; we punch in on the red one at (100, 60)
 		for (const [x, y, fill] of [
-			[120, 210, Color.hex("#7f5af0")],
-			[250, 150, Color.hex("#2cb67d")],
-			[350, 90, Color.hex("#e53170")],
-			[410, 220, Color.hex("#ff8906")],
+			[-130, -60, Color.hex("#7f5af0")],
+			[0, 0, Color.hex("#2cb67d")],
+			[100, 60, Color.hex("#e53170")],
+			[160, -70, Color.hex("#ff8906")],
 		] as const) {
 			yield* Scene.instantiate("Circle", {
 				position: S.vec3({ x, y }),
@@ -26,9 +26,9 @@ export const scene = Scene.make(
 		// read it off the identity view instead of hardcoding a number
 		const { width } = yield* Scene.comp();
 		const rest = Runner.identityCameraView(width).focalLength;
-		// zoom in: 2.5× the default focal length narrows the FOV. Pan the camera
-		// so the subject (350,90) sits at the viewport centre (250,150) — the pan
-		// is (subject - centre) = (100, -60).
+		// zoom in: 2.5× the default focal length narrows the FOV. Camera x/y are
+		// world coordinates, so centring the subject just means moving the camera
+		// to the subject's (100, 60).
 		yield* Scene.all([
 			cam.pipe(
 				Motion.tweenTo(
@@ -38,7 +38,7 @@ export const scene = Scene.make(
 				),
 			),
 			cam.pipe(
-				Motion.moveTo({ x: 100, y: -60 }, "1.2 seconds", "easeInOutCubic"),
+				Motion.moveTo({ x: 100, y: 60 }, "1.2 seconds", "easeInOutCubic"),
 			),
 		]);
 		yield* Motion.wait("500 millis");

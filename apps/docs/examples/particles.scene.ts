@@ -16,8 +16,8 @@ const palette = [
 export const scene = Scene.make(
 	function* () {
 		const fountain = yield* Particles.emitter({
-			x: 250,
-			y: 290,
+			x: 0,
+			y: -140,
 			speed: [300, 600], // launched hard upward…
 			angle: [-20, 20], // …in a narrow cone
 			life: [1, 1.8],

@@ -4,11 +4,13 @@
  * point twice is bit-for-bit identical, which is what keeps 2.5D scenes
  * deterministic.
  *
- * The model is the After Effects one: a camera with a world position, Euler
- * orientation, and a focal length, looking down world -z at rest. World
- * points are transformed into the camera's frame (the view transform, which
- * is the inverse of the camera's own world transform), then divided by their
- * depth in front of the camera to land on screen.
+ * The model: a camera with a world position, Euler orientation, and a focal
+ * length, looking down world -z at rest. World points are transformed into
+ * the camera's frame (the view transform, which is the inverse of the
+ * camera's own world transform), then divided by their depth in front of the
+ * camera to land on screen. Scene space is right-handed — x right, y up,
+ * origin at the viewport center, +z toward the viewer — so the camera's
+ * optical axis passes through world (0, 0) at rest.
  *
  * Identity invariant: the default camera (see `defaultFocalLength` and
  * `defaultCameraZ`) projects a world point at `z = 0` to screen `(x, y)` at
@@ -23,11 +25,6 @@ export interface Vec3 {
 	readonly x: number;
 	readonly y: number;
 	readonly z: number;
-}
-
-export interface Vec2 {
-	readonly x: number;
-	readonly y: number;
 }
 
 /** The camera view, as it arrives on the frame from the runner. */
@@ -165,8 +162,7 @@ export interface PointOfInterest {
 
 /**
  * The auto-orient Euler angles (yaw + pitch, no roll) aiming a camera at
- * `poi` from its WORLD position (viewport-center pan already composed in —
- * see `resolveCamera`). The view transform flips z before rotating
+ * `poi` from its WORLD position. The view transform flips z before rotating
  * (in-front is +z), which inverts rotation handedness vs. world space;
  * that subtlety is handled here, exactly once, pinned by tests that
  * project the POI and assert it lands on the viewport center.
@@ -192,15 +188,14 @@ export const lookAtOrientation = (
  * camera's own frame (so a lone `rotZ` rolls about the view axis and the
  * POI stays centered); the exact composed rotation is extracted back to
  * the fixed Rz·Ry·Rx Euler convention the view transform consumes.
- * Camera `x`/`y` are pan-from-viewport-center, so the world position
- * composes `origin` in before aiming. Absent POI is a pass-through
- * (one-node camera, unchanged); a partial POI is a loud defect. The
- * user's rotation fields are never written back — derivation happens
- * here, at view-assembly time.
+ * Camera `x`/`y` are world coordinates (the center-origin frame makes a
+ * resting camera sit on the optical axis through world (0, 0)). Absent POI
+ * is a pass-through (one-node camera, unchanged); a partial POI is a loud
+ * defect. The user's rotation fields are never written back — derivation
+ * happens here, at view-assembly time.
  */
 export const resolveCamera = (
 	camera: CameraView & PointOfInterest,
-	origin: Vec2,
 ): CameraView => {
 	const { poiX, poiY, poiZ } = camera;
 	const present = [poiX, poiY, poiZ].filter((v) => v !== undefined).length;
@@ -213,8 +208,8 @@ export const resolveCamera = (
 		);
 	}
 	const world: Vec3 = {
-		x: origin.x + camera.x,
-		y: origin.y + camera.y,
+		x: camera.x,
+		y: camera.y,
 		z: camera.z,
 	};
 	const aim = lookAtOrientation(world, {
@@ -252,39 +247,35 @@ export const resolveCamera = (
 };
 
 /**
- * A world point in the camera's frame, measured relative to `origin` (the
- * viewport center). The camera's `x`/`y` are a pan *from* the origin, so a
- * resting camera (pan 0) keeps world-x/y = screen-x/y at unit scale. `+z` in
- * the result is in front of the camera: the camera looks down world -z, so a
- * resting camera at z=focalLength sees the z=0 plane at view-z = focalLength.
+ * A world point in the camera's frame. The camera's `x`/`y` are its world
+ * position (origin at the viewport center), so a resting camera keeps
+ * world-x/y = screen-x/y at unit scale. `+z` in the result is in front of
+ * the camera: the camera looks down world -z, so a resting camera at
+ * z=focalLength sees the z=0 plane at view-z = focalLength.
  */
-export const toView = (camera: CameraView, p: Vec3, origin: Vec2): Vec3 => {
+export const toView = (camera: CameraView, p: Vec3): Vec3 => {
 	const translated: Vec3 = {
-		x: p.x - origin.x - camera.x,
-		y: p.y - origin.y - camera.y,
+		x: p.x - camera.x,
+		y: p.y - camera.y,
 		z: camera.z - p.z, // flip so in-front is +z (camera looks toward -world-z)
 	};
 	return rotateInverse(translated, camera.rotX, camera.rotY, camera.rotZ);
 };
 
 /**
- * Project a world point to screen. `origin` is the screen point the camera's
- * optical axis passes through — the viewport center — so pan/zoom read as
- * "into the middle of the shot", while a resting camera reproduces plain-2D
+ * Project a world point to screen. The camera's optical axis passes through
+ * screen (0, 0) — the viewport center — so pan/zoom read as "into the
+ * middle of the shot", while a resting camera reproduces plain-2D
  * placement. A point at or behind the camera (view-z <= 0) has no valid
  * projection; `depth` is still returned for sorting, `scale` clamps to 0.
  */
-export const project = (
-	camera: CameraView,
-	p: Vec3,
-	origin: Vec2,
-): Projected => {
-	const v = toView(camera, p, origin);
+export const project = (camera: CameraView, p: Vec3): Projected => {
+	const v = toView(camera, p);
 	const depth = v.z;
 	const scale = depth > 0 ? camera.focalLength / depth : 0;
 	return {
-		x: origin.x + v.x * scale,
-		y: origin.y + v.y * scale,
+		x: v.x * scale,
+		y: v.y * scale,
 		depth,
 		scale,
 	};
@@ -293,8 +284,7 @@ export const project = (
 /**
  * The view-space depth of a world point — the painter's-sort key alone.
  * With no camera rotation this is `camera.z - p.z`; rotation tilts the
- * depth axis, so the full view transform is used. Origin only shifts x/y,
- * never depth, so a zero origin suffices.
+ * depth axis, so the full view transform is used.
  */
 export const depthOf = (camera: CameraView, p: Vec3): number =>
-	toView(camera, p, { x: 0, y: 0 }).z;
+	toView(camera, p).z;

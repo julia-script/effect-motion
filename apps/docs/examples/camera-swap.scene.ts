@@ -8,12 +8,12 @@ import { Color, Motion, Runner, Entity as S, Scene } from "effect-motion";
 export const scene = Scene.make(
 	function* () {
 		const left = yield* Scene.instantiate("Circle", {
-			position: S.vec3({ x: 130, y: 150 }),
+			position: S.vec3({ x: -120, y: 0 }),
 			radius: 24,
 			fillColor: Color.hex("#e53170"),
 		});
 		const right = yield* Scene.instantiate("Circle", {
-			position: S.vec3({ x: 370, y: 150 }),
+			position: S.vec3({ x: 120, y: 0 }),
 			radius: 24,
 			fillColor: Color.hex("#2cb67d"),
 		});
@@ -30,8 +30,9 @@ export const scene = Scene.make(
 			Motion.tweenTo({ radius: 30 }, "300 millis", "easeOutCubic"),
 		);
 
-		// shot A: push in on the LEFT subject (pan so x=130 sits on frame centre).
-		// A longer focal length narrows the FOV — the 3D-camera "zoom".
+		// shot A: push in on the LEFT subject (move the camera to the subject's
+		// x=-120, so it sits on frame centre). A longer focal length narrows the
+		// FOV — the 3D-camera "zoom".
 		yield* Scene.all([
 			camA.pipe(
 				Motion.tweenTo({ focalLength: tight }, "900 millis", "easeInOutCubic"),

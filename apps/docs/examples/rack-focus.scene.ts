@@ -7,17 +7,17 @@ export const scene = Scene.make(
 	function* () {
 		// three subjects at three depths
 		yield* Scene.instantiate("Circle", {
-			position: S.vec3({ x: 130, y: 150, z: 300 }), // near (in front of the z=0 plane)
+			position: S.vec3({ x: -120, z: 300 }), // near (in front of the z=0 plane)
 			radius: 40,
 			fillColor: Color.hex("#7f5af0"),
 		});
 		yield* Scene.instantiate("Circle", {
-			position: S.vec3({ x: 250, y: 150, z: 0 }), // the resting focus plane
+			position: S.vec3({ x: 0, z: 0 }), // the resting focus plane
 			radius: 40,
 			fillColor: Color.hex("#2cb67d"),
 		});
 		yield* Scene.instantiate("Circle", {
-			position: S.vec3({ x: 400, y: 150, z: -600 }), // far
+			position: S.vec3({ x: 150, z: -600 }), // far
 			radius: 40,
 			fillColor: Color.hex("#ff8906"),
 		});

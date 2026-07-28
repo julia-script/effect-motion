@@ -33,13 +33,13 @@ export const scene = Scene.make(
 			position: S.vec3({ z: -600 }),
 			children: [
 				Scene.instantiate("Rect", {
-					position: S.vec3({ x: 120, y: 150 }),
+					position: S.vec3({ x: -110, y: -20 }),
 					width: 40,
 					height: 40,
 					fillColor: Color.hex("#a786df"),
 				}),
 				Scene.instantiate("Rect", {
-					position: S.vec3({ x: 300, y: 130 }),
+					position: S.vec3({ x: 65, y: 5 }),
 					width: 32,
 					height: 32,
 					fillColor: Color.hex("#a786df"),
@@ -49,12 +49,12 @@ export const scene = Scene.make(
 
 		// near foreground: on the z=0 plane, tracks the camera fully
 		yield* Scene.instantiate("Circle", {
-			position: S.vec3({ x: 100, y: 240 }),
+			position: S.vec3({ x: -150, y: -90 }),
 			radius: 22,
 			fillColor: Color.hex("#e53170"),
 		});
 		yield* Scene.instantiate("Circle", {
-			position: S.vec3({ x: 280, y: 250 }),
+			position: S.vec3({ x: 30, y: -100 }),
 			radius: 18,
 			fillColor: Color.hex("#ff8906"),
 		});

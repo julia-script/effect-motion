@@ -12,11 +12,12 @@ import * as Scene from "effect-motion/Scene";
 // around it with Camera.orbitTo — the point of interest pins the aim, so
 // there is no orientation math in the scene at all.
 
-// control points, local to the path anchor — z spreads them through depth
+// control points, local to the path anchor — the curve climbs in y while
+// z spreads it through depth
 const P0 = { x: 0, y: 0, z: 0 };
-const P1 = { x: 0, y: -100, z: 100 };
-const P2 = { x: 100, y: -200, z: -100 };
-const P3 = { x: 10, y: -300, z: 0 };
+const P1 = { x: 0, y: 100, z: 100 };
+const P2 = { x: 100, y: 200, z: -100 };
+const P3 = { x: 10, y: 300, z: 0 };
 
 const bezier = (t: number) => {
 	const u = 1 - t;
@@ -52,7 +53,7 @@ const BOX = {
 	z0: 200,
 
 	x1: -200,
-	y1: -300,
+	y1: 300,
 	z1: -200,
 };
 // its 12 edges as Line endpoints: 4 along each axis
@@ -135,7 +136,7 @@ export const scene = Scene.make(
 			yield* Scene.instantiate("Text", {
 				position: Entity.vec3({
 					x: ANCHOR.x + p.x + 12,
-					y: ANCHOR.y + p.y - 8,
+					y: ANCHOR.y + p.y + 8,
 					z: p.z,
 				}),
 				text: `P${i}`,
@@ -145,11 +146,12 @@ export const scene = Scene.make(
 		}
 
 		// aim at the box center, then turntable around it — the point of
-		// interest keeps the camera locked on while only its position moves
+		// interest keeps the camera locked on while only its position moves.
+		// The camera starts raised above and off to the side of the box.
 		const cam = yield* Scene.camera;
 		yield* Scene.update(cam, (props) => ({
 			...props,
-			position: Entity.vec3({ ...props.position, y: -1500 }),
+			position: Entity.vec3({ ...props.position, x: 960, y: 960 }),
 			focalLength: 5000,
 		}));
 		yield* cam.pipe(

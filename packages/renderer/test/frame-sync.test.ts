@@ -57,9 +57,9 @@ describe("coordinate mapping and the 2D identity invariant", () => {
 		expect(ThreeScene.children(sync.scene)).toHaveLength(1);
 		// a fill shape is a group (position/billboard) holding the fill mesh
 		const group = ThreeScene.children(sync.scene)[0] ?? unreachable();
-		// 500x300 viewport: origin shifts to center, y flips
-		expect(group.position.x).toBe(100 - 250);
-		expect(group.position.y).toBe(-(50 - 150));
+		// scene space = three space: authored coordinates pass through
+		expect(group.position.x).toBe(100);
+		expect(group.position.y).toBe(50);
 		expect(group.position.z).toBe(0);
 		const mesh = group.children[0] ?? unreachable();
 		expect(mesh.scale.x).toBe(7);
@@ -171,6 +171,20 @@ describe("retained diff through the entity render contract", () => {
 		expect(ThreeScene.children(sync.scene)).toHaveLength(0);
 	});
 
+	it("an empty group renders nothing instead of dying as a leaf", async () => {
+		// regression: a Group instantiated before any child is appended used
+		// to fall through the container test and hit the throwing leaf slot
+		const frames = await framesOf(function* () {
+			yield* Scene.instantiate("Group", {
+				position: S.vec3({ x: 10 }),
+			});
+			yield* Scene.tick;
+		});
+		const sync = Sync.make(registry());
+		Effect.runSync(Sync.syncFrame(sync, frames.at(-1) ?? unreachable()));
+		expect(ThreeScene.children(sync.scene)).toHaveLength(0);
+	});
+
 	it("group translation composes into the child's world position", async () => {
 		const frames = await framesOf(function* () {
 			const child = yield* Scene.instantiate(PROBE_TAG, {
@@ -222,12 +236,12 @@ describe("line endpoints", () => {
 				geometry: { attributes: { instanceStart: { array: Float32Array } } };
 			}
 		).geometry.attributes.instanceStart.array;
-		// start endpoint: position + start = (110, 55) → three (x, -y)
-		expect(positions[0]).toBeCloseTo(110 - 250, 4);
-		expect(positions[1]).toBeCloseTo(-(55 - 150), 4);
+		// start endpoint: position + start = (110, 55), passed through
+		expect(positions[0]).toBeCloseTo(110, 4);
+		expect(positions[1]).toBeCloseTo(55, 4);
 		// end endpoint: position + end = (140, 70)
-		expect(positions[3]).toBeCloseTo(140 - 250, 4);
-		expect(positions[4]).toBeCloseTo(-(70 - 150), 4);
+		expect(positions[3]).toBeCloseTo(140, 4);
+		expect(positions[4]).toBeCloseTo(70, 4);
 	});
 });
 
@@ -254,6 +268,59 @@ describe("billboards and tilted planes", () => {
 		Effect.runSync(Sync.syncFrame(sync, frames.at(-1) ?? unreachable()));
 		const mesh = ThreeScene.children(sync.scene)[0] ?? unreachable();
 		expect(mesh.rotation.y).toBeCloseTo(Math.PI / 4, 10);
+	});
+});
+
+describe("camera view conjugation", () => {
+	// the scene view transform flips z (in-front is +z view depth), so the
+	// three camera Euler is F-conjugated: set(-rx, -ry, rz), order ZYX. A
+	// wrong sign here pitches the camera AWAY from content the projection
+	// math says is centered (the effect-logo isometric regression).
+	it("a pitched camera conjugates rotX/rotY and keeps rotZ", async () => {
+		const frames = await framesOf(function* () {
+			yield* Scene.instantiate("Circle", {});
+			yield* Scene.tick;
+		});
+		const frame = frames.at(-1) ?? unreachable();
+		const pitched = {
+			...frame,
+			camera: { ...frame.camera, rotX: 0.55, rotY: 0.2, rotZ: 0.1 },
+		} as AnyFrame;
+		const sync = Sync.make(registry());
+		Effect.runSync(Sync.syncFrame(sync, pitched));
+		expect(sync.camera.rotation.order).toBe("ZYX");
+		expect(sync.camera.rotation.x).toBeCloseTo(-0.55, 12);
+		expect(sync.camera.rotation.y).toBeCloseTo(-0.2, 12);
+		expect(sync.camera.rotation.z).toBeCloseTo(0.1, 12);
+	});
+
+	it("a camera aimed at an off-axis POI keeps it centered on the three axis", async () => {
+		// behavioral pin: resolve a POI camera, sync it, and check the three
+		// camera's forward ray passes through the POI — ties the core math
+		// and the renderer conjugation together without a GPU
+		const frames = await framesOf(function* () {
+			yield* Scene.instantiate("Circle", {});
+			yield* Scene.tick;
+		});
+		const frame = frames.at(-1) ?? unreachable();
+		const poi = { x: 120, y: 80, z: -200 };
+		const aimed = {
+			...frame,
+			camera: { ...frame.camera, poiX: poi.x, poiY: poi.y, poiZ: poi.z },
+		} as AnyFrame;
+		const sync = Sync.make(registry());
+		Effect.runSync(Sync.syncFrame(sync, aimed));
+		sync.camera.updateMatrixWorld(true);
+		// direction from camera to POI must equal the camera's -z axis
+		const toPoi = new THREE.Vector3(
+			poi.x - sync.camera.position.x,
+			poi.y - sync.camera.position.y,
+			poi.z - sync.camera.position.z,
+		).normalize();
+		const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(
+			sync.camera.quaternion,
+		);
+		expect(forward.dot(toPoi)).toBeCloseTo(1, 6);
 	});
 });
 
@@ -331,13 +398,13 @@ describe("mounted-scene sub-compositions", () => {
 		// the comp's subtree syncs into its own scene, comp-local
 		expect(ThreeScene.children(comp.sync.scene)).toHaveLength(1);
 		const inner = ThreeScene.children(comp.sync.scene)[0] ?? unreachable();
-		// comp-local coords: the child sits at its own (x, y) within 100x80
-		expect(inner.position.x).toBe(30 - 50);
-		expect(inner.position.y).toBe(-(20 - 40));
-		// Scene.play centers the child comp in the movie: (500-100)/2 = 200,
-		// (300-80)/2 = 110 — the mount group's world anchor
-		expect(comp.holder.position.x).toBe(200 - 250);
-		expect(comp.holder.position.y).toBe(-(110 - 150));
+		// comp-local coords: the child sits at its own (x, y), center-origin
+		expect(inner.position.x).toBe(30);
+		expect(inner.position.y).toBe(20);
+		// Scene.play centers the child comp in the movie: center-anchored
+		// comps make that position (0, 0) by construction
+		expect(comp.holder.position.x).toBe(0);
+		expect(comp.holder.position.y).toBe(0);
 		expect(comp.plane.scale.x).toBe(100);
 		expect(comp.plane.scale.y).toBe(80);
 	});

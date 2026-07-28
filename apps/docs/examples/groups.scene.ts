@@ -5,7 +5,7 @@ import { Color, Motion, Physics, Entity as S, Scene } from "effect-motion";
 export const scene = Scene.make(
 	function* () {
 		const duo = yield* Scene.instantiate("Group", {
-			position: S.vec3({ x: 70, y: 200 }),
+			position: S.vec3({ x: -180, y: -50 }),
 			children: [
 				Scene.instantiate("Circle", {
 					position: S.vec3({ x: 0, y: 0 }),
@@ -13,7 +13,7 @@ export const scene = Scene.make(
 					fillColor: Color.hex("#e53170"),
 				}),
 				Scene.instantiate("Rect", {
-					position: S.vec3({ x: 20, y: -16 }),
+					position: S.vec3({ x: 34, y: 2 }),
 					width: 28,
 					height: 28,
 					fillColor: Color.hex("#a786df"),
@@ -23,9 +23,9 @@ export const scene = Scene.make(
 
 		// every animator accepts the previous step's result, so motions chain
 		yield* duo.pipe(
-			Motion.moveTo({ x: 380 }, "1.5 seconds", "easeInOutCubic"),
-			Physics.springTo({ y: 80 }, "jump"),
-			Motion.moveTo({ x: 70 }, "1.5 seconds", "easeInOutCubic"),
+			Motion.moveTo({ x: 130 }, "1.5 seconds", "easeInOutCubic"),
+			Physics.springTo({ y: 70 }, "jump"),
+			Motion.moveTo({ x: -180 }, "1.5 seconds", "easeInOutCubic"),
 			Motion.wait("500 millis"),
 			// traits cascade too: fade the whole group at once
 			Motion.fadeTo(0.15, "1 second"),

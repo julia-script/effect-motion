@@ -7,18 +7,18 @@ export const scene = Scene.make(
 	function* () {
 		// world content at three depths
 		yield* Scene.instantiate("Rect", {
-			position: S.vec3({ x: 60, y: 90, z: -400 }),
+			position: S.vec3({ x: -130, y: 0, z: -400 }),
 			width: 120,
 			height: 120,
 			fillColor: Color.hex("#3b3a5a"),
 		});
 		yield* Scene.instantiate("Circle", {
-			position: S.vec3({ x: 250, y: 160 }),
+			position: S.vec3({ x: 0, y: -10 }),
 			radius: 45,
 			fillColor: Color.hex("#2cb67d"),
 		});
 		yield* Scene.instantiate("Circle", {
-			position: S.vec3({ x: 380, y: 120, z: 200 }),
+			position: S.vec3({ x: 130, y: 30, z: 200 }),
 			radius: 30,
 			fillColor: Color.hex("#7f5af0"),
 		});
@@ -28,17 +28,17 @@ export const scene = Scene.make(
 			children: [
 				Scene.instantiate("Text", {
 					text: "LIVE",
-					position: S.vec3({ x: 460, y: 30 }),
+					position: S.vec3({ x: 210, y: 120 }),
 					fontSize: 18,
 					fillColor: Color.hex("#ff5470"),
 				}),
 			],
 		});
 		const lowerThird = yield* Scene.instantiate("Hud", {
-			position: S.vec3({ y: 90 }), // parked below the frame; slides up to 0
+			position: S.vec3({ y: -90 }), // parked below the frame; slides up to 0
 			children: [
 				Scene.instantiate("Rect", {
-					position: S.vec3({ x: 20, y: 240 }),
+					position: S.vec3({ x: -90, y: -110 }),
 					width: 280,
 					height: 40,
 					fillColor: Color.hex("#16161d"),
@@ -47,7 +47,7 @@ export const scene = Scene.make(
 				}),
 				Scene.instantiate("Text", {
 					text: "HUD content ignores the camera",
-					position: S.vec3({ x: 34, y: 265 }),
+					position: S.vec3({ x: -216, y: -115 }),
 					fontSize: 14,
 					fillColor: Color.hex("#fffffe"),
 				}),
@@ -65,7 +65,7 @@ export const scene = Scene.make(
 		// spring rings the WORLD back — the HUD never moves
 		yield* Scene.update(camera, (d) => ({
 			...d,
-			position: S.vec3({ ...d.position, x: 22, y: 8 }),
+			position: S.vec3({ ...d.position, x: 22, y: -8 }),
 		}));
 		yield* camera.pipe(
 			Physics.springTo(

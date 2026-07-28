@@ -6,7 +6,7 @@ import { Color, Motion, Runner, Entity as S, Scene } from "effect-motion";
 // stays sharp and the horizon melts into blur.
 export const scene = Scene.make(
 	function* () {
-		const floorY = 235;
+		const floorY = -85;
 		const horizon = -2200;
 
 		// rails: same world x/y at both ends, far end deep — pure z2. The

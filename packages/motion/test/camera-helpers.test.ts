@@ -41,9 +41,9 @@ const poiOf = (frame: Frame) => ({
 	z: (frame.camera as { poiZ?: number }).poiZ,
 });
 
-// default settings: 500 wide → origin (250, 150), resting z from identity
+// default settings: 500 wide; the resting camera sits on the optical axis
+// through the world origin (center-origin frame)
 const REST = Runner.identityCameraView(500);
-const ORIGIN = { x: 250, y: 150 };
 
 describe("lookAt", () => {
 	it("instant: sets the POI from this frame on", async () => {
@@ -125,7 +125,7 @@ describe("lookAt", () => {
 	});
 
 	it("seeds on the unaimed axis when no POI exists (snap-free engage)", async () => {
-		const target = { x: ORIGIN.x + 100, y: ORIGIN.y, z: 0 };
+		const target = { x: 100, y: 0, z: 0 };
 		const frames = await framesOf(function* () {
 			const cam = yield* Scene.camera;
 			yield* cam.pipe(Camera.lookAt(target, "1 second", "linear"));
@@ -133,7 +133,7 @@ describe("lookAt", () => {
 		// seed = camera world position pushed straight down -z by the target
 		// distance; frame 0 is t = 1/60 of the way from seed to target
 		const dist = Math.hypot(100, 0, REST.z);
-		const seed = { x: ORIGIN.x, y: ORIGIN.y, z: REST.z - dist };
+		const seed = { x: 0, y: 0, z: REST.z - dist };
 		const t = 1 / 60;
 		const first = poiOf(frames[0] ?? unreachable());
 		expect(first.x).toBeCloseTo(seed.x + (target.x - seed.x) * t, 8);
@@ -216,7 +216,7 @@ describe("follow", () => {
 
 describe("orbit and dolly", () => {
 	it("orbitTo travels the arc, radius and height preserved, POI fixed", async () => {
-		const poi = { x: ORIGIN.x, y: ORIGIN.y, z: -350 };
+		const poi = { x: 0, y: 0, z: -350 };
 		const radius = REST.z + 350;
 		const frames = await framesOf(function* () {
 			const cam = yield* Scene.camera;
@@ -225,22 +225,18 @@ describe("orbit and dolly", () => {
 		});
 		for (const frame of frames.slice(0, 60)) {
 			const c = frame.camera as { x: number; y: number; z: number };
-			const world = { x: ORIGIN.x + c.x, z: c.z };
-			expect(Math.hypot(world.x - poi.x, world.z - poi.z)).toBeCloseTo(
-				radius,
-				6,
-			);
+			expect(Math.hypot(c.x - poi.x, c.z - poi.z)).toBeCloseTo(radius, 6);
 			expect(c.y).toBe(0); // height preserved
 		}
 		const last = frames.at(-1)?.camera as { x: number; z: number };
-		expect(ORIGIN.x + last.x).toBeCloseTo(poi.x + radius, 6); // sin(π/2)
+		expect(last.x).toBeCloseTo(poi.x + radius, 6); // sin(π/2)
 		expect(last.z).toBeCloseTo(poi.z, 6); // cos(π/2)
 	});
 
 	it("dollyTo halves the distance along the same view axis", async () => {
 		const frames = await framesOf(function* () {
 			const cam = yield* Scene.camera;
-			yield* cam.pipe(Camera.lookAt({ x: ORIGIN.x, y: ORIGIN.y, z: 0 }));
+			yield* cam.pipe(Camera.lookAt({ x: 0, y: 0, z: 0 }));
 			yield* cam.pipe(Camera.dollyTo(REST.z / 2, "1 second"));
 		});
 		const last = frames.at(-1)?.camera as { x: number; y: number; z: number };

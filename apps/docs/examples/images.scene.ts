@@ -18,14 +18,14 @@ export const scene = Scene.make(
 	function* () {
 		const rocketImage = yield* Rocket;
 		const rocket = yield* Scene.instantiate("Image", {
-			position: S.vec3({ x: 214, y: 150 }),
+			position: S.vec3({ y: -36 }),
 			image: rocketImage,
 			width: 72,
 			height: 72,
 			opacity: 0,
 		});
 		const caption = yield* Scene.instantiate("Text", {
-			position: S.vec3({ x: 250, y: 260 }),
+			position: S.vec3({ y: -110 }),
 			text: "images tween like any shape",
 			fontSize: 20,
 			fillColor: Color.hex("#94a3b8"),
@@ -38,9 +38,7 @@ export const scene = Scene.make(
 		yield* caption.pipe(Motion.fadeTo(1, "400 millis"));
 		// lift off: move up while growing — size is data, so it tweens
 		yield* Scene.all([
-			rocket.pipe(
-				Motion.moveTo({ x: 190, y: 40 }, "1200 millis", "easeInOutCubic"),
-			),
+			rocket.pipe(Motion.moveTo({ y: 50 }, "1200 millis", "easeInOutCubic")),
 			rocket.pipe(
 				Motion.tweenTo(
 					{ width: 120, height: 120 },

@@ -42,7 +42,7 @@ interface CommonInput {
 	readonly opacityRange?: Range;
 	/** colors drawn from uniformly at birth */
 	readonly palette?: ReadonlyArray<Color.Color>;
-	/** shared downward acceleration (px/sec²) */
+	/** shared screen-downward (-y) acceleration (px/sec²) */
 	readonly gravity?: number;
 	readonly sizeOverLife?: OverLifeInput;
 	readonly opacityOverLife?: OverLifeInput;
@@ -54,7 +54,7 @@ interface CommonInput {
 export interface EmitterInput extends CommonInput {
 	/** launch speed range (px/sec) */
 	readonly speed: Range;
-	/** launch angle range (degrees; 0 = up, clockwise-positive) */
+	/** launch angle range (degrees; 0 = up, counterclockwise-positive) */
 	readonly angle: Range;
 	/** lifetime range (seconds) */
 	readonly life: Range;

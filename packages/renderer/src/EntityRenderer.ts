@@ -34,9 +34,9 @@ import type * as Text from "./Text.js";
  * translation already folded in.
  *
  * @remarks
- * Absolute, not relative: a renderer never has to walk parents itself. Still
- * in SCENE coordinates (y down, origin top-left) — use
- * {@link RenderContext.toThree} to convert.
+ * Absolute, not relative: a renderer never has to walk parents itself. In
+ * SCENE coordinates (x right, y up, origin at the viewport center) — pass
+ * through {@link RenderContext.toThree} to keep the boundary explicit.
  */
 export interface World {
 	readonly x: number;
@@ -54,11 +54,10 @@ export interface RenderContext {
 	 * Convert scene coordinates to three coordinates.
 	 *
 	 * @remarks
-	 * The two spaces disagree about the origin and the y axis: scene space
-	 * puts (0, 0) at the top-left with y increasing DOWNWARD, three puts it at
-	 * the viewport center with y increasing upward. `z` means the same in
-	 * both. Always position objects through this rather than converting by
-	 * hand.
+	 * The two spaces are axis-identical (x right, y up, origin at the
+	 * viewport center), so this is the identity — kept as the one named
+	 * boundary seam. Always position objects through this rather than
+	 * assuming the equivalence at call sites.
 	 */
 	readonly toThree: (x: number, y: number, z: number) => THREE.Vector3;
 	/** Current viewport width in scene units. */

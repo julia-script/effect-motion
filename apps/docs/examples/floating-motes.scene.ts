@@ -8,8 +8,8 @@ import { Color, Particles, Scene } from "effect-motion";
 export const scene = Scene.make(
 	function* () {
 		const motes = yield* Particles.emitter({
-			x: 250,
-			y: 320,
+			x: 0,
+			y: -170,
 			// slow and gentle, drifting up with a little sideways wander
 			speed: [8, 28],
 			angle: [-40, 40],

@@ -4,7 +4,7 @@ import { Color, Motion, Entity as S, Scene } from "effect-motion";
 export const scene = Scene.make(
 	function* () {
 		const title = yield* Scene.instantiate("Text", {
-			position: S.vec3({ x: 250, y: 150 }),
+			position: S.vec3({}),
 			text: "effect-motion with Effect",
 			fontSize: 8,
 			opacity: 0,
@@ -21,7 +21,7 @@ export const scene = Scene.make(
 
 		yield* Motion.wait("400 millis");
 		yield* title.pipe(
-			Motion.moveTo({ y: 120 }, "500 millis", "easeInOutCubic"),
+			Motion.moveTo({ y: 30 }, "500 millis", "easeInOutCubic"),
 			Motion.fadeTo(0.35, "500 millis"),
 		);
 	},

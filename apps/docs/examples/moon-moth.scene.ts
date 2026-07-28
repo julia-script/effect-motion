@@ -13,7 +13,7 @@ export const scene = Scene.make(
 			fillColor: Color.hex("#101522"),
 		});
 		yield* Scene.instantiate("Rect", {
-			position: S.vec3({ x: 350, y: 22 }),
+			position: S.vec3({ x: 165, y: 33 }),
 			width: 130,
 			height: 190,
 			fillColor: Color.hex("#17213a"),
@@ -21,10 +21,10 @@ export const scene = Scene.make(
 			strokeWidth: 2,
 		});
 		for (const [x, y, radius] of [
-			[375, 48, 2],
-			[402, 92, 1],
-			[454, 126, 2],
-			[383, 168, 1],
+			[125, 102, 2],
+			[152, 58, 1],
+			[204, 24, 2],
+			[133, -18, 1],
 		] as const) {
 			yield* Scene.instantiate("Circle", {
 				position: S.vec3({ x, y }),
@@ -34,13 +34,13 @@ export const scene = Scene.make(
 			});
 		}
 		yield* Scene.instantiate("Line", {
-			position: S.vec3({ x: 350, y: 22 }),
-			end: S.vec3({ x: 0, y: 190 }),
+			position: S.vec3({ x: 100, y: 128 }),
+			end: S.vec3({ x: 0, y: -190 }),
 			strokeColor: Color.hex("#94a3b8"),
 			strokeWidth: 3,
 		});
 		yield* Scene.instantiate("Rect", {
-			position: S.vec3({ x: 0, y: 255 }),
+			position: S.vec3({ x: 0, y: -127.5 }),
 			width: 500,
 			height: 45,
 			fillColor: Color.hex("#252d3a"),
@@ -55,7 +55,7 @@ export const scene = Scene.make(
 			opacity: 0.14,
 		});
 		const moon = yield* Scene.instantiate("Group", {
-			position: S.vec3({ x: 424, y: 72 }),
+			position: S.vec3({ x: 174, y: 78 }),
 			children: [
 				halo,
 				Scene.instantiate("Circle", {
@@ -64,7 +64,7 @@ export const scene = Scene.make(
 					fillColor: Color.hex("#fef3c7"),
 				}),
 				Scene.instantiate("Circle", {
-					position: S.vec3({ x: -9, y: -7 }),
+					position: S.vec3({ x: -9, y: 7 }),
 					radius: 4,
 					fillColor: Color.hex("#e7d7a5"),
 					opacity: 0.55,
@@ -73,30 +73,30 @@ export const scene = Scene.make(
 		});
 
 		const leftWing = yield* Scene.instantiate("Ellipse", {
-			position: S.vec3({ x: -8, y: -1 }),
+			position: S.vec3({ x: -8, y: 1 }),
 			fillColor: Color.hex("#f9a8d4"),
 			opacity: 0.85,
 		});
 		const rightWing = yield* Scene.instantiate("Ellipse", {
-			position: S.vec3({ x: 8, y: -1 }),
+			position: S.vec3({ x: 8, y: 1 }),
 			fillColor: Color.hex("#c4b5fd"),
 			opacity: 0.85,
 		});
 		const moth = yield* Scene.instantiate("Group", {
-			position: S.vec3({ x: 48, y: 224 }),
+			position: S.vec3({ x: -202, y: -74 }),
 			opacity: 0,
 			children: [
 				leftWing,
 				rightWing,
 				Scene.instantiate("Ellipse", {
-					position: S.vec3({ x: 0, y: 1 }),
+					position: S.vec3({ x: 0, y: -1 }),
 					fillColor: Color.hex("#fbbf24"),
 				}),
 			],
 		});
 
 		const caption = yield* Scene.instantiate("Text", {
-			position: S.vec3({ x: 250, y: 32 }),
+			position: S.vec3({ x: 0, y: 118 }),
 			text: "ONE TINY MOTH. ONE VERY LARGE MOON.",
 			fontSize: 14,
 			fillColor: Color.hex("#f8fafc"),
@@ -129,10 +129,10 @@ export const scene = Scene.make(
 		);
 
 		yield* moth.pipe(
-			Motion.moveTo({ x: 126, y: 172 }, "450 millis", "easeOutCubic"),
-			Motion.moveTo({ x: 212, y: 102 }, "520 millis", "easeInOutCubic"),
-			Motion.moveTo({ x: 304, y: 126 }, "480 millis", "easeInOutCubic"),
-			Motion.moveTo({ x: 350, y: 104 }, "260 millis", "easeInCubic"),
+			Motion.moveTo({ x: -124, y: -22 }, "450 millis", "easeOutCubic"),
+			Motion.moveTo({ x: -38, y: 48 }, "520 millis", "easeInOutCubic"),
+			Motion.moveTo({ x: 54, y: 24 }, "480 millis", "easeInOutCubic"),
+			Motion.moveTo({ x: 100, y: 46 }, "260 millis", "easeInCubic"),
 		);
 
 		// The midpoint of every heroic journey: glass.
@@ -140,8 +140,8 @@ export const scene = Scene.make(
 		yield* Scene.all([
 			caption.pipe(Motion.fadeTo(1, "180 millis")),
 			moth.pipe(
-				Motion.moveTo({ x: 320, y: 132 }, "220 millis", "easeOutBack"),
-				Motion.moveTo({ x: 282, y: 236 }, "650 millis", "easeInCubic"),
+				Motion.moveTo({ x: 70, y: 18 }, "220 millis", "easeOutBack"),
+				Motion.moveTo({ x: 32, y: -86 }, "650 millis", "easeInCubic"),
 			),
 		]);
 		yield* Motion.wait("450 millis");
@@ -154,7 +154,7 @@ export const scene = Scene.make(
 		yield* Scene.all([
 			caption.pipe(Motion.fadeTo(1, "500 millis")),
 			moon.pipe(
-				Motion.moveTo({ x: 320, y: 182 }, "1.15 seconds", "easeInOutCubic"),
+				Motion.moveTo({ x: 70, y: -32 }, "1.15 seconds", "easeInOutCubic"),
 			),
 			halo.pipe(
 				Motion.tweenTo({ radius: 50 }, "1.15 seconds", "easeInOutCubic"),
@@ -164,33 +164,33 @@ export const scene = Scene.make(
 		yield* caption.pipe(Motion.fadeTo(0, "250 millis"));
 
 		// A recovery hop becomes a tiny orbit: gratitude, moth-style.
-		yield* Physics.springTo(moth, { x: 286, y: 184 }, "jump");
+		yield* Physics.springTo(moth, { x: 36, y: -34 }, "jump");
 		yield* Scene.all([
 			moth.pipe(
-				Motion.moveTo({ x: 292, y: 150 }, "280 millis", "easeInOutCubic"),
-				Motion.moveTo({ x: 326, y: 138 }, "280 millis", "easeInOutCubic"),
-				Motion.moveTo({ x: 358, y: 180 }, "280 millis", "easeInOutCubic"),
-				Motion.moveTo({ x: 326, y: 216 }, "280 millis", "easeInOutCubic"),
-				Motion.moveTo({ x: 298, y: 182 }, "280 millis", "easeInOutCubic"),
+				Motion.moveTo({ x: 42, y: 0 }, "280 millis", "easeInOutCubic"),
+				Motion.moveTo({ x: 76, y: 12 }, "280 millis", "easeInOutCubic"),
+				Motion.moveTo({ x: 108, y: -30 }, "280 millis", "easeInOutCubic"),
+				Motion.moveTo({ x: 76, y: -66 }, "280 millis", "easeInOutCubic"),
+				Motion.moveTo({ x: 48, y: -32 }, "280 millis", "easeInOutCubic"),
 			),
 			moon.pipe(
-				Motion.moveTo({ y: 174 }, "700 millis", "easeInOutCubic"),
-				Motion.moveTo({ y: 182 }, "700 millis", "easeInOutCubic"),
+				Motion.moveTo({ y: -24 }, "700 millis", "easeInOutCubic"),
+				Motion.moveTo({ y: -32 }, "700 millis", "easeInOutCubic"),
 			),
 		]);
 
 		yield* Scene.update(caption, (data) => ({
 			...data,
 			text: finalCaption,
-			position: S.vec3({ ...data.position, y: 238 }),
+			position: S.vec3({ ...data.position, y: -88 }),
 			fontSize: 18,
 		}));
 		yield* Scene.all([
 			moon.pipe(
-				Motion.moveTo({ x: 424, y: 72 }, "1.35 seconds", "easeInOutCubic"),
+				Motion.moveTo({ x: 174, y: 78 }, "1.35 seconds", "easeInOutCubic"),
 			),
 			moth.pipe(
-				Motion.moveTo({ x: 440, y: 56 }, "1.35 seconds", "easeInOutCubic"),
+				Motion.moveTo({ x: 190, y: 94 }, "1.35 seconds", "easeInOutCubic"),
 			),
 			caption.pipe(Motion.fadeTo(1, "800 millis")),
 		]);

@@ -1159,16 +1159,10 @@ export const play = <E, R>(
 > =>
 	Effect.gen(function* () {
 		const runner = yield* Runner.Runner;
-		// default placement: the child's bounds centered in the enclosing
-		// comp — the ambient (or explicit) parent's bounds when it is a
-		// sized group, the movie's comp at the root. An unsized parent
-		// group has no bounds to center in; the child mounts at its origin.
+		// default placement: comps are center-anchored in the center-origin
+		// frame, so "centered in the enclosing comp" is position (0, 0) by
+		// construction — no bounds arithmetic needed.
 		const ambient = options?.parent ?? (yield* Runner.CurrentParent);
-		// the bounds to center in: the enclosing comp's when the ambient parent
-		// is itself a mounted scene, the movie's comp at the root. A parent
-		// that is a plain group has no bounds; the child mounts at its origin.
-		const enclosing =
-			ambient === null ? runner.comp : runner.compBounds(ambient.id);
 		// A mounted scene is a render-to-texture boundary: the renderer clips
 		// its subtree to the child's bounds and paints the child's background
 		// within them. Those bounds are the SCENE's, so they are registered
@@ -1176,10 +1170,7 @@ export const play = <E, R>(
 		// a Group that happens to carry a size is not what makes a comp.
 		const group = yield* runner
 			.instantiate("Group", {
-				position: Entity.vec3({
-					x: enclosing === null ? 0 : (enclosing.width - scene.width) / 2,
-					y: enclosing === null ? 0 : (enclosing.height - scene.height) / 2,
-				}),
+				position: Entity.vec3({}),
 			})
 			.pipe(Effect.provideService(Runner.CurrentParent, ambient));
 		runner.registerComp(group.id, {

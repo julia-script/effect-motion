@@ -22,9 +22,10 @@ import * as ImageResource from "./Image.js";
  * A point or offset in 3D space.
  *
  * @remarks
- * Screen coordinates with depth: `x` right, `y` DOWN (the screen
- * convention, not the mathematical one), `z` toward the viewer. Every axis
- * defaults to 0, so `vec3({ x: 100 })` is a valid horizontal offset.
+ * Scene coordinates with depth: `x` right, `y` UP (the mathematical
+ * convention), `z` toward the viewer, origin at the viewport center — a
+ * right-handed frame. Every axis defaults to 0, so `vec3({ x: 100 })` is a
+ * valid horizontal offset.
  *
  * At `z = 0` content renders exactly as flat 2D. Non-zero `z` is only
  * meaningful under a perspective camera, where it changes apparent size and

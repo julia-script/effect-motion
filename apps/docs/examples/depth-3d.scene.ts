@@ -8,8 +8,8 @@ export const scene = Scene.make(
 	function* () {
 		// a floor: a big Rect tilted back so it recedes toward the horizon
 		yield* Scene.instantiate("Rect", {
-			position: S.vec3({ x: -300, y: 180, z: -200 }),
-			rotation: S.vec3({ x: Math.PI / 2.3 }),
+			position: S.vec3({ y: -125, z: -640 }),
+			rotation: S.vec3({ x: -Math.PI / 2.3 }),
 			width: 900,
 			height: 900,
 			fillColor: Color.hex("#232946"),
@@ -29,8 +29,8 @@ export const scene = Scene.make(
 			const row = Math.floor(i / 6);
 			yield* Scene.instantiate("Circle", {
 				position: S.vec3({
-					x: 40 + col * 80,
-					y: 90 + row * 20,
+					x: -200 + col * 80,
+					y: 60 - row * 20,
 					z: -100 - i * 90,
 				}), // each card deeper than the last
 				radius: 26,
@@ -50,7 +50,7 @@ export const scene = Scene.make(
 					Motion.drive("3 seconds", "easeInOutCubic", (t, data) => ({
 						...data,
 						rotation: S.vec3({
-							x: startRot.x + (-Math.PI / 24 - startRot.x) * t,
+							x: startRot.x + (Math.PI / 24 - startRot.x) * t,
 							y: startRot.y + (Math.PI / 6 - startRot.y) * t,
 							z: startRot.z,
 						}),
