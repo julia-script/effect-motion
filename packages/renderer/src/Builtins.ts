@@ -1,10 +1,10 @@
 import { Line2 as FatLine, ThreeRaw as THREE, Tsl } from "@effect-motion/three";
 import { Effect } from "effect";
 import { Color, type Entity, Runner } from "effect-motion";
+import type { PathCommand } from "effect-motion/Entity";
 import { renderOpacity, renderSize } from "effect-motion/particles/overLife";
 import type { OverLife, Particle } from "effect-motion/particles/Particle";
 import type { ParticleField } from "effect-motion/particles/ParticleField";
-import type { PathCommand } from "effect-motion/shapes/Path";
 import type {
 	EntityRenderer,
 	EntityRenderers,
