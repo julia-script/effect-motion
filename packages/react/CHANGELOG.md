@@ -1,5 +1,41 @@
 # @effect-motion/react
 
+## 0.5.0
+
+### Minor Changes
+
+- 31d0718: The renderer is three.js/WebGPU; ThorVG is retired.
+
+  **BREAKING (pre-1.0 minor):** `@effect-motion/thorvg` is deleted and no longer published. Two packages replace it: `@effect-motion/three`, a bindings-only Effect wrapper over three.js (browser entry plus a `/node` entry that installs Dawn-backed WebGPU and the environment shims three needs), and `@effect-motion/renderer`, the retained frame renderer — the only place frames meet three — with a browser canvas adapter and a headless Node PNG adapter, consumed by the player and export.
+
+  Core goes renderer-free: `Renderer.ts`, `render/` (shapes, paint, CPU depth-of-field), and the render error channel are deleted from `effect-motion`; the frame stream (plus `Color` and camera resolution in `Projection.ts`) is core's renderer-facing contract, and no renderer dependency remains in its tree.
+
+  Rendering semantics change with the backend: the entity render contract is retained `build`/`update`/`dispose` (replacing immediate-mode paint functions); strokes are perspective-correct world-unit widths; occlusion is the GPU z-buffer (deterministic `renderOrder` breaks coplanar ties) instead of painter's-order sorting; depth of field is per-pixel GPU post-processing, still bypassed at aperture 0; text renders as SDF glyphs (troika-three-text) with real `Font` resource resolution. The camera model is redefined in three-native terms, preserving the y-down/top-left scene space, the z=0 identity invariant, and the AE-style focal-length default.
+
+  `@effect-motion/react`'s Player and `@effect-motion/export`'s pipeline are rewired to the new renderer (GPU render-target readback → PNG → ffmpeg; the player pre-warms the renderer to absorb the first-frame pipeline compile). Determinism is clarified as stopping at the frame stream: same seed + settings → same frames; pixel-identical rendered output across backends is explicitly not a goal.
+
+- b7c330b: Typed resource loaders: fonts and images are scene requirements, not annotations.
+
+  **BREAKING (pre-1.0 minor):** `Scene.annotate`/`annotateMerge`/`annotations` and the `Fonts`/`Images` annotation modules are removed. Assets are declared in the scene itself: `const Roboto = Font.Font("Roboto")` (or `Image.Image("logo")`), `yield*` the constant for the value entity props store — this puts `FontLoader<"Roboto">` into the scene's type, frames carry it as `Frame<Resources>`, and `Renderer.render` (and the Player) will not compile until a covering layer is provided. `Scene.run`/`stream` stay loader-free: frames are pure of resource bytes; only rendering consumes them.
+
+  Provide bytes with `Font.layer(Roboto, loadEffect)` / `Image.layer(...)` — loads run once at layer construction (compose retries on the load effect; `Resource.fetchBytes(url)` is the common browser loader). The Player takes them via a new `renderLayers` prop, conditionally REQUIRED: `PlayerProps<S>` forbids it for loader-free scenes and demands `Layer<Scene.Resources<S>>` otherwise. Player failures (engine, loader loads) now render a visible error panel.
+
+  More breaking changes: `Text.fontFamily` and `Shapes.Image.image` hold resource references (`{ _tag, id }`), never bare strings; the engine's implicit `DEFAULT_FONT_URL` auto-fetch is gone (`@effect-motion/thorvg` engine acquire loads nothing) — the built-in default font lives under the RESERVED id `"sans-serif"`, is the `fontFamily` schema default, and is auto-provided by the render path (provide your own loader under that id to override it). A resource referenced at render with no loader in context is a loud defect naming the id — the silent glyph fallback and image soft-skip are removed. `@effect-motion/thorvg`'s `Session` no longer takes `fonts`/`images` URL maps; pictures register lazily from loader bytes via `registerPicture` (decode-once per session). `Video.render` threads the scene's loaders to the caller (`Resource.ExtractLoaders`), so Node export paths can read font/image bytes straight from disk.
+
+### Patch Changes
+
+- Updated dependencies [31d0718]
+- Updated dependencies [bdac91f]
+- Updated dependencies [b7c330b]
+- Updated dependencies [31d0718]
+- Updated dependencies [5633f96]
+- Updated dependencies [31d0718]
+- Updated dependencies [5633f96]
+- Updated dependencies [b7c330b]
+- Updated dependencies [31d0718]
+  - effect-motion@0.5.0
+  - @effect-motion/renderer@0.5.0
+
 ## 0.4.1
 
 ### Patch Changes

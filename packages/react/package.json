@@ -1,6 +1,6 @@
 {
 	"name": "@effect-motion/react",
-	"version": "0.4.1",
+	"version": "0.5.0",
 	"description": "React bindings for effect-motion: usePlayer hook and Player component",
 	"type": "module",
 	"license": "MIT",
