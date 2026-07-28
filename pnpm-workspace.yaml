@@ -3,6 +3,10 @@ allowBuilds:
   msgpackr-extract: true
   sharp: true
   ffmpeg-static: true
+  # macOS-only: strips the quarantine xattr from the prebuilt Dawn binary.
+  # A no-op on Linux CI, but pnpm fails the install outright when a build
+  # script is neither allowed nor explicitly ignored.
+  webgpu: true
 
 packages:
   - packages/*
