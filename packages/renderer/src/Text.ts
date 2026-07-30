@@ -1,8 +1,17 @@
-import { ThreeRaw as THREE, Tsl } from "@effect-motion/three";
+import { ThreeRaw as THREE } from "@effect-motion/three";
+import { type FontHandle, loadFont } from "@text-rendering-toolkit/font";
+import {
+	type HorizontalAnchor,
+	type LayoutResult,
+	layoutText,
+	type VerticalAnchor,
+} from "@text-rendering-toolkit/layout";
+import {
+	Text as GlyphText,
+	TextResources,
+} from "@text-rendering-toolkit/three-webgpu";
 import { Effect } from "effect";
 import { EffectMotionError } from "effect-motion";
-import { typesetterWorkerModule } from "troika-three-text";
-import createSdfGenerator from "webgl-sdf-generator";
 
 /**
  * Text rendering: fonts, glyph atlas, and layout.
@@ -12,71 +21,73 @@ import createSdfGenerator from "webgl-sdf-generator";
  * which is what lets a string stay crisp at any scale without re-tessellating
  * as it grows.
  *
- * Each glyph is rasterized into a shared atlas texture the first time it is
- * seen, then reused. A scene that animates one word costs one atlas build,
- * not one per frame.
+ * The pipeline is `@text-rendering-toolkit`: HarfBuzz shaping and glyph
+ * outlines (`/font`), anchoring and line layout (`/layout`), and the
+ * `WebGPURenderer` glyph mesh (`/three-webgpu`) in its `depthInk` mode —
+ * fully-covered ink blends exactly once per pixel at any opacity and writes
+ * the depth buffer, so text participates in the renderer's z-buffer
+ * occlusion. The same code path serves browser and headless Node; the glyph
+ * atlas is shared per renderer and grows on demand.
  *
- * The pipeline deliberately uses only troika's typesetting layer — font
- * parsing, shaping, and glyph outlines — and none of its rendering, which
- * assumes WebGL and a canvas. The SDF generation and the atlas material
- * belong to this package, so the same code path serves browser and headless
- * Node.
- *
- * ponytail: the atlas is fixed-capacity (256 glyphs) with one glyph per
- * cell, and SDF generation is pure JS with no GPU acceleration. Both trade
- * speed and memory for a uniform, canvas-free pipeline; overflow is a typed
- * error naming the remedy.
+ * This module is the adapter: it owns the per-renderer font handles and
+ * atlas resources, maps entity anchor semantics onto layout anchors, and
+ * wraps every toolkit boundary in typed effects.
  */
-
-const SDF_GLYPH_SIZE = 64;
-const SDF_EXPONENT = 9;
-const SDF_MARGIN = 1 / 16;
-const ATLAS_WIDTH = 1024;
-const ATLAS_HEIGHT = 1024;
-const GLYPHS_PER_ROW = ATLAS_WIDTH / SDF_GLYPH_SIZE;
-/** ponytail: fixed-capacity atlas (256 glyphs); grow-and-reallocate when a
- * scene ever exceeds it. Overflow is a typed error naming the remedy. */
-const ATLAS_CAPACITY = GLYPHS_PER_ROW * (ATLAS_HEIGHT / SDF_GLYPH_SIZE);
-
-const toBase64 = (bytes: Uint8Array): string => {
-	if (typeof Buffer !== "undefined") {
-		return Buffer.from(bytes).toString("base64");
-	}
-	let binary = "";
-	for (let i = 0; i < bytes.length; i += 0x8000) {
-		binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-	}
-	return btoa(binary);
-};
-
-interface GlyphSlot {
-	/** atlas UV rect [u0, v0, u1, v1] */
-	readonly uv: [number, number, number, number];
-	/** SDF viewbox in font units [minX, minY, maxX, maxY] */
-	readonly viewBox: [number, number, number, number];
-}
 
 /**
- * A laid-out string: where each glyph goes and which part of the atlas it
- * samples.
+ * The per-renderer text state: loaded fonts and the shared glyph resources.
  *
  * @remarks
- * Coordinates are mesh-local and y-UP (three's convention), not scene
- * coordinates.
+ * Owned by a `Sync` and disposed with it, after every mesh borrowing the
+ * resources (borrowers before owner). Mostly data — the API is the sibling
+ * functions ({@link registerFont}, {@link layout}, {@link makeMesh}).
  */
-export interface GlyphQuads {
-	/** Per-glyph quad bounds, four numbers each: minX, minY, maxX, maxY. */
-	readonly bounds: Float32Array;
-	/** Per-glyph atlas UV rects, four numbers each: u0, v0, u1, v1. */
-	readonly uvRects: Float32Array;
-	/** How many glyphs — `bounds` and `uvRects` hold four numbers per glyph. */
-	readonly count: number;
-	/**
-	 * The whole text block's bounds before the anchor offset — the measured
-	 * size of the string.
-	 */
-	readonly blockBounds: [number, number, number, number];
+export interface Text {
+	/** internal: shared glyph SDF cache + atlas for every mesh of this renderer */
+	readonly resources: TextResources;
+	/** internal: font id → loaded caller-owned handle */
+	readonly fonts: Map<string, FontHandle>;
 }
+
+export const make = (): Text => ({
+	resources: new TextResources(),
+	fonts: new Map(),
+});
+
+/**
+ * Load a font's bytes under its id.
+ *
+ * @remarks
+ * Idempotent per id — registering the same font twice does nothing the
+ * second time. A font must be registered before any string using it can be
+ * laid out; `Sync.resolveResources` handles that for frames. Effectful
+ * because font parsing initializes WASM shaping state.
+ */
+export const registerFont = (
+	text: Text,
+	id: string,
+	bytes: Uint8Array,
+): Effect.Effect<void, EffectMotionError> =>
+	text.fonts.has(id)
+		? Effect.void
+		: Effect.tryPromise({
+				try: async () => {
+					const handle = await loadFont(bytes);
+					text.fonts.set(id, handle);
+				},
+				catch: (cause) =>
+					EffectMotionError.of(`Text: font "${id}" could not be loaded`, cause),
+			});
+
+export const hasFont = (text: Text, id: string): boolean => text.fonts.has(id);
+
+export const dispose = (text: Text): void => {
+	for (const handle of text.fonts.values()) {
+		handle.dispose();
+	}
+	text.fonts.clear();
+	text.resources.dispose();
+};
 
 /** What to lay out: the string, the font, its size, and its alignment. */
 export interface LayoutRequest {
@@ -98,415 +109,143 @@ export interface LayoutRequest {
 	readonly baseline?: "auto" | "middle" | "hanging" | undefined;
 }
 
-/**
- * The per-renderer text state: registered fonts, the shared SDF atlas, and
- * the glyph cache.
- *
- * @remarks
- * Owned by a `Sync` and disposed with it. Mostly data — the API is the
- * sibling functions ({@link registerFont}, {@link layout},
- * {@link makeMesh}).
- */
-export interface Text {
-	readonly atlas: THREE.DataTexture;
-	/** internal: raw atlas bytes the texture samples */
-	readonly atlasData: Uint8Array;
-	/** internal: font id → data URI */
-	readonly fonts: Map<string, string>;
-	/** internal: `${fontSrc}#${glyphId}` → atlas slot */
-	readonly glyphs: Map<string, GlyphSlot>;
-	/** internal: next free atlas cell */
-	glyphCount: number;
-	/** internal: the pure-JS SDF generator instance */
-	readonly sdf: ReturnType<typeof createSdfGenerator>;
-	/** internal: memoized typesetter init */
-	typesetter: Promise<import("troika-three-text").Typesetter> | undefined;
-}
+// entity anchor semantics → layout anchors; the defaults preserve
+// baseline-left at local (0, 0)
+const anchorXOf = (anchor: LayoutRequest["textAnchor"]): HorizontalAnchor =>
+	anchor === "middle" ? "center" : anchor === "end" ? "right" : "left";
 
-export const make = (): Text => {
-	const atlasData = new Uint8Array(ATLAS_WIDTH * ATLAS_HEIGHT);
-	const atlas = new THREE.DataTexture(
-		atlasData,
-		ATLAS_WIDTH,
-		ATLAS_HEIGHT,
-		THREE.RedFormat,
-		THREE.UnsignedByteType,
-	);
-	atlas.minFilter = THREE.LinearFilter;
-	atlas.magFilter = THREE.LinearFilter;
-	atlas.generateMipmaps = false;
-	return {
-		atlas,
-		atlasData,
-		fonts: new Map(),
-		glyphs: new Map(),
-		glyphCount: 0,
-		sdf: createSdfGenerator(),
-		typesetter: undefined,
-	};
-};
+const anchorYOf = (baseline: LayoutRequest["baseline"]): VerticalAnchor =>
+	baseline === "middle"
+		? "middle"
+		: baseline === "hanging"
+			? "top"
+			: "top-baseline";
 
 /**
- * Register a font's bytes under its id.
+ * Lay out a string into a renderer-neutral {@link LayoutResult}.
  *
  * @remarks
- * Idempotent per id — registering the same font twice does nothing the
- * second time. A font must be registered before any string using it can be
- * laid out; `Sync.resolveResources` handles that for frames.
- */
-export const registerFont = (
-	text: Text,
-	id: string,
-	bytes: Uint8Array,
-): void => {
-	if (!text.fonts.has(id)) {
-		text.fonts.set(id, `data:font/ttf;base64,${toBase64(bytes)}`);
-	}
-};
-
-export const hasFont = (text: Text, id: string): boolean => text.fonts.has(id);
-
-export const dispose = (text: Text): void => {
-	text.atlas.dispose();
-};
-
-/** the atlas slot for a glyph, generating its SDF on first sight —
- * sync inner kernel; failures surface through `layout`'s error channel */
-const glyphSlot = (
-	text: Text,
-	fontSrc: string,
-	glyphId: number,
-	result: import("troika-three-text").TypesetResult,
-): GlyphSlot => {
-	const key = `${fontSrc}#${glyphId}`;
-	const cached = text.glyphs.get(key);
-	if (cached !== undefined) {
-		return cached;
-	}
-	const glyph = result.glyphData[fontSrc]?.[glyphId];
-	if (glyph === undefined) {
-		throw new Error(`no glyph data for glyph ${glyphId}`);
-	}
-	if (text.glyphCount >= ATLAS_CAPACITY) {
-		throw new Error(
-			`glyph atlas is full (${ATLAS_CAPACITY} glyphs) — raise the atlas size in @effect-motion/renderer's Text module`,
-		);
-	}
-	const [minX, minY, maxX, maxY] = glyph.pathBounds;
-	// margin around path edges, mirroring troika's atlas math
-	const fontUnitsMargin =
-		(Math.max(maxX - minX, maxY - minY) / SDF_GLYPH_SIZE) *
-		(SDF_MARGIN * SDF_GLYPH_SIZE + 0.5);
-	const viewBox: [number, number, number, number] = [
-		minX - fontUnitsMargin,
-		minY - fontUnitsMargin,
-		maxX + fontUnitsMargin,
-		maxY + fontUnitsMargin,
-	];
-	const maxDist = Math.max(viewBox[2] - viewBox[0], viewBox[3] - viewBox[1]);
-	const sdfData = text.sdf.javascript.generate(
-		SDF_GLYPH_SIZE,
-		SDF_GLYPH_SIZE,
-		glyph.path,
-		viewBox,
-		maxDist,
-		SDF_EXPONENT,
-	);
-	const index = text.glyphCount++;
-	const col = index % GLYPHS_PER_ROW;
-	const row = Math.floor(index / GLYPHS_PER_ROW);
-	const x0 = col * SDF_GLYPH_SIZE;
-	const y0 = row * SDF_GLYPH_SIZE;
-	for (let y = 0; y < SDF_GLYPH_SIZE; y++) {
-		text.atlasData.set(
-			sdfData.subarray(y * SDF_GLYPH_SIZE, (y + 1) * SDF_GLYPH_SIZE),
-			(y0 + y) * ATLAS_WIDTH + x0,
-		);
-	}
-	text.atlas.needsUpdate = true;
-	const slot: GlyphSlot = {
-		uv: [
-			x0 / ATLAS_WIDTH,
-			y0 / ATLAS_HEIGHT,
-			(x0 + SDF_GLYPH_SIZE) / ATLAS_WIDTH,
-			(y0 + SDF_GLYPH_SIZE) / ATLAS_HEIGHT,
-		],
-		viewBox,
-	};
-	text.glyphs.set(key, slot);
-	return slot;
-};
-
-/**
- * Lay out a string into positioned glyph quads.
+ * Shapes and positions the glyphs with the anchor and baseline offsets
+ * applied. By default the text's baseline-left sits at local (0, 0).
+ * Coordinates are y-up layout units, axis-identical to scene space.
  *
- * @remarks
- * Typesets the text, rasterizes any glyph not already in the atlas, and
- * returns per-glyph quad bounds and atlas UV rects with the anchor and
- * baseline offsets applied. By default the text's baseline-left sits at
- * local (0, 0).
- *
- * Asynchronous because typesetting and SDF generation are; the renderer
- * registers the work so a frame is never drawn with half its glyphs.
- * Typesetting and SDF failures arrive as typed errors naming the font.
- *
- * The font must be registered first — an unregistered font is a defect.
+ * Layout failures arrive as typed errors naming the font. The font must be
+ * registered first — an unregistered font is a defect.
  */
 export const layout = Effect.fnUntraced(function* (
 	text: Text,
 	request: LayoutRequest,
-): Effect.fn.Return<GlyphQuads, EffectMotionError> {
-	const src = text.fonts.get(request.fontId);
-	if (src === undefined) {
+): Effect.fn.Return<LayoutResult, EffectMotionError> {
+	if (!text.fonts.has(request.fontId)) {
 		return yield* Effect.die(
 			new Error(
 				`Text: font "${request.fontId}" was not registered before layout`,
 			),
 		);
 	}
-	const result = yield* Effect.tryPromise({
-		try: async () => {
-			text.typesetter ??= typesetterWorkerModule.onMainThread._getInitResult();
-			const typesetter = await text.typesetter;
-			return new Promise<import("troika-three-text").TypesetResult>(
-				(resolve) => {
-					typesetter.typeset(
-						{
-							text: request.text,
-							font: [{ label: "user", src }],
-							fontSize: request.fontSize,
-							sdfGlyphSize: SDF_GLYPH_SIZE,
-						},
-						resolve,
-					);
-				},
-			);
-		},
-		catch: (cause) =>
-			EffectMotionError.of(
-				`Text: typesetting failed for font "${request.fontId}"`,
-				cause,
-			),
-	});
-
 	return yield* Effect.try({
-		try: () => {
-			const count = result.glyphIds.length;
-			const bounds = new Float32Array(count * 4);
-			const uvRects = new Float32Array(count * 4);
-			const { blockBounds, topBaseline } = result;
-			// anchor offsets: baseline-left at (0,0) by default (scene semantics)
-			const width = blockBounds[2] - blockBounds[0];
-			const anchor = request.textAnchor;
-			const dx =
-				(anchor === "middle" ? -width / 2 : anchor === "end" ? -width : 0) -
-				blockBounds[0];
-			const dy =
-				request.baseline === "middle"
-					? -(blockBounds[1] + blockBounds[3]) / 2
-					: request.baseline === "hanging"
-						? -blockBounds[3]
-						: -topBaseline;
-			for (let i = 0; i < count; i++) {
-				const glyphId = result.glyphIds[i] ?? 0;
-				const fontIndex = result.glyphFontIndices[i] ?? 0;
-				const font = result.fontData[fontIndex];
-				if (font === undefined) {
-					continue;
-				}
-				const slot = glyphSlot(text, font.src, glyphId, result);
-				const posX = result.glyphPositions[i * 2] ?? 0;
-				const posY = result.glyphPositions[i * 2 + 1] ?? 0;
-				const fontSizeMult = result.fontSize / font.unitsPerEm;
-				bounds[i * 4] = dx + posX + slot.viewBox[0] * fontSizeMult;
-				bounds[i * 4 + 1] = dy + posY + slot.viewBox[1] * fontSizeMult;
-				bounds[i * 4 + 2] = dx + posX + slot.viewBox[2] * fontSizeMult;
-				bounds[i * 4 + 3] = dy + posY + slot.viewBox[3] * fontSizeMult;
-				uvRects[i * 4] = slot.uv[0];
-				uvRects[i * 4 + 1] = slot.uv[1];
-				uvRects[i * 4 + 2] = slot.uv[2];
-				uvRects[i * 4 + 3] = slot.uv[3];
-			}
-			return { bounds, uvRects, count, blockBounds } satisfies GlyphQuads;
-		},
+		try: () =>
+			layoutText(
+				{
+					text: request.text,
+					style: {
+						key: "fill",
+						fontKeys: [request.fontId],
+						fontSize: request.fontSize,
+						language: "und",
+					},
+					layout: {
+						anchorX: anchorXOf(request.textAnchor),
+						anchorY: anchorYOf(request.baseline),
+					},
+				},
+				text.fonts,
+			),
 		catch: (cause) =>
 			EffectMotionError.of(
-				`Text: glyph SDF generation failed for font "${request.fontId}"`,
+				`Text: layout failed for font "${request.fontId}"`,
 				cause,
 			),
 	});
 });
 
-// ── glyph mesh: instanced quads + TSL SDF material ───────────────────────
-
-/** unit quad (0..1)², two triangles — instanced per glyph */
-const makeQuadGeometry = (): THREE.InstancedBufferGeometry => {
-	const geometry = new THREE.InstancedBufferGeometry();
-	geometry.setAttribute(
-		"position",
-		new THREE.Float32BufferAttribute([0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0], 3),
-	);
-	geometry.setIndex([0, 1, 2, 2, 1, 3]);
-	geometry.instanceCount = 0;
-	return geometry;
-};
-
-/** A glyph mesh over the shared atlas, with its update and release hooks. */
+/** A glyph mesh over the shared resources, with its update and release hooks. */
 export interface TextMesh {
 	readonly mesh: THREE.Object3D;
-	/** Point the mesh at a new layout — call after {@link layout} resolves. */
-	readonly setQuads: (quads: GlyphQuads) => void;
-	/** Set the fill color; `r`, `g`, `b` are 0–1, `a` is opacity. */
+	/** Point the mesh at a new layout — pair with {@link TextMesh.commit}. */
+	readonly setLayout: (layout: LayoutResult) => void;
+	/** Set the fill color; `r`, `g`, `b` are 0–255, `a` is 0–1 opacity. */
 	readonly setColor: (r: number, g: number, b: number, a: number) => void;
-	/** Release the mesh's geometry and materials. */
+	/** Flush pending layout/appearance changes into the GPU state. */
+	readonly commit: () => Effect.Effect<void, EffectMotionError>;
+	/** Release the mesh's geometry and materials (shared resources stay). */
 	readonly dispose: () => void;
 }
 
 /**
- * Build a mesh that draws glyphs from the shared atlas.
+ * Build a mesh that draws glyphs from the shared resources.
  *
  * @remarks
- * Rendered in two passes so overlapping glyph ink — connected scripts, tight
- * kerning — blends exactly ONCE per pixel at any opacity. A single-pass
- * approach would double-blend the joins and show them as darker seams on
- * semi-transparent text.
- *
- * - core pass: fragments with SDF coverage ≥ 0.5 draw flat at the string
- *   opacity, write depth with `LessDepth` — a second glyph's core at the
- *   same depth fails the test, deduplicating the join.
- * - edge pass: the antialiasing ring (coverage < 0.5) blends without depth
- *   writes; core-covered pixels reject it via the depth buffer.
+ * The toolkit mesh is created lazily on the first {@link TextMesh.setLayout}
+ * — its constructor requires a layout, and a text entity has none until its
+ * first layout resolves. Appearance setters are inert until
+ * {@link TextMesh.commit} runs; the entity renderer registers commits with
+ * `ctx.waitFor`, so a frame is never drawn with half-built text.
  *
  * The mesh carries a tiny z-lift so text sits above coplanar backdrops
  * (invisible at ordinary scales, deterministic).
  */
 export const makeMesh = (text: Text): TextMesh => {
-	const geometry = makeQuadGeometry();
-
-	// ponytail: TSL typing quarantined — see the note in the atlas material.
-	interface TslNode {
-		readonly x: TslNode;
-		readonly y: TslNode;
-		readonly xy: TslNode;
-		readonly zw: TslNode;
-		readonly r: TslNode;
-		mul(value: unknown): TslNode;
-		sub(value: unknown): TslNode;
-		add(value: unknown): TslNode;
-		lessThan(value: unknown): TslNode;
-		greaterThanEqual(value: unknown): TslNode;
-		select(onTrue: unknown, onFalse: unknown): TslNode;
-	}
-	type TslFn = (...args: ReadonlyArray<unknown>) => TslNode;
-	const t = Tsl as unknown as Record<
-		| "attribute"
-		| "vec2"
-		| "vec3"
-		| "mix"
-		| "texture"
-		| "fwidth"
-		| "smoothstep"
-		| "float",
-		TslFn
-	> & { positionGeometry: TslNode };
-
-	const buildNodes = () => {
-		const glyphBounds = t.attribute("glyphBounds", "vec4");
-		const glyphUvRect = t.attribute("glyphUvRect", "vec4");
-		const corner = t.vec2(t.positionGeometry.x, t.positionGeometry.y);
-		const position = t.vec3(t.mix(glyphBounds.xy, glyphBounds.zw, corner), 0);
-		const uv = t.mix(glyphUvRect.xy, glyphUvRect.zw, corner);
-		const distance = t.texture(text.atlas, uv).r;
-		const halfWidth = t.fwidth(distance).mul(0.5);
-		const coverage = t.smoothstep(
-			t.float(0.5).sub(halfWidth),
-			t.float(0.5).add(halfWidth),
-			distance,
-		);
-		return { position, coverage };
-	};
-
-	const uOpacity = Tsl.uniform(1);
-
-	const coreMaterial = new THREE.MeshBasicNodeMaterial();
-	coreMaterial.transparent = true;
-	coreMaterial.side = THREE.DoubleSide;
-	coreMaterial.depthWrite = true;
-	coreMaterial.depthFunc = THREE.LessDepth;
-	{
-		const { position, coverage } = buildNodes();
-		coreMaterial.positionNode = position as never;
-		// margins/edges get alpha 0 and are DISCARDED by the alpha test, so
-		// they never write depth — only actual ink deduplicates
-		coreMaterial.opacityNode = coverage
-			.greaterThanEqual(0.5)
-			.select(uOpacity as unknown as TslNode, t.float(0)) as never;
-		coreMaterial.alphaTestNode = t.float(1 / 255) as never;
-	}
-
-	const edgeMaterial = new THREE.MeshBasicNodeMaterial();
-	edgeMaterial.transparent = true;
-	edgeMaterial.side = THREE.DoubleSide;
-	edgeMaterial.depthWrite = false;
-	{
-		const { position, coverage } = buildNodes();
-		edgeMaterial.positionNode = position as never;
-		edgeMaterial.opacityNode = coverage
-			.lessThan(0.5)
-			.select(coverage.mul(uOpacity), t.float(0)) as never;
-	}
-
-	const coreMesh = new THREE.Mesh(geometry, coreMaterial);
-	const edgeMesh = new THREE.Mesh(geometry, edgeMaterial);
-	coreMesh.frustumCulled = false;
-	edgeMesh.frustumCulled = false;
-	// hidden until setQuads installs glyphBounds/glyphUvRect — otherwise the
-	// material renders referencing attributes the geometry doesn't have yet,
-	// spamming "attribute not found" warnings every frame before layout lands
-	let hasQuads = false;
-	let wantVisible = true;
-	coreMesh.visible = false;
-	edgeMesh.visible = false;
 	const group = new THREE.Group();
-	// z-lift: keep text above coplanar backdrops so the core depth test
-	// never loses to a shape at the same depth
-	coreMesh.position.z = 0.05;
-	edgeMesh.position.z = 0.05;
-	group.add(coreMesh);
-	group.add(edgeMesh);
+	const color = new THREE.Color(1, 1, 1);
+	let opacity = 1;
+	let glyphs: GlyphText | null = null;
 
-	const setVisible = (visible: boolean) => {
-		wantVisible = visible;
-		coreMesh.visible = visible && hasQuads;
-		edgeMesh.visible = visible && hasQuads;
+	const applyAppearance = (mesh: GlyphText): void => {
+		mesh.color = color;
+		mesh.opacity = opacity;
 	};
 
 	return {
 		mesh: group,
-		setQuads: (quads) => {
-			geometry.setAttribute(
-				"glyphBounds",
-				new THREE.InstancedBufferAttribute(quads.bounds, 4),
-			);
-			geometry.setAttribute(
-				"glyphUvRect",
-				new THREE.InstancedBufferAttribute(quads.uvRects, 4),
-			);
-			geometry.instanceCount = quads.count;
-			hasQuads = true;
-			setVisible(wantVisible);
+		setLayout: (layoutResult) => {
+			if (glyphs === null) {
+				glyphs = new GlyphText({
+					layout: layoutResult,
+					fonts: text.fonts,
+					resources: text.resources,
+					depthInk: true,
+				});
+				// z-lift: keep text above coplanar backdrops so the depth-ink
+				// core never loses to a shape at the same depth
+				glyphs.position.z = 0.05;
+				group.add(glyphs);
+			} else {
+				glyphs.layout = layoutResult;
+			}
+			applyAppearance(glyphs);
 		},
 		setColor: (r, g, b, a) => {
-			for (const material of [coreMaterial, edgeMaterial]) {
-				material.color.setRGB(r / 255, g / 255, b / 255, THREE.SRGBColorSpace);
+			color.setRGB(r / 255, g / 255, b / 255, THREE.SRGBColorSpace);
+			opacity = a;
+			group.visible = a > 0;
+			if (glyphs !== null) {
+				applyAppearance(glyphs);
 			}
-			uOpacity.value = a;
-			setVisible(a > 0);
 		},
+		commit: () =>
+			Effect.suspend(() => {
+				const target = glyphs;
+				return target === null
+					? Effect.void
+					: Effect.tryPromise({
+							try: () => target.sync(),
+							catch: (cause) =>
+								EffectMotionError.of("Text: glyph commit failed", cause),
+						});
+			}),
 		dispose: () => {
-			geometry.dispose();
-			coreMaterial.dispose();
-			edgeMaterial.dispose();
+			glyphs?.dispose();
 		},
 	};
 };

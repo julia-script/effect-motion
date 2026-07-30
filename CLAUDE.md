@@ -32,7 +32,7 @@ Note: `packages/react` tests alias `effect-motion` to `../motion/src` (see its `
 
 - `packages/motion` — core library, published as `effect-motion`: scenes, entities, frame production. Renderer-free — no renderer dependency in its tree. Depends on `effect` (a pinned beta — an intentional pin, tracked in the roadmap's maintenance budget; upgrading effect can change seeded random sequences).
 - `packages/three` — `@effect-motion/three`: bindings-only Effect wrapper over three.js (knows nothing about frames or entities). Browser entry plus `/node` entry (Dawn WebGPU + environment shims).
-- `packages/renderer` — `@effect-motion/renderer`: the single frame renderer — the only place frames meet three. Retained scene graph, `build`/`update`/`dispose` entity contract, GPU DoF, browser canvas + Node PNG adapters.
+- `packages/renderer` — `@effect-motion/renderer`: the single frame renderer — the only place frames meet three. Retained scene graph, `build`/`update`/`dispose` entity contract, GPU DoF, browser canvas + Node PNG adapters. Text is `@text-rendering-toolkit` (HarfBuzz shaping via a ~390 KB WASM asset resolved through `import.meta.url`, growable SDF atlas, depth-ink two-pass glyph mesh) — downstream bundlers must handle the `.wasm` asset reference.
 - `packages/react` — `@effect-motion/react`: the `Player` component (buffered streaming playback on a wall-clock accumulator). `Player` and `PlayerProps` are the whole public surface; the `useScene` engine behind it is private.
 - `apps/docs` — Fumadocs/Next.js docs site. Runnable examples live in `apps/docs/examples/*.scene.ts` and are registered in `examples/registry.ts` (the key doubles as the displayed source filename). MDX content in `content/docs/`.
 

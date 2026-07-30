@@ -260,6 +260,15 @@ importers:
       '@effect/platform-node':
         specifier: 4.0.0-beta.98
         version: 4.0.0-beta.98(effect@4.0.0-beta.98)(ioredis@5.11.1)
+      '@text-rendering-toolkit/font':
+        specifier: ^0.3.0
+        version: 0.3.0
+      '@text-rendering-toolkit/layout':
+        specifier: ^0.3.0
+        version: 0.3.0
+      '@text-rendering-toolkit/three-webgpu':
+        specifier: ^0.3.0
+        version: 0.3.0(three@0.185.1)
       '@types/three':
         specifier: ^0.185.1
         version: 0.185.1
@@ -275,12 +284,6 @@ importers:
       three:
         specifier: ^0.185.1
         version: 0.185.1
-      troika-three-text:
-        specifier: ^0.52.4
-        version: 0.52.4(three@0.185.1)
-      webgl-sdf-generator:
-        specifier: ^1.1.1
-        version: 1.1.1
     devDependencies:
       '@types/node':
         specifier: ^26.1.1
@@ -1420,6 +1423,20 @@ packages:
       '@types/react-dom':
         optional: true
 
+  '@text-rendering-toolkit/font@0.3.0':
+    resolution: {integrity: sha512-O/jrULAeY8j+h3r8C8wvVCNG3VpCqFnP/phhYw96LHTfmpiBrMsCX254mca59ieBDwOcaw3qqIXEZ44451SejQ==}
+
+  '@text-rendering-toolkit/layout@0.3.0':
+    resolution: {integrity: sha512-/JasMxd1ZNSuplo4AlzvpMfobKZLad6vGJRL4H+t8YAB75/++BsHxjZ5DUcKYlU7pZ3DpngyrxIfmFdg4dqdtg==}
+
+  '@text-rendering-toolkit/sdf@0.3.0':
+    resolution: {integrity: sha512-MYYA3/4mlDttMu+4Dx0aH2XUj41HGktuoDCv53HGwRWNUjziJ1IvMgszW47zwt8jr+SUYOqy27gswGbh0GNEEw==}
+
+  '@text-rendering-toolkit/three-webgpu@0.3.0':
+    resolution: {integrity: sha512-enUVmZ2R4Fm7McZhLp8j+rvSZPvWbAkmH+6kCI9vQT0xim79YBOFzr41bYnCl+IB1D7zs37znfEXtRev+wMuSA==}
+    peerDependencies:
+      three: ^0.185.1
+
   '@turbo/darwin-64@2.10.4':
     resolution: {integrity: sha512-m1MUEI4MJ69r5CwfMYxmHi0H0rrgiYCBOp0tgBZ9x/YVvOb5uu/lRIDyDwdtH054R2yWeQaIigUGu6aCX9f8cA==}
     cpu: [x64]
@@ -1738,6 +1755,10 @@ packages:
   balanced-match@4.0.4:
     resolution: {integrity: sha512-BLrgEcRTwX2o6gGxGOCNyMvGSp35YofuYzw9h1IMTRmKqttAZZVU67bdb9Pr2vUHA8+j3i2tJfjO6C6+4myGTA==}
     engines: {node: 18 || 20 || >=22}
+
+  base64-js@0.0.8:
+    resolution: {integrity: sha512-3XSA2cR/h/73EzlXXdU6YNycmYI7+kicTxks4eJg2g39biHR84slg2+des+p7iHYhbRg/udIS4TD53WabcOUkw==}
+    engines: {node: '>= 0.4'}
 
   baseline-browser-mapping@2.10.43:
     resolution: {integrity: sha512-AjYpR78kDWAY3Efj+cDTFH9t9SCoL7OoTp1BOb0mQV7S+6CiLwnWM3FyxhJtdPufDFKzmCSFoUncKjWgJEZTCQ==}
@@ -2354,6 +2375,9 @@ packages:
     resolution: {integrity: sha512-NXYBzinNrblfraPGyrbPoD19C1h9lfI/1mzgWYvXUTe414Gz/X1FD2XBZSZM7rRTrMA8JL3OtAaGifrIKhQ5yQ==}
     engines: {node: '>= 12.0.0'}
 
+  linebreak@1.1.0:
+    resolution: {integrity: sha512-MHp03UImeVhB7XZtjd0E4n6+3xr5Dq/9xI/5FptGk5FrbDR3zagPa2DS6U8ks/3HjbKWG9Q1M2ufOzxV2qLYSQ==}
+
   linkify-it@5.0.2:
     resolution: {integrity: sha512-ONTm2jCMAVZjgQa/Fy1kScXsuOoF5NPTsoFBdE1KVIZ2vAh/r9+Bqo+0jINCBYnavTPQZz38QzFTme79ENoN3Q==}
 
@@ -2677,6 +2701,9 @@ packages:
 
   package-manager-detector@0.2.11:
     resolution: {integrity: sha512-BEnLolu+yuz22S56CU1SUKq3XC3PkwD5wv4ikR4MfGvnRVcmzXR9DwSlW2fEamyTPyXHomBJRzgapeuBvRNzJQ==}
+
+  pako@0.2.9:
+    resolution: {integrity: sha512-NUcwaKxUxWrZLpDG+z/xZaCgQITkA/Dv4V/T6bw7VON6l1Xz/VnrBqrYjZQ12TamKHzITTfOEIYUj48y2KXImA==}
 
   parse-cache-control@1.0.1:
     resolution: {integrity: sha512-60zvsJReQPX5/QP0Kzfd/VrpjScIQ7SHBW6bFCYfEP+fp0Eppr1SHhIO5nd1PjZtvclzSzES9D/p5nFJurwfWg==}
@@ -3012,6 +3039,9 @@ packages:
   three@0.185.1:
     resolution: {integrity: sha512-5aojFCXKwnjBRZvUnt3WFfEcvUJgkN5LlijRFN95hMy8WVkG4I0QNcJE+OuWvuJ0bOdStrbfXn0pkd6/QyiAlg==}
 
+  tiny-inflate@1.0.3:
+    resolution: {integrity: sha512-pkY1fj1cKHb2seWDy0B16HeWyczlJA9/WW3u3c4z/NiWDsO3DOU5D7nhTLE9CF0yXv/QZFY7sEJmj24dK+Rrqw==}
+
   tinybench@2.9.0:
     resolution: {integrity: sha512-0+DUvqWMValLmha6lr4kD8iAMK1HzV0/aKnCtWb9v9641TnP/MFb7Pc2bxoxQjTXAErryXVgUOfv2YqNllqGeg==}
 
@@ -3037,19 +3067,6 @@ packages:
 
   trim-lines@3.0.1:
     resolution: {integrity: sha512-kRj8B+YHZCc9kQYdWfJB2/oUl9rA99qbowYYBtr4ui4mZyAQ2JpvVBd/6U2YloATfqBhBTSMhTpgBHtU0Mf3Rg==}
-
-  troika-three-text@0.52.4:
-    resolution: {integrity: sha512-V50EwcYGruV5rUZ9F4aNsrytGdKcXKALjEtQXIOBfhVoZU9VAqZNIoGQ3TMiooVqFAbR1w15T+f+8gkzoFzawg==}
-    peerDependencies:
-      three: '>=0.125.0'
-
-  troika-three-utils@0.52.4:
-    resolution: {integrity: sha512-NORAStSVa/BDiG52Mfudk4j1FG4jC4ILutB3foPnfGbOeIs9+G5vZLa0pnmnaftZUGm4UwSoqEpWdqvC7zms3A==}
-    peerDependencies:
-      three: '>=0.125.0'
-
-  troika-worker-utils@0.52.0:
-    resolution: {integrity: sha512-W1CpvTHykaPH5brv5VHLfQo9D1OYuo0cSBEUQFFT/nBUzM8iD6Lq2/tgG/f1OelbAS1WtaTPQzE5uM49egnngw==}
 
   trough@2.2.0:
     resolution: {integrity: sha512-tmMpK00BjZiUyVyvrBK7knerNgmgvcV/KLVyuma/SC+TQN167GrMRciANTz09+k3zW8L8t60jWO1GpfkZdjTaw==}
@@ -3106,6 +3123,13 @@ packages:
   undici@8.7.0:
     resolution: {integrity: sha512-N7iQtfyLhIMOFgQubvmLV26svHpO0bqKnAiWotTQCVKCmWrcGbBotPuW1x+xwYZ2VHdSTVUfPQQnlEt1/LouTQ==}
     engines: {node: '>=22.19.0'}
+
+  unicode-script@1.2.0:
+    resolution: {integrity: sha512-1Dz/Fs8uWK3EEnrvCXFmR2oQz+oxTe7H8AGwRiaUZ9SWdyF37L4s+a2AZx31+YpRdrKajlUPDDVjWLP8WIQUVw==}
+    engines: {node: '>=18.20'}
+
+  unicode-trie@2.0.0:
+    resolution: {integrity: sha512-x7bc76x0bm4prf1VLg79uhAzKw8DVboClSN5VxJuQ+LKDOVEW9CdH+VY7SP+vX7xCYQqzzgQpFqz15zeLvAtZQ==}
 
   unified@11.0.5:
     resolution: {integrity: sha512-xKvGhPWw3k84Qjh8bI3ZeJjqnyadK+GEFtazSfZv/rKeTkTjOJho6mFqh2SM96iIcZokxiOpg78GazTSg8+KHA==}
@@ -3302,9 +3326,6 @@ packages:
 
   web-namespaces@2.0.1:
     resolution: {integrity: sha512-bKr1DkiNa2krS7qxNtdrtHAmzuYGFQLiQ13TsorsdT6ULTkPLKuu5+GsFpDlg6JFjUTwX2DyhMPG2be8uPrqsQ==}
-
-  webgl-sdf-generator@1.1.1:
-    resolution: {integrity: sha512-9Z0JcMTFxeE+b2x1LJTdnaT8rT8aEp7MVxkNwoycNmJWwPdzoXzMh0BjJSh/AEFP+KPYZUli814h8bJZFIZ2jA==}
 
   webgpu@0.4.0:
     resolution: {integrity: sha512-F5pimn3Aoi0zWjuRdiVs5TnrUwSzD2lESBohsIUsqyitWkGRQlXU2fhV6ycXlQTa1bvAf3sjqiUpBEpmSQ5ptA==}
@@ -4271,6 +4292,23 @@ snapshots:
       '@types/react': 19.2.17
       '@types/react-dom': 19.2.3(@types/react@19.2.17)
 
+  '@text-rendering-toolkit/font@0.3.0': {}
+
+  '@text-rendering-toolkit/layout@0.3.0':
+    dependencies:
+      '@text-rendering-toolkit/font': 0.3.0
+      bidi-js: 1.0.3
+      linebreak: 1.1.0
+      unicode-script: 1.2.0
+
+  '@text-rendering-toolkit/sdf@0.3.0': {}
+
+  '@text-rendering-toolkit/three-webgpu@0.3.0(three@0.185.1)':
+    dependencies:
+      '@text-rendering-toolkit/layout': 0.3.0
+      '@text-rendering-toolkit/sdf': 0.3.0
+      three: 0.185.1
+
   '@turbo/darwin-64@2.10.4':
     optional: true
 
@@ -4522,6 +4560,8 @@ snapshots:
   bail@2.0.2: {}
 
   balanced-match@4.0.4: {}
+
+  base64-js@0.0.8: {}
 
   baseline-browser-mapping@2.10.43: {}
 
@@ -5169,6 +5209,11 @@ snapshots:
       lightningcss-win32-arm64-msvc: 1.32.0
       lightningcss-win32-x64-msvc: 1.32.0
 
+  linebreak@1.1.0:
+    dependencies:
+      base64-js: 0.0.8
+      unicode-trie: 2.0.0
+
   linkify-it@5.0.2:
     dependencies:
       uc.micro: 2.1.0
@@ -5754,6 +5799,8 @@ snapshots:
     dependencies:
       quansync: 0.2.11
 
+  pako@0.2.9: {}
+
   parse-cache-control@1.0.1: {}
 
   parse-entities@4.0.2:
@@ -6166,6 +6213,8 @@ snapshots:
 
   three@0.185.1: {}
 
+  tiny-inflate@1.0.3: {}
+
   tinybench@2.9.0: {}
 
   tinyexec@1.2.4: {}
@@ -6184,20 +6233,6 @@ snapshots:
   toml@4.1.2: {}
 
   trim-lines@3.0.1: {}
-
-  troika-three-text@0.52.4(three@0.185.1):
-    dependencies:
-      bidi-js: 1.0.3
-      three: 0.185.1
-      troika-three-utils: 0.52.4(three@0.185.1)
-      troika-worker-utils: 0.52.0
-      webgl-sdf-generator: 1.1.1
-
-  troika-three-utils@0.52.4(three@0.185.1):
-    dependencies:
-      three: 0.185.1
-
-  troika-worker-utils@0.52.0: {}
 
   trough@2.2.0: {}
 
@@ -6265,6 +6300,13 @@ snapshots:
   undici-types@8.3.0: {}
 
   undici@8.7.0: {}
+
+  unicode-script@1.2.0: {}
+
+  unicode-trie@2.0.0:
+    dependencies:
+      pako: 0.2.9
+      tiny-inflate: 1.0.3
 
   unified@11.0.5:
     dependencies:
@@ -6436,8 +6478,6 @@ snapshots:
       - msw
 
   web-namespaces@2.0.1: {}
-
-  webgl-sdf-generator@1.1.1: {}
 
   webgpu@0.4.0:
     dependencies:

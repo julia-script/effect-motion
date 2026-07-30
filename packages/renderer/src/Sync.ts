@@ -688,9 +688,15 @@ export const resolveResources = Effect.fnUntraced(function* (
 	for (const family of fonts) {
 		const provided = Context.getOption(context, Font.Loader(family));
 		if (provided._tag === "Some") {
-			Text.registerFont(sync.text, family, provided.value.bytes);
+			// a provided font whose bytes fail to parse is a broken asset — a
+			// loud defect naming the font, like the missing-loader path below
+			yield* Effect.orDie(
+				Text.registerFont(sync.text, family, provided.value.bytes),
+			);
 		} else if (family === Font.defaultFont.id) {
-			Text.registerFont(sync.text, family, yield* Font.loadDefaultBytes);
+			yield* Effect.orDie(
+				Text.registerFont(sync.text, family, yield* Font.loadDefaultBytes),
+			);
 		} else {
 			return yield* Effect.die(
 				new Error(

@@ -463,10 +463,10 @@ const disposePathChild = (child: THREE.Object3D): void => {
 };
 
 // ── text: SDF glyphs (see Text.ts) ───────────────────────────────────────
-// Layout is async (typesetting + first-sight glyph SDF generation) and
-// registered with ctx.waitFor, so the render path never presents a
-// half-built string. The mesh billboards and scales with perspective like
-// the other billboard shapes.
+// Layout and glyph commits are async (shaping + first-sight glyph SDF
+// generation) and registered with ctx.waitFor, so the render path never
+// presents a half-built string. The mesh billboards and scales with
+// perspective like the other billboard shapes.
 
 const text: EntityRenderer<Entity.EntityByTag<"Text">> = {
 	build: (leaf, ctx) => {
@@ -490,7 +490,8 @@ const text: EntityRenderer<Entity.EntityByTag<"Text">> = {
 			data.textAnchor,
 			data.baseline,
 		].join("|");
-		if (retained.object.userData.textKey !== key) {
+		const keyChanged = retained.object.userData.textKey !== key;
+		if (keyChanged) {
 			retained.object.userData.textKey = key;
 			ctx.waitFor(
 				Text.layout(ctx.text, {
@@ -499,11 +500,26 @@ const text: EntityRenderer<Entity.EntityByTag<"Text">> = {
 					fontSize: data.fontSize,
 					textAnchor: data.textAnchor,
 					baseline: data.baseline,
-				}).pipe(Effect.map((quads) => textMesh.setQuads(quads))),
+				}).pipe(
+					Effect.flatMap((result) => {
+						textMesh.setLayout(result);
+						return textMesh.commit();
+					}),
+				),
 			);
 		}
 		const { r, g, b, a } = Color.bytes(data.fillColor);
-		textMesh.setColor(r, g, b, (a / 255) * data.opacity);
+		const alpha = (a / 255) * data.opacity;
+		const colorKey = `${r}|${g}|${b}|${alpha}`;
+		if (retained.object.userData.textColorKey !== colorKey) {
+			retained.object.userData.textColorKey = colorKey;
+			textMesh.setColor(r, g, b, alpha);
+			// a layout commit is already queued on key change; only a pure
+			// color/opacity change needs its own
+			if (!keyChanged) {
+				ctx.waitFor(textMesh.commit());
+			}
+		}
 		retained.object.position.copy(
 			ctx.toThree(leaf.world.x, leaf.world.y, leaf.world.z),
 		);

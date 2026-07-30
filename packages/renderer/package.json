@@ -44,13 +44,14 @@
 	"dependencies": {
 		"@effect-motion/three": "workspace:^",
 		"@effect/platform-node": "4.0.0-beta.98",
+		"@text-rendering-toolkit/font": "^0.3.0",
+		"@text-rendering-toolkit/layout": "^0.3.0",
+		"@text-rendering-toolkit/three-webgpu": "^0.3.0",
 		"@types/three": "^0.185.1",
 		"effect-motion": "workspace:^",
 		"jpeg-js": "^0.4.4",
 		"pngjs": "^7.0.0",
-		"three": "^0.185.1",
-		"troika-three-text": "^0.52.4",
-		"webgl-sdf-generator": "^1.1.1"
+		"three": "^0.185.1"
 	},
 	"peerDependencies": {
 		"effect": ">=4.0.0-beta.98"
