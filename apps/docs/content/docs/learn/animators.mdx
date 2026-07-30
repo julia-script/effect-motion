@@ -1,0 +1,83 @@
+---
+title: Animators
+description: The base/To pattern, semantic vs raw animators, and both call forms
+---
+
+An **animator** is an Effect that changes one instance's data over a span of
+frames. They all follow one pattern and come in two layers.
+
+## The base/To pair
+
+Every animator ships as a pair distinguished only by where the *origin*
+comes from:
+
+- `Motion.moveTo(dot, { x: 600 }, "1 second")` — **To form**: origin read
+  from the instance's current value. This is the one you want most of the
+  time.
+- `Motion.move(dot, { x: -600 }, { x: 600 }, "1 second")` — **base form**:
+  origin stated explicitly. Partial origins are filled from the current
+  value.
+
+## Semantic vs raw
+
+- **Semantic** animators name an intent: `move`/`moveTo` animate `position`,
+  `fade`/`fadeTo` animate `opacity`. Prefer these — moving an entity moves it
+  *as one unit*, because its geometry (a Line's endpoints, a Path's commands,
+  a Group's subtree) is relative to `position`.
+- **Raw** animators reach any numeric field by name:
+  `Motion.tweenTo(dot, { radius: 110 }, "600 millis")`. Use `tween`/`tweenTo`
+  for fields without a semantic helper — `radius`, `width`, `fontSize`,
+  a camera's `focusDistance`.
+
+Applicability is checked at compile time: fading an entity with no `opacity`
+field (the camera, say) is a type error naming the missing field. Colors
+tween too — `Motion.tweenTo(dot, { fillColor: Color.hex("#ff8906") }, ...)`
+interpolates through Lab.
+
+## The escape hatch: drive
+
+When fields must move *together* in a way independent tweens can't express —
+a circular orbit derives both `x` and `y` from one angle — `Motion.drive`
+runs a pure function once per frame with the eased progress:
+
+```ts
+yield* dot.pipe(
+	Motion.drive("2 seconds", "linear", (t, data) => ({
+		...data,
+		position: Entity.vec3({
+			x: Math.cos(t * 2 * Math.PI) * 300,
+			y: Math.sin(t * 2 * Math.PI) * 300,
+		}),
+	})),
+);
+```
+
+`fn` must be pure — `(t, data) => data`, nothing else — which is what keeps
+the scene reproducible. Several of the [Examples](/docs/examples/sine-from-circle)
+are built on this one primitive.
+
+## Two call forms
+
+Every animator is callable data-first or pipeable — the same function:
+
+```ts
+yield* Motion.moveTo(dot, { x: 600 }, "1 second", "easeInOutCubic");
+
+yield* dot.pipe(
+	Motion.moveTo({ x: 600 }, "1 second", "easeInOutCubic"),
+	Motion.fadeTo(0, "400 millis"),
+);
+```
+
+Animators resolve with their instance, so they chain: each step in the pipe
+starts when the previous one lands.
+
+## Waiting
+
+`Motion.wait("400 millis")` is the do-nothing animator — it holds the scene
+for an exact number of frames.
+
+<Example name="animator-pairs" />
+
+Durations and those easing names are the next page:
+[Timing](/docs/learn/timing).

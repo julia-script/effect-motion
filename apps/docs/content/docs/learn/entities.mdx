@@ -1,0 +1,60 @@
+---
+title: Entities
+description: Instantiate shapes, structure them with children, and read or write their live data
+---
+
+An **entity** is a kind of thing a scene can contain — `Circle`, `Rect`,
+`Square`, `Ellipse`, `Line`, `Path`, `Text`, `Image`, `Group`, `Hud`, and the
+`Camera`. `Scene.instantiate` creates a live **instance** of one, named by its
+tag:
+
+```ts
+const circle = yield* Scene.instantiate("Circle", {
+	position: Entity.vec3({ x: -600, y: 100 }),
+	radius: 60,
+	fillColor: Color.hex("#7f5af0"),
+});
+```
+
+Every field has a sensible default — `position` is the center of the frame,
+`opacity` is 1, fills are white. Instances are also Effects that resolve to
+themselves, which is what lets animators chain off them with `.pipe`.
+
+## Shared fields
+
+Every paintable entity carries the same built-ins alongside its own fields:
+`position`, `rotation`, and `scale` (all `Vec3`), `opacity`, and `visible`
+(renderers skip an instance whose `visible` is `false`).
+
+**Geometry is relative to `position`.** A `Line`'s `start`/`end` and a
+`Path`'s commands are offsets from the entity's position, so animating
+`position` translates the whole shape rigidly — no per-shape bookkeeping.
+
+## Structure: one tree, defined by children
+
+Instances form a single tree. A `Group`'s `children` list is polymorphic:
+
+- a bare `string` becomes a `Text`,
+- a not-yet-yielded `Scene.instantiate(...)` is resolved in place,
+- an existing instance is adopted into the group.
+
+Children live in the group's local coordinates, so one motion on the group
+carries the subtree. An instance is born under the ambient parent (the root
+by default); `Scene.appendChild(parent, child)` and `Scene.removeChild` move
+it later — DOM semantics, append detaches from the current parent first.
+There is no per-instance `parent` argument.
+
+## Reading and writing data
+
+Instance state is live scene data:
+
+- `Scene.data(instance)` — read the current data.
+- `Scene.update(instance, (d) => ({ ...d, ...changes }))` — rewrite it
+  between frames, instantly (no animation).
+
+Animators are the third way — they write the same data, spread over frames.
+That's the next page.
+
+<Example name="instance-tree" />
+
+Next: [Animators](/docs/learn/animators).

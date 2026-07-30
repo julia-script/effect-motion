@@ -1,12 +1,15 @@
 {
 	"title": "Examples",
 	"pages": [
-		"groups",
-		"path-3d",
+		"sine-from-circle",
+		"function-plot",
+		"riemann-rects",
+		"grid-warp",
 		"bezier-3d",
-		"particles",
-		"moon-moth",
-		"the-box",
-		"effect-logo"
+		"depth-orbit",
+		"min-seeker",
+		"text-write-on",
+		"streamlines",
+		"camera-follow-graph"
 	]
 }

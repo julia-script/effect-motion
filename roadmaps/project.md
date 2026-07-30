@@ -107,6 +107,14 @@ Post-release, one line each:
 
 ## Changelog
 
+- 2026-07-29: **Docs rewrite shipped** (change `rewrite-docs-site`, archived
+  `2026-07-29-rewrite-docs-site`, 32/32 tasks; delta synced, 47 specs valid) — the Now item's "stranger can self-serve" push. Full restructure to
+  Getting Started / Learn (8 sequenced pages) / Guides (6 task-named) /
+  Examples (10 math-viz explainers, Manim-inspired) / API; all prose rewritten
+  against the center-origin y-up API; every scene now 1920×1080; particle
+  pages and all six particle scenes deleted — `particles/legacy.ts` in core
+  lost its last consumer and can now be deleted (follow-up change against
+  `particle-system`). DoF is renderer-disabled and deliberately undocumented.
 - 2026-07-14 (sync 4): **Shipped the refactor synced-3 had only proposed.**
   **One representation for the entity tree** — change `refactor-text-and-children`
   (archived `2026-07-14-refactor-text-and-children`, 29/29 tasks; 6 delta specs

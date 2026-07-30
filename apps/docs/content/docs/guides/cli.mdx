@@ -1,0 +1,93 @@
+---
+title: Use the CLI
+description: Scaffold a project, preview scenes with hot reload, and render videos
+---
+
+The CLI is one command each for scaffolding, previewing, and rendering,
+driven by two *code* entrypoints instead of a config file:
+
+```bash
+pnpm create effect-motion
+```
+
+The wizard asks where to create the project, which package manager to use,
+and whether to set up Biome, then installs a ready-to-run project:
+
+```
+my-project/
+├─ src/
+│  ├─ scenes/hello-world.ts   # a scene: a module exporting `scene`
+│  ├─ assets/                 # static files
+│  └─ main.ts                 # the movie — a scene composing the others
+├─ studio.ts                  # what `motion studio` previews
+├─ render.ts                  # what `motion render` executes
+├─ AGENTS.md                  # authoring rules for AI coding agents
+├─ package.json               # exact pins of effect-motion + effect
+└─ tsconfig.json
+```
+
+Versions are pinned exactly on purpose: the `effect` pin is a determinism
+invariant (upgrading effect can change seeded random sequences), so a
+scaffolded project upgrades both together, deliberately.
+
+Both entrypoints are ordinary TypeScript that **imports your scenes as
+values** — which is what makes typed resources work end to end: a scene
+that declares fonts or images carries that requirement in its type, and the
+entrypoint won't compile until the loaders are provided.
+
+## Preview — studio.ts
+
+```bash
+motion studio                    # serves ./studio.ts
+motion studio ./other.studio.ts
+```
+
+`studio.ts` default-exports the studio's registration — a record of scenes,
+plus one `layers` covering all of them once any scene declares resources:
+
+```ts title="studio.ts"
+import { studioConfig } from "@effect-motion/cli";
+import { scene as main } from "./src/main";
+import { scene as helloWorld } from "./src/scenes/hello-world";
+
+export default studioConfig({
+	scenes: {
+		"hello-world": helloWorld,
+		main: { scene: main, fps: 30 }, // per-entry player options
+	},
+	// layers: Layer.mergeAll(Font.layer(…), Image.layer(…)),
+});
+```
+
+Only registered scenes appear — registration is one import and one entry,
+and it's what lets the compiler prove `layers` covers every scene. Hot
+reload is plain Vite HMR over the entrypoint's import graph.
+
+## Render — render.ts
+
+```bash
+motion render                  # executes ./render.ts
+motion render ./teaser.render.ts
+```
+
+`render.ts` is an ordinary program: it calls the
+[export API](/docs/guides/export-video) and default-exports the effect. The
+CLI provides the platform and runs it — nothing more:
+
+```ts title="render.ts"
+import { Video } from "@effect-motion/export";
+import * as Effect from "effect/Effect";
+import { scene as main } from "./src/main";
+
+export default Effect.gen(function* () {
+	yield* Video.render(main, "./output/main.mp4", {
+		settings: { frameRate: 60 },
+	});
+});
+```
+
+There are no render flags: **code is the config**. Knobs you'd reach for as
+flags (fps, seed, dpr, output paths) are values in `render.ts` — read
+`process.env` there if you want them switchable. The same file runs without
+the CLI: provide `NodeServices.layer` from `@effect/platform-node` and run
+it with `tsx render.ts`. `--verbose` prints full error cause chains.

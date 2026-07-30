@@ -1,0 +1,13 @@
+---
+title: Minimum seeker
+description: Gradient descent as a picture — a ball overshoots the minimum and settles in
+---
+
+**The idea:** optimization, felt physically — a ball rolls down an
+asymmetric bowl, overshoots the minimum, climbs the far wall, and rings
+down into the answer. The ball's `y` is *constrained* to the curve
+(`y = f(x)` every frame via `Motion.drive`), so the bounce comes from an
+elastic easing on the driven parameter — the house pattern for springy
+motion on coupled fields.
+
+<Example name="min-seeker" />

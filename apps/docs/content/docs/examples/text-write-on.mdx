@@ -1,0 +1,12 @@
+---
+title: Text write-on
+description: A title sequence from stacked Text lines — the write-on is a stagger, the exit is the same stagger reversed
+---
+
+**The idea:** the title-sequence write-on, built from parts you already
+know — each line is its own `Text` instance, so writing on is a
+`Scene.stagger` of ordinary rise-and-fade motions, and the exit is the
+same cascade reversed. No text measurement anywhere: lines center
+themselves with `textAnchor`, and spacing is just line height.
+
+<Example name="text-write-on" />

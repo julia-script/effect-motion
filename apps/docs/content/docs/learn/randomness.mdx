@@ -1,0 +1,44 @@
+---
+title: Randomness & determinism
+description: Seeded Random, and the invariants that make scenes reproducible
+---
+
+Scenes are **pure functions of `(scene, settings)`**. Run the same scene
+twice — on your machine, in CI, in a viewer's browser — and you get the same
+frame count and the same frame data. That's the property everything else
+here is built on, and it survives randomness because randomness is *seeded*.
+
+## Seeded Random
+
+Effect's `Random` service is provided to every scene, derived from the
+`seed` setting (default: the string `"effect-motion"`):
+
+```ts
+const x = yield* Random.nextBetween(-780, 780);
+```
+
+Same seed, same sequence — a "random" scene replays identically, which is
+exactly what you want in a video. Different seed, different (equally
+repeatable) outcome. What breaks the property is reaching outside the
+scene: `Math.random()` and wall-clock reads have no place in a scene body.
+
+## The other invariants
+
+- **Exact landings.** Duration-based animations put their final frame
+  exactly on target; springs snap exactly on settle. No accumulation, no
+  drift, no epsilon.
+- **The frame barrier.** Concurrent animations advance one shared frame at
+  a time, so concurrency never reorders results.
+- **Loud failures.** An unknown easing name, an invalid spring, a
+  scene-graph violation — each dies with a defect naming the offender,
+  rather than producing subtly wrong frames.
+- **Determinism stops at the frame stream.** Same seed and settings mean
+  the same *frames* — the data. Rendered pixels are not byte-compared
+  across GPUs and platforms; if two renders look the same, they are the
+  same.
+
+<Example name="seeded-walk" />
+
+That's the core model. From here: the [Guides](/docs/guides/export-video)
+for tasks, or the [Examples](/docs/examples/sine-from-circle) to see it all
+composed.

@@ -1,0 +1,13 @@
+{
+	"title": "Learn",
+	"pages": [
+		"scenes",
+		"entities",
+		"animators",
+		"timing",
+		"physics",
+		"composition",
+		"camera",
+		"randomness"
+	]
+}

@@ -164,5 +164,5 @@ export const scene = Scene.make(
 			Camera.orbitTo(-2, "5 seconds", "easeInOutCubic"),
 		);
 	},
-	{ backgroundColor: Color.tw("gray", "800") },
+	{ width: 1920, height: 1080, backgroundColor: Color.tw("gray", "800") },
 );

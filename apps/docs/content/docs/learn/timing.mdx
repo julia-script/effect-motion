@@ -1,0 +1,45 @@
+---
+title: Timing
+description: Durations are exact frame counts; easings shape the path between start and target
+---
+
+Every duration-based animator takes a **duration** and an optional
+**easing**.
+
+## Durations are frame counts
+
+`"1 second"`, `"600 millis"`, `"2 seconds"` — any Effect duration works. At
+the scene's frame rate a duration is an *exact* number of frames, and the
+final frame lands *exactly* on the target value. There is no drift to
+accumulate: a chain of hundred tweens ends precisely where the math says.
+
+## Easings shape the in-between
+
+An easing maps normalized time to normalized progress. Pass one by name:
+
+```ts
+Motion.moveTo(dot, { x: 780 }, "2 seconds", "easeOutExpo");
+```
+
+The named curves are the standard families — `easeIn`/`easeOut`/`easeInOut`
+crossed with `Sine`, `Quad`, `Cubic`, `Quart`, `Quint`, `Expo`, `Circ`,
+`Back`, `Elastic`, `Bounce` — plus `linear` (the default). An unknown name
+fails loudly with a defect naming the offender, not a silent fallback.
+
+You can also pass a function `(t: number) => number` directly, for a custom
+curve.
+
+**Springy looks without physics:** `easeOutElastic` and `easeOutBounce` give
+overshoot and bounce *within a fixed duration*. When you want real
+physics — where the settling time emerges from the simulation instead of
+being chosen — that's [springs](/docs/learn/physics), the next page.
+
+## The race
+
+Same distance, same two seconds, four different curves — the only thing that
+differs is *when* each dot covers which part of the distance. They all land
+on the same frame:
+
+<Example name="easing-race" />
+
+Next: [Physics](/docs/learn/physics).

@@ -1,38 +1,35 @@
-import {
-	Color,
-	Font,
-	Motion,
-	Resource,
-	Entity as S,
-	Scene,
-} from "effect-motion";
+import * as Color from "effect-motion/Color";
+import * as Entity from "effect-motion/Entity";
+import * as Font from "effect-motion/Font";
+import * as Motion from "effect-motion/Motion";
+import * as Resource from "effect-motion/Resource";
+import * as Scene from "effect-motion/Scene";
 
 // Fonts are typed scene dependencies: yielding the constant puts
-// `FontLoader<"Pacifico">` into the scene's requirements, and the player
-// will not compile without a covering `renderLayers`. The layer's load runs
-// once at mount (before anything renders), so the first visible frame is
-// already in Pacifico — no flash of fallback text.
+// FontLoader<"Pacifico"> into the scene's requirements, and the player will
+// not compile without a covering renderLayers. The load runs once at mount,
+// so the first visible frame is already in Pacifico.
 const Pacifico = Font.Font("Pacifico");
 
 export const scene = Scene.make(
+	"custom fonts",
 	function* () {
 		const pacifico = yield* Pacifico;
 		const custom = yield* Scene.instantiate("Text", {
-			position: S.vec3({ y: 30 }),
+			position: Entity.vec3({ y: 110 }),
 			text: "Custom fonts",
-			fontSize: 48,
+			fontSize: 160,
 			fontFamily: pacifico,
 			fillColor: Color.hex("#7f5af0"),
 			textAnchor: "middle",
 			baseline: "middle",
 			opacity: 0,
 		});
-		// no fontFamily: the built-in default font (reserved id "sans-serif",
-		// auto-provided by the render path) — zero ceremony, no requirement
+		// no fontFamily: the built-in default face — zero ceremony, no requirement
 		const plain = yield* Scene.instantiate("Text", {
-			position: S.vec3({ y: -40 }),
+			position: Entity.vec3({ y: -140 }),
 			text: "vs the default sans-serif",
-			fontSize: 20,
+			fontSize: 64,
 			fillColor: Color.hex("#94a3b8"),
 			textAnchor: "middle",
 			baseline: "middle",
@@ -43,12 +40,11 @@ export const scene = Scene.make(
 		yield* plain.pipe(Motion.fadeTo(1, "600 millis"));
 		yield* Motion.wait("1 second");
 	},
-	{ width: 500, height: 300, backgroundColor: Color.rgba(22, 22, 29) },
+	{ width: 1920, height: 1080, backgroundColor: Color.rgba(22, 22, 29) },
 );
 
-// the ThorVG renderer rasterizes TrueType (.ttf) — not woff2 — so the load
-// effect points at a .ttf asset. Providing a loader under the reserved
-// "sans-serif" id would instead OVERRIDE the built-in default font.
+// a CORS-open, version-pinned TrueType file; in Node the same layer could
+// read the bytes from disk instead
 export const renderLayers = Font.layer(
 	Pacifico,
 	Resource.fetchBytes(

@@ -1,53 +1,13 @@
-# docs-site Specification
+# docs-site delta: rewrite structure, prose, and examples
 
-## Purpose
-The documentation app at `apps/docs`: a Next.js + Fumadocs site with MDX content, live Player-embedded examples whose displayed source cannot drift from what runs, and a scratchpad route for ad-hoc experiments.
+## REMOVED Requirements
 
-## Requirements
+### Requirement: Concept-spine navigation
 
-### Requirement: Fumadocs documentation app
-The monorepo SHALL contain a docs app at `apps/docs` built on Next.js and Fumadocs, with MDX content pages (at minimum: an index/introduction and a getting-started page) and standard docs chrome (sidebar navigation, table of contents, highlighted code blocks). The app SHALL build with the monorepo `build` task and run locally with a `dev` task.
+**Reason**: The unordered Core Concepts / Going Further split never sequenced the material for learning; it is replaced by a sequenced learning path (see ADDED: Learning-path navigation).
+**Migration**: Content homes move as follows — Core Concepts pages become ordered Learn pages; Going Further pages become task-named Guides; the particles pages are deleted outright.
 
-#### Scenario: Docs build in the task graph
-- **WHEN** the monorepo build task runs
-- **THEN** the docs app builds successfully after its workspace dependencies
-
-#### Scenario: Content pages render
-- **WHEN** a visitor opens the docs site root
-- **THEN** an introduction page renders with sidebar navigation to the other pages
-
-### Requirement: Live examples embed the Player
-
-The docs SHALL embed live examples — a scene running in the `@effect-motion/react` Player (client-side; the scene collects and plays in the browser) alongside the example's source code — within the concept and example pages they illustrate, rather than only in a standalone gallery. Examples SHALL be embedded via a component that takes an example name and renders both the played scene and its source. A single page MAY embed multiple examples.
-
-#### Scenario: Example plays in a concept page
-
-- **WHEN** a visitor opens a concept page that embeds an example
-- **THEN** the scene renders in the Player with working transport controls (play/pause, progress bar), inline with the surrounding prose
-
-#### Scenario: Example source is displayed
-
-- **WHEN** a visitor views a page embedding an example
-- **THEN** the scene's source code is shown with syntax highlighting
-
-#### Scenario: A page embeds several examples
-
-- **WHEN** a concept page illustrates multiple behaviors (e.g. a composition page showing chain, stagger, and fork)
-- **THEN** each is embedded as its own live example on the same page
-
-### Requirement: Scratchpad route for ad-hoc experiments
-The docs app SHALL provide a `/scratchpad` route rendering an editable-in-source scene in the Player, replacing the removed playground app as the place to try things quickly. It SHALL NOT appear in the docs navigation.
-
-#### Scenario: Scratchpad plays its scene
-- **WHEN** a developer opens `/scratchpad` and edits the scratchpad scene in source
-- **THEN** the route plays the updated scene in the Player with transport controls
-
-### Requirement: Example code and animation cannot drift
-Each example SHALL be defined in a single source file that is both executed by the Player and displayed as the code sample. The displayed code MUST be derived from that file's actual contents, not a manually maintained copy.
-
-#### Scenario: Editing an example updates both views
-- **WHEN** an example's source file changes
-- **THEN** the played animation and the displayed code both reflect the change with no other edits
+## ADDED Requirements
 
 ### Requirement: Learning-path navigation
 
@@ -80,6 +40,8 @@ Every example scene embedded in the docs SHALL declare 1920×1080 (16:9) setting
 
 - **WHEN** any example scene in the docs registry is inspected
 - **THEN** its settings declare width 1920 and height 1080
+
+## MODIFIED Requirements
 
 ### Requirement: Full public-API coverage
 

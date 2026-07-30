@@ -1,0 +1,43 @@
+---
+title: Use images
+description: Image assets as typed resources, drawn on a plane that tweens like any shape
+---
+
+An `Image` entity draws a bitmap on a flat extent — `position`, `width`,
+`height`, `opacity`, all animatable like any other shape. The bitmap itself
+is a **typed resource**, declared and provided exactly like a
+[font](/docs/guides/custom-fonts):
+
+```ts
+import * as Image from "effect-motion/Image";
+
+const Rocket = Image.Image("rocket");
+```
+
+Yield the constant to get the handle (adding `ImageLoader<"rocket">` to the
+scene's requirements), then instantiate:
+
+```ts
+const rocketImage = yield* Rocket;
+const rocket = yield* Scene.instantiate("Image", {
+	image: rocketImage,
+	width: 260,
+	height: 260,
+});
+```
+
+Provide the bytes with a layer — `renderLayers` on the Player,
+`Effect.provide` in an export program:
+
+```ts
+export const renderLayers = Image.layer(
+	Rocket,
+	Resource.fetchBytes("https://…/rocket.png"),
+);
+```
+
+The bytes load once at mount and decode once per render session; every
+frame reuses the decoded picture. Since `width` and `height` are plain
+numeric fields, scaling an image is just a `tweenTo`.
+
+<Example name="images" />

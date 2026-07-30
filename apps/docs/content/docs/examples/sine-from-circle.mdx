@@ -1,0 +1,17 @@
+---
+title: Sine from a circle
+description: The sine wave is circular motion, unrolled through time
+---
+
+**The idea:** the sine wave *is* circular motion, unrolled — a point moving
+around a circle, with its height carried rightward through time, draws the
+wave. One parameter `t` drives all four entities (the orbiting dot, the
+height line, the tracer, and the growing wave) through `Motion.drive`, and
+the frame barrier keeps them in exact lockstep.
+
+<Example name="sine-from-circle" />
+
+Worth noticing: the wave is a `Path` whose command list is *rebuilt from
+`t` every frame* — growing a sampled curve is the whole "draw-on" trick,
+and it's the same one the [function plot](/docs/examples/function-plot)
+uses.

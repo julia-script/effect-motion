@@ -1,0 +1,70 @@
+---
+title: Scenes
+description: A scene is an Effect that produces frames — Scene.make, Settings, and the frame model
+---
+
+A **scene is an Effect**: a program that, when run, produces an exact sequence
+of frames. You author it with `Scene.make`, giving it a name, a generator
+body, and its settings:
+
+```ts
+export const scene = Scene.make(
+	"hello scene",
+	function* () {
+		// instantiate entities, animate them — each yield* is one step
+	},
+	{ width: 1920, height: 1080, backgroundColor: Color.rgba(22, 22, 29) },
+);
+```
+
+The generator syntax is how Effect programs compose: every `yield*` runs
+another Effect inside the scene. Crucially, **yielding is not what makes
+time pass** — instantiating an entity, reading data, or drawing a random
+number all happen *within* the current frame. Time advances only when
+something closes frames: an animator, a hold, or the frame barrier itself.
+
+## Settings
+
+The settings object fixes everything a run depends on:
+
+- `width` / `height` — the frame size in scene units. Coordinates are
+  **center-origin, y-up**: `{ x: 0, y: 0 }` is the middle, `y: 540` the top
+  edge of a 1080-tall scene.
+- `frameRate` — frames per second (default 60).
+- `backgroundColor` — the frame clear color.
+- `seed` — the string every random value derives from (default
+  `"effect-motion"`). See [Randomness](/docs/learn/randomness).
+- `maxFrames` — a runaway guard (default 36 000 frames). Set `Infinity` to
+  declare an intentionally infinite scene.
+
+## Frames, exactly
+
+A scene doesn't play in wall-clock time — it *produces frames*, one tick at a
+time. `"1 second"` at 60 fps is exactly 60 frames, the last of which lands
+exactly on the animation's target. Concurrent animations advance through a
+shared frame barrier, so no interleaving ever changes the output. This is
+what makes scenes deterministic: same settings, same seed, same frames —
+every run, every machine.
+
+Two ways to consume a scene directly (the [Player](/docs/guides/react-player)
+and [export](/docs/guides/export-video) do this for you):
+
+- `Scene.run(scene)` — collect the full frame list.
+- `Scene.stream(scene)` — pull frames lazily as they're produced.
+
+## Making time pass
+
+Three ways frames get produced, from highest level to lowest:
+
+- **Animators** — `Motion.moveTo(dot, ..., "1 second")` closes exactly one
+  second of frames while it interpolates.
+- **Holds** — `Scene.sleep("600 millis")` closes that many frames with
+  nothing moving (`Motion.wait` is the same hold, shaped for use inside an
+  animator chain).
+- **`Scene.tick`** — close exactly one frame, manually. The primitive the
+  other two are built on; reach for it when you're driving per-frame logic
+  yourself.
+
+<Example name="hello-scene" />
+
+Next: [Entities](/docs/learn/entities) — what those instantiated things are.

@@ -1,0 +1,57 @@
+---
+title: Use the React player
+description: Play a scene in the browser with the Player component from @effect-motion/react
+---
+
+The `<Player>` component plays a scene live in the browser with transport
+controls. Every live example in these docs is one.
+
+```bash
+pnpm add @effect-motion/react
+```
+
+```tsx
+import { Player } from "@effect-motion/react";
+import { scene } from "./my-scene";
+
+export function Demo() {
+	return <Player scene={scene} autoPlay />;
+}
+```
+
+The canvas sizes itself from the scene's own resolution. `Player` and
+`PlayerProps` are the package's whole public surface.
+
+## Props
+
+- `scene` — the scene to play. If it declares typed resources (fonts,
+  images), the `renderLayers` prop becomes *required* — the component won't
+  compile without loaders covering every resource. That's the same
+  guarantee the export path gives you, enforced in JSX.
+- `autoPlay` — start as soon as the first frame is buffered.
+- `fps` — playback frame rate (default 60); `settings.frameRate` wins when
+  both are given.
+- `settings` — scene settings overrides for this player (frame rate, max
+  frames).
+- `prebufferedFrames` — how many frames to pull ahead before playing. The
+  default buffers the whole scene, which makes total duration and a full
+  progress bar available immediately; lower it to start sooner on long
+  scenes.
+- `isInfinite` — declare a never-ending scene: the progress bar is hidden
+  and the frame buffer is windowed so memory stays bounded.
+- `loop` — initial repeat mode; the viewer can toggle it in the transport.
+
+## How it buffers
+
+The player pulls frames ahead of the playhead and renders each to the
+canvas through the retained GPU renderer — it buffers lightweight frame
+*data*, not pixels. Playback runs on a wall-clock accumulator: when a
+render is briefly slow it drops intermediate frames rather than falling
+behind, so a scene keeps real-time pace. A finite scene keeps the frames it
+has pulled, so seeking backwards is free.
+
+## Live vs file
+
+The player is the live path; [export](/docs/guides/export-video) is the
+file path. Both fold the same frame stream through the same renderer, so
+what you preview is what you ship.

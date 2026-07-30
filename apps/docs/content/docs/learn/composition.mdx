@@ -1,0 +1,58 @@
+---
+title: Composition
+description: chain, all, stagger, fork, background, repeat — arranging many motions in time
+---
+
+Animators move single values; **composition combinators** arrange many of
+them in time. They all share the frame barrier, so however you combine
+motions, the frames stay exact.
+
+## Sequential vs parallel
+
+- `Scene.chain(effects, schedule?)` — one at a time, in order; items never
+  overlap. The optional schedule paces the gap after each item *ends*.
+- `Scene.all(effects)` — all at once, in lockstep; resolves when the last
+  finishes.
+
+## Staggered overlap
+
+`Scene.stagger(effects, schedule)` spaces the *starts* by the schedule and
+lets the released motions run concurrently. Where `chain` never overlaps,
+`stagger` always does — the classic cascade.
+
+```ts
+yield* Scene.stagger(
+	bars.map((bar) => Motion.moveTo(bar, { y: -60 }, "700 millis")),
+	Schedule.spaced("150 millis"),
+);
+```
+
+## Fork and background
+
+Both run work concurrently with the rest of the scene body; they differ in
+what the scene's *end* does with them:
+
+- `Scene.fork(effect)` — the scene **waits**: if the body returns while a
+  fork still animates, frames keep producing until it finishes.
+- `Scene.background(effect)` — the work is **interrupted** at scene end.
+  For indefinite loops (an ambient pulse) that should last exactly as long
+  as the scene does.
+
+## Repeat
+
+`Scene.repeat(effect, schedule)` re-runs a motion on a schedule in scene
+time — first run immediate, schedule pacing the gaps. `Schedule.forever`
+inside a `Scene.background` is the ambient-loop idiom.
+
+## Ending on your terms
+
+`Scene.finish` marks the scene as done *now*: anything still running
+becomes a tail that keeps playing but no longer holds the ending open. See
+it used for a crossfade in [Custom entities & nesting](/docs/guides/custom-entities).
+
+All four in one choreography — background pulse, staggered entrance,
+chained exit, forked epilogue:
+
+<Example name="composition" />
+
+Next: [Camera](/docs/learn/camera).

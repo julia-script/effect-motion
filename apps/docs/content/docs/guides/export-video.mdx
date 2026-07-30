@@ -1,0 +1,69 @@
+---
+title: Export a video
+description: Turn a scene into an MP4 with @effect-motion/export — bundled ffmpeg, no system install
+---
+
+A scene is a stream of frames; `@effect-motion/export` turns it into a file.
+The pipeline is `Scene.stream` → the GPU renderer (headless WebGPU in Node) →
+PNG frames → ffmpeg → H.264 MP4, with no intermediate files touching disk.
+
+## One call
+
+```ts title="render.ts"
+import { NodeServices } from "@effect/platform-node";
+import { Video } from "@effect-motion/export";
+import * as Effect from "effect/Effect";
+import { scene } from "./my-scene";
+
+Video.render(scene, "./output/my-scene.mp4").pipe(
+	Effect.provide(NodeServices.layer),
+	Effect.runPromise,
+);
+```
+
+`Video.render` reads the frame rate and dimensions from the scene's own
+frame metadata — you never repeat them. Output directories are created for
+you, and the result is broadly playable by default: H.264, `yuv420p`,
+faststart. What the [Player](/docs/guides/react-player) showed is what the
+file contains — both consume the same frames through the same renderer.
+
+## Options
+
+- **`settings`** — per-export scene settings: `frameRate`, and `maxFrames`
+  (set `Infinity` for an intentionally infinite scene).
+- **`frames`** — cap the number of frames encoded. An infinite scene *must*
+  set this; without it the encode runs forever.
+- **`dpr`** — supersampling: frames render at scene dimensions × dpr while
+  the scene keeps its authored coordinates. `dpr: 2` turns a 1920×1080 scene
+  into a 4K video.
+- **`binary`** — override the ffmpeg binary. Defaults to the bundled
+  `ffmpeg-static` build; pass `"ffmpeg"` (or a path) to use your own.
+- **`extraArgs`** — appended before the output path, e.g. `["-crf", "18"]`
+  for higher quality.
+
+## Even dimensions
+
+`yuv420p` requires even output dimensions (width × dpr, height × dpr).
+`Video.render` checks before spawning ffmpeg and fails with an `EncodeError`
+rather than silently resizing.
+
+## Fonts and images
+
+Typed resources work the same here as in the player: provide the loader
+layers with `Effect.provide`. In Node the load effects can read bytes from
+disk — no URLs needed. Forgetting a loader is a compile error in this file,
+not a runtime surprise. See [Custom fonts](/docs/guides/custom-fonts).
+
+## ffmpeg is bundled
+
+Installing `@effect-motion/export` downloads a full ffmpeg build (including
+libx264) for your platform — H.264 works out of the box. The bundled build
+is GPL-licensed: a standalone executable invoked over a process boundary,
+not linked into your code. Pass `binary` if you'd rather ship your own.
+
+## Lower-level pieces
+
+`Video.render` is the composed path; its pieces are exported for custom
+pipelines — `Ffmpeg.encode(pngStream, outPath, options)` encodes any
+`Stream` of PNG frames, and `@effect-motion/renderer/node` exposes the
+headless renderer that produces them.

@@ -1,0 +1,47 @@
+---
+title: Load custom fonts
+description: Fonts are typed scene dependencies — declare, load once, render everywhere
+---
+
+Text renders in a built-in sans-serif with zero setup. A custom face is a
+**typed resource**: the scene declares it, and every consumer (player,
+export) must provide a loader for it — checked at compile time.
+
+## Declare
+
+```ts
+import * as Font from "effect-motion/Font";
+
+const Pacifico = Font.Font("Pacifico");
+```
+
+`Font.Font(id)` creates a constant that is itself an Effect. Yielding it
+inside a scene returns the font handle for `fontFamily` — and adds
+`FontLoader<"Pacifico">` to the scene's *requirements*:
+
+```ts
+const pacifico = yield* Pacifico;
+yield* Scene.instantiate("Text", { text: "hello", fontFamily: pacifico });
+```
+
+## Provide
+
+A loader layer pairs the constant with an effect producing the font bytes:
+
+```ts
+export const renderLayers = Font.layer(
+	Pacifico,
+	Resource.fetchBytes("https://…/Pacifico_400Regular.ttf"),
+);
+```
+
+In the browser, pass it to the Player as `renderLayers` — the prop is
+*required* by the type system once the scene declares any resource. In
+Node (export), provide the same layer with `Effect.provide`; the load
+effect can read from disk there instead of fetching.
+
+The load runs once at mount, before anything renders — the first visible
+frame is already in the right face, no fallback flash. Multiple fonts merge
+with `Layer.mergeAll`.
+
+<Example name="custom-fonts" />

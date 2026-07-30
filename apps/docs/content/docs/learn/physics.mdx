@@ -1,0 +1,45 @@
+---
+title: Physics
+description: Springs have no duration — settling time emerges from the simulation
+---
+
+A **spring** animates a value with simulated physics instead of a clock.
+You give it a target, never a duration — how long it takes falls out of the
+simulation, and the value *snaps exactly* onto the target the frame the
+simulation settles.
+
+```ts
+yield* ball.pipe(Physics.springTo({ x: 620 }, "swing"));
+```
+
+The same base/To pair as every animator: `springTo` starts from the current
+value, `spring` takes an explicit origin. Springs drive `position` — for a
+springy look on other numeric fields, use a `tween` with an elastic or
+bounce *easing* instead (fixed duration, physics-flavored curve).
+
+## Presets and parameters
+
+The second argument is a named preset — `Physics.springs` ships tuned ones
+like `"swing"`, `"bounce"`, and `"jump"` — or explicit parameters:
+
+```ts
+Physics.springTo({ y: 0 }, { mass: 0.4, stiffness: 120, damping: 4 });
+```
+
+- **mass** — inertia: heavier means slower to start and stop.
+- **stiffness** — pull strength toward the target.
+- **damping** — how fast oscillation dies out; low values ring.
+
+Invalid parameters fail loudly with a defect naming the offender.
+
+## Why springs compose well
+
+Because a spring ends when it *settles*, chains of springs read as physical
+gestures — each leg hands its resting state to the next. And since settling
+is exact (the value lands precisely on target, not asymptotically close),
+determinism holds: the same spring always takes the same number of frames.
+
+<Example name="springs" />
+
+Next: [Composition](/docs/learn/composition) — arranging many motions in
+time.

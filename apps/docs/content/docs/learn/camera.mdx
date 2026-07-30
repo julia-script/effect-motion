@@ -1,0 +1,52 @@
+---
+title: Camera
+description: The 2.5D model — flat shapes in depth, driven by an AE-style camera
+---
+
+Every entity has a `position` with a **z**. Flat shapes placed at different
+depths are just layers — until the camera moves, and parallax, perspective
+scale, and focus turn them into a 2.5D set. This is the After Effects camera
+model, in code.
+
+## The default camera
+
+Every scene has one, at rest: positioned back along +z so that at `z: 0` one
+scene unit is one pixel, with a 50mm-equivalent focal length. You never have
+to touch it — every scene so far in this path used it unknowingly.
+
+Get a handle with `Scene.camera`, or instantiate your own and make it
+active:
+
+```ts
+const camera = yield* Scene.instantiate("Camera", {});
+yield* Scene.setCamera(camera);
+```
+
+## Moving it
+
+The camera is an entity — `Motion.moveTo` works on it directly. On top of
+that, `Camera` ships helpers for the moves that are *about the view*:
+
+- `Camera.lookAt(point, duration?)` — set (or ease into) a **point of
+  interest**. From then on the aim is pinned: however the camera's position
+  moves, the target stays framed. No orientation math in the scene.
+- `Camera.dolly`/`dollyTo(distance, duration, easing?)` — move along the
+  **view axis**, toward/away from the point of interest. Not a z-tween
+  (those only coincide while the camera is unrotated).
+- `Camera.orbit`/`orbitTo(angle, duration, easing?)` — swing around the
+  point of interest at constant distance; the turntable move.
+- `Camera.follow(instance, options?)` — track a moving instance.
+
+`lookAt` and `follow` name their target in the verb, so they have no
+base/To pair; `dolly` and `orbit` animate a value and keep the full pair,
+like any animator.
+
+## HUD: opting out of the camera
+
+A `Hud` entity's subtree is projected through the *identity* camera — it
+stays bolted to the glass while the world moves behind it. Titles,
+lower-thirds, and annotations go there.
+
+<Example name="camera-tour" />
+
+Next: [Randomness](/docs/learn/randomness).

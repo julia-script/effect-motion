@@ -1,0 +1,67 @@
+---
+title: Extend the vocabulary
+description: Userland builders, nested scenes, and custom render implementations
+---
+
+The entity union is deliberately **closed** — `Circle`, `Rect`, `Path`,
+`Text`, and friends are the complete set the engine steps and animators
+type-check against. Extending the vocabulary happens at three levels, none
+of which touch the engine.
+
+## Userland builders
+
+The engine renders, it does not parse: anything that *composes* existing
+entities belongs in a plain function. A "component" is a function that
+returns instances:
+
+```ts
+const labeledDot = (label: string, x: number, y: number, hex: string) =>
+	Scene.instantiate("Group", {
+		position: Entity.vec3({ x, y }),
+		children: [
+			Scene.instantiate("Circle", {
+				radius: 40,
+				fillColor: Color.hex(hex),
+			}),
+			Scene.instantiate("Text", {
+				position: Entity.vec3({ y: -80 }),
+				text: label,
+				fontSize: 36,
+				fillColor: Color.hex("#94a3b8"),
+				textAnchor: "middle",
+			}),
+		],
+	});
+
+const p0 = yield* labeledDot("P0", -600, 200, "#7f5af0");
+```
+
+Expensive preprocessing (parsing markdown into text runs, sampling data
+files) runs *before* `Scene.make`, memoized in userland — frames may be
+computed during playback, so the per-frame path should only render.
+
+## Nested scenes
+
+A scene is a plain value, and a movie is a scene that plays other scenes.
+`Scene.play(scene)` runs one as a branch — sharing the movie's runner,
+frame rate, and frame cap — and returns a handle whose `finished` you can
+await. Combined with `Scene.finish` (which lets a scene end while a tail
+keeps animating), transitions stay in the movie's hands:
+
+<Example name="crossfade" />
+
+## Custom render implementations
+
+Rendering is the renderer package's job, and its registry is open: each
+entity kind has a retained implementation with three moments —
+
+- `build` — create the three.js object when the instance first appears,
+- `update` — mutate it when data or world position changed (skipped
+  entirely on frames where nothing did),
+- `dispose` — release GPU resources when the instance leaves.
+
+Pass your own through the `renderers` option on `Renderer.make` (or the
+Node adapter's `make`); the map merges over the built-ins by entity tag, so
+the same mechanism overrides how an existing kind draws. The docs player
+wires only the built-ins, which is why this page shows no live example —
+wire yours in your own app's renderer.

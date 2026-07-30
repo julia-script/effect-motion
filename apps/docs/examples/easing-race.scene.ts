@@ -1,29 +1,47 @@
-import { Color, Motion, Entity as S, Scene } from "effect-motion";
+import * as Color from "effect-motion/Color";
+import * as Entity from "effect-motion/Entity";
+import * as Motion from "effect-motion/Motion";
+import * as Scene from "effect-motion/Scene";
 
-// same distance, same duration — only the pacing differs
+// Same distance, same duration — only the pacing differs. Every easing is a
+// pure curve over the same frame count, so all four land on the same frame.
+const RACERS: ReadonlyArray<{
+	label: string;
+	easing?: "easeInOutCubic" | "easeOutExpo" | "easeOutBounce";
+	color: string;
+}> = [
+	{ label: "linear", color: "#7f5af0" },
+	{ label: "easeInOutCubic", easing: "easeInOutCubic", color: "#2cb67d" },
+	{ label: "easeOutExpo", easing: "easeOutExpo", color: "#ff8906" },
+	{ label: "easeOutBounce", easing: "easeOutBounce", color: "#e53170" },
+];
+
 export const scene = Scene.make(
+	"easing race",
 	function* () {
-		const linear = yield* Scene.instantiate("Circle", {
-			position: S.vec3({ x: -210, y: 80 }),
-			radius: 14,
-			fillColor: Color.hex("#7f5af0"),
-		});
-		const cubic = yield* Scene.instantiate("Circle", {
-			position: S.vec3({ x: -210, y: 0 }),
-			radius: 14,
-			fillColor: Color.hex("#2cb67d"),
-		});
-		const expo = yield* Scene.instantiate("Circle", {
-			position: S.vec3({ x: -210, y: -80 }),
-			radius: 14,
-			fillColor: Color.hex("tomato"),
-		});
+		const motions = [];
+		for (const [i, racer] of RACERS.entries()) {
+			const y = 270 - i * 180;
+			yield* Scene.instantiate("Text", {
+				position: Entity.vec3({ x: -780, y: y + 80 }),
+				text: racer.label,
+				fontSize: 36,
+				fillColor: Color.hex("#94a3b8"),
+			});
+			const dot = yield* Scene.instantiate("Circle", {
+				position: Entity.vec3({ x: -780, y }),
+				radius: 44,
+				fillColor: Color.hex(racer.color),
+			});
+			motions.push(
+				racer.easing
+					? Motion.moveTo(dot, { x: 780 }, "2 seconds", racer.easing)
+					: Motion.moveTo(dot, { x: 780 }, "2 seconds"),
+			);
+		}
 
-		yield* Scene.all([
-			Motion.moveTo(linear, { x: 210 }, "2 seconds"),
-			Motion.moveTo(cubic, { x: 210 }, "2 seconds", "easeInOutCubic"),
-			Motion.moveTo(expo, { x: 210 }, "2 seconds", "easeOutExpo"),
-		]);
+		yield* Scene.all(motions);
+		yield* Motion.wait("600 millis");
 	},
-	{ width: 500, height: 300, backgroundColor: Color.rgba(22, 22, 29) },
+	{ width: 1920, height: 1080, backgroundColor: Color.rgba(22, 22, 29) },
 );

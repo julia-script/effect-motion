@@ -1,7 +1,18 @@
 ---
 title: Getting started
-description: Install effect-motion and play your first scene in React
+description: Install effect-motion, write a first scene, play it, and export a frame
 ---
+
+The fastest path is the project scaffolder — it sets up TypeScript, the studio
+previewer, and a render entrypoint in one step:
+
+```bash
+pnpm create effect-motion
+```
+
+Then `motion studio` previews your scenes with hot reload, and
+`motion render` writes MP4s. The rest of this page does the same thing by
+hand, so you can see every part.
 
 ## Install
 
@@ -9,32 +20,48 @@ description: Install effect-motion and play your first scene in React
 pnpm add effect-motion @effect-motion/react effect
 ```
 
+`effect` is pinned exactly by the scaffolder on purpose: the seed-derived
+random sequences are a determinism invariant, so `effect-motion` and `effect`
+upgrade together, deliberately.
+
 ## Write a scene
 
-A scene is a generator program: instantiate shapes, then move them.
-Every `yield*` composes another effect into the scene.
+A scene is a program: instantiate entities, then animate them. Coordinates are
+**center-origin and y-up** — `{ x: 0, y: 0 }` is the middle of the frame, and
+positive `y` is toward the top.
 
 ```ts title="my-scene.ts"
-import { Color, Motion, Scene, Shapes } from "effect-motion";
+import * as Color from "effect-motion/Color";
+import * as Entity from "effect-motion/Entity";
+import * as Motion from "effect-motion/Motion";
+import * as Scene from "effect-motion/Scene";
 
-export const scene = Scene.make(function* () {
-	const circle = yield* Scene.instantiate(Shapes.Circle, {
-		x: 60,
-		y: 150,
-		radius: 16,
-		fill: Color.hex("#7f5af0"),
-	});
+export const scene = Scene.make(
+	"my first scene",
+	function* () {
+		const circle = yield* Scene.instantiate("Circle", {
+			position: Entity.vec3({ x: -600 }),
+			radius: 60,
+			fillColor: Color.hex("#7f5af0"),
+		});
 
-	yield* circle.pipe(
-		Motion.tweenTo({ x: 440 }, "1 second", "easeInOutCubic"),
-	);
-});
+		yield* circle.pipe(
+			Motion.moveTo({ x: 600 }, "1 second", "easeInOutCubic"),
+		);
+	},
+	{ width: 1920, height: 1080, backgroundColor: Color.rgba(22, 22, 29) },
+);
 ```
+
+`Scene.instantiate` creates a live instance within the current frame — no
+time passes — and `Motion.moveTo` animates its position over exactly one
+second of frames. Time advances only when an animator (or an explicit hold)
+closes frames.
 
 ## Play it
 
-The `<Player>` component runs the scene and gives you transport controls —
-play/pause and a scrubbable progress bar:
+The `<Player>` component from `@effect-motion/react` runs the scene in the
+browser with transport controls — play/pause and a scrubbable progress bar:
 
 ```tsx title="app.tsx"
 import { Player } from "@effect-motion/react";
@@ -45,7 +72,30 @@ export function App() {
 }
 ```
 
-The Player sizes itself from the scene's own resolution, so there's nothing
-else to configure. Frames stream in as the scene runs, so playback starts before
-the whole scene is computed; a finite scene keeps the frames it has pulled, so
-seeking backwards is free.
+The Player sizes itself from the scene's own resolution; frames stream in as
+the scene runs, so playback starts before the whole scene is computed.
+
+## Export it
+
+`@effect-motion/export` turns the same frames into an MP4 — the bundled ffmpeg
+means no system install:
+
+```ts title="render.ts"
+import { NodeServices } from "@effect/platform-node";
+import { Video } from "@effect-motion/export";
+import * as Effect from "effect/Effect";
+import { scene } from "./my-scene";
+
+Video.render(scene, "./out.mp4").pipe(
+	Effect.provide(NodeServices.layer),
+	Effect.runPromise,
+);
+```
+
+Run it with `tsx render.ts`. What the Player showed is what the file contains —
+both consume the same frame stream through the same renderer.
+
+## Next
+
+Work through [Learn](/docs/learn/scenes) in order — each page covers one
+primitive and ends with a complete scene using it.

@@ -1,11 +1,3 @@
 {
-	"pages": [
-		"index",
-		"getting-started",
-		"cli",
-		"concepts",
-		"going-further",
-		"examples",
-		"api"
-	]
+	"pages": ["index", "getting-started", "learn", "guides", "examples", "api"]
 }

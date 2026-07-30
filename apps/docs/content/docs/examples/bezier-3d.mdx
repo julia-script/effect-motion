@@ -1,17 +1,16 @@
 ---
-title: 3D Bézier curve
-description: A cubic Bézier flattened into a depth-aware Path
+title: Bézier in 3D
+description: A cubic Bézier constructed in space — control points, control polygon, and a turntable camera
 ---
 
-`Path` speaks straight `M`/`L`/`Z` commands today — curve commands are a
-planned follow-up, and their chosen implementation is flattening: sampling
-the curve into line spans. This example does that flattening in scene code,
-sampling a cubic Bézier whose control points live at different depths. Every
-sample carries its own `z`, so the projected curve foreshortens point by
-point; the straight control polygon `P0→P1→P2→P3` is drawn beside it, inside
-a wireframe axes box built from 12 depth-aware `Line` edges. The camera aims
-at the box center with `Camera.lookAt` (a point of interest — the camera
-auto-orients toward it) and turntables around it with `Camera.orbitTo`, so
-the scene contains no orientation math at all.
+**The idea:** a cubic Bézier curve is a weighted blend of four control
+points — and in 3D you can *see* the blend, because every sampled point
+carries its own depth. The control polygon shows the scaffolding, labels
+name the points, a wireframe box frames the volume, and the camera
+turntables around it with `Camera.orbitTo` while `Camera.lookAt` pins the
+aim — no orientation math anywhere in the scene.
 
 <Example name="bezier-3d" />
+
+The curve itself is the sampling trick again: 48 straight spans, each
+endpoint at its own z, projected point by point.

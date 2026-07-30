@@ -1,0 +1,14 @@
+---
+title: Streamlines
+description: A vector field made visible — ninety advected lines, deterministic by construction
+---
+
+**The idea:** you can't draw a vector field, but you can release tracers
+into it — ninety short `Line`s, each stepped along the field every frame by
+a pure integrator in `Motion.drive`, tails trailing their local velocity.
+The seed positions come from the scene's seeded `Random`, so this
+"turbulent" flow replays *identically* on every run and every machine.
+For a motion library, that's the punchline: determinism isn't the obstacle
+to organic motion, it's what makes it shippable.
+
+<Example name="streamlines" />

@@ -1,0 +1,15 @@
+---
+title: Function plot
+description: Sampling turns any function into a Path — drawing it on is one driven parameter
+---
+
+**The idea:** plotting is sampling. A function becomes a `Path` by
+evaluating it at N points; "drawing it on" grows that command list as one
+parameter sweeps 0→1. Axes are two `Line`s, ticks and labels are entities
+like everything else, and `Scene.stagger` lets the cosine start drawing
+while the sine is still going.
+
+<Example name="function-plot" />
+
+The same recipe plots *any* `(u: number) => number` — swap `fSin` for your
+function and the draw-on, ticks, and labels come along unchanged.

@@ -1,0 +1,11 @@
+{
+	"title": "Guides",
+	"pages": [
+		"export-video",
+		"react-player",
+		"custom-fonts",
+		"images",
+		"custom-entities",
+		"cli"
+	]
+}

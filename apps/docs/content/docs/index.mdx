@@ -1,20 +1,42 @@
 ---
 title: Introduction
-description: Declarative animations built on Effect
+description: Motion graphics in code — deterministic, frame-exact scenes composed with Effect
 ---
 
-**effect-motion** is an animation library where scenes are written as
-[Effect](https://effect.website) generator programs: instantiate entities,
-tween or spring their properties, and compose motions sequentially or in
-parallel. Scenes are **frame-exact** — animation lands on whole frames at the
-scene's frame rate, never on a wall clock — and **finite**, which is what lets
-the player below pause, scrub, and replay them like a video.
+**effect-motion** is a library for making motion graphics in code. You write a
+scene as a program — instantiate shapes, text, and paths, then compose motions
+over them — and the library produces an exact sequence of frames you can play
+in the browser or export to video.
 
-<Example name="easing-race" />
+Three properties define it:
 
-## Where next
+- **Deterministic.** A scene is a pure function of its settings and seed. The
+  same scene produces the same frames, every run, on every machine — including
+  its randomness, which comes from a seeded `Random` service instead of
+  `Math.random()`.
+- **Frame-exact.** Animations don't drift: a duration-based motion lands its
+  final frame exactly on target, and concurrent animations advance through a
+  shared frame barrier, so composition never changes the math.
+- **Composed with [Effect](https://effect.website).** Scenes, animators, and
+  combinators are Effects. Everything you know about composing Effects —
+  piping, forking, scheduling — is how you compose motion.
 
-<Cards>
-  <Card title="Getting started" href="/docs/getting-started" description="Install the packages and play your first scene." />
-  <Card title="Examples" href="/docs/examples/springs" description="Springs, groups, seeded randomness — all live." />
-</Cards>
+It renders in 2.5D: flat shapes positioned in 3D space, projected through an
+After Effects–style camera. It is deliberately **not** a GUI editor, and not
+a runtime UI-animation library — it's for producing *videos* (explainers,
+math visualizations, dev content) from code you can review, diff, and
+generate.
+
+Every shape below is flat; the depth is one field and a camera move:
+
+<Example name="depth-orbit" />
+
+## Where to go
+
+- [Getting started](/docs/getting-started) — install, write your first scene,
+  play it, export it.
+- [Learn](/docs/learn/scenes) — the core model, one primitive per page, in
+  reading order.
+- [Guides](/docs/guides/export-video) — task-focused how-tos.
+- [Examples](/docs/examples/sine-from-circle) — small visual explainers, each
+  built around one idea.
