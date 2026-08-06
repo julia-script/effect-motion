@@ -1,0 +1,121 @@
+---
+title: Editor Support
+description: Curve previews, colour swatches, snippets, and a syntax grammar for scenes — with @effect-motion/ide
+---
+
+Scenes are ordinary TypeScript, so your editor already types them: `Scene.instantiate`
+autocompletes entity tags, `Motion.moveTo` autocompletes easing names, and a typo is a
+compile error. What the language service can't do is *show* you anything — the curve
+behind `"easeOutBack"`, the colour in `Color.hex("#7f5af0")`, or how many frames
+`"400 millis"` actually is.
+
+`@effect-motion/ide` fills that gap. It ships as a VS Code extension, and as a plain
+library any other editor's integration can build on.
+
+```bash
+code --install-extension julia-script.effect-motion-ide
+```
+
+## Curve previews
+
+Hover an easing name and the curve appears, plotted from the real `Timing` function the
+renderer runs — not an approximation — together with the one thing you actually need to
+know about it:
+
+- non-overshooting curves note that the tween **lands exactly on target**;
+- `Back` and `Elastic` note that they **leave [0, 1] on purpose**, and the preview's
+  viewbox is fitted so the overshoot is visible rather than clipped;
+- `sin` and `cos` note that they are **periodic** — they return to where they started.
+
+Spring presets get the same treatment, but a spring has no duration, so the hover
+answers the question a duration would have: it runs the engine's own integrator and
+reports how many frames the preset occupies.
+
+```ts
+yield* ball.pipe(
+	Physics.springTo({ x: 180 }, "swing"),  // hover: 79 frames (1.32s at 60 fps)
+	Physics.springTo({ x: -180 }, "bounce"), // hover: 738 frames — budget for it
+);
+```
+
+Spring length scales with the distance travelled, because settling is measured in the
+animated field's own units — so the hover states the distance it assumed.
+
+## Frame counts on durations
+
+Frames are the unit the engine counts in, so that is what a duration string is reported
+in. Hover `"400 millis"` and you get **24 frames at 60 fps** — and a note when the
+duration doesn't land on a whole frame.
+
+The rate comes from the `effectMotion.frameRate` setting (default 60), not from your
+scene: colouring a hover is not worth evaluating scene code for. Set it to match your
+project's `frameRate`.
+
+## Colour swatches
+
+Every colour constructor gets an inline swatch and a picker:
+
+```ts
+fillColor: Color.hex("#7f5af0"),
+fillColor: Color.rgba(22, 22, 29),
+fillColor: Color.oklch(0.7, 0.15, 300),
+fillColor: Color.tw("violet", "500"),
+```
+
+The picker writes back through the constructor you chose, so nudging an `oklch` call one
+step darker leaves an `oklch` call. `tw` is the exception — its palette is a closed set
+of names, so an arbitrary colour falls back to `hex`, visibly, in the diff.
+
+A call whose arguments aren't literals (`Color.hex(brand)`) gets no swatch. A wrong
+swatch is worse than none.
+
+## The gallery
+
+Choosing a curve is a comparison problem: `easeOutQuart` versus `easeOutQuint` is not a
+question a name answers. **effect-motion: Easing Gallery** puts every easing and every
+spring side by side; click one to insert its name at the cursor.
+
+**effect-motion: Insert Easing…** is the same catalog as a quick pick, for when the
+keyboard is faster.
+
+## Syntax and snippets
+
+A TextMate injection grammar scopes the strings a scene is written with — easing names,
+spring presets, entity tags, and the value and unit of a duration — so they stop reading
+as prose. `Scene.instantiate`, `Motion.moveTo`, and `Physics.springTo` read as the
+library calls they are.
+
+Snippets cover the shapes you write most: `emscene` for a whole scene, `emcircle` /
+`emtext` / `emgroup` for entities, `emtween` / `emspring` / `emstagger` / `emfork` for
+animation, and `emstudio` / `emrender` for the two entrypoints.
+
+## Code lenses
+
+`▶ Studio` sits above each scene and above a `studioConfig` entrypoint; `⤓ Render` sits
+above a `Video.render` call. Both run the CLI through your workspace's own package
+manager, so you get the project's `motion`, not whatever is on `PATH`.
+
+## For other editors
+
+The grammar and snippets are plain data files, and every catalog is exported as a
+library with no editor API in it:
+
+```ts
+import * as Assets from "@effect-motion/ide/Assets";
+import * as Easings from "@effect-motion/ide/Easings";
+
+Assets.grammarPath();   // register in Zed, Sublime Text, Shiki…
+Assets.snippetsPath();
+Assets.catalog();       // every easing, spring, and entity, as JSON
+
+Easings.curveSvg("easeOutBack"); // standalone SVG, themeable
+```
+
+## Keeping it honest
+
+The integration doesn't re-derive the library's behaviour without checking it. Curves
+are sampled from `effect-motion/Timing` itself. The spring integrator is a mirror, and
+the test suite runs a real scene through `Physics.springTo` and asserts the frame counts
+agree. The preset table, entity catalog, grammar name lists, and Tailwind palette are
+all asserted equal to the engine's own. A change to the engine breaks a test rather than
+shipping a wrong curve.

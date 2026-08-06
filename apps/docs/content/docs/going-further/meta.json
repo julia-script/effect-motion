@@ -6,6 +6,7 @@
 		"react-player",
 		"export",
 		"fonts",
-		"images"
+		"images",
+		"editor-support"
 	]
 }

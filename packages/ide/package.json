@@ -1,0 +1,178 @@
+{
+	"name": "@effect-motion/ide",
+	"version": "0.5.0",
+	"displayName": "effect-motion",
+	"description": "Editor support for effect-motion: a TextMate injection grammar, snippets, easing/spring curve previews, colour swatches, and scene code lenses — shipped as a VS Code extension and as an editor-agnostic asset/catalog library",
+	"type": "module",
+	"license": "MIT",
+	"publisher": "julia-script",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/julia-script/effect-motion.git",
+		"directory": "packages/ide"
+	},
+	"homepage": "https://github.com/julia-script/effect-motion#readme",
+	"bugs": "https://github.com/julia-script/effect-motion/issues",
+	"keywords": [
+		"effect",
+		"motion",
+		"vscode",
+		"grammar",
+		"textmate",
+		"snippets",
+		"easing",
+		"motion-graphics"
+	],
+	"categories": [
+		"Programming Languages",
+		"Snippets",
+		"Visualization"
+	],
+	"icon": "icon.png",
+	"engines": {
+		"vscode": "^1.90.0"
+	},
+	"main": "./dist/extension.cjs",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		},
+		"./assets/*": "./assets/*",
+		"./*": {
+			"types": "./dist/*.d.ts",
+			"default": "./dist/*.js"
+		}
+	},
+	"files": [
+		"dist",
+		"assets"
+	],
+	"activationEvents": [
+		"onLanguage:typescript",
+		"onLanguage:typescriptreact",
+		"onLanguage:javascript",
+		"onLanguage:javascriptreact"
+	],
+	"contributes": {
+		"grammars": [
+			{
+				"path": "./assets/syntaxes/effect-motion.injection.json",
+				"scopeName": "effect-motion.injection",
+				"injectTo": [
+					"source.ts",
+					"source.tsx",
+					"source.js",
+					"source.js.jsx"
+				]
+			}
+		],
+		"snippets": [
+			{
+				"language": "typescript",
+				"path": "./assets/snippets/effect-motion.code-snippets"
+			},
+			{
+				"language": "typescriptreact",
+				"path": "./assets/snippets/effect-motion.code-snippets"
+			},
+			{
+				"language": "javascript",
+				"path": "./assets/snippets/effect-motion.code-snippets"
+			},
+			{
+				"language": "javascriptreact",
+				"path": "./assets/snippets/effect-motion.code-snippets"
+			}
+		],
+		"commands": [
+			{
+				"command": "effect-motion.openStudio",
+				"title": "Open Studio",
+				"category": "effect-motion"
+			},
+			{
+				"command": "effect-motion.render",
+				"title": "Render",
+				"category": "effect-motion"
+			},
+			{
+				"command": "effect-motion.easingGallery",
+				"title": "Easing Gallery",
+				"category": "effect-motion"
+			},
+			{
+				"command": "effect-motion.insertEasing",
+				"title": "Insert Easing…",
+				"category": "effect-motion"
+			}
+		],
+		"configuration": {
+			"title": "effect-motion",
+			"properties": {
+				"effectMotion.frameRate": {
+					"type": "number",
+					"default": 60,
+					"minimum": 1,
+					"description": "Frame rate used to report durations and spring settle times in hovers. Match it to your scene settings."
+				},
+				"effectMotion.colorDecorators": {
+					"type": "boolean",
+					"default": true,
+					"description": "Show colour swatches next to Color.hex / rgba / hsl / lab / oklch / tw calls."
+				},
+				"effectMotion.hovers": {
+					"type": "boolean",
+					"default": true,
+					"description": "Show curve previews and reference notes when hovering easing names, spring presets, durations, and entity tags."
+				},
+				"effectMotion.completions": {
+					"type": "boolean",
+					"default": true,
+					"description": "Offer easing names, spring presets, and entity tags with curve previews inside effect-motion string arguments."
+				},
+				"effectMotion.codeLens": {
+					"type": "boolean",
+					"default": true,
+					"description": "Show studio/render code lenses above scenes and entrypoints."
+				},
+				"effectMotion.packageManager": {
+					"type": "string",
+					"default": "auto",
+					"enum": [
+						"auto",
+						"pnpm",
+						"npm",
+						"yarn",
+						"bun"
+					],
+					"description": "Package manager used to run the motion CLI. 'auto' detects it from the workspace lockfile."
+				}
+			}
+		}
+	},
+	"scripts": {
+		"build": "tsc -p tsconfig.build.json && node scripts/bundle-extension.mjs",
+		"dev": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
+		"test": "vitest run",
+		"check": "tsc --noEmit",
+		"sync:palette": "node scripts/sync-tw-palette.mjs",
+		"vsix": "npx --yes @vscode/vsce@^3 package --no-dependencies --out effect-motion-ide.vsix"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"dependencies": {
+		"chroma-js": "^3.2.0",
+		"effect-motion": "workspace:^"
+	},
+	"devDependencies": {
+		"@types/chroma-js": "^3.1.0",
+		"@types/node": "^26.1.1",
+		"@types/vscode": "^1.90.0",
+		"effect": "4.0.0-beta.98",
+		"esbuild": "^0.25.0",
+		"typescript": "^7.0.2",
+		"vitest": "^4.1.10"
+	}
+}

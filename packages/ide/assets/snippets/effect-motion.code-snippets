@@ -1,0 +1,210 @@
+{
+	"effect-motion scene": {
+		"prefix": "emscene",
+		"description": "A complete scene: imports, generator body, settings.",
+		"body": [
+			"import { Color, Motion, Entity as S, Scene } from \"effect-motion\";",
+			"",
+			"export const scene = Scene.make(",
+			"\tfunction* () {",
+			"\t\tconst ${1:dot} = yield* Scene.instantiate(\"${2|Circle,Rect,Ellipse,Text,Line,Path,Image,Group,Hud|}\", {",
+			"\t\t\tposition: S.vec3({ x: ${3:0}, y: ${4:0} }),",
+			"\t\t\tfillColor: Color.hex(\"${5:#7f5af0}\"),",
+			"\t\t});",
+			"",
+			"\t\tyield* ${1:dot}.pipe(",
+			"\t\t\tMotion.moveTo({ x: ${6:200} }, \"${7:1 second}\", \"${8:easeInOutCubic}\"),",
+			"\t\t);$0",
+			"\t},",
+			"\t{ width: ${9:500}, height: ${10:300}, backgroundColor: Color.rgba(22, 22, 29) },",
+			");"
+		]
+	},
+	"effect-motion named scene": {
+		"prefix": "emscenenamed",
+		"description": "A scene with a display name — the label the studio picker shows.",
+		"body": [
+			"export const ${1:scene} = Scene.make(\"${2:Display Name}\", function* () {",
+			"\t$0",
+			"});"
+		]
+	},
+	"effect-motion instantiate": {
+		"prefix": "eminstantiate",
+		"description": "Instantiate an entity under the ambient parent.",
+		"body": [
+			"const ${1:shape} = yield* Scene.instantiate(\"${2|Circle,Rect,Ellipse,Text,Line,Path,Image,Group,Hud,Camera|}\", {",
+			"\tposition: S.vec3({ x: ${3:0}, y: ${4:0} }),$0",
+			"});"
+		]
+	},
+	"effect-motion circle": {
+		"prefix": "emcircle",
+		"description": "A filled circle.",
+		"body": [
+			"const ${1:circle} = yield* Scene.instantiate(\"Circle\", {",
+			"\tposition: S.vec3({ x: ${2:0}, y: ${3:0} }),",
+			"\tradius: ${4:24},",
+			"\tfillColor: Color.hex(\"${5:#7f5af0}\"),$0",
+			"});"
+		]
+	},
+	"effect-motion rect": {
+		"prefix": "emrect",
+		"description": "A rectangle — a camera-facing billboard at zero rotation.",
+		"body": [
+			"const ${1:rect} = yield* Scene.instantiate(\"Rect\", {",
+			"\tposition: S.vec3({ x: ${2:0}, y: ${3:0} }),",
+			"\twidth: ${4:200},",
+			"\theight: ${5:120},",
+			"\tfillColor: Color.hex(\"${6:#7f5af0}\"),$0",
+			"});"
+		]
+	},
+	"effect-motion text": {
+		"prefix": "emtext",
+		"description": "A plain-string text leaf.",
+		"body": [
+			"const ${1:label} = yield* Scene.instantiate(\"Text\", {",
+			"\tposition: S.vec3({ x: ${2:0}, y: ${3:0} }),",
+			"\ttext: \"${4:Hello}\",",
+			"\tfontSize: ${5:42},",
+			"\ttextAnchor: \"${6|middle,start,end|}\",",
+			"\tbaseline: \"${7|middle,auto,hanging|}\",",
+			"\tfillColor: Color.hex(\"${8:#7f5af0}\"),$0",
+			"});"
+		]
+	},
+	"effect-motion group": {
+		"prefix": "emgroup",
+		"description": "A group whose transform composes down its subtree.",
+		"body": [
+			"const ${1:group} = yield* Scene.instantiate(\"Group\", {",
+			"\tposition: S.vec3({ x: ${2:0}, y: ${3:0} }),",
+			"\tchildren: [$0],",
+			"});"
+		]
+	},
+	"effect-motion tweenTo": {
+		"prefix": "emtween",
+		"description": "Tween numeric fields to a target over a duration.",
+		"body": [
+			"yield* Motion.tweenTo(${1:shape}, { ${2:radius}: ${3:48} }, \"${4:700 millis}\", \"${5:easeOutCubic}\");$0"
+		]
+	},
+	"effect-motion moveTo": {
+		"prefix": "emmove",
+		"description": "Move to a position over a duration.",
+		"body": [
+			"yield* Motion.moveTo(${1:shape}, { x: ${2:200}, y: ${3:0} }, \"${4:1 second}\", \"${5:easeInOutCubic}\");$0"
+		]
+	},
+	"effect-motion fadeTo": {
+		"prefix": "emfade",
+		"description": "Fade opacity to a target over a duration.",
+		"body": ["yield* Motion.fadeTo(${1:shape}, ${2:0}, \"${3:400 millis}\");$0"]
+	},
+	"effect-motion wait": {
+		"prefix": "emwait",
+		"description": "Hold for a duration.",
+		"body": ["yield* Motion.wait(\"${1:400 millis}\");$0"]
+	},
+	"effect-motion springTo": {
+		"prefix": "emspring",
+		"description": "Spring to a position — no duration; length emerges from the physics.",
+		"body": [
+			"yield* Physics.springTo(${1:shape}, { x: ${2:180} }, \"${3|smooth,plop,swing,jump,strike,beat,bounce|}\");$0"
+		]
+	},
+	"effect-motion pipe chain": {
+		"prefix": "empipe",
+		"description": "Sequential animations on one instance, as a pipe chain.",
+		"body": [
+			"yield* ${1:shape}.pipe(",
+			"\tMotion.moveTo({ x: ${2:200} }, \"${3:1 second}\", \"${4:easeInOutCubic}\"),",
+			"\tMotion.fadeTo(${5:0}, \"${6:400 millis}\"),$0",
+			");"
+		]
+	},
+	"effect-motion all": {
+		"prefix": "emall",
+		"description": "Run animations concurrently; completes when the last one does.",
+		"body": [
+			"yield* Scene.all([",
+			"\t${1:first}.pipe(Motion.fadeTo(1, \"${2:400 millis}\")),",
+			"\t${3:second}.pipe(Motion.fadeTo(1, \"${4:400 millis}\")),$0",
+			"]);"
+		]
+	},
+	"effect-motion chain": {
+		"prefix": "emchain",
+		"description": "Run animations one after another.",
+		"body": ["yield* Scene.chain([", "\t$0", "]);"]
+	},
+	"effect-motion stagger": {
+		"prefix": "emstagger",
+		"description": "Release animations on a schedule; released ones run concurrently.",
+		"body": [
+			"yield* Scene.stagger(",
+			"\t${1:items}.map((${2:item}) =>",
+			"\t\tMotion.moveTo(${2:item}, { x: ${3:190} }, \"${4:1 second}\", \"${5:easeInOutCubic}\"),",
+			"\t),",
+			"\tSchedule.spaced(\"${6:250 millis}\"),",
+			");$0"
+		]
+	},
+	"effect-motion fork": {
+		"prefix": "emfork",
+		"description": "Branch an animation and keep a handle on it.",
+		"body": [
+			"const ${1:branch} = yield* Scene.fork(",
+			"\t${2:shape}.pipe(Motion.moveTo({ y: ${3:120} }, \"${4:1 second}\")),",
+			");$0"
+		]
+	},
+	"effect-motion background": {
+		"prefix": "embackground",
+		"description": "Run an animation for as long as the scene lasts.",
+		"body": [
+			"yield* Scene.background(",
+			"\tScene.repeat(${1:shape}.pipe(Motion.moveTo({ y: ${2:20} }, \"${3:1 second}\"))),",
+			");$0"
+		]
+	},
+	"effect-motion camera": {
+		"prefix": "emcamera",
+		"description": "Aim the camera at a point of interest.",
+		"body": [
+			"yield* Camera.lookAt({ x: ${1:0}, y: ${2:0}, z: ${3:0} }, \"${4:1 second}\", \"${5:easeInOutCubic}\");$0"
+		]
+	},
+	"effect-motion studio entrypoint": {
+		"prefix": "emstudio",
+		"description": "A studio.ts entrypoint — the record `motion studio` serves.",
+		"body": [
+			"import { studioConfig } from \"@effect-motion/cli\";",
+			"import { scene as ${1:main} } from \"./src/${2:main}\";",
+			"",
+			"export default studioConfig({",
+			"\tscenes: {",
+			"\t\t${1:main},$0",
+			"\t},",
+			"});"
+		]
+	},
+	"effect-motion render entrypoint": {
+		"prefix": "emrender",
+		"description": "A render.ts entrypoint — the program `motion render` executes.",
+		"body": [
+			"import { Video } from \"@effect-motion/export\";",
+			"import * as Effect from \"effect/Effect\";",
+			"import { scene as ${1:main} } from \"./src/${2:main}\";",
+			"",
+			"export default Effect.gen(function* () {",
+			"\tyield* Video.render(${1:main}, \"./output/${1:main}.mp4\", {",
+			"\t\tsettings: { frameRate: ${3:60} },",
+			"\t});$0",
+			"});"
+		]
+	}
+}

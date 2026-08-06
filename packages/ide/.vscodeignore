@@ -1,0 +1,15 @@
+# The vsix ships the bundled extension and the data files it contributes —
+# nothing else. dist/*.js is the npm library half; the extension host only
+# ever loads dist/extension.cjs.
+src/**
+test/**
+scripts/**
+node_modules/**
+dist/**/*.d.ts
+dist/**/*.js
+dist/**/*.js.map
+!dist/extension.cjs
+!dist/extension.cjs.map
+tsconfig*.json
+vitest.config.ts
+.vscodeignore

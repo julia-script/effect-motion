@@ -1,0 +1,65 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "effect-motion",
+	"scopeName": "effect-motion.injection",
+	"injectionSelector": "L:source.ts -comment -string, L:source.tsx -comment -string, L:source.js -comment -string, L:source.js.jsx -comment -string",
+	"patterns": [
+		{ "include": "#animators" },
+		{ "include": "#entity-tags" },
+		{ "include": "#easing-names" },
+		{ "include": "#spring-names" },
+		{ "include": "#durations" }
+	],
+	"repository": {
+		"animators": {
+			"comment": "Namespace-qualified authoring calls. Requiring both the namespace and an exact member name keeps this from touching unrelated TypeScript.",
+			"match": "\\b(Scene|Motion|Physics|Camera)(\\.)(instantiate|make|tweenTo|tween|moveTo|move|fadeTo|fade|springTo|spring|stagger|chain|all|fork|background|repeat|finish|sleep|wait|update|data|appendChild|removeChild|setCamera|lookAt|follow|orbitTo|orbit|dollyTo|dolly|play|run|stream|step)\\b(?=\\s*\\()",
+			"captures": {
+				"1": { "name": "support.class.namespace.effect-motion" },
+				"2": { "name": "punctuation.accessor.ts" },
+				"3": { "name": "support.function.animator.effect-motion" }
+			}
+		},
+		"entity-tags": {
+			"comment": "The closed entity world, as the tag string Scene.instantiate takes.",
+			"match": "(\")(Circle|Ellipse|Rect|Line|Path|Text|Image|Group|Hud|Camera)(\")(?=\\s*[,)\\]}])",
+			"captures": {
+				"0": { "name": "string.quoted.double.ts" },
+				"1": { "name": "punctuation.definition.string.begin.ts" },
+				"2": { "name": "support.class.entity.effect-motion" },
+				"3": { "name": "punctuation.definition.string.end.ts" }
+			}
+		},
+		"easing-names": {
+			"comment": "Built-in easings, in argument-terminal position. The name set is exhaustive and checked against Timing.timingFunctions by test/grammar.test.ts.",
+			"match": "(\")(easeInOutSine|easeInSine|easeOutSine|easeInOutQuad|easeInQuad|easeOutQuad|easeInOutCubic|easeInCubic|easeOutCubic|easeInOutQuart|easeInQuart|easeOutQuart|easeInOutQuint|easeInQuint|easeOutQuint|easeInOutExpo|easeInExpo|easeOutExpo|easeInOutCirc|easeInCirc|easeOutCirc|easeInOutBack|easeInBack|easeOutBack|easeInOutElastic|easeInElastic|easeOutElastic|easeInOutBounce|easeInBounce|easeOutBounce|linear|sin|cos)(\")(?=\\s*[,)\\]}])",
+			"captures": {
+				"0": { "name": "string.quoted.double.ts" },
+				"1": { "name": "punctuation.definition.string.begin.ts" },
+				"2": { "name": "constant.language.easing.effect-motion" },
+				"3": { "name": "punctuation.definition.string.end.ts" }
+			}
+		},
+		"spring-names": {
+			"comment": "Physics presets, in argument-terminal position.",
+			"match": "(\")(beat|plop|bounce|swing|jump|strike|smooth)(\")(?=\\s*[,)\\]}])",
+			"captures": {
+				"0": { "name": "string.quoted.double.ts" },
+				"1": { "name": "punctuation.definition.string.begin.ts" },
+				"2": { "name": "constant.language.spring.effect-motion" },
+				"3": { "name": "punctuation.definition.string.end.ts" }
+			}
+		},
+		"durations": {
+			"comment": "Effect duration strings — the value and its unit read as a quantity rather than as prose.",
+			"match": "(\")(-?\\d+(?:\\.\\d+)?)(\\s+)(nanos?|micros?|millis?|seconds?|minutes?|hours?|days?|weeks?)(\")",
+			"captures": {
+				"0": { "name": "string.quoted.double.ts" },
+				"1": { "name": "punctuation.definition.string.begin.ts" },
+				"2": { "name": "constant.numeric.duration.effect-motion" },
+				"4": { "name": "keyword.other.unit.duration.effect-motion" },
+				"5": { "name": "punctuation.definition.string.end.ts" }
+			}
+		}
+	}
+}
