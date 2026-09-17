@@ -1,6 +1,7 @@
 {
 	"title": "Examples",
 	"pages": [
+		"border-quality",
 		"sine-from-circle",
 		"function-plot",
 		"riemann-rects",

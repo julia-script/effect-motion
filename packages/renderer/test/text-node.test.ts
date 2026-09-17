@@ -19,6 +19,7 @@ const framesOf = (
 	Effect.runPromise(
 		Scene.stream(
 			Scene.make(make as never, {
+				compositing: "depth",
 				width: 256,
 				height: 96,
 				backgroundColor: Color.rgba(10, 10, 20),

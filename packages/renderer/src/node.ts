@@ -16,6 +16,7 @@ import { builtinRegistry } from "./Builtins.js";
 import type { EntityRenderer } from "./EntityRenderer.js";
 import type { RenderException } from "./RenderException.js";
 import { renderCompTargets } from "./Renderer.js";
+import * as Sampling from "./Sampling.js";
 import * as Sync from "./Sync.js";
 
 /**
@@ -317,6 +318,7 @@ export const make = Effect.fn("NodeRenderer.make")(function* (
 		canvas: canvas as unknown as HTMLCanvasElement,
 		context: context as never,
 		antialias: true,
+		samples: Sampling.samples,
 		device,
 		width: options.width,
 		height: options.height,

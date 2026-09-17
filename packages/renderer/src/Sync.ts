@@ -22,6 +22,7 @@ import type {
 	World,
 } from "./EntityRenderer.js";
 import * as Images from "./Images.js";
+import * as Paint from "./Paint.js";
 import { RenderException } from "./RenderException.js";
 import * as Text from "./Text.js";
 
@@ -94,7 +95,7 @@ interface RetainedEntry {
 	readonly renderer: AnyEntityRenderer;
 	readonly retained: Retained;
 	/** which tier owns the object: world scene or the screen-space HUD */
-	readonly hud: boolean;
+	hud: boolean;
 	lastData: unknown;
 	lastWorld: World;
 }
@@ -142,6 +143,9 @@ export interface DofState {
  * design if a scene ever wants it.
  */
 export interface CompState {
+	readonly id: string;
+	automaticBounds: boolean;
+	billboard: boolean;
 	readonly sync: Sync;
 	/** billboarded holder at the group's world anchor (in a scene tier) */
 	readonly holder: THREE.Group;
@@ -169,6 +173,9 @@ export interface CompState {
  * identity camera, above everything, so it stays fixed to the glass.
  */
 export interface Sync {
+	compositing: Runner.Compositing;
+	readonly ownsResources: boolean;
+	readonly paintOrder: Array<{ id: string; hud: boolean }>;
 	/** the world scene, branded — the render paths take the wrapper */
 	readonly scene: ThreeScene.Scene;
 	readonly camera: THREE.PerspectiveCamera;
@@ -207,10 +214,16 @@ export interface Sync {
 	readonly pending: Array<Effect.Effect<unknown, EffectMotionError>>;
 }
 
-export const make = (registry: Record<string, AnyEntityRenderer>): Sync => {
+export const make = (
+	registry: Record<string, AnyEntityRenderer>,
+	resources?: Pick<Sync, "text" | "images">,
+): Sync => {
 	const camera = new THREE.PerspectiveCamera(50, 1, NEAR, FAR);
 	camera.rotation.order = "ZYX";
 	const base = {
+		compositing: Runner.defaultComp.compositing,
+		ownsResources: resources === undefined,
+		paintOrder: [] as Array<{ id: string; hud: boolean }>,
 		// makeUnsafe: this Sync owns the scenes' lifetime through its own
 		// dispose, so they are not separately scope-registered
 		scene: ThreeScene.makeUnsafe(new THREE.Scene()),
@@ -219,8 +232,8 @@ export const make = (registry: Record<string, AnyEntityRenderer>): Sync => {
 		hudCamera: new THREE.PerspectiveCamera(50, 1, NEAR, FAR),
 		stats: { objects: 0, lastSyncMs: 0 },
 		dof: { on: false, focusDistance: 0, strengthUv: 0 },
-		text: Text.make(),
-		images: Images.make(),
+		text: resources?.text ?? Text.make(),
+		images: resources?.images ?? Images.make(),
 		comps: new Map<string, CompState>(),
 		registry,
 		retained: new Map<string, RetainedEntry>(),
@@ -258,17 +271,57 @@ export const make = (registry: Record<string, AnyEntityRenderer>): Sync => {
  * or decode surfaces as a typed error naming the resource, rather than
  * silently rendering nothing.
  */
-export const whenReady = (sync: Sync): Effect.Effect<void, EffectMotionError> =>
-	Effect.suspend(() => {
-		const pending = sync.pending.splice(0, sync.pending.length);
-		const nested = [...sync.comps.values()].map((comp) => whenReady(comp.sync));
-		return pending.length === 0 && nested.length === 0
-			? Effect.void
-			: Effect.all([...pending, ...nested], {
-					concurrency: "unbounded",
-					discard: true,
-				});
-	});
+export const whenReady = Effect.fnUntraced(function* (
+	sync: Sync,
+): Effect.fn.Return<void, EffectMotionError> {
+	const pending = sync.pending.splice(0);
+	yield* Effect.all(pending, { concurrency: "unbounded", discard: true });
+	for (const comp of sync.comps.values()) {
+		yield* whenReady(comp.sync);
+		refreshCompBounds(comp);
+	}
+	applyOrder(sync);
+});
+
+const applyOrder = (sync: Sync): void => {
+	let rank = 0;
+	for (const { id, hud } of sync.paintOrder) {
+		const object =
+			sync.retained.get(id)?.retained.object ?? sync.comps.get(id)?.holder;
+		if (object !== undefined)
+			rank = Paint.order(object, hud ? "depth" : sync.compositing, id, rank);
+	}
+};
+
+const refreshCompBounds = (comp: CompState): void => {
+	if (!comp.automaticBounds) return;
+	const inner = comp.sync;
+	inner.camera.clearViewOffset();
+	const bounds = Paint.bounds(
+		ThreeScene.children(inner.scene),
+		inner.camera,
+		inner.width,
+		inner.height,
+	);
+	comp.holder.visible = bounds !== undefined && comp.material.opacity > 0;
+	if (bounds === undefined) return;
+	comp.width = bounds.width;
+	comp.height = bounds.height;
+	comp.plane.scale.set(bounds.width, bounds.height, 1);
+	comp.plane.position.set(
+		bounds.x + bounds.width / 2,
+		bounds.y + bounds.height / 2,
+		0,
+	);
+	inner.camera.setViewOffset(
+		inner.width,
+		inner.height,
+		inner.width / 2 + bounds.x,
+		inner.height / 2 - bounds.y - bounds.height,
+		bounds.width,
+		bounds.height,
+	);
+};
 
 /**
  * Phase 1 — cameras, background, and the DoF request.
@@ -325,14 +378,15 @@ interface WalkResult {
 /**
  * Phase 2 — walk the instance tree, collecting leaves and syncing comps.
  *
- * Containers contribute translation and recurse; sized groups become
- * comps; everything else is a leaf. HUD subtrees route to the screen-space
+ * Inherited containers contribute translation and recurse. Explicit paint
+ * groups and scene mounts form compositions; everything else is a leaf. HUD subtrees route to the screen-space
  * tier. THROWS on scene-graph violations — see the module doc.
  */
 const walkTree = (sync: Sync, frame: AnyFrame): WalkResult => {
 	const leaves: Array<{ leaf: Leaf; hud: boolean }> = [];
 	const visited = new Set<string>();
 	const seenComps = new Set<string>();
+	sync.paintOrder.length = 0;
 
 	const walk = (
 		id: string,
@@ -382,8 +436,12 @@ const walkTree = (sync: Sync, frame: AnyFrame): WalkResult => {
 			// a comp is DECLARED by Scene.play, not inferred from a group
 			// carrying a size (design D13)
 			const size = frame.comps[id] ?? null;
-			if (size !== null) {
+			if (
+				size !== null ||
+				(entry.data._tag === "Group" && entry.data.compositing === "paint")
+			) {
 				syncComp(sync, id, entry.data, size, world, subtreeHud, frame);
+				sync.paintOrder.push({ id, hud: subtreeHud });
 				seenComps.add(id);
 				return;
 			}
@@ -396,6 +454,7 @@ const walkTree = (sync: Sync, frame: AnyFrame): WalkResult => {
 			}
 			return;
 		}
+		sync.paintOrder.push({ id, hud: subtreeHud });
 		leaves.push({
 			leaf: { id, data: entry.data, world },
 			hud: subtreeHud,
@@ -441,6 +500,12 @@ const diffRetained = (sync: Sync, walked: WalkResult): void => {
 			ThreeScene.add(hud ? sync.hudScene : sync.scene, [retained.object]);
 			continue;
 		}
+		if (existing.hud !== hud) {
+			ThreeScene.add(hud ? sync.hudScene : sync.scene, [
+				existing.retained.object,
+			]);
+			existing.hud = hud;
+		}
 		const sameData = existing.lastData === leaf.data;
 		const sameWorld =
 			existing.lastWorld.x === leaf.world.x &&
@@ -464,7 +529,7 @@ const diffRetained = (sync: Sync, walked: WalkResult): void => {
 	for (const [id, comp] of sync.comps) {
 		if (!walked.seenComps.has(id)) {
 			ThreeScene.remove(comp.hud ? sync.hudScene : sync.scene, [comp.holder]);
-			disposeComp(comp);
+			sync.pending.push(disposeComp(comp));
 			sync.comps.delete(id);
 		}
 	}
@@ -474,10 +539,8 @@ const diffRetained = (sync: Sync, walked: WalkResult): void => {
  * Phase 4 — billboards face their tier's view plane: copy the camera
  * quaternion so a circle stays circular under any camera orbit.
  *
- * ponytail: transparent depth ties break by three's stable sort over
- * deterministic creation order (identical across runs and platforms given
- * the deterministic frame stream); switch to a custom transparent sort
- * keyed by instance id if cross-version stability ever matters.
+ * The GPU wrapper breaks transparent depth ties by the instance name
+ * assigned during context ordering, independently of object allocation.
  */
 const syncBillboards = (sync: Sync): void => {
 	for (const entry of sync.retained.values()) {
@@ -488,6 +551,7 @@ const syncBillboards = (sync: Sync): void => {
 		}
 	}
 	for (const comp of sync.comps.values()) {
+		if (!comp.billboard) continue;
 		comp.holder.quaternion.copy(
 			comp.hud ? sync.hudCamera.quaternion : sync.camera.quaternion,
 		);
@@ -501,11 +565,14 @@ const syncBillboards = (sync: Sync): void => {
  */
 const syncFrameUnsafe = (sync: Sync, frame: AnyFrame): void => {
 	const t0 = performance.now();
+	sync.compositing = frame.compositing ?? "paint";
 	sync.width = frame.width;
 	sync.height = frame.height;
 	syncCameras(sync, frame);
 	diffRetained(sync, walkTree(sync, frame));
 	syncBillboards(sync);
+	for (const comp of sync.comps.values()) refreshCompBounds(comp);
+	applyOrder(sync);
 	sync.stats.objects = sync.retained.size;
 	sync.stats.lastSyncMs = performance.now() - t0;
 };
@@ -528,13 +595,37 @@ export const syncFrame = (
 	frame: AnyFrame,
 ): Effect.Effect<void, RenderException> =>
 	Effect.try({
-		try: () => syncFrameUnsafe(sync, frame),
+		try: () => {
+			validateTree(frame);
+			syncFrameUnsafe(sync, frame);
+		},
 		catch: (cause) =>
 			RenderException.of(
 				cause instanceof Error ? cause.message : "frame sync failed",
 				cause,
 			),
 	});
+
+/** Validate across isolation boundaries too; a cycle must name its instance. */
+const validateTree = (frame: AnyFrame): void => {
+	const visited = new Set<string>();
+	const walk = (id: string, inWorld: boolean): void => {
+		if (visited.has(id))
+			throw new Error(
+				`Renderer: instance "${id}" is referenced more than once (duplicate parent or cycle)`,
+			);
+		visited.add(id);
+		const data = frame.instances[id]?.data;
+		if (data === undefined)
+			throw new Error(`Renderer: unknown instance id "${id}"`);
+		if ("visible" in data && !data.visible) return;
+		if (data._tag === "Hud" && inWorld)
+			throw new Error(`Renderer: Hud "${id}" is nested inside world content`);
+		for (const child of childIdsOf(data))
+			walk(child, inWorld || (id !== frame.root && data._tag !== "Hud"));
+	};
+	walk(frame.root, false);
+};
 
 /** child ids, or none — containers are the only entities with children */
 const childIdsOf = (data: Entity.Entity): ReadonlyArray<string> =>
@@ -544,27 +635,33 @@ const syncComp = (
 	sync: Sync,
 	id: string,
 	groupData: Entity.Entity,
-	compConfig: {
-		readonly width: number;
-		readonly height: number;
-		readonly backgroundColor: Color.Color;
-	},
+	declaredConfig: Runner.CompConfig | null,
 	world: World,
 	hud: boolean,
 	frame: AnyFrame,
 ): void => {
+	const compConfig = declaredConfig ?? {
+		width: frame.width,
+		height: frame.height,
+		backgroundColor: Color.transparent,
+		compositing: "paint",
+	};
 	let comp = sync.comps.get(id);
 	if (comp === undefined) {
 		const material = new THREE.MeshBasicNodeMaterial();
 		material.transparent = true;
 		material.side = THREE.DoubleSide;
+		material.alphaTest = 0.00001;
 		const plane = new THREE.Mesh(unitPlaneShared, material);
 		const transformHolder = new THREE.Group();
 		transformHolder.add(plane);
 		const holder = new THREE.Group();
 		holder.add(transformHolder);
 		comp = {
-			sync: make(sync.registry),
+			id,
+			automaticBounds: declaredConfig === null,
+			billboard: true,
+			sync: make(sync.registry, sync),
 			holder,
 			transformHolder,
 			plane,
@@ -577,6 +674,11 @@ const syncComp = (
 		sync.comps.set(id, comp);
 		ThreeScene.add(hud ? sync.hudScene : sync.scene, [holder]);
 	}
+	comp.automaticBounds = declaredConfig === null;
+	if (comp.hud !== hud) {
+		ThreeScene.add(hud ? sync.hudScene : sync.scene, [comp.holder]);
+		comp.hud = hud;
+	}
 	comp.width = compConfig.width;
 	comp.height = compConfig.height;
 	// inner sync: the comp's subtree in comp-local space under the
@@ -587,6 +689,7 @@ const syncComp = (
 	syncFrameUnsafe(comp.sync, {
 		...frame,
 		root: id,
+		compositing: compConfig.compositing,
 		width: compConfig.width,
 		height: compConfig.height,
 		backgroundColor: background ?? Color.transparent,
@@ -599,6 +702,7 @@ const syncComp = (
 	// its own size), group opacity on the composite
 	comp.holder.position.copy(sync.ctx.toThree(world.x, world.y, world.z));
 	comp.plane.scale.set(compConfig.width, compConfig.height, 1);
+	comp.plane.position.set(0, 0, 0);
 	comp.material.opacity = Math.max(
 		0,
 		Math.min(1, "opacity" in groupData ? groupData.opacity : 1),
@@ -608,11 +712,17 @@ const syncComp = (
 	// wired up). A comp's own transform composes like any entity's.
 	comp.transformHolder.matrixAutoUpdate = true;
 	comp.transformHolder.position.set(0, 0, 0);
-	comp.transformHolder.rotation.set(0, 0, 0);
-	comp.transformHolder.scale.set(1, 1, 1);
+	const rotation = groupData.rotation;
+	comp.billboard = rotation.x === 0 && rotation.y === 0 && rotation.z === 0;
+	comp.holder.quaternion.identity();
+	comp.transformHolder.rotation.set(rotation.x, rotation.y, rotation.z, "ZYX");
+	const scale = "scale" in groupData ? groupData.scale : { x: 1, y: 1, z: 1 };
+	comp.transformHolder.scale.set(scale.x, scale.y, scale.z);
 };
 
-const disposeComp = Effect.fnUntraced(function* (comp: CompState) {
+const disposeComp = Effect.fnUntraced(function* (
+	comp: CompState,
+): Effect.fn.Return<void> {
 	yield* dispose(comp.sync);
 	comp.material.dispose();
 	if (comp.rt !== null) {
@@ -628,7 +738,9 @@ const disposeComp = Effect.fnUntraced(function* (comp: CompState) {
  * directly. Effectful because decoded image textures live behind Deferreds
  * that may still be in flight.
  */
-export const dispose = Effect.fnUntraced(function* (sync: Sync) {
+export const dispose = Effect.fnUntraced(function* (
+	sync: Sync,
+): Effect.fn.Return<void> {
 	for (const entry of sync.retained.values()) {
 		ThreeScene.remove(entry.hud ? sync.hudScene : sync.scene, [
 			entry.retained.object,
@@ -638,11 +750,16 @@ export const dispose = Effect.fnUntraced(function* (sync: Sync) {
 	sync.retained.clear();
 	for (const comp of sync.comps.values()) {
 		ThreeScene.remove(comp.hud ? sync.hudScene : sync.scene, [comp.holder]);
-		disposeComp(comp);
+		yield* disposeComp(comp);
 	}
 	sync.comps.clear();
-	Text.dispose(sync.text);
-	yield* Images.dispose(sync.images);
+	yield* Effect.all(sync.pending.splice(0), { discard: true }).pipe(
+		Effect.ignore,
+	);
+	if (sync.ownsResources) {
+		Text.dispose(sync.text);
+		yield* Images.dispose(sync.images);
+	}
 });
 
 /**

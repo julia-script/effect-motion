@@ -223,6 +223,9 @@ export const Text = Schema.TaggedStruct("Text", {
  * boundary is `Scene.play`'s business, not a field on every group.
  */
 export const Group = Schema.TaggedStruct("Group", {
+	compositing: Schema.Literals(["inherit", "paint"]).pipe(
+		Schema.withConstructorDefault(Effect.succeed("inherit")),
+	),
 	...paintableMixin,
 	...childrenMixin,
 });

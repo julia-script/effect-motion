@@ -44,15 +44,14 @@ class PlayerError extends Data.TaggedError("PlayerError")<{
  * display's native ratio.
  *
  * @remarks
- * Rendering at full native ratio on a high-DPI display costs several times
- * the pixels for a difference nobody sees in motion. Softening it keeps text
- * and edges sharp at a fraction of the fill cost.
+ * Preserve native device coverage for fractional strokes. CSS may still scale
+ * the finished canvas to fit the player; that is a separate presentation step.
  *
  * Read on every render, so dragging a window between monitors picks up the
  * new ratio.
  */
 const calculateDpr = () =>
-	typeof window === "undefined" ? 1 : 1 + (window.devicePixelRatio - 1) * 0.75;
+	typeof window === "undefined" ? 1 : window.devicePixelRatio;
 
 const PlayerScene = Context.Service<{
 	render: (frameIndex: number) => Effect.Effect<void, PlayerError>;

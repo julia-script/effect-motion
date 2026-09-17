@@ -51,5 +51,10 @@ export const scene = Scene.make(
 		);
 		yield* Motion.wait("500 millis");
 	},
-	{ width: 1920, height: 1080, backgroundColor: Color.rgba(22, 22, 29) },
+	{
+		compositing: "depth",
+		width: 1920,
+		height: 1080,
+		backgroundColor: Color.rgba(22, 22, 29),
+	},
 );

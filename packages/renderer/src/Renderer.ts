@@ -1,7 +1,7 @@
-import type { ThreeException } from "@effect-motion/three";
 import {
 	Renderer as Gpu,
 	RenderTarget,
+	ThreeException,
 	Scene as ThreeScene,
 } from "@effect-motion/three";
 import { Effect, Scope } from "effect";
@@ -10,7 +10,10 @@ import type { EffectMotionError } from "effect-motion";
 import type { Frame } from "effect-motion/Scene";
 import { builtinRegistry } from "./Builtins.js";
 import type { EntityRenderer } from "./EntityRenderer.js";
+import * as Paint from "./Paint.js";
 import type { RenderException } from "./RenderException.js";
+import * as Sampling from "./Sampling.js";
+import * as Stroke from "./Stroke.js";
 import * as Sync from "./Sync.js";
 
 /**
@@ -54,10 +57,47 @@ export const renderCompTargets = Effect.fnUntraced(function* (
 	sync: Sync.Sync,
 	pixelRatio: number,
 ): Effect.fn.Return<void, ThreeException> {
+	yield* Stroke.renderObjects(
+		renderer,
+		ThreeScene.children(sync.scene),
+		sync.camera,
+		sync.width,
+		sync.height,
+		pixelRatio,
+	);
+	yield* Stroke.renderObjects(
+		renderer,
+		ThreeScene.children(sync.hudScene),
+		sync.hudCamera,
+		sync.width,
+		sync.height,
+		pixelRatio,
+	);
 	for (const comp of sync.comps.values()) {
-		yield* renderCompTargets(renderer, comp.sync, pixelRatio);
-		const pw = Math.max(1, Math.round(comp.width * pixelRatio));
-		const ph = Math.max(1, Math.round(comp.height * pixelRatio));
+		if (!comp.holder.visible) continue;
+		const density = Paint.density(
+			comp.transformHolder,
+			comp.hud ? sync.hudCamera : sync.camera,
+			sync.width,
+			sync.height,
+			pixelRatio,
+			comp.width,
+			comp.height,
+			comp.plane.position,
+		);
+		yield* renderCompTargets(renderer, comp.sync, density);
+		const pw = Sampling.extent(comp.width, density);
+		const ph = Sampling.extent(comp.height, density);
+		if (
+			!Number.isFinite(pw + ph) ||
+			Math.max(pw, ph) > Gpu.maxTextureSize(renderer)
+		) {
+			return yield* Effect.fail(
+				new ThreeException({
+					operation: `composition "${comp.id}": target ${pw}×${ph} exceeds device limit ${Gpu.maxTextureSize(renderer)}`,
+				}),
+			);
+		}
 		if (
 			comp.rt === null ||
 			RenderTarget.width(comp.rt) !== pw ||
@@ -68,8 +108,8 @@ export const renderCompTargets = Effect.fnUntraced(function* (
 			if (comp.rt !== null) {
 				RenderTarget.dispose(comp.rt);
 			}
-			comp.rt = RenderTarget.makeUnsafe(pw, ph);
-			comp.material.map = RenderTarget.texture(comp.rt);
+			comp.rt = RenderTarget.makeUnsafe(pw, ph, { samples: Sampling.samples });
+			RenderTarget.bindMaterial(comp.rt, comp.material);
 			comp.material.needsUpdate = true;
 		}
 		const previous = Gpu.getRenderTarget(renderer);
@@ -233,7 +273,7 @@ export const render = (
 			renderCompTargets(
 				renderer.gpu,
 				renderer.sync,
-				Gpu.getPixelRatio(renderer.gpu),
+				Gpu.getDrawingBufferSize(renderer.gpu).width / renderer.sync.width,
 			),
 		),
 		Effect.flatMap(() =>
@@ -315,6 +355,7 @@ export const make = Effect.fn("Renderer.make")(function* (
 	const gpu = yield* Gpu.make({
 		...(options.canvas !== undefined ? { canvas: options.canvas } : {}),
 		antialias: true,
+		samples: Sampling.samples,
 		width: options.width,
 		height: options.height,
 		...(options.pixelRatio !== undefined

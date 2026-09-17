@@ -94,6 +94,8 @@ export interface Scene<E = never, R = never> {
 	readonly width: number;
 	readonly height: number;
 	readonly backgroundColor: Color.Color;
+	/** Paint uses child order; depth uses physical occlusion. */
+	readonly compositing: Runner.Compositing;
 	/**
 	 * DISPLAY-ONLY name (a picker label, never an identifier) — set via the
 	 * optional leading argument of {@link make}. Names may collide; unique
@@ -145,8 +147,8 @@ type GeneratorR<Eff> = [Eff] extends [never]
  * only; it is never read during playback.
  *
  * @param f - The scene body.
- * @param meta - Composition config: `width`, `height`, `backgroundColor`.
- * @defaultValue `meta` — 1920×1080, transparent background
+ * @param meta - Composition config: `width`, `height`, `backgroundColor`, `compositing`.
+ * @defaultValue `meta` — 1920×1080, transparent background, paint compositing
  * @returns An inert {@link Scene}, ready to run, stream, or play.
  *
  * @example
@@ -202,6 +204,7 @@ const makeScene = <E = never, R = never>(
 	width: meta.width ?? Runner.defaultComp.width,
 	height: meta.height ?? Runner.defaultComp.height,
 	backgroundColor: meta.backgroundColor ?? Runner.defaultComp.backgroundColor,
+	compositing: meta.compositing ?? Runner.defaultComp.compositing,
 });
 
 /**
@@ -338,6 +341,7 @@ export interface Frame<out Resources = never> {
 	width: number;
 	height: number;
 	backgroundColor: Color.Color;
+	compositing: Runner.Compositing;
 	/** the active camera's view; the resting view when unused */
 	camera: Projection.CameraView & Projection.PointOfInterest;
 	/**
@@ -472,6 +476,7 @@ export const run = <E, R>(
 			width: scene.width,
 			height: scene.height,
 			backgroundColor: scene.backgroundColor,
+			compositing: scene.compositing,
 		});
 		let done = false;
 
@@ -1177,6 +1182,7 @@ export const play = <E, R>(
 			width: scene.width,
 			height: scene.height,
 			backgroundColor: scene.backgroundColor,
+			compositing: scene.compositing,
 		});
 		const body = scene.runner.pipe(
 			Effect.scoped,

@@ -164,5 +164,10 @@ export const scene = Scene.make(
 			Camera.orbitTo(-2, "5 seconds", "easeInOutCubic"),
 		);
 	},
-	{ width: 1920, height: 1080, backgroundColor: Color.tw("gray", "800") },
+	{
+		compositing: "depth",
+		width: 1920,
+		height: 1080,
+		backgroundColor: Color.tw("gray", "800"),
+	},
 );

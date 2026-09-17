@@ -86,7 +86,10 @@ export type Settings = {
  * self-describing. A nested scene keeps its own config as its bounds — that
  * is what a played scene clips and paints within.
  */
+export type Compositing = "paint" | "depth";
+
 export type CompConfig = {
+	compositing: Compositing;
 	width: number;
 	height: number;
 	/** carried on every frame so renderers can paint it; transparent = nothing painted */
@@ -94,6 +97,7 @@ export type CompConfig = {
 };
 
 export const defaultComp: CompConfig = {
+	compositing: "paint",
 	width: 1920,
 	height: 1080,
 	backgroundColor: Color.transparent,
@@ -405,6 +409,7 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 					width: comp.width,
 					height: comp.height,
 					backgroundColor: comp.backgroundColor,
+					compositing: comp.compositing,
 					camera: cameraState(),
 					// mounted scenes, by mount-group id: the renderer reads this
 					// to know a subtree is a render-to-texture boundary, instead

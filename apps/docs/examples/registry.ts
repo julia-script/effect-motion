@@ -2,6 +2,8 @@ import type { PlayerProps } from "@effect-motion/react";
 import type * as Layer from "effect/Layer";
 import { scene as animatorPairs } from "./animator-pairs.scene";
 import { scene as bezier3d } from "./bezier-3d.scene";
+import { scene as borderQuality } from "./border-quality.scene";
+import { scene as borderStress } from "./border-stress.scene";
 import { scene as cameraFollowGraph } from "./camera-follow-graph.scene";
 import { scene as cameraTour } from "./camera-tour.scene";
 import { scene as composition } from "./composition.scene";
@@ -18,11 +20,16 @@ import { scene as helloScene } from "./hello-scene.scene";
 import { scene as images, renderLayers as imagesLayers } from "./images.scene";
 import { scene as instanceTree } from "./instance-tree.scene";
 import { scene as minSeeker } from "./min-seeker.scene";
+import { scene as paintOrder } from "./paint-order.scene";
 import { scene as riemannRects } from "./riemann-rects.scene";
 import { scene as seededWalk } from "./seeded-walk.scene";
 import { scene as sineFromCircle } from "./sine-from-circle.scene";
 import { scene as springs } from "./springs.scene";
 import { scene as streamlines } from "./streamlines.scene";
+import { scene as strokeUnion } from "./stroke-union.scene";
+import { scene as subpixelDepth } from "./subpixel-depth.scene";
+import { scene as subpixelGrouped } from "./subpixel-grouped.scene";
+import { scene as subpixelStrokes } from "./subpixel-strokes.scene";
 import { scene as textWriteOn } from "./text-write-on.scene";
 
 /**
@@ -56,6 +63,13 @@ export const examples: Record<string, PlayerProps["scene"] | ExampleEntry> = {
 		renderLayers: imagesLayers as Layer.Layer<never, unknown, never>,
 	},
 	// examples gallery
+	"paint-order": paintOrder,
+	"stroke-union": strokeUnion,
+	"subpixel-strokes": subpixelStrokes,
+	"subpixel-grouped": subpixelGrouped,
+	"subpixel-depth": subpixelDepth,
+	"border-quality": borderQuality,
+	"border-stress": borderStress,
 	"sine-from-circle": sineFromCircle,
 	"function-plot": functionPlot,
 	"riemann-rects": riemannRects,

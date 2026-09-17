@@ -1,0 +1,814 @@
+{
+  "output": {
+    "width": 3840,
+    "height": 2160,
+    "pixelRatio": 2,
+    "samples": 4
+  },
+  "targets": [],
+  "masks": [
+    {
+      "bounds": {
+        "x": -26.125,
+        "y": -26.125,
+        "width": 52.25,
+        "height": 52.25
+      },
+      "width": 209,
+      "height": 209,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -24.125,
+        "y": -26.125,
+        "width": 48.25,
+        "height": 52.25
+      },
+      "width": 193,
+      "height": 209,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.125,
+        "y": -26.125,
+        "width": 52.25,
+        "height": 52.25
+      },
+      "width": 209,
+      "height": 209,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.125,
+        "y": -26.125,
+        "width": 52.25,
+        "height": 52.25
+      },
+      "width": 209,
+      "height": 209,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -24.125,
+        "y": -26.125,
+        "width": 48.25,
+        "height": 52.25
+      },
+      "width": 193,
+      "height": 209,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.125,
+        "y": -26.125,
+        "width": 52.25,
+        "height": 52.25
+      },
+      "width": 209,
+      "height": 209,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.125,
+        "y": -26.125,
+        "width": 52.25,
+        "height": 52.25
+      },
+      "width": 209,
+      "height": 209,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -24.125,
+        "y": -26.125,
+        "width": 48.25,
+        "height": 52.25
+      },
+      "width": 193,
+      "height": 209,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.125,
+        "y": -26.125,
+        "width": 52.25,
+        "height": 52.25
+      },
+      "width": 209,
+      "height": 209,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.125,
+        "y": -26.125,
+        "width": 52.25,
+        "height": 52.25
+      },
+      "width": 209,
+      "height": 209,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -24.125,
+        "y": -26.125,
+        "width": 48.25,
+        "height": 52.25
+      },
+      "width": 193,
+      "height": 209,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.125,
+        "y": -26.125,
+        "width": 52.25,
+        "height": 52.25
+      },
+      "width": 209,
+      "height": 209,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.25,
+        "y": -26.25,
+        "width": 52.5,
+        "height": 52.5
+      },
+      "width": 210,
+      "height": 210,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -24.25,
+        "y": -26.25,
+        "width": 48.5,
+        "height": 52.5
+      },
+      "width": 194,
+      "height": 210,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.25,
+        "y": -26.25,
+        "width": 52.5,
+        "height": 52.5
+      },
+      "width": 210,
+      "height": 210,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.25,
+        "y": -26.25,
+        "width": 52.5,
+        "height": 52.5
+      },
+      "width": 210,
+      "height": 210,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -24.25,
+        "y": -26.25,
+        "width": 48.5,
+        "height": 52.5
+      },
+      "width": 194,
+      "height": 210,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.25,
+        "y": -26.25,
+        "width": 52.5,
+        "height": 52.5
+      },
+      "width": 210,
+      "height": 210,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.25,
+        "y": -26.25,
+        "width": 52.5,
+        "height": 52.5
+      },
+      "width": 210,
+      "height": 210,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -24.25,
+        "y": -26.25,
+        "width": 48.5,
+        "height": 52.5
+      },
+      "width": 194,
+      "height": 210,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.25,
+        "y": -26.25,
+        "width": 52.5,
+        "height": 52.5
+      },
+      "width": 210,
+      "height": 210,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.25,
+        "y": -26.25,
+        "width": 52.5,
+        "height": 52.5
+      },
+      "width": 210,
+      "height": 210,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -24.25,
+        "y": -26.25,
+        "width": 48.5,
+        "height": 52.5
+      },
+      "width": 194,
+      "height": 210,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.25,
+        "y": -26.25,
+        "width": 52.5,
+        "height": 52.5
+      },
+      "width": 210,
+      "height": 210,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.375,
+        "y": -26.375,
+        "width": 52.75,
+        "height": 52.75
+      },
+      "width": 211,
+      "height": 211,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -24.375,
+        "y": -26.375,
+        "width": 48.75,
+        "height": 52.75
+      },
+      "width": 195,
+      "height": 211,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.375,
+        "y": -26.375,
+        "width": 52.75,
+        "height": 52.75
+      },
+      "width": 211,
+      "height": 211,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.375,
+        "y": -26.375,
+        "width": 52.75,
+        "height": 52.75
+      },
+      "width": 211,
+      "height": 211,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -24.375,
+        "y": -26.375,
+        "width": 48.75,
+        "height": 52.75
+      },
+      "width": 195,
+      "height": 211,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.375,
+        "y": -26.375,
+        "width": 52.75,
+        "height": 52.75
+      },
+      "width": 211,
+      "height": 211,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.375,
+        "y": -26.375,
+        "width": 52.75,
+        "height": 52.75
+      },
+      "width": 211,
+      "height": 211,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -24.375,
+        "y": -26.375,
+        "width": 48.75,
+        "height": 52.75
+      },
+      "width": 195,
+      "height": 211,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.375,
+        "y": -26.375,
+        "width": 52.75,
+        "height": 52.75
+      },
+      "width": 211,
+      "height": 211,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.375,
+        "y": -26.375,
+        "width": 52.75,
+        "height": 52.75
+      },
+      "width": 211,
+      "height": 211,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -24.375,
+        "y": -26.375,
+        "width": 48.75,
+        "height": 52.75
+      },
+      "width": 195,
+      "height": 211,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.375,
+        "y": -26.375,
+        "width": 52.75,
+        "height": 52.75
+      },
+      "width": 211,
+      "height": 211,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.5,
+        "y": -26.5,
+        "width": 53,
+        "height": 53
+      },
+      "width": 212,
+      "height": 212,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -24.5,
+        "y": -26.5,
+        "width": 49,
+        "height": 53
+      },
+      "width": 196,
+      "height": 212,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.5,
+        "y": -26.5,
+        "width": 53,
+        "height": 53
+      },
+      "width": 212,
+      "height": 212,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.5,
+        "y": -26.5,
+        "width": 53,
+        "height": 53
+      },
+      "width": 212,
+      "height": 212,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -24.5,
+        "y": -26.5,
+        "width": 49,
+        "height": 53
+      },
+      "width": 196,
+      "height": 212,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.5,
+        "y": -26.5,
+        "width": 53,
+        "height": 53
+      },
+      "width": 212,
+      "height": 212,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.5,
+        "y": -26.5,
+        "width": 53,
+        "height": 53
+      },
+      "width": 212,
+      "height": 212,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -24.5,
+        "y": -26.5,
+        "width": 49,
+        "height": 53
+      },
+      "width": 196,
+      "height": 212,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.5,
+        "y": -26.5,
+        "width": 53,
+        "height": 53
+      },
+      "width": 212,
+      "height": 212,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.5,
+        "y": -26.5,
+        "width": 53,
+        "height": 53
+      },
+      "width": 212,
+      "height": 212,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -24.5,
+        "y": -26.5,
+        "width": 49,
+        "height": 53
+      },
+      "width": 196,
+      "height": 212,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.5,
+        "y": -26.5,
+        "width": 53,
+        "height": 53
+      },
+      "width": 212,
+      "height": 212,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.75,
+        "y": -26.75,
+        "width": 53.5,
+        "height": 53.5
+      },
+      "width": 214,
+      "height": 214,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -24.75,
+        "y": -26.75,
+        "width": 49.5,
+        "height": 53.5
+      },
+      "width": 198,
+      "height": 214,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.75,
+        "y": -26.75,
+        "width": 53.5,
+        "height": 53.5
+      },
+      "width": 214,
+      "height": 214,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.75,
+        "y": -26.75,
+        "width": 53.5,
+        "height": 53.5
+      },
+      "width": 214,
+      "height": 214,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -24.75,
+        "y": -26.75,
+        "width": 49.5,
+        "height": 53.5
+      },
+      "width": 198,
+      "height": 214,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.75,
+        "y": -26.75,
+        "width": 53.5,
+        "height": 53.5
+      },
+      "width": 214,
+      "height": 214,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.75,
+        "y": -26.75,
+        "width": 53.5,
+        "height": 53.5
+      },
+      "width": 214,
+      "height": 214,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -24.75,
+        "y": -26.75,
+        "width": 49.5,
+        "height": 53.5
+      },
+      "width": 198,
+      "height": 214,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.75,
+        "y": -26.75,
+        "width": 53.5,
+        "height": 53.5
+      },
+      "width": 214,
+      "height": 214,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.75,
+        "y": -26.75,
+        "width": 53.5,
+        "height": 53.5
+      },
+      "width": 214,
+      "height": 214,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -24.75,
+        "y": -26.75,
+        "width": 49.5,
+        "height": 53.5
+      },
+      "width": 198,
+      "height": 214,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.75,
+        "y": -26.75,
+        "width": 53.5,
+        "height": 53.5
+      },
+      "width": 214,
+      "height": 214,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -27,
+        "y": -27,
+        "width": 54,
+        "height": 54
+      },
+      "width": 216,
+      "height": 216,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -25,
+        "y": -27,
+        "width": 50,
+        "height": 54
+      },
+      "width": 200,
+      "height": 216,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -27,
+        "y": -27,
+        "width": 54,
+        "height": 54
+      },
+      "width": 216,
+      "height": 216,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -27,
+        "y": -27,
+        "width": 54,
+        "height": 54
+      },
+      "width": 216,
+      "height": 216,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -25,
+        "y": -27,
+        "width": 50,
+        "height": 54
+      },
+      "width": 200,
+      "height": 216,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -27,
+        "y": -27,
+        "width": 54,
+        "height": 54
+      },
+      "width": 216,
+      "height": 216,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -27,
+        "y": -27,
+        "width": 54,
+        "height": 54
+      },
+      "width": 216,
+      "height": 216,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -25,
+        "y": -27,
+        "width": 50,
+        "height": 54
+      },
+      "width": 200,
+      "height": 216,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -27,
+        "y": -27,
+        "width": 54,
+        "height": 54
+      },
+      "width": 216,
+      "height": 216,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -27,
+        "y": -27,
+        "width": 54,
+        "height": 54
+      },
+      "width": 216,
+      "height": 216,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -25,
+        "y": -27,
+        "width": 50,
+        "height": 54
+      },
+      "width": 200,
+      "height": 216,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -27,
+        "y": -27,
+        "width": 54,
+        "height": 54
+      },
+      "width": 216,
+      "height": 216,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -82.125,
+        "y": -44.625,
+        "width": 164.25,
+        "height": 89.25
+      },
+      "width": 657,
+      "height": 357,
+      "samples": 4
+    }
+  ]
+}
