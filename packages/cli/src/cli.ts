@@ -17,7 +17,7 @@ const verboseFlag = GlobalFlag.Setting("verbose")({
 
 export const rootCommand = Command.make("motion").pipe(
 	Command.withDescription(
-		"effect-motion: preview scenes and render videos (scaffold new projects with `pnpm create effect-motion`)",
+		"effect-motion: preview scenes and render videos (scaffold new projects with `bun create effect-motion`)",
 	),
 	Command.withSubcommands([studioCommand, renderCommand]),
 	Command.withGlobalFlags([verboseFlag]),

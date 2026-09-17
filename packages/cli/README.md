@@ -3,7 +3,7 @@
 Command line for [effect-motion](https://github.com/julia-script/effect-motion): preview scenes in the browser and render videos — all driven by one `motion.config.ts`.
 
 ```sh
-pnpm create effect-motion      # scaffold a project (npm/yarn/bun create work too)
+bun create effect-motion      # scaffold a project (npm/pnpm/yarn create work too)
 motion studio                  # preview scenes with hot reload
 motion render                  # render every target to MP4
 ```

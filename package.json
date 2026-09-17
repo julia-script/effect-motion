@@ -2,7 +2,21 @@
 	"name": "effect-motion-monorepo",
 	"private": true,
 	"type": "module",
-	"packageManager": "pnpm@11.10.0",
+	"packageManager": "bun@1.4.2",
+	"workspaces": [
+		"packages/*",
+		"apps/*"
+	],
+	"overrides": {
+		"typedoc>typescript": "5.9.3"
+	},
+	"trustedDependencies": [
+		"esbuild",
+		"msgpackr-extract",
+		"sharp",
+		"ffmpeg-static",
+		"webgpu"
+	],
 	"scripts": {
 		"build": "turbo run build",
 		"dev": "turbo run dev --filter=docs...",
@@ -14,13 +28,13 @@
 		"changeset": "changeset",
 		"version-packages": "changeset version",
 		"release": "changeset publish",
-		"docs:api": "node scripts/generate-api-docs.mjs"
+		"docs:api": "bun scripts/generate-api-docs.mjs"
 	},
 	"license": "MIT",
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.3",
 		"@changesets/cli": "^2.31.0",
-		"turbo": "^2.5.0",
+		"turbo": "^2.10.13",
 		"typedoc": "^0.28.20",
 		"typedoc-plugin-markdown": "^4.12.0"
 	}

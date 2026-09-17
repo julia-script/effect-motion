@@ -3,8 +3,8 @@
 Scaffold a new [effect-motion](https://github.com/julia-script/effect-motion) project:
 
 ```sh
-pnpm create effect-motion
-# or: npm create effect-motion / yarn create effect-motion / bun create effect-motion
+bun create effect-motion
+# or: npm create effect-motion / pnpm create effect-motion / yarn create effect-motion
 ```
 
 The prompts ask for a target directory, a package manager, and whether to set up [Biome](https://biomejs.dev) for linting/formatting. The generated project:
@@ -25,8 +25,8 @@ my-motion-project/
 Answering `.` scaffolds into the current directory and names the project after it. A `git init` runs automatically unless the directory already sits inside a repository. Then:
 
 ```sh
-pnpm studio    # preview scenes with hot reload
-pnpm render    # render targets from motion.config.ts to MP4
+bun run studio    # preview scenes with hot reload
+bun run render    # render targets from motion.config.ts to MP4
 ```
 
 ## Flags
@@ -34,7 +34,7 @@ pnpm render    # render targets from motion.config.ts to MP4
 Every prompt has a flag twin, so the scaffolder runs non-interactively in scripts and CI:
 
 ```sh
-create-effect-motion my-app --pm pnpm --no-biome --no-install
+create-effect-motion my-app --pm bun --no-biome --no-install
 create-effect-motion --yes    # accept every default (-y)
 ```
 

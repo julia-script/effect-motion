@@ -8,7 +8,7 @@
 //   - escapes the `{`/`<` sequences MDX would try to evaluate as JSX
 //   - writes meta.json so the sidebar lists packages in a chosen order
 //
-// Regenerate with `pnpm docs:api`. The output is committed, so the docs site
+// Regenerate with `bun run docs:api`. The output is committed, so the docs site
 // builds without TypeScript or TypeDoc in its dependency graph.
 
 import { execFileSync } from "node:child_process";
@@ -163,8 +163,9 @@ for (const pkg of packages) {
 	const out = join(outRoot, pkg.title);
 	console.log(`• ${pkg.name}`);
 	execFileSync(
-		"npx",
+		"bunx",
 		[
+			"--no-install",
 			"typedoc",
 			"--options",
 			join(root, "typedoc.base.json"),

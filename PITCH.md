@@ -142,7 +142,7 @@ any playback or export code.
 
 ### `create-effect-motion` — the first five minutes
 
-`pnpm create effect-motion` scaffolds a working project: a hello-world
+`bun create effect-motion` scaffolds a working project: a hello-world
 scene, a `main.ts` movie composing scenes, `studio.ts` and `render.ts`
 entrypoints, exact version pins, git init, and — notably — an `AGENTS.md`
 of authoring rules aimed at
@@ -259,8 +259,8 @@ home.
 
 - All seven packages install from the public npm registry and are versioned
   through changesets (published at 0.4.x as of July 2026).
-- `pnpm create effect-motion` on a clean machine yields a project where
-  `pnpm studio` previews and `pnpm render` produces a valid H.264 MP4 with
+- `bun create effect-motion` on a clean machine yields a project where
+  `bun run studio` previews and `bun run render` produces a valid H.264 MP4 with
   no system ffmpeg installed — exercised end-to-end by the export test
   suite.
 - The same seed and settings reproduce the identical frame stream, covered

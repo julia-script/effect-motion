@@ -10,7 +10,7 @@ const FILE = "/proj/studio.ts";
 const plain = Scene.make(function* () {});
 const named = Scene.make("The Grand Orbit", function* () {});
 
-// ── type-level assertions (enforced by `pnpm check`; vitest doesn't typecheck)
+// ── type-level assertions (enforced by `bun run check`; vitest doesn't typecheck)
 
 type LoaderScene = Scene.Scene<never, Font.FontLoader<"Pacifico">>;
 declare const loaderScene: LoaderScene;

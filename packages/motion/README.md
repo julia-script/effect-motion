@@ -9,7 +9,7 @@ A scene is an Effect generator program: instantiate entities, then tween or spri
 `effect` is a peer dependency — install it alongside:
 
 ```bash
-pnpm add effect-motion effect
+bun add effect-motion effect
 ```
 
 ## Write a scene

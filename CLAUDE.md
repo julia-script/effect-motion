@@ -10,23 +10,23 @@ effect-motion is a library for making motion graphics in code: deterministic, fr
 
 ## Commands
 
-pnpm workspace + Turborepo. Run from the repo root:
+Bun workspace + Turborepo. Run from the repo root:
 
-- `pnpm build` — build all packages (`tsc` for libs, `next build` for docs)
-- `pnpm test` — all tests (vitest)
-- `pnpm check` — typecheck all packages (`tsc --noEmit`; depends on upstream builds)
-- `pnpm lint` / `pnpm lint:fix` — Biome check / autofix
-- `pnpm dev` — watch-build the libs and serve the docs site
-- `pnpm docs` — docs site dev server only
+- `bun run build` — build all packages (`tsc` for libs, `next build` for docs)
+- `bun run test` — all tests (vitest)
+- `bun run check` — typecheck all packages (`tsc --noEmit`; depends on upstream builds)
+- `bun run lint` / `bun run lint:fix` — Biome check / autofix
+- `bun run dev` — watch-build the libs and serve the docs site
+- `bun run docs` — docs site dev server only
 
 Per-package (or `cd` into the package and drop the filter):
 
-- `pnpm --filter effect-motion test` — core package tests
-- `pnpm --filter effect-motion exec vitest run test/springs.test.ts` — single test file
-- `pnpm --filter effect-motion exec vitest run -t "name"` — single test by name
-- `pnpm --filter @effect-motion/react test` — React bindings tests
+- `bun run --filter=effect-motion test` — core package tests
+- `cd packages/motion && bunx --no-install vitest run test/springs.test.ts` — single test file
+- `cd packages/motion && bunx --no-install vitest run -t "name"` — single test by name
+- `bun run --filter=@effect-motion/react test` — React bindings tests
 
-Note: `packages/react` tests alias `effect-motion` to `../motion/src` (see its `vitest.config.ts`), so they run without building the core. Typechecking (`pnpm check`) does require upstream `dist` output — Turbo handles that ordering.
+Note: `packages/react` tests alias `effect-motion` to `../motion/src` (see its `vitest.config.ts`), so they run without building the core. Typechecking (`bun run check`) does require upstream `dist` output — Turbo handles that ordering.
 
 ## Workspace layout
 
@@ -61,7 +61,7 @@ Nontrivial features should go through a change (propose → apply → archive) r
 
 ## Conventions
 
-- Biome enforces formatting: tab indentation, double quotes, organized imports. Run `pnpm lint:fix` before committing.
+- Biome enforces formatting: tab indentation, double quotes, organized imports. Run `bun run lint:fix` before committing.
 - Never write code that breaks Biome rules — not even in tests. In particular, no non-null assertions (`!`) and no biome-ignore suppressions. Where a value is known present but typed nullable, use the `unreachable` helper (`packages/motion/test/support/raise.ts`, `packages/renderer/test/support/raise.ts`): `frames.at(-1) ?? unreachable()`.
 - Don't `throw`. Errors are values — fail with `Effect.fail` or a tagged error. The one exception is a deep recursive function that genuinely needs to short-circuit the whole call stack; even then keep the `throw` inside a plain sync function and wrap it in `Effect.try`/`Effect.tryPromise`, mapping the thrown value to a typed error. See "Don't `throw`" in AGENTS.md.
 - Stay type-safe. Casts (`as`) are an escape hatch for what TypeScript can't express (conditional return types, generic variance gaps) — use sparingly, and fix the signature before casting at the call site. See "Stay type-safe" in AGENTS.md.

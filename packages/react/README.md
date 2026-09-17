@@ -9,7 +9,7 @@ Frames stream in as the scene runs rather than being rendered up front, so playb
 `effect` and `effect-motion` are peer dependencies — install them alongside:
 
 ```bash
-pnpm add @effect-motion/react effect-motion effect
+bun add @effect-motion/react effect-motion effect
 ```
 
 ## Play a scene

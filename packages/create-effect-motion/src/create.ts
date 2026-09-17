@@ -21,10 +21,10 @@ import {
 
 const DEFAULT_DIRECTORY = "my-motion-project";
 
-const PACKAGE_MANAGERS = ["pnpm", "npm", "yarn", "bun"] as const;
+const PACKAGE_MANAGERS = ["bun", "pnpm", "npm", "yarn"] as const;
 type PackageManager = (typeof PACKAGE_MANAGERS)[number];
 
-/** The manager that invoked us (`pnpm create …` etc.), if detectable. */
+/** The manager that invoked us (`bun create …` etc.), if detectable. */
 const detectPackageManager = (): PackageManager | undefined => {
 	const agent = process.env.npm_config_user_agent ?? "";
 	return PACKAGE_MANAGERS.find((pm) => agent.startsWith(pm));
@@ -184,7 +184,7 @@ const handler = (input: CreateInput) =>
 		const pm =
 			Option.getOrUndefined(input.pm) ??
 			(input.yes
-				? (detectPackageManager() ?? "npm")
+				? (detectPackageManager() ?? "bun")
 				: yield* promptPackageManager);
 
 		// explicit flags win over --yes; --no-biome beats --biome if both are passed

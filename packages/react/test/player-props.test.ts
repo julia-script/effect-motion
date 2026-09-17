@@ -8,7 +8,7 @@ import type { PlayerProps } from "../src/Player";
 /**
  * PlayerProps conditional typing (react-player delta): a loader-free scene
  * takes no renderLayers; a resource-carrying scene REQUIRES a covering
- * layer. Enforced by `pnpm check` (vitest does not typecheck) — the
+ * layer. Enforced by `bun run check` (vitest does not typecheck) — the
  * @ts-expect-error lines are the assertions.
  */
 
