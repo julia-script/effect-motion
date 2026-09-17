@@ -1,5 +1,13 @@
 # @effect-motion/cli
 
+## 0.6.0
+
+### Patch Changes
+
+- 0c03863: Recommend Bun in the scaffolding flow and CLI help, and select Bun for non-interactive scaffolds when the invoking package manager cannot be detected.
+  - @effect-motion/export@0.6.0
+  - effect-motion@0.6.0
+
 ## 0.5.0
 
 ### Minor Changes
