@@ -42,12 +42,12 @@
 		"access": "public"
 	},
 	"peerDependencies": {
-		"effect": ">=4.0.0-beta.98"
+		"effect": ">=4.0.0-rc.115"
 	},
 	"devDependencies": {
 		"@types/chroma-js": "^3.1.2",
 		"@types/node": "^26.1.1",
-		"effect": "4.0.0-beta.98",
+		"effect": "4.0.0-rc.115",
 		"happy-dom": "^20.10.6",
 		"tsx": "^4.23.0",
 		"typescript": "^7.0.2",

@@ -31,29 +31,33 @@ const detectPackageManager = (): PackageManager | undefined => {
 };
 
 const flags = {
-	directory: Argument.string("directory").pipe(
+	directory: Argument.String("directory").pipe(
 		Argument.withDescription(
 			'Target directory ("." scaffolds into the current directory)',
 		),
 		Argument.optional,
 	),
 	pm: Flag.optional(
-		Flag.choice("pm", PACKAGE_MANAGERS).pipe(
+		Flag.Literals("pm", PACKAGE_MANAGERS).pipe(
 			Flag.withDescription("Package manager (skips the prompt)"),
 		),
 	),
-	biome: Flag.boolean("biome").pipe(
+	biome: Flag.Boolean("biome").pipe(
+		Flag.withDefault(false),
 		Flag.withDescription(
 			"Set up Biome for linting/formatting (skips the prompt)",
 		),
 	),
-	noBiome: Flag.boolean("no-biome").pipe(
+	noBiome: Flag.Boolean("no-biome").pipe(
+		Flag.withDefault(false),
 		Flag.withDescription("Skip the Biome setup (skips the prompt)"),
 	),
-	noInstall: Flag.boolean("no-install").pipe(
+	noInstall: Flag.Boolean("no-install").pipe(
+		Flag.withDefault(false),
 		Flag.withDescription("Skip dependency installation"),
 	),
-	yes: Flag.boolean("yes").pipe(
+	yes: Flag.Boolean("yes").pipe(
+		Flag.withDefault(false),
 		Flag.withAlias("y"),
 		Flag.withDescription(
 			"Accept the default answer for every prompt not answered by a flag",
@@ -61,11 +65,13 @@ const flags = {
 	),
 };
 
-const promptDirectory = Prompt.text({
-	message:
-		'Where should the project be created? ("." for the current directory)',
-	default: DEFAULT_DIRECTORY,
-});
+const promptDirectory = Prompt.run(
+	Prompt.String({
+		message:
+			'Where should the project be created? ("." for the current directory)',
+		default: DEFAULT_DIRECTORY,
+	}),
+);
 
 const promptPackageManager = Effect.suspend(() => {
 	const detected = detectPackageManager();
@@ -74,16 +80,20 @@ const promptPackageManager = Effect.suspend(() => {
 		...(detected ? [detected] : []),
 		...PACKAGE_MANAGERS.filter((pm) => pm !== detected),
 	];
-	return Prompt.select<PackageManager>({
-		message: "Which package manager?",
-		choices: ordered.map((pm) => ({ title: pm, value: pm })),
-	});
+	return Prompt.run(
+		Prompt.Select<PackageManager>({
+			message: "Which package manager?",
+			choices: ordered.map((pm) => ({ title: pm, value: pm })),
+		}),
+	);
 });
 
-const promptBiome = Prompt.confirm({
-	message: "Add Biome for linting/formatting?",
-	initial: true,
-});
+const promptBiome = Prompt.run(
+	Prompt.Confirm({
+		message: "Add Biome for linting/formatting?",
+		initial: true,
+	}),
+);
 
 const runInstall = (pm: PackageManager, dir: string) =>
 	Effect.gen(function* () {
@@ -220,8 +230,9 @@ const handler = (input: CreateInput) =>
 
 // registered globally so `--verbose` parses anywhere on the command line;
 // the reporter reads argv directly because it sits outside handler context
-const verboseFlag = GlobalFlag.setting("verbose")({
-	flag: Flag.boolean("verbose").pipe(
+const verboseFlag = GlobalFlag.Setting("verbose")({
+	flag: Flag.Boolean("verbose").pipe(
+		Flag.withDefault(false),
 		Flag.withDescription("Print full error cause chains"),
 	),
 });

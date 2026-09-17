@@ -44,8 +44,8 @@
 	},
 	"dependencies": {
 		"@effect-motion/export": "workspace:^",
-		"@effect/platform-node": "4.0.0-beta.98",
-		"effect": "4.0.0-beta.98",
+		"@effect/platform-node": "4.0.0-rc.115",
+		"effect": "4.0.0-rc.115",
 		"effect-motion": "workspace:^",
 		"vite": "^7.0.0"
 	},

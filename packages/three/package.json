@@ -46,11 +46,11 @@
 		"webgpu": "^0.4.0"
 	},
 	"peerDependencies": {
-		"effect": ">=4.0.0-beta.98"
+		"effect": ">=4.0.0-rc.115"
 	},
 	"devDependencies": {
 		"@types/node": "^26.1.1",
-		"effect": "4.0.0-beta.98",
+		"effect": "4.0.0-rc.115",
 		"typescript": "^7.0.2",
 		"vitest": "^4.1.10"
 	}

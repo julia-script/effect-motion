@@ -22,7 +22,7 @@ import { makeViteLoader } from "../ViteLoader.js";
 
 const renderArgs = {
 	file: Argument.optional(
-		Argument.string("file").pipe(
+		Argument.String("file").pipe(
 			Argument.withDescription(
 				"Render entrypoint (default ./render.ts) — a module default-exporting an Effect",
 			),

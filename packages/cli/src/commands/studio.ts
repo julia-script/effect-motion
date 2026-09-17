@@ -8,14 +8,14 @@ import { MotionCliError } from "../MotionCliError.js";
 
 const studioArgs = {
 	file: Argument.optional(
-		Argument.string("file").pipe(
+		Argument.String("file").pipe(
 			Argument.withDescription(
 				"Studio entrypoint (default ./studio.ts) — a module default-exporting studioConfig({ scenes, layers })",
 			),
 		),
 	),
-	port: Flag.optional(Flag.integer("port")),
-	host: Flag.optional(Flag.string("host")),
+	port: Flag.optional(Flag.Int("port")),
+	host: Flag.optional(Flag.String("host")),
 };
 
 /** Shipped studio app source (dist/commands/studio.js → ../../studio-app). */

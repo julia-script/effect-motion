@@ -43,7 +43,7 @@
 	},
 	"dependencies": {
 		"@effect-motion/three": "workspace:^",
-		"@effect/platform-node": "4.0.0-beta.98",
+		"@effect/platform-node": "4.0.0-rc.115",
 		"@text-rendering-toolkit/font": "^0.3.0",
 		"@text-rendering-toolkit/layout": "^0.3.0",
 		"@text-rendering-toolkit/three-webgpu": "^0.3.0",
@@ -54,12 +54,12 @@
 		"three": "^0.185.1"
 	},
 	"peerDependencies": {
-		"effect": ">=4.0.0-beta.98"
+		"effect": ">=4.0.0-rc.115"
 	},
 	"devDependencies": {
 		"@types/node": "^26.1.1",
 		"@types/pngjs": "^6.0.5",
-		"effect": "4.0.0-beta.98",
+		"effect": "4.0.0-rc.115",
 		"typescript": "^7.0.2",
 		"vitest": "^4.1.10"
 	}

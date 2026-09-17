@@ -8,8 +8,9 @@ import { type MotionCliError, renderForTerminal } from "./MotionCliError.js";
 
 // registered globally so `--verbose` parses anywhere on the command line;
 // the reporter reads argv directly because it sits outside handler context
-const verboseFlag = GlobalFlag.setting("verbose")({
-	flag: Flag.boolean("verbose").pipe(
+const verboseFlag = GlobalFlag.Setting("verbose")({
+	flag: Flag.Boolean("verbose").pipe(
+		Flag.withDefault(false),
 		Flag.withDescription("Print full error cause chains"),
 	),
 });
