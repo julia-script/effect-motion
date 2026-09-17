@@ -1,5 +1,13 @@
 # @effect-motion/react
 
+## 0.6.0
+
+### Patch Changes
+
+- Updated dependencies [e42463d]
+  - @effect-motion/renderer@0.6.0
+  - effect-motion@0.6.0
+
 ## 0.5.0
 
 ### Minor Changes
