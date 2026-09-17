@@ -7,9 +7,6 @@
 		"packages/*",
 		"apps/*"
 	],
-	"overrides": {
-		"typedoc>typescript": "5.9.3"
-	},
 	"trustedDependencies": [
 		"esbuild",
 		"msgpackr-extract",
@@ -36,6 +33,7 @@
 		"@changesets/cli": "^2.31.0",
 		"turbo": "^2.10.13",
 		"typedoc": "^0.28.20",
+		"typescript": "5.9.3",
 		"typedoc-plugin-markdown": "^4.12.0"
 	}
 }
