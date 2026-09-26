@@ -101,10 +101,12 @@ and labels on the HUD stay crisp whatever the camera's aperture.
   `opacity: 1`.
 - **Perspective cameras only.**
 - **Cost.** With `aperture > 0` the scene is drawn twice per frame and every
-  pixel gathers dozens of blur samples; most of the cost is the sampling, and
-  it grows with the pixel count. At `aperture: 0` there is no extra cost.
+  pixel gathers dozens of blur samples. The sampling cost grows with the pixel
+  count; the second draw costs CPU time per shape, so scenes with hundreds of
+  shapes can drop frames in the browser. At `aperture: 0` there is no extra
+  cost.
 - **Real time vs export.** The browser renderer (and so the `Player`) takes
-  half the blur samples by default, so playback holds its frame rate; the blur
+  half the blur samples by default, which halves the blur's GPU cost; the blur
   shape is the same, with a little more fine grain. Video export always uses
   full quality. For full quality in the browser, for example when recording
   the canvas, pass `dofQuality: "full"` to `Renderer.make`.

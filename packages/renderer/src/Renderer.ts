@@ -110,9 +110,10 @@ export const makeDofNode = (
 	PostProcessing.depthAwareDof(PostProcessing.pass(sync.scene, sync.camera), {
 		focusDistance: sync.dof.focusDistance,
 		aperture: sync.dof.aperture,
-		// ponytail: a fixed half tap count (tilted-plane holds 60 fps at DPR
-		// 1.75 on an M-series Mac). Scale taps by pixel count or measured frame
-		// time if a bigger canvas or slower GPU still drops frames.
+		// ponytail: a fixed half tap count, about half the blur's GPU time.
+		// Scale taps by pixel count or measured frame time if a bigger canvas
+		// or slower GPU still drops frames. Scenes with hundreds of shapes are
+		// CPU-bound on the depth peel instead — see DepthAwareDof.ts.
 		...(quality === "realtime" ? { taps: { near: 32, far: 24 } } : {}),
 	});
 
@@ -204,9 +205,9 @@ export interface MakeOptions {
 	readonly renderers?: Record<string, AnyEntityRenderer>;
 	/**
 	 * Depth-of-field sample quality. `"realtime"` halves the blur's gather
-	 * taps so playback holds its frame rate; pass `"full"` for export-quality
-	 * blur (what the Node renderer always uses) when frame rate does not
-	 * matter, e.g. recording the canvas.
+	 * taps, about half the blur's GPU time, for a little more sample noise;
+	 * pass `"full"` for export-quality blur (what the Node renderer always
+	 * uses) when frame rate does not matter, e.g. recording the canvas.
 	 *
 	 * @defaultValue `"realtime"`
 	 */

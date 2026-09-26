@@ -117,6 +117,103 @@ const edgeSpread = (png: Uint8Array): number => {
 		.length;
 };
 
+/**
+ * The tilted-plane docs example's set, framed for 480×270 (its 1920-wide
+ * focal length): a floor of flat tiles receding from a raised camera, posts
+ * and a disc standing on it. Two of the example's shots: its first frame, and
+ * one after the dolly, orbit and focus pull.
+ */
+const tiltedFloorShots = (): Promise<[AnyFrame, AnyFrame]> => {
+	const scene = Scene.make(
+		function* () {
+			for (let row = 0; row < 22; row++) {
+				for (let col = -6; col < 6; col++) {
+					yield* Scene.instantiate("Rect", {
+						position: S.vec3({
+							x: (col + 0.5) * 400,
+							y: -400,
+							z: 1600 - (row + 0.5) * 400,
+						}),
+						rotation: S.vec3({ x: -Math.PI / 2 }),
+						width: 400,
+						height: 400,
+						strokeWidth: 0,
+						fillColor:
+							(row + col) % 2 === 0
+								? Color.rgba(255, 93, 115)
+								: Color.rgba(255, 232, 214),
+					});
+				}
+			}
+			for (let i = 0; i < 9; i++) {
+				for (const side of [-1, 1]) {
+					yield* Scene.instantiate("Rect", {
+						position: S.vec3({ x: side * 1300, y: 50, z: 1200 - i * 900 }),
+						width: 260,
+						height: 900,
+						strokeWidth: 0,
+						fillColor:
+							i % 2 === 0 ? Color.rgba(255, 183, 3) : Color.rgba(33, 158, 188),
+					});
+				}
+			}
+			yield* Scene.instantiate("Circle", {
+				position: S.vec3({ y: -140, z: -1400 }),
+				radius: 260,
+				strokeWidth: 0,
+				fillColor: Color.rgba(58, 12, 163),
+			});
+			yield* Scene.tick;
+		},
+		{ width: 480, height: 270, backgroundColor: Color.rgba(27, 27, 58) },
+	);
+	const shot = (
+		frame: AnyFrame,
+		y: number,
+		z: number,
+		focusDistance: number,
+	): AnyFrame => ({
+		...frame,
+		camera: {
+			...frame.camera,
+			y,
+			z,
+			focalLength: (480 * 50) / 36,
+			focusDistance,
+			aperture: 60,
+			poiX: 0,
+			poiY: -140,
+			poiZ: -1400,
+		},
+	});
+	return Effect.runPromise(Scene.stream(scene).pipe(Stream.runCollect)).then(
+		(chunk) => {
+			const frame = [...chunk].at(-1) ?? unreachable();
+			return [shot(frame, 700, 2600, 4087), shot(frame, 377, 1063, 2516)];
+		},
+	);
+};
+
+/** Render frames in order on ONE renderer at a pixel ratio; returns the PNGs. */
+const renderAt = (pixelRatio: number, ...frames: ReadonlyArray<AnyFrame>) =>
+	Effect.runPromise(
+		Effect.scoped(
+			Effect.gen(function* () {
+				const first = frames[0] ?? unreachable();
+				const renderer = yield* NodeRenderer.make({
+					width: first.width,
+					height: first.height,
+					pixelRatio,
+				});
+				const pngs: Array<Uint8Array> = [];
+				for (const frame of frames) {
+					pngs.push(yield* NodeRenderer.renderToPng(renderer, frame));
+				}
+				return pngs;
+			}),
+		),
+	);
+
 describe("depth of field (headless Dawn)", () => {
 	it("aperture 0 never builds the DoF chain and renders the plain path", async () => {
 		const frame = await rectAt(-300);
@@ -185,5 +282,18 @@ describe("depth of field (headless Dawn)", () => {
 				edgeSpread(on ?? unreachable()) - edgeSpread(off ?? unreachable()),
 			),
 		).toBeLessThanOrEqual(1);
+	}, 60_000);
+
+	it("a frame does not depend on the frames rendered before it", async () => {
+		// Regression: the peeled layer once kept state across renders, so after
+		// a camera move and focus pull a frame came out differently than the
+		// same frame on a fresh renderer (blue fringes on the blurred floor).
+		const [a, b] = await tiltedFloorShots();
+		const [, afterA] = await renderAt(7, a, b);
+		const [fresh] = await renderAt(7, b);
+		const x = PNG.sync.read(Buffer.from(afterA ?? unreachable())).data;
+		const y = PNG.sync.read(Buffer.from(fresh ?? unreachable())).data;
+		// a count, not toEqual: a diff of two 25 MB buffers takes minutes
+		expect(x.filter((v, i) => v !== y[i]).length).toBe(0);
 	}, 60_000);
 });

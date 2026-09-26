@@ -118,8 +118,6 @@ const t = TSL as unknown as {
 	uniformArray: (values: Vector3[], type: string) => { element(i: V): V };
 	uniform: (value: number) => U;
 	pass: (scene: Object3D, camera: Camera) => PassNode;
-	mrt: (outputs: { output: V }) => Parameters<PassNode["setMRT"]>[0];
-	output: V;
 	context: (value: object) => PassNode["contextNode"];
 	Discard: (cond: V) => void;
 	perspectiveDepthToViewZ: (depth: V, near: V, far: V) => V;
@@ -280,6 +278,15 @@ export function depthAwareDof(
 		t.cameraNear,
 		t.cameraFar,
 	);
+	// ponytail: the peel shares the front pass's render context (three keys
+	// contexts by attachment format), and its context node differs, so three
+	// rebuilds every scene object's render object twice a frame: CPU-bound
+	// with a few hundred entities (tilted-plane: ~14 fps in the browser). Giving
+	// the peel its own render objects (own MRT, or its own passId) removes the
+	// rebuild but makes the peel keep state across renders: output then depends
+	// on earlier frames (see the render-history test in packages/renderer). The
+	// per-frame rebuild hides that. Upgrade: find the stale state in three and
+	// then separate the peel.
 	const back = t.pass(scenePass.scene, scenePass.camera);
 	// Rasterized depth, not positionView: Line2's positionView is its unit quad.
 	// fragCoord is declared by the screenUV lookup above.
@@ -288,11 +295,6 @@ export function depthAwareDof(
 		t.cameraNear,
 		t.cameraFar,
 	);
-	// Own MRT = own render context. three keys render contexts by target
-	// format only, so without it the peel shares the front pass's context, and
-	// every scene object's render object is rebuilt twice a frame as the
-	// renderer context node flips between the two passes (CPU-bound playback).
-	back.setMRT(t.mrt({ output: t.output }));
 	back.contextNode = t.context({
 		getOutput: (output: V) => {
 			t.Discard(
