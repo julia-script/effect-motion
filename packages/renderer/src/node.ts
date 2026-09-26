@@ -15,7 +15,7 @@ import type { Frame } from "effect-motion/Scene";
 import { builtinRegistry } from "./Builtins.js";
 import type { EntityRenderer } from "./EntityRenderer.js";
 import type { RenderException } from "./RenderException.js";
-import { renderCompTargets } from "./Renderer.js";
+import { makeDofNode, renderCompTargets, setDofUniforms } from "./Renderer.js";
 import * as Sync from "./Sync.js";
 
 /**
@@ -200,6 +200,17 @@ export interface NodeRenderer {
 	readonly post: PostProcessing.RenderPipeline;
 	/** internal: pipeline with the HUD pass composited over the world */
 	readonly postWithHud: PostProcessing.RenderPipeline;
+	/**
+	 * internal: DoF variants of `post` / `postWithHud` (HUD composited over
+	 * the DoF output, so it stays sharp), built the first time a frame asks
+	 */
+	dofChain: {
+		readonly node: PostProcessing.DepthAwareDofNode;
+		readonly post: PostProcessing.RenderPipeline;
+		readonly postWithHud: PostProcessing.RenderPipeline;
+	} | null;
+	/** internal: blends the HUD pass over a world color node */
+	readonly overHud: (world: unknown) => unknown;
 	/** internal: the readback render target */
 	readonly target: RenderTarget.RenderTarget;
 	readonly width: number;
@@ -265,9 +276,23 @@ export const renderToPng = Effect.fnUntraced(function* (
 	// ensuring, addFinalizer.
 	Gpu.advanceFrame(renderer.gpu);
 	yield* renderCompTargets(renderer.gpu, renderer.sync, renderer.pixelRatio);
-	const pipeline = ThreeScene.isEmpty(renderer.sync.hudScene)
-		? renderer.post
-		: renderer.postWithHud;
+	const hud = !ThreeScene.isEmpty(renderer.sync.hudScene);
+	let pipeline = hud ? renderer.postWithHud : renderer.post;
+	if (renderer.sync.dof.on) {
+		if (renderer.dofChain === null) {
+			const node = makeDofNode(renderer.sync);
+			renderer.dofChain = {
+				node,
+				post: PostProcessing.makePipeline(renderer.gpu, node),
+				postWithHud: PostProcessing.makePipeline(
+					renderer.gpu,
+					renderer.overHud(node),
+				),
+			};
+		}
+		setDofUniforms(renderer.dofChain.node, renderer.sync.dof);
+		pipeline = hud ? renderer.dofChain.postWithHud : renderer.dofChain.post;
+	}
 	yield* PostProcessing.render(pipeline);
 	const rgba = yield* Gpu.readRenderTarget(
 		renderer.gpu,
@@ -294,7 +319,9 @@ export const renderToPng = Effect.fnUntraced(function* (
  * resolution (four times the pixels), which is the usual way to get cleaner
  * edges in an export.
  *
- * Depth of field is not applied — every frame renders sharp.
+ * A camera with `aperture > 0` renders through the depth-aware
+ * depth-of-field chain, built on the first frame that asks for it; HUD
+ * content is composited over the result and stays sharp.
  *
  * @param options - Dimensions, supersampling, and any custom entity
  *   renderers.
@@ -324,8 +351,6 @@ export const make = Effect.fn("NodeRenderer.make")(function* (
 	});
 	yield* Effect.addFinalizer(() => Sync.dispose(sync));
 	const scenePass = PostProcessing.pass(sync.scene, sync.camera);
-	// ponytail: no depth of field — the pipeline draws the scene pass
-	// straight through.
 	const sceneColor = scenePass.getTextureNode();
 	const post = PostProcessing.makePipeline(gpu, sceneColor);
 	// HUD composite variant: the HUD pass (identity camera, transparent
@@ -342,10 +367,9 @@ export const make = Effect.fn("NodeRenderer.make")(function* (
 	}
 	const hudScenePass = PostProcessing.pass(sync.hudScene, sync.hudCamera);
 	const hudTex = hudScenePass.getTextureNode() as Node;
-	const postWithHud = PostProcessing.makePipeline(
-		gpu,
-		(sceneColor as Node).mul(hudTex.a.oneMinus()).add(hudTex.rgb.mul(hudTex.a)),
-	);
+	const overHud = (world: unknown): unknown =>
+		(world as Node).mul(hudTex.a.oneMinus()).add(hudTex.rgb.mul(hudTex.a));
+	const postWithHud = PostProcessing.makePipeline(gpu, overHud(sceneColor));
 	const target = yield* RenderTarget.make(pixelWidth, pixelHeight);
 	Gpu.setRenderTarget(gpu, target);
 	const scope = yield* Effect.scope;
@@ -355,6 +379,8 @@ export const make = Effect.fn("NodeRenderer.make")(function* (
 		scope,
 		post,
 		postWithHud,
+		dofChain: null,
+		overHud,
 		target,
 		width: options.width,
 		height: options.height,

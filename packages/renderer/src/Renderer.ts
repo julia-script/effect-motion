@@ -1,6 +1,7 @@
 import type { ThreeException } from "@effect-motion/three";
 import {
 	Renderer as Gpu,
+	PostProcessing,
 	RenderTarget,
 	Scene as ThreeScene,
 } from "@effect-motion/three";
@@ -84,6 +85,56 @@ export const renderCompTargets = Effect.fnUntraced(function* (
 	}
 });
 
+/**
+ * The depth-aware DoF node over a sync's world scene.
+ *
+ * @remarks
+ * Internal, shared by both render paths. Built once per renderer, the first
+ * time a frame asks for DoF; {@link setDofUniforms} feeds it each frame.
+ *
+ * `maxBlurPx` stays at the node default (30). ponytail: the cap is in RENDER
+ * px, so at pixelRatio 2 it caps at 15 logical px — expose or DPR-scale it
+ * (keeping ≤ 48 render px, the node's dilation reach) if a scene needs more.
+ */
+export const makeDofNode = (
+	sync: Sync.Sync,
+): PostProcessing.DepthAwareDofNode =>
+	PostProcessing.depthAwareDof(PostProcessing.pass(sync.scene, sync.camera), {
+		focusDistance: sync.dof.focusDistance,
+		aperture: sync.dof.aperture,
+	});
+
+/** Copy this frame's focus and lens radius into the DoF node's uniforms. */
+export const setDofUniforms = (
+	node: PostProcessing.DepthAwareDofNode,
+	dof: Sync.DofState,
+): void => {
+	node.focusDistance.value = dof.focusDistance;
+	node.aperture.value = dof.aperture;
+};
+
+/**
+ * Draw the world through the DoF pipeline, building it on first use.
+ *
+ * @remarks
+ * The chain's render targets dedupe per three frame, so the frame counter is
+ * advanced here — a player can render several frames within one rAF tick.
+ */
+const renderWorldWithDof = (
+	renderer: Renderer,
+): Effect.Effect<void, ThreeException> => {
+	if (renderer.dofChain === null) {
+		const node = makeDofNode(renderer.sync);
+		renderer.dofChain = {
+			node,
+			pipeline: PostProcessing.makePipeline(renderer.gpu, node),
+		};
+	}
+	setDofUniforms(renderer.dofChain.node, renderer.sync.dof);
+	Gpu.advanceFrame(renderer.gpu);
+	return PostProcessing.render(renderer.dofChain.pipeline);
+};
+
 export interface MakeOptions {
 	/** Canvas to draw into; one is created if omitted. */
 	readonly canvas?: HTMLCanvasElement;
@@ -139,6 +190,11 @@ export interface Renderer {
 	 * their own.
 	 */
 	readonly scope: Scope.Scope;
+	/** internal: the DoF pipeline, built the first time a frame asks for it */
+	dofChain: {
+		readonly node: PostProcessing.DepthAwareDofNode;
+		readonly pipeline: PostProcessing.RenderPipeline;
+	} | null;
 }
 
 /**
@@ -222,8 +278,9 @@ export const resolveResources = (
  * the world, then any HUD content composited on top through an identity
  * camera so it ignores camera movement.
  *
- * Depth of field is not applied: every frame renders sharp, regardless of a
- * camera's `aperture`.
+ * With a camera `aperture > 0` the world draws through the depth-aware
+ * depth-of-field chain (built on first use); at aperture 0 it is never
+ * touched. HUD content is drawn after it and stays sharp.
  */
 export const render = (
 	renderer: Renderer,
@@ -237,9 +294,9 @@ export const render = (
 			),
 		),
 		Effect.flatMap(() =>
-			// ponytail: no depth of field — every frame renders sharp, and
-			// Sync still derives the camera's DoF state for a future rebuild.
-			Gpu.render(renderer.gpu, renderer.sync.scene, renderer.sync.camera),
+			renderer.sync.dof.on
+				? renderWorldWithDof(renderer)
+				: Gpu.render(renderer.gpu, renderer.sync.scene, renderer.sync.camera),
 		),
 		Effect.flatMap(() => {
 			// HUD overlay: identity camera, above everything, DoF-exempt
@@ -323,5 +380,5 @@ export const make = Effect.fn("Renderer.make")(function* (
 	});
 	yield* Effect.addFinalizer(() => Sync.dispose(sync));
 	const scope = yield* Effect.scope;
-	return { sync, gpu, scope };
+	return { sync, gpu, scope, dofChain: null };
 });
