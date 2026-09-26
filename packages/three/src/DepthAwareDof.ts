@@ -36,18 +36,23 @@
  *
  * Requirements: WebGPURenderer + RenderPipeline, a PerspectiveCamera, opaque
  * geometry. Resize, pixel ratio and camera near/far/fov/zoom changes are
- * picked up every frame; no rebuild is needed.
+ * picked up every frame; no rebuild is needed. The node takes over the given
+ * pass's rendering (it renders under the node's context), so give it a pass
+ * of its own.
  *
  * Known limits:
  * - Transparent surfaces are not handled (the CoC comes from the depth buffer).
  * - The scene is rendered twice per frame: the second, depth-peeled pass finds
  *   surfaces hidden behind near / sharp objects (≈ 20–50% of the effect cost).
+ *   Both passes share their render objects, so the second costs draw calls,
+ *   not a per-object rebuild.
  * - A nearer blurred surface still composites with a hard step over a surface
  *   whose own CoC is > 1 px (a depth-gap split would fix it).
  */
 import * as TSL from "three/tsl";
 import type { Camera, Node, Object3D, PassNode } from "three/webgpu";
 import {
+	FloatType,
 	HalfFloatType,
 	NearestFilter,
 	NodeUpdateType,
@@ -88,6 +93,12 @@ interface Tex extends V {
 	renderTarget: { texture: { minFilter: number; magFilter: number } };
 }
 
+/** A context node: flow data merged into the materials rendered under it. */
+interface Ctx {
+	version: number;
+	getFlowContextData(): object;
+}
+
 type Loop = (
 	a: number,
 	b: number | ((o: { i: V }) => void),
@@ -118,11 +129,13 @@ const t = TSL as unknown as {
 	uniformArray: (values: Vector3[], type: string) => { element(i: V): V };
 	uniform: (value: number) => U;
 	pass: (scene: Object3D, camera: Camera) => PassNode;
-	context: (value: object) => PassNode["contextNode"];
+	context: (value: object) => Ctx;
+	texture: (value: object) => Tex;
 	Discard: (cond: V) => void;
 	perspectiveDepthToViewZ: (depth: V, near: V, far: V) => V;
 	builtin: (name: string) => V;
 	screenUV: V;
+	mediumpModelViewMatrix: V;
 	cameraNear: V;
 	cameraFar: V;
 };
@@ -189,8 +202,12 @@ export function cocRadiusPx(
 const asUniform = (p: FloatParam) =>
 	(typeof p === "number" ? t.uniform(p) : p) as unknown as U;
 
-function packedTarget(node: V, scale = 1) {
-	const tex = t.rtt(node, null, null, { type: HalfFloatType });
+function packedTarget(
+	node: V,
+	scale = 1,
+	type: typeof HalfFloatType | typeof FloatType = HalfFloatType,
+) {
+	const tex = t.rtt(node, null, null, { type });
 	tex.setResolutionScale(scale);
 	tex.updateBeforeType = NodeUpdateType.FRAME; // once per frame, not per consumer
 	tex.renderTarget.texture.minFilter = NearestFilter;
@@ -273,49 +290,97 @@ export function depthAwareDof(
 	// first layer, so hidden surfaces behind near / sharp objects are known.
 	// Fragments within 1 px CoC of the first layer are the same surface (e.g. a
 	// Line2's overlapping segment caps) and are peeled too, else it counts twice.
-	const frontZ = t.perspectiveDepthToViewZ(
+	// The front pass can't sample its own depth attachment, so the peel reads a
+	// float copy (exact: same size, nearest).
+	const frontDepth = packedTarget(
 		(scenePass.getTextureNode("depth") as unknown as Tex).sample(t.screenUV),
-		t.cameraNear,
-		t.cameraFar,
+		1,
+		FloatType,
 	);
-	// ponytail: the peel shares the front pass's render context (three keys
-	// contexts by attachment format), and its context node differs, so three
-	// rebuilds every scene object's render object twice a frame: CPU-bound
-	// with a few hundred entities (tilted-plane: ~14 fps in the browser). Giving
-	// the peel its own render objects (own MRT, or its own passId) removes the
-	// rebuild but makes the peel keep state across renders: output then depends
-	// on earlier frames (see the render-history test in packages/renderer). The
-	// per-frame rebuild hides that. Upgrade: find the stale state in three and
-	// then separate the peel.
+	// Front pass and peel render with ONE context node, the peel test switched
+	// by a uniform: three keys render objects by context node, so two nodes
+	// would rebuild every scene object's render object twice a frame (CPU-bound
+	// with a few hundred entities). Giving the peel render objects of its own
+	// instead made output depend on earlier frames (see the render-history test
+	// in packages/renderer); shared ones are the front pass's, rendered anyway.
 	const back = t.pass(scenePass.scene, scenePass.camera);
-	// Rasterized depth, not positionView: Line2's positionView is its unit quad.
-	// fragCoord is declared by the screenUV lookup above.
-	const fragZ = t.perspectiveDepthToViewZ(
-		t.builtin("fragCoord.z"),
-		t.cameraNear,
-		t.cameraFar,
-	);
-	back.contextNode = t.context({
-		getOutput: (output: V) => {
-			t.Discard(
-				fragZ
-					.greaterThan(frontZ.mul(1 + PEEL_EPS))
-					.or(
-						t
-							.abs(signedCoc(t.negate(fragZ)).sub(signedCoc(t.negate(frontZ))))
-							.lessThan(1),
-					),
-			);
-			return output;
-		},
-	});
-	// `packed` first so the front pass renders (once per frame) before the peel;
-	// otherwise the peel would trigger it nested, inside the peel context.
+	const peeling = t.uniform(0);
+	const getOutput = (output: V) => {
+		// A plain texture node, and a new one per material: the rtt node would
+		// trigger the copy nested inside the front render, and three caches a
+		// texture node's binding across materials, so after a resize only the
+		// first render object sharing it would rebind (the rest keep sampling
+		// the destroyed texture).
+		const frontZ = t.perspectiveDepthToViewZ(
+			t.texture(frontDepth.renderTarget.texture).sample(t.screenUV).x,
+			t.cameraNear,
+			t.cameraFar,
+		);
+		// Rasterized depth, not positionView: Line2's positionView is its unit
+		// quad. fragCoord is declared by the screenUV lookup above.
+		const fragZ = t.perspectiveDepthToViewZ(
+			t.builtin("fragCoord.z"),
+			t.cameraNear,
+			t.cameraFar,
+		);
+		t.Discard(
+			peeling
+				.greaterThan(0.5)
+				.and(
+					fragZ
+						.greaterThan(frontZ.mul(1 + PEEL_EPS))
+						.or(
+							t
+								.abs(
+									signedCoc(t.negate(fragZ)).sub(signedCoc(t.negate(frontZ))),
+								)
+								.lessThan(1),
+						),
+				),
+		);
+		return output;
+	};
+	// Same merge as PassNode's own contextNode: the renderer's flow data first.
+	// ponytail: three 0.185 skips a render object's uniform / texture updates
+	// unless its MATERIAL holds nodes (NodeMaterialObserver.containsNode), and
+	// nodes injected through getOutput don't count, so plain materials would
+	// keep a stale `peeling` and the depth copy's destroyed texture (what broke
+	// the earlier separate-peel attempt). A context `modelViewMatrix` counts; set
+	// to three's own default it changes no shader. Drop it once three checks
+	// context nodes too.
+	let shared: { base: Ctx; version: number; node: Ctx } | undefined;
+	const renderWith = (p: PassNode, peel: number) => {
+		const updateBefore = p.updateBefore.bind(p);
+		p.updateBefore = (frame) => {
+			const renderer = frame.renderer as unknown as { contextNode: Ctx };
+			const base = renderer.contextNode;
+			if (shared?.base !== base || shared.version !== base.version) {
+				const node = t.context({
+					modelViewMatrix: t.mediumpModelViewMatrix,
+					...base.getFlowContextData(),
+					getOutput,
+				});
+				shared = { base, version: base.version, node };
+			}
+			renderer.contextNode = shared.node;
+			peeling.value = peel;
+			const result = updateBefore(frame);
+			peeling.value = 0;
+			renderer.contextNode = base;
+			return result;
+		};
+	};
+	renderWith(scenePass, 0);
+	renderWith(back, 1);
+	// `packed` and the depth copy first so the front pass renders (once per
+	// frame) and is copied before the peel; otherwise the peel would trigger
+	// them nested, inside the peel context.
 	const backPacked = packedTarget(
 		t.vec4(
 			packed
 				.sample(t.uv())
-				.a.mul(0)
+				.a.add(frontDepth.sample(t.uv()).x)
+				.mul(0)
 				.add((back.getTextureNode() as unknown as V).rgb),
 			signedCoc(t.negate(back.getViewZNode() as unknown as V)),
 		),

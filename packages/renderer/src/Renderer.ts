@@ -112,8 +112,7 @@ export const makeDofNode = (
 		aperture: sync.dof.aperture,
 		// ponytail: a fixed half tap count, about half the blur's GPU time.
 		// Scale taps by pixel count or measured frame time if a bigger canvas
-		// or slower GPU still drops frames. Scenes with hundreds of shapes are
-		// CPU-bound on the depth peel instead — see DepthAwareDof.ts.
+		// or slower GPU still drops frames.
 		...(quality === "realtime" ? { taps: { near: 32, far: 24 } } : {}),
 	});
 
