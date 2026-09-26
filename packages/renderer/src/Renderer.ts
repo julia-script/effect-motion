@@ -99,9 +99,9 @@ export type DofQuality = "realtime" | "full";
  * Internal, shared by both render paths. Built once per renderer, the first
  * time a frame asks for DoF; {@link setDofUniforms} feeds it each frame.
  *
- * `maxBlurPx` stays at the node default (30). ponytail: the cap is in RENDER
- * px, so at pixelRatio 2 it caps at 15 logical px — expose or DPR-scale it
- * (keeping ≤ 48 render px, the node's dilation reach) if a scene needs more.
+ * `maxBlurPx` is the node default (30 render px) here; the browser path
+ * rescales it per frame with the pixel ratio (see {@link renderWorldWithDof}).
+ * Node export keeps 30 render px.
  */
 export const makeDofNode = (
 	sync: Sync.Sync,
@@ -178,6 +178,13 @@ const renderWorldWithDof = (
 		};
 	}
 	setDofUniforms(renderer.dofChain.node, renderer.sync.dof);
+	// the blur cap is in render px; the Player's pixel ratio follows the
+	// displayed size, so scale the cap with it (30 logical px) to keep the
+	// look stable, clamped to the node's 48 px dilation reach
+	renderer.dofChain.node.maxBlurPx.value = Math.min(
+		48,
+		30 * Gpu.getPixelRatio(renderer.gpu),
+	);
 	Gpu.advanceFrame(renderer.gpu);
 	return PostProcessing.render(
 		hud ? renderer.dofChain.pipelineWithHud : renderer.dofChain.pipeline,

@@ -43,8 +43,9 @@ so the focus plane is at `z: 0`. With `aperture: 40`, a shape at `z: -1000`
 sits at `d ≈ 3667` and blurs by about `40 · 1000 / 3667 ≈ 11` px. A shape
 1000 units *in front* of the plane (`d ≈ 1667`) blurs by about 24 px: blur
 grows faster in front of the focus plane than behind it, just like a real
-lens. The renderer caps the blur radius at 30 rendered pixels, which is 15
-px on screen at a pixel ratio of 2.
+lens. In the browser the blur radius is capped at 30 px of scene size (at
+most 48 rendered pixels, so above a pixel ratio of 1.6 the cap is a little
+lower). Video export caps it at 30 rendered pixels.
 
 Blur is worked out per pixel from depth, not per shape. A plane tilted away
 from the camera is sharp along one band and softens smoothly on either side,
