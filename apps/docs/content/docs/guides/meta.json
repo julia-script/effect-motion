@@ -6,6 +6,7 @@
 		"custom-fonts",
 		"images",
 		"custom-entities",
-		"cli"
+		"cli",
+		"preview-frames"
 	]
 }

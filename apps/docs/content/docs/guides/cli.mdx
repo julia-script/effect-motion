@@ -91,3 +91,46 @@ flags (fps, seed, dpr, output paths) are values in `render.ts` — read
 `process.env` there if you want them switchable. The same file runs without
 the CLI: provide `NodeServices.layer` from `@effect/platform-node` and run
 it with `tsx render.ts`. `--verbose` prints full error cause chains.
+
+## Sample frames — motion frames
+
+```bash
+motion frames                          # list the scene keys in ./studio.ts
+motion frames hello-world              # 6 evenly spaced PNG stills
+motion frames hello-world --at 0,1.5s,50%,end
+motion frames hello-world --count 9 --sheet
+motion frames hello-world --at 50% --json -
+```
+
+`motion frames` renders chosen frames of a scene registered in `studio.ts`
+headlessly — no browser, no video. It runs the scene with the same settings
+the studio uses for that entry (`fps`, `layers`).
+
+| Flag | Meaning |
+| --- | --- |
+| `--at <selection>` | Comma-separated frames: an index (`30`), a time (`1.5s`, `500ms`), a percentage (`50%`), or `end` |
+| `--count <n>` | `n` evenly spaced frames, first and last included (default `6`; clamps to every frame once) |
+| `--sheet` | Write one contact sheet (`sheet.png`) instead of stills |
+| `--json <path\|->` | Write frame state as JSON to a file, or to stdout with `-` |
+| `--out <dir>` | Output directory (default `.motion/frames/<scene>/`) |
+| `--dpr <n>` | Supersampling factor for PNGs (default `1`) |
+| `--studio <file>` | Studio entrypoint (default `./studio.ts`) |
+
+Pass `--at` or `--count`, not both. A time maps to frame
+`round(seconds × frameRate)`; frame 0 is the first rendered frame.
+
+- **Stills** (the default) are written as `<frame>.png` (e.g. `0015.png`),
+  one per distinct frame; each path is printed with its frame and time.
+- **`--sheet`** lays the frames out row-major in one grid and prints
+  `tile=<i> frame=<f> time=<t>` for every tile.
+- **`--json`** writes, per sampled frame, its index, time, width, height,
+  frame rate, camera, and every instance's data. With `--json` alone no PNGs
+  are written and the GPU renderer is never loaded. With `-`, stdout carries
+  only the JSON; other output goes to stderr. Combine with `--sheet` to get
+  both.
+
+`%`, `end` and `--count` need the scene's length, so they fail for an
+infinite scene; indices and times still work. Out-of-range frames, bad
+selectors and unknown scene keys exit non-zero with a message naming the
+offender. See [Preview frames without a browser](/docs/guides/preview-frames)
+for the edit–check loop.
