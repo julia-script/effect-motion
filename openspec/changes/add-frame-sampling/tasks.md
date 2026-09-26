@@ -1,0 +1,30 @@
+# Tasks: add-frame-sampling
+
+## 1. Frame selection and JSON state (packages/export)
+
+- [x] 1.1 `Frames.parse`: indices, `s`/`ms` times, `%`, `end`, `count N`; `FrameSelectionError` naming the bad value
+- [x] 1.2 `Frames.sample` over `Scene.stream`: length pass only for `%`/`end`/`count`; out-of-range and infinite-end errors
+- [x] 1.3 `Frames.toJson`: frame, time, size, frame rate, camera, root, instances
+- [x] 1.4 Unit tests incl. `end`, `%`, `count`, out-of-range, infinite scene, determinism, no renderer import
+
+## 2. Stills and contact sheet (packages/export)
+
+- [ ] 2.1 Render sampled frames to PNG stills on the Node renderer
+- [ ] 2.2 Compose a contact-sheet PNG (near-square grid) and report tile → frame/time
+- [ ] 2.3 GPU tests, skipped on GPU-less CI like existing e2e tests
+
+## 3. `motion frames` command (packages/cli)
+
+- [ ] 3.1 Resolve the scene key from `studio.ts`; no/unknown key lists available keys
+- [ ] 3.2 Flags `--at`, `--count`, `--sheet`, `--json <path|->`, output directory; print written paths / tile map
+- [ ] 3.3 Errors render through the CLI error path, exit non-zero
+
+## 4. Docs and scaffold
+
+- [ ] 4.1 Docs page for `motion frames`, included in `llms.txt`
+- [ ] 4.2 Scaffolded `AGENTS.md` tells agents to use `motion frames` to check their work
+
+## 5. Verify
+
+- [ ] 5.1 `bun run lint && bun run check && bun run test && bun run build`
+- [ ] 5.2 Manual: the acceptance commands in a scaffolded project; open the sheet PNG
