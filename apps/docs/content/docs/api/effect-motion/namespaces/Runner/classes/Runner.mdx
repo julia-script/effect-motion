@@ -14,7 +14,6 @@ Defined in: [packages/motion/src/Runner.ts:197](https://github.com/julia-script/
   `backgrounds`: `Set`\<[`BranchEntry`](../interfaces/BranchEntry.mdx)\>;
   `camera`: [`Instance`](../../Instance/interfaces/Instance.mdx)\<`"Camera"`\>;
   `comp`: [`CompConfig`](../type-aliases/CompConfig.mdx);
-  `compBounds`: (`id`) => [`CompConfig`](../type-aliases/CompConfig.mdx) \| `null`;
   `countAwaited`: (`n`) => `void`;
   `destroy`: (`instance`) => `void`;
   `failureCause`: () => `Cause`\<`unknown`\> \| `undefined`;
@@ -66,138 +65,243 @@ Defined in: [packages/motion/src/Runner.ts:197](https://github.com/julia-script/
      `frameRate`: `number`;
      `height`: `number`;
      `instances`: `Record`\<`string`, \{
-        `data`:   \| `ReadonlySide`\<\{
-           `end`: `withConstructorDefault`\<...\>;
-           `opacity`: `withConstructorDefault`\<...\>;
-           `position`: `withConstructorDefault`\<...\>;
-           `rotation`: `withConstructorDefault`\<...\>;
-           `scale`: `withConstructorDefault`\<...\>;
-           `start`: `withConstructorDefault`\<...\>;
-           `strokeColor`: `withConstructorDefault`\<...\>;
-           `strokeWidth`: `withConstructorDefault`\<...\>;
-           `visible`: `withConstructorDefault`\<...\>;
-         \}, `"Type"`\>
-           \| `ReadonlySide`\<\{
-           `commands`: `NonEmptyArray`\<...\>;
-           `fillColor`: `withConstructorDefault`\<...\>;
-           `opacity`: `withConstructorDefault`\<...\>;
-           `position`: `withConstructorDefault`\<...\>;
-           `rotation`: `withConstructorDefault`\<...\>;
-           `scale`: `withConstructorDefault`\<...\>;
-           `strokeColor`: `withConstructorDefault`\<...\>;
-           `strokeWidth`: `withConstructorDefault`\<...\>;
-           `visible`: `withConstructorDefault`\<...\>;
-         \}, `"Type"`\>
-           \| `ReadonlySide`\<\{
-           `fillColor`: `withConstructorDefault`\<...\>;
-           `height`: `withConstructorDefault`\<...\>;
-           `opacity`: `withConstructorDefault`\<...\>;
-           `position`: `withConstructorDefault`\<...\>;
-           `rotation`: `withConstructorDefault`\<...\>;
-           `scale`: `withConstructorDefault`\<...\>;
-           `strokeColor`: `withConstructorDefault`\<...\>;
-           `strokeWidth`: `withConstructorDefault`\<...\>;
-           `visible`: `withConstructorDefault`\<...\>;
-           `width`: `withConstructorDefault`\<...\>;
-         \}, `"Type"`\>
-           \| `ReadonlySide`\<\{
-           `fillColor`: `withConstructorDefault`\<...\>;
-           `opacity`: `withConstructorDefault`\<...\>;
-           `position`: `withConstructorDefault`\<...\>;
-           `radius`: `withConstructorDefault`\<...\>;
-           `rotation`: `withConstructorDefault`\<...\>;
-           `scale`: `withConstructorDefault`\<...\>;
-           `strokeColor`: `withConstructorDefault`\<...\>;
-           `strokeWidth`: `withConstructorDefault`\<...\>;
-           `visible`: `withConstructorDefault`\<...\>;
-         \}, `"Type"`\>
-           \| `ReadonlySide`\<\{
-           `fillColor`: `withConstructorDefault`\<...\>;
-           `opacity`: `withConstructorDefault`\<...\>;
-           `position`: `withConstructorDefault`\<...\>;
-           `radiusX`: `withConstructorDefault`\<...\>;
-           `radiusY`: `withConstructorDefault`\<...\>;
-           `rotation`: `withConstructorDefault`\<...\>;
-           `scale`: `withConstructorDefault`\<...\>;
-           `strokeColor`: `withConstructorDefault`\<...\>;
-           `strokeWidth`: `withConstructorDefault`\<...\>;
-           `visible`: `withConstructorDefault`\<...\>;
-         \}, `"Type"`\>
+        `data`:   \| \{
+           `end`: \{
+              `x`: `number`;
+              `y`: `number`;
+              `z`: `number`;
+           \};
+           `opacity`: `number`;
+           `position`: \{
+              `x`: `number`;
+              `y`: `number`;
+              `z`: `number`;
+           \};
+           `rotation`: \{
+              `x`: `number`;
+              `y`: `number`;
+              `z`: `number`;
+           \};
+           `scale`: \{
+              `x`: `number`;
+              `y`: `number`;
+              `z`: `number`;
+           \};
+           `start`: \{
+              `x`: `number`;
+              `y`: `number`;
+              `z`: `number`;
+           \};
+           `strokeColor`: [`Color`](../../Color/classes/Color.mdx);
+           `strokeWidth`: `number`;
+           `visible`: `boolean`;
+         \}
+           \| \{
+           `commands`: readonly \[... \| ... \| ..., ... \| ... \| ...\];
+           `fillColor`: [`Color`](../../Color/classes/Color.mdx);
+           `opacity`: `number`;
+           `position`: \{
+              `x`: `number`;
+              `y`: `number`;
+              `z`: `number`;
+           \};
+           `rotation`: \{
+              `x`: `number`;
+              `y`: `number`;
+              `z`: `number`;
+           \};
+           `scale`: \{
+              `x`: `number`;
+              `y`: `number`;
+              `z`: `number`;
+           \};
+           `strokeColor`: [`Color`](../../Color/classes/Color.mdx);
+           `strokeWidth`: `number`;
+           `visible`: `boolean`;
+         \}
+           \| \{
+           `fillColor`: [`Color`](../../Color/classes/Color.mdx);
+           `height`: `number`;
+           `opacity`: `number`;
+           `position`: \{
+              `x`: `number`;
+              `y`: `number`;
+              `z`: `number`;
+           \};
+           `rotation`: \{
+              `x`: `number`;
+              `y`: `number`;
+              `z`: `number`;
+           \};
+           `scale`: \{
+              `x`: `number`;
+              `y`: `number`;
+              `z`: `number`;
+           \};
+           `strokeColor`: [`Color`](../../Color/classes/Color.mdx);
+           `strokeWidth`: `number`;
+           `visible`: `boolean`;
+           `width`: `number`;
+         \}
+           \| \{
+           `fillColor`: [`Color`](../../Color/classes/Color.mdx);
+           `opacity`: `number`;
+           `position`: \{
+              `x`: `number`;
+              `y`: `number`;
+              `z`: `number`;
+           \};
+           `radius`: `number`;
+           `rotation`: \{
+              `x`: `number`;
+              `y`: `number`;
+              `z`: `number`;
+           \};
+           `scale`: \{
+              `x`: `number`;
+              `y`: `number`;
+              `z`: `number`;
+           \};
+           `strokeColor`: [`Color`](../../Color/classes/Color.mdx);
+           `strokeWidth`: `number`;
+           `visible`: `boolean`;
+         \}
+           \| \{
+           `fillColor`: [`Color`](../../Color/classes/Color.mdx);
+           `opacity`: `number`;
+           `position`: \{
+              `x`: `number`;
+              `y`: `number`;
+              `z`: `number`;
+           \};
+           `radiusX`: `number`;
+           `radiusY`: `number`;
+           `rotation`: \{
+              `x`: `number`;
+              `y`: `number`;
+              `z`: `number`;
+           \};
+           `scale`: \{
+              `x`: `number`;
+              `y`: `number`;
+              `z`: `number`;
+           \};
+           `strokeColor`: [`Color`](../../Color/classes/Color.mdx);
+           `strokeWidth`: `number`;
+           `visible`: `boolean`;
+         \}
            \| \{
            `baseline?`: `"middle"` \| `"auto"` \| `"hanging"`;
            `fillColor`: [`Color`](../../Color/classes/Color.mdx);
-           `fontFamily`: `ReadonlySide`\<\{
-              `id`: ...;
-           \}, `"Type"`\>;
+           `fontFamily`: \{
+              `id`: `string`;
+           \};
            `fontSize`: `number`;
            `opacity`: `number`;
-           `position`: `ReadonlySide`\<\{
-              `x`: ...;
-              `y`: ...;
-              `z`: ...;
-           \}, `"Type"`\>;
-           `rotation`: `ReadonlySide`\<\{
-              `x`: ...;
-              `y`: ...;
-              `z`: ...;
-           \}, `"Type"`\>;
-           `scale`: `ReadonlySide`\<\{
-              `x`: ...;
-              `y`: ...;
-              `z`: ...;
-           \}, `"Type"`\>;
+           `position`: \{
+              `x`: `number`;
+              `y`: `number`;
+              `z`: `number`;
+           \};
+           `rotation`: \{
+              `x`: `number`;
+              `y`: `number`;
+              `z`: `number`;
+           \};
+           `scale`: \{
+              `x`: `number`;
+              `y`: `number`;
+              `z`: `number`;
+           \};
            `text`: `string`;
            `textAnchor?`: `"start"` \| `"end"` \| `"middle"`;
            `visible`: `boolean`;
          \}
-           \| `ReadonlySide`\<\{
-           `children`: `withConstructorDefault`\<...\>;
-           `opacity`: `withConstructorDefault`\<...\>;
-           `position`: `withConstructorDefault`\<...\>;
-           `rotation`: `withConstructorDefault`\<...\>;
-           `scale`: `withConstructorDefault`\<...\>;
-           `visible`: `withConstructorDefault`\<...\>;
-         \}, `"Type"`\>
-           \| `ReadonlySide`\<\{
-           `children`: `withConstructorDefault`\<...\>;
-           `opacity`: `withConstructorDefault`\<...\>;
-           `position`: `withConstructorDefault`\<...\>;
-           `rotation`: `withConstructorDefault`\<...\>;
-           `scale`: `withConstructorDefault`\<...\>;
-           `visible`: `withConstructorDefault`\<...\>;
-         \}, `"Type"`\>
+           \| \{
+           `children`: readonly `string`[];
+           `opacity`: `number`;
+           `position`: \{
+              `x`: `number`;
+              `y`: `number`;
+              `z`: `number`;
+           \};
+           `rotation`: \{
+              `x`: `number`;
+              `y`: `number`;
+              `z`: `number`;
+           \};
+           `scale`: \{
+              `x`: `number`;
+              `y`: `number`;
+              `z`: `number`;
+           \};
+           `visible`: `boolean`;
+         \}
+           \| \{
+           `children`: readonly `string`[];
+           `opacity`: `number`;
+           `position`: \{
+              `x`: `number`;
+              `y`: `number`;
+              `z`: `number`;
+           \};
+           `rotation`: \{
+              `x`: `number`;
+              `y`: `number`;
+              `z`: `number`;
+           \};
+           `scale`: \{
+              `x`: `number`;
+              `y`: `number`;
+              `z`: `number`;
+           \};
+           `visible`: `boolean`;
+         \}
            \| \{
            `height?`: `number`;
-           `image`: `ReadonlySide`\<\{
-              `id`: ...;
-           \}, `"Type"`\>;
+           `image`: \{
+              `id`: `string`;
+           \};
            `opacity`: `number`;
-           `position`: `ReadonlySide`\<\{
-              `x`: ...;
-              `y`: ...;
-              `z`: ...;
-           \}, `"Type"`\>;
-           `rotation`: `ReadonlySide`\<\{
-              `x`: ...;
-              `y`: ...;
-              `z`: ...;
-           \}, `"Type"`\>;
-           `scale`: `ReadonlySide`\<\{
-              `x`: ...;
-              `y`: ...;
-              `z`: ...;
-           \}, `"Type"`\>;
+           `position`: \{
+              `x`: `number`;
+              `y`: `number`;
+              `z`: `number`;
+           \};
+           `rotation`: \{
+              `x`: `number`;
+              `y`: `number`;
+              `z`: `number`;
+           \};
+           `scale`: \{
+              `x`: `number`;
+              `y`: `number`;
+              `z`: `number`;
+           \};
            `visible`: `boolean`;
            `width?`: `number`;
          \}
-           \| `ReadonlySide`\<\{
-           `aperture`: `withConstructorDefault`\<...\>;
-           `focalLength`: `withConstructorDefault`\<...\>;
-           `focusDistance`: `withConstructorDefault`\<...\>;
-           `poi`: `withConstructorDefault`\<...\>;
-           `position`: `withConstructorDefault`\<...\>;
-           `rotation`: `withConstructorDefault`\<...\>;
-         \}, `"Type"`\>;
+           \| \{
+           `aperture`: `number`;
+           `focalLength`: `number`;
+           `focusDistance`: `number`;
+           `poi`:   \| \{
+              `x`: ...;
+              `y`: ...;
+              `z`: ...;
+            \}
+              \| `null`;
+           `position`: \{
+              `x`: `number`;
+              `y`: `number`;
+              `z`: `number`;
+           \};
+           `rotation`: \{
+              `x`: `number`;
+              `y`: `number`;
+              `z`: `number`;
+           \};
+         \};
      \}\>;
      `root`: `string`;
      `width`: `number`;
@@ -212,7 +316,7 @@ Defined in: [packages/motion/src/Runner.ts:197](https://github.com/julia-script/
 new Runner(_): Runner;
 ```
 
-Defined in: node\_modules/.pnpm/effect@4.0.0-beta.98/node\_modules/effect/dist/Context.d.ts:115
+Defined in: [node\_modules/.bun/effect@4.0.0-rc.115/node\_modules/effect/dist/Context.d.ts:115](https://github.com/julia-script/effect-motion/blob/main/node_modules/.bun/effect@4.0.0-rc.115/node_modules/effect/dist/Context.d.ts#L115)
 
 #### Parameters
 
@@ -464,9 +568,6 @@ Context.Service<Runner>()("Runner", {
 			registerComp: (id: string, config: CompConfig): void => {
 				comps.set(id, config);
 			},
-			// the bounds of the mounted scene at id, or null if it is a plain
-			// group. Never inferred from fields — a comp is declared.
-			compBounds: (id: string): CompConfig | null => comps.get(id) ?? null,
 
 			// the default resting camera (animate it, or swap via setCamera)
 			camera,

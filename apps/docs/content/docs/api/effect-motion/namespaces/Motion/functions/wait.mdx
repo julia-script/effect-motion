@@ -8,7 +8,7 @@ description: "function wait(duration): Wait;"
 function wait(duration): Wait;
 ```
 
-Defined in: [packages/motion/src/Motion.ts:750](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Motion.ts#L750)
+Defined in: [packages/motion/src/Motion.ts:753](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Motion.ts#L753)
 
 Hold for `duration` of scene time — the chainable sibling of
 `Scene.sleep`.
@@ -34,10 +34,9 @@ Its value over `Scene.sleep` is placement — because it doubles as a pipe
 step, a beat can sit inside an animator chain without breaking it apart
 into separate statements.
 
-As a pipe step it wraps the PRECEDING step, so it needs one to wrap:
-place it after at least one animator, not as the opening step of a chain.
-To hold before anything animates, yield `Motion.wait` (or `Scene.sleep`)
-on its own line first.
+As a pipe step it wraps the PRECEDING step and passes its value through,
+so it sits anywhere in a chain — including first, where the step it wraps
+is the bare instance handle.
 
 ## Examples
 

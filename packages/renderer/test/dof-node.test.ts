@@ -14,48 +14,39 @@ type AnyFrame = Parameters<typeof NodeRenderer.renderToPng>[1];
 const W = 256;
 const H = 128;
 
-const lastFrameOf = (
-	make: () => Generator<Effect.Effect<any, any, any>, void, never>,
-): Promise<AnyFrame> =>
-	Effect.runPromise(
-		Scene.stream(
-			Scene.make(make as never, {
-				width: W,
-				height: H,
-				backgroundColor: Color.rgba(0, 0, 0),
-			}) as never,
-			{},
-		).pipe(Stream.runCollect) as unknown as Effect.Effect<
-			Iterable<AnyFrame>,
-			never,
-			never
-		>,
-	).then((chunk) => [...chunk].at(-1) ?? unreachable());
-
-const withAperture = (frame: AnyFrame, aperture: number): AnyFrame =>
-	({ ...frame, camera: { ...frame.camera, aperture } }) as AnyFrame;
+const withAperture = (frame: AnyFrame, aperture: number): AnyFrame => ({
+	...frame,
+	camera: { ...frame.camera, aperture },
+});
 
 /** A red rect at depth `z`, optionally pinned to the HUD. */
-const rectAt = (z: number, hud = false) =>
-	lastFrameOf(function* () {
-		const rect = yield* Scene.instantiate("Rect", {
-			position: S.vec3({ z }),
-			width: 120,
-			height: 80,
-			fillColor: Color.rgba(255, 0, 0),
-		});
-		if (hud) {
-			// a far world rect behind it, so DoF has something to blur
-			yield* Scene.instantiate("Rect", {
-				position: S.vec3({ z: -600 }),
-				width: 400,
-				height: 400,
-				fillColor: Color.rgba(0, 0, 255),
+const rectAt = (z: number, hud = false): Promise<AnyFrame> => {
+	const scene = Scene.make(
+		function* () {
+			const rect = yield* Scene.instantiate("Rect", {
+				position: S.vec3({ z }),
+				width: 120,
+				height: 80,
+				fillColor: Color.rgba(255, 0, 0),
 			});
-			yield* Scene.instantiate("Hud", { children: [rect] });
-		}
-		yield* Scene.tick;
-	});
+			if (hud) {
+				// a far world rect behind it, so DoF has something to blur
+				yield* Scene.instantiate("Rect", {
+					position: S.vec3({ z: -600 }),
+					width: 400,
+					height: 400,
+					fillColor: Color.rgba(0, 0, 255),
+				});
+				yield* Scene.instantiate("Hud", { children: [rect] });
+			}
+			yield* Scene.tick;
+		},
+		{ width: W, height: H, backgroundColor: Color.rgba(0, 0, 0) },
+	);
+	return Effect.runPromise(Scene.stream(scene).pipe(Stream.runCollect)).then(
+		(chunk) => [...chunk].at(-1) ?? unreachable(),
+	);
+};
 
 /** Render frames in order on ONE renderer; returns each PNG + the renderer. */
 const render = (...frames: ReadonlyArray<AnyFrame>) =>
@@ -69,7 +60,7 @@ const render = (...frames: ReadonlyArray<AnyFrame>) =>
 				}
 				return { pngs, dofBuilt: renderer.dofChain !== null };
 			}),
-		) as Effect.Effect<{ pngs: Array<Uint8Array>; dofBuilt: boolean }>,
+		),
 	);
 
 /**
@@ -135,7 +126,9 @@ describe("depth of field (headless Dawn)", () => {
 	}, 60_000);
 
 	it("HUD content stays sharp with DoF on", async () => {
-		const frame = await rectAt(0, true);
+		// off the focus plane (focus rests at z 0), so it WOULD blur if the HUD
+		// went through DoF
+		const frame = await rectAt(-300, true);
 		const { pngs, dofBuilt } = await render(frame, withAperture(frame, 20));
 		expect(dofBuilt).toBe(true);
 		const [off, on] = pngs;

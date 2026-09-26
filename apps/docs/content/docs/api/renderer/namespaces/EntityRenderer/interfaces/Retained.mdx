@@ -4,7 +4,7 @@ description: "What a renderer hands back from `build` and keeps for the life of 
 ---
 # Interface: Retained
 
-Defined in: [EntityRenderer.ts:100](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L100)
+Defined in: [packages/renderer/src/EntityRenderer.ts:99](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L99)
 
 What a renderer hands back from `build` and keeps for the life of an
 instance: the three object, its billboard behavior, and how to free it.
@@ -17,7 +17,7 @@ instance: the three object, its billboard behavior, and how to free it.
 billboard: boolean;
 ```
 
-Defined in: [EntityRenderer.ts:113](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L113)
+Defined in: [packages/renderer/src/EntityRenderer.ts:112](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L112)
 
 Whether the object turns to face the camera each frame.
 
@@ -38,7 +38,7 @@ its rotation is zero and stops the moment it tilts.
 readonly dispose: () => void;
 ```
 
-Defined in: [EntityRenderer.ts:122](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L122)
+Defined in: [packages/renderer/src/EntityRenderer.ts:121](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L121)
 
 Release GPU resources — geometries, materials, textures.
 
@@ -60,4 +60,4 @@ here; three does not do it for you.
 readonly object: Object3D;
 ```
 
-Defined in: [EntityRenderer.ts:101](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L101)
+Defined in: [packages/renderer/src/EntityRenderer.ts:100](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L100)

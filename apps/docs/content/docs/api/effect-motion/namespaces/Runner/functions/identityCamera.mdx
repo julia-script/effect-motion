@@ -1,11 +1,31 @@
 ---
 title: "identityCamera"
-description: "function identityCamera(width): EntityByTag<\"Camera\">;"
+description: "function identityCamera(width): {"
 ---
 # Function: identityCamera()
 
 ```ts
-function identityCamera(width): EntityByTag<"Camera">;
+function identityCamera(width): {
+  aperture: number;
+  focalLength: number;
+  focusDistance: number;
+  poi:   | {
+     x: number;
+     y: number;
+     z: number;
+   }
+     | null;
+  position: {
+     x: number;
+     y: number;
+     z: number;
+  };
+  rotation: {
+     x: number;
+     y: number;
+     z: number;
+  };
+};
 ```
 
 Defined in: [packages/motion/src/Runner.ts:186](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Runner.ts#L186)
@@ -18,4 +38,112 @@ Defined in: [packages/motion/src/Runner.ts:186](https://github.com/julia-script/
 
 ## Returns
 
-[`EntityByTag`](../../Entity/type-aliases/EntityByTag.mdx)\<`"Camera"`\>
+```ts
+{
+  aperture: number;
+  focalLength: number;
+  focusDistance: number;
+  poi:   | {
+     x: number;
+     y: number;
+     z: number;
+   }
+     | null;
+  position: {
+     x: number;
+     y: number;
+     z: number;
+  };
+  rotation: {
+     x: number;
+     y: number;
+     z: number;
+  };
+}
+```
+
+### aperture
+
+```ts
+readonly aperture: number;
+```
+
+### focalLength
+
+```ts
+readonly focalLength: number;
+```
+
+### focusDistance
+
+```ts
+readonly focusDistance: number;
+```
+
+### poi
+
+```ts
+readonly poi: 
+  | {
+  x: number;
+  y: number;
+  z: number;
+}
+  | null;
+```
+
+### position
+
+```ts
+readonly position: {
+  x: number;
+  y: number;
+  z: number;
+};
+```
+
+#### position.x
+
+```ts
+readonly x: number;
+```
+
+#### position.y
+
+```ts
+readonly y: number;
+```
+
+#### position.z
+
+```ts
+readonly z: number;
+```
+
+### rotation
+
+```ts
+readonly rotation: {
+  x: number;
+  y: number;
+  z: number;
+};
+```
+
+#### rotation.x
+
+```ts
+readonly x: number;
+```
+
+#### rotation.y
+
+```ts
+readonly y: number;
+```
+
+#### rotation.z
+
+```ts
+readonly z: number;
+```
