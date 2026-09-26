@@ -89,6 +89,12 @@ describe("sample", () => {
 		expect(await frameIndices("count 1")).toEqual([0]);
 	});
 
+	it("count N past the scene length clamps to every frame once", async () => {
+		const all = Array.from({ length: 31 }, (_, i) => i);
+		expect(await frameIndices("count 31")).toEqual(all);
+		expect(await frameIndices("count 100")).toEqual(all);
+	});
+
 	it("carries each frame's time and state", async () => {
 		const [first, last] = await Effect.runPromise(
 			Frames.sample(scene, "0,end", settings),

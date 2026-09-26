@@ -9,15 +9,15 @@
 
 ## 2. Stills and contact sheet (packages/export)
 
-- [ ] 2.1 Render sampled frames to PNG stills on the Node renderer
-- [ ] 2.2 Compose a contact-sheet PNG (near-square grid) and report tile → frame/time
-- [ ] 2.3 GPU tests, skipped on GPU-less CI like existing e2e tests
+- [x] 2.1 Render sampled frames to PNG stills on the Node renderer
+- [x] 2.2 Compose a contact-sheet PNG (near-square grid) and report tile → frame/time
+- [x] 2.3 GPU tests (run unconditionally, like the renderer's own tests)
 
 ## 3. `motion frames` command (packages/cli)
 
-- [ ] 3.1 Resolve the scene key from `studio.ts`; no/unknown key lists available keys
-- [ ] 3.2 Flags `--at`, `--count`, `--sheet`, `--json <path|->`, output directory; print written paths / tile map
-- [ ] 3.3 Errors render through the CLI error path, exit non-zero
+- [x] 3.1 Resolve the scene key from `studio.ts`; no/unknown key lists available keys
+- [x] 3.2 Flags `--at`, `--count`, `--sheet`, `--json <path|->`, output directory; print written paths / tile map
+- [x] 3.3 Errors render through the CLI error path, exit non-zero
 
 ## 4. Docs and scaffold
 

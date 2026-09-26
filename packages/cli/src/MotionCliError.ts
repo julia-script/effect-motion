@@ -11,6 +11,7 @@ export type MotionCliReason =
 	| "ConfigInvalid"
 	| "SceneLoadFailed"
 	| "UnknownTarget"
+	| "InvalidFrameSelection"
 	| "RenderFailed"
 	| "StudioFailed";
 

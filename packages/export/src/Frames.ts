@@ -122,10 +122,12 @@ const resolve = (
 	// needsLength guarantees `length` is known whenever it is read below
 	const last = (length ?? 1) - 1;
 	if (selection._tag === "Count") {
-		const n = selection.count;
+		// clamp to the scene length: with n ≤ length the spacing is ≥ 1 frame,
+		// so the rounded indices are distinct (no repeated frames)
+		const n = Math.min(selection.count, last + 1);
 		return Array.from({ length: n }, (_, i) => ({
 			frame: n === 1 ? 0 : Math.round((i * last) / (n - 1)),
-			label: `count ${n}`,
+			label: `count ${selection.count}`,
 		}));
 	}
 	const frameOf = (s: Selector): number => {
@@ -148,6 +150,7 @@ const resolve = (
 
 /**
  * Sample frames from a scene, in the order requested (duplicates kept).
+ * `count N` larger than the scene clamps to every frame, once each.
  *
  * Only `%`, `end` and `count` need the scene's length; for those the scene is
  * run once to the end to count its frames (no rendering), then again to pick

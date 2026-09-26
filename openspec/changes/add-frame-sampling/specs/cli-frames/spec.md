@@ -3,7 +3,7 @@
 ## ADDED Requirements
 
 ### Requirement: Frame selection syntax
-A frame selection SHALL be either a comma-separated list of selectors — a non-negative integer frame index (`30`), a time in seconds or milliseconds (`1.5s`, `500ms`), a percentage 0–100 of the scene (`50%`), or `end` (the last frame) — or `count N` (N ≥ 1) for N evenly spaced frames including the first and the last. A time maps to frame `round(seconds × frameRate)`; frame `i` is at time `i / frameRate`. Sampled frames SHALL be returned in the requested order. Any other input SHALL fail with an error naming the invalid value.
+A frame selection SHALL be either a comma-separated list of selectors — a non-negative integer frame index (`30`), a time in seconds or milliseconds (`1.5s`, `500ms`), a percentage 0–100 of the scene (`50%`), or `end` (the last frame) — or `count N` (N ≥ 1) for N evenly spaced frames including the first and the last; N larger than the scene's frame count SHALL clamp to every frame once. A time maps to frame `round(seconds × frameRate)`; frame `i` is at time `i / frameRate`. Sampled frames SHALL be returned in the requested order. Any other input SHALL fail with an error naming the invalid value.
 
 #### Scenario: Mixed selectors
 - **WHEN** a 31-frame scene at 30fps is sampled with `0,500ms,1s,50%,end`
@@ -12,6 +12,10 @@ A frame selection SHALL be either a comma-separated list of selectors — a non-
 #### Scenario: Evenly spaced count
 - **WHEN** a 31-frame scene is sampled with `count 3`
 - **THEN** the sampled frames are 0, 15 and 30
+
+#### Scenario: Count past the scene length
+- **WHEN** a 31-frame scene is sampled with `count 100`
+- **THEN** the sampled frames are 0 through 30, each once
 
 #### Scenario: Invalid selector
 - **WHEN** the selection is `abc`
@@ -45,7 +49,7 @@ Sampled frames SHALL render headlessly to PNG stills at the scene's size, and op
 - **THEN** one PNG is written with a 3×3 grid and tile → frame/time is reported
 
 ### Requirement: motion frames command
-`motion frames <scene>` SHALL sample a scene registered in the project's `studio.ts` by key, with `--at <selection>` or `--count N`, writing PNG stills (printing their paths), a contact sheet with `--sheet` (printing tile → frame/time), and/or JSON with `--json <path|->` (`-` = stdout). With no scene or an unknown scene it SHALL fail listing the available scene keys. Errors SHALL render through the CLI error path and exit non-zero.
+`motion frames <scene>` SHALL sample a scene registered in the project's `studio.ts` by key, with `--at <selection>` or `--count N`, writing PNG stills (printing their paths), a contact sheet with `--sheet` (printing tile → frame/time), and/or JSON with `--json <path|->` (`-` = stdout). Stills are the default output; `--sheet` writes the sheet instead of stills, and `--json` alone writes no PNGs and SHALL NOT load the GPU renderer. With neither `--at` nor `--count`, six evenly spaced frames are sampled. With no scene it SHALL print the available scene keys; with an unknown scene it SHALL fail listing them. Errors SHALL render through the CLI error path and exit non-zero.
 
 #### Scenario: Stills at chosen points
 - **WHEN** `motion frames intro --at 0,1s,end` runs
