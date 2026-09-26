@@ -12,18 +12,21 @@ import {
 } from "./custom-fonts.scene";
 import { scene as depthOrbit } from "./depth-orbit.scene";
 import { scene as easingRace } from "./easing-race.scene";
+import { scene as focusOrbit } from "./focus-orbit.scene";
 import { scene as functionPlot } from "./function-plot.scene";
 import { scene as gridWarp } from "./grid-warp.scene";
 import { scene as helloScene } from "./hello-scene.scene";
 import { scene as images, renderLayers as imagesLayers } from "./images.scene";
 import { scene as instanceTree } from "./instance-tree.scene";
 import { scene as minSeeker } from "./min-seeker.scene";
+import { scene as rackFocus } from "./rack-focus.scene";
 import { scene as riemannRects } from "./riemann-rects.scene";
 import { scene as seededWalk } from "./seeded-walk.scene";
 import { scene as sineFromCircle } from "./sine-from-circle.scene";
 import { scene as springs } from "./springs.scene";
 import { scene as streamlines } from "./streamlines.scene";
 import { scene as textWriteOn } from "./text-write-on.scene";
+import { scene as tiltedPlane } from "./tilted-plane.scene";
 
 /**
  * Every example the docs can embed. The key doubles as the source file
@@ -66,4 +69,7 @@ export const examples: Record<string, PlayerProps["scene"] | ExampleEntry> = {
 	"text-write-on": textWriteOn,
 	streamlines,
 	"camera-follow-graph": cameraFollowGraph,
+	"rack-focus": rackFocus,
+	"tilted-plane": tiltedPlane,
+	"focus-orbit": focusOrbit,
 };

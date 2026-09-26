@@ -1,0 +1,30 @@
+---
+title: "makeHudOver"
+description: "function makeHudOver(sync): (world) => unknown;"
+---
+# Function: makeHudOver()
+
+```ts
+function makeHudOver(sync): (world) => unknown;
+```
+
+Defined in: [packages/renderer/src/Renderer.ts:138](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Renderer.ts#L138)
+
+A compositor that blends a sync's HUD pass over a world color node.
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `sync` | [`Sync`](../../Sync/interfaces/Sync.mdx) |
+
+## Returns
+
+(`world`) => `unknown`
+
+## Remarks
+
+Internal, shared by both render paths. The HUD pass (identity camera,
+transparent background) is blended INSIDE the pipeline, so the sRGB output
+transform applies exactly once. ponytail: TSL typing quarantined as in
+Text.ts.

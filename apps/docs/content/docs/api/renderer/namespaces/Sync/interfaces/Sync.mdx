@@ -4,7 +4,7 @@ description: "The retained scene state: the world and HUD tiers, their cameras, 
 ---
 # Interface: Sync
 
-Defined in: [Sync.ts:170](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L170)
+Defined in: [packages/renderer/src/Sync.ts:170](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L170)
 
 The retained scene state: the world and HUD tiers, their cameras, the
 text and image actors, live sub-compositions, and the object diff map.
@@ -26,7 +26,7 @@ identity camera, above everything, so it stays fixed to the glass.
 readonly background: Color;
 ```
 
-Defined in: [Sync.ts:198](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L198)
+Defined in: [packages/renderer/src/Sync.ts:195](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L195)
 
 internal: reused background color instance
 
@@ -38,7 +38,7 @@ internal: reused background color instance
 readonly camera: PerspectiveCamera;
 ```
 
-Defined in: [Sync.ts:173](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L173)
+Defined in: [packages/renderer/src/Sync.ts:173](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L173)
 
 ***
 
@@ -48,7 +48,7 @@ Defined in: [Sync.ts:173](https://github.com/julia-script/effect-motion/blob/mai
 readonly comps: Map<string, CompState>;
 ```
 
-Defined in: [Sync.ts:192](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L192)
+Defined in: [packages/renderer/src/Sync.ts:189](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L189)
 
 live sub-compositions, keyed by their group instance id
 
@@ -60,7 +60,7 @@ live sub-compositions, keyed by their group instance id
 readonly ctx: RenderContext;
 ```
 
-Defined in: [Sync.ts:203](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L203)
+Defined in: [packages/renderer/src/Sync.ts:200](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L200)
 
 internal: the context handed to entity renderers
 
@@ -72,10 +72,9 @@ internal: the context handed to entity renderers
 readonly dof: DofState;
 ```
 
-Defined in: [Sync.ts:186](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L186)
+Defined in: [packages/renderer/src/Sync.ts:183](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L183)
 
-Depth-of-field request derived from the frame's camera — currently
-derived but not drawn. See [DofState](./DofState.mdx).
+Depth-of-field request derived from the frame's camera. See [DofState](./DofState.mdx).
 
 ***
 
@@ -85,7 +84,7 @@ derived but not drawn. See [DofState](./DofState.mdx).
 height: number;
 ```
 
-Defined in: [Sync.ts:201](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L201)
+Defined in: [packages/renderer/src/Sync.ts:198](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L198)
 
 ***
 
@@ -95,7 +94,7 @@ Defined in: [Sync.ts:201](https://github.com/julia-script/effect-motion/blob/mai
 readonly hudCamera: PerspectiveCamera;
 ```
 
-Defined in: [Sync.ts:180](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L180)
+Defined in: [packages/renderer/src/Sync.ts:180](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L180)
 
 ***
 
@@ -105,7 +104,7 @@ Defined in: [Sync.ts:180](https://github.com/julia-script/effect-motion/blob/mai
 readonly hudScene: Scene;
 ```
 
-Defined in: [Sync.ts:179](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L179)
+Defined in: [packages/renderer/src/Sync.ts:179](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L179)
 
 The screen-space HUD tier: drawn through an identity camera, after and
 above world content, on a transparent background so the render paths
@@ -119,7 +118,7 @@ can overlay it.
 readonly images: Images;
 ```
 
-Defined in: [Sync.ts:190](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L190)
+Defined in: [packages/renderer/src/Sync.ts:187](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L187)
 
 decoded image textures, cached for this renderer's scope
 
@@ -131,7 +130,7 @@ decoded image textures, cached for this renderer's scope
 readonly pending: Effect<unknown, EffectMotionError, never>[];
 ```
 
-Defined in: [Sync.ts:206](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L206)
+Defined in: [packages/renderer/src/Sync.ts:203](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L203)
 
 internal: async work (SDF layouts, decodes) the next render must
 wait for — drained by `whenReady`
@@ -144,7 +143,7 @@ wait for — drained by `whenReady`
 readonly registry: Record<string, AnyEntityRenderer>;
 ```
 
-Defined in: [Sync.ts:194](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L194)
+Defined in: [packages/renderer/src/Sync.ts:191](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L191)
 
 internal: entity renderers by entity name
 
@@ -156,7 +155,7 @@ internal: entity renderers by entity name
 readonly retained: Map<string, RetainedEntry>;
 ```
 
-Defined in: [Sync.ts:196](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L196)
+Defined in: [packages/renderer/src/Sync.ts:193](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L193)
 
 internal: retained objects by instance id
 
@@ -168,7 +167,7 @@ internal: retained objects by instance id
 readonly scene: Scene;
 ```
 
-Defined in: [Sync.ts:172](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L172)
+Defined in: [packages/renderer/src/Sync.ts:172](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L172)
 
 the world scene, branded — the render paths take the wrapper
 
@@ -180,7 +179,7 @@ the world scene, branded — the render paths take the wrapper
 readonly stats: SyncStats;
 ```
 
-Defined in: [Sync.ts:181](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L181)
+Defined in: [packages/renderer/src/Sync.ts:181](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L181)
 
 ***
 
@@ -190,7 +189,7 @@ Defined in: [Sync.ts:181](https://github.com/julia-script/effect-motion/blob/mai
 readonly text: Text;
 ```
 
-Defined in: [Sync.ts:188](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L188)
+Defined in: [packages/renderer/src/Sync.ts:185](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L185)
 
 the renderer's SDF text actor (fonts, atlas, layout)
 
@@ -202,6 +201,6 @@ the renderer's SDF text actor (fonts, atlas, layout)
 width: number;
 ```
 
-Defined in: [Sync.ts:200](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L200)
+Defined in: [packages/renderer/src/Sync.ts:197](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L197)
 
 internal: current frame viewport

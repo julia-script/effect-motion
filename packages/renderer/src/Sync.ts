@@ -111,18 +111,17 @@ export interface SyncStats {
  * The depth-of-field request derived from a frame's camera.
  *
  * @remarks
- * Currently computed but NOT consumed: depth-of-field rendering is not
- * implemented, and both render paths draw every frame sharp. The values are
- * kept in step with the camera so the feature can be rebuilt without
- * re-deriving them.
+ * Both render paths read it per frame: when `on`, the world draws through the
+ * depth-aware DoF post chain with these values as its uniforms; otherwise the
+ * plain path runs and the chain is never touched.
  */
 export interface DofState {
 	/** Whether the camera asked for DoF (`aperture` and `focusDistance` both > 0). */
 	on: boolean;
-	/** View-space distance to the intended sharp plane. */
+	/** View-space distance to the sharp plane, world units. */
 	focusDistance: number;
-	/** Blur radius in uv units, derived from the aperture; 0 is off. */
-	strengthUv: number;
+	/** Lens radius, world units; 0 is a pinhole (off). */
+	aperture: number;
 }
 
 /**
@@ -180,10 +179,7 @@ export interface Sync {
 	readonly hudScene: ThreeScene.Scene;
 	readonly hudCamera: THREE.PerspectiveCamera;
 	readonly stats: SyncStats;
-	/**
-	 * Depth-of-field request derived from the frame's camera — currently
-	 * derived but not drawn. See {@link DofState}.
-	 */
+	/** Depth-of-field request derived from the frame's camera. See {@link DofState}. */
 	readonly dof: DofState;
 	/** the renderer's SDF text actor (fonts, atlas, layout) */
 	readonly text: Text.Text;
@@ -218,7 +214,7 @@ export const make = (registry: Record<string, AnyEntityRenderer>): Sync => {
 		hudScene: ThreeScene.makeUnsafe(new THREE.Scene()),
 		hudCamera: new THREE.PerspectiveCamera(50, 1, NEAR, FAR),
 		stats: { objects: 0, lastSyncMs: 0 },
-		dof: { on: false, focusDistance: 0, strengthUv: 0 },
+		dof: { on: false, focusDistance: 0, aperture: 0 },
 		text: Text.make(),
 		images: Images.make(),
 		comps: new Map<string, CompState>(),
@@ -309,10 +305,7 @@ const syncCameras = (sync: Sync, frame: AnyFrame): void => {
 
 	sync.dof.on = camera.aperture > 0 && camera.focusDistance > 0;
 	sync.dof.focusDistance = camera.focusDistance;
-	// aperture → uv-space CoC scale, matched against the ThorVG sigma
-	// curve (sigma = aperture·f·|d−F|/(d·F) ≈ aperture·|d−F|/F at rest):
-	// blur radius ≈ 2σ → strength = 2·aperture / viewport height.
-	sync.dof.strengthUv = (camera.aperture * 2) / frame.height;
+	sync.dof.aperture = camera.aperture;
 };
 
 /** What one pass of the tree walk produced. */

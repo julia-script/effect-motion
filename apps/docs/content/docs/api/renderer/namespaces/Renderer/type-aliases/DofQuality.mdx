@@ -1,0 +1,15 @@
+---
+title: "DofQuality"
+description: "type DofQuality = \"realtime\" | \"full\";"
+---
+# Type Alias: DofQuality
+
+```ts
+type DofQuality = "realtime" | "full";
+```
+
+Defined in: [packages/renderer/src/Renderer.ts:93](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Renderer.ts#L93)
+
+Depth-of-field sample quality: `"full"` is the node's default tap count
+(export quality); `"realtime"` halves it — about half the GPU cost, a
+little more sample noise, same blur shape and edges.

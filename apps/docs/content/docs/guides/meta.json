@@ -5,6 +5,7 @@
 		"react-player",
 		"custom-fonts",
 		"images",
+		"camera-depth-of-field",
 		"custom-entities",
 		"cli"
 	]

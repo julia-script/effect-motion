@@ -1,14 +1,30 @@
 ---
 title: "TextMesh"
-description: "A glyph mesh over the shared atlas, with its update and release hooks."
+description: "A glyph mesh over the shared resources, with its update and release hooks."
 ---
 # Interface: TextMesh
 
-Defined in: [Text.ts:355](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Text.ts#L355)
+Defined in: [packages/renderer/src/Text.ts:173](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Text.ts#L173)
 
-A glyph mesh over the shared atlas, with its update and release hooks.
+A glyph mesh over the shared resources, with its update and release hooks.
 
 ## Properties
+
+### commit
+
+```ts
+readonly commit: () => Effect<void, EffectMotionError>;
+```
+
+Defined in: [packages/renderer/src/Text.ts:180](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Text.ts#L180)
+
+Flush pending layout/appearance changes into the GPU state.
+
+#### Returns
+
+`Effect`\<`void`, `EffectMotionError`\>
+
+***
 
 ### dispose
 
@@ -16,9 +32,9 @@ A glyph mesh over the shared atlas, with its update and release hooks.
 readonly dispose: () => void;
 ```
 
-Defined in: [Text.ts:362](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Text.ts#L362)
+Defined in: [packages/renderer/src/Text.ts:182](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Text.ts#L182)
 
-Release the mesh's geometry and materials.
+Release the mesh's geometry and materials (shared resources stay).
 
 #### Returns
 
@@ -32,7 +48,7 @@ Release the mesh's geometry and materials.
 readonly mesh: Object3D;
 ```
 
-Defined in: [Text.ts:356](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Text.ts#L356)
+Defined in: [packages/renderer/src/Text.ts:174](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Text.ts#L174)
 
 ***
 
@@ -42,9 +58,9 @@ Defined in: [Text.ts:356](https://github.com/julia-script/effect-motion/blob/mai
 readonly setColor: (r, g, b, a) => void;
 ```
 
-Defined in: [Text.ts:360](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Text.ts#L360)
+Defined in: [packages/renderer/src/Text.ts:178](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Text.ts#L178)
 
-Set the fill color; `r`, `g`, `b` are 0–1, `a` is opacity.
+Set the fill color; `r`, `g`, `b` are 0–255, `a` is 0–1 opacity.
 
 #### Parameters
 
@@ -61,21 +77,21 @@ Set the fill color; `r`, `g`, `b` are 0–1, `a` is opacity.
 
 ***
 
-### setQuads
+### setLayout
 
 ```ts
-readonly setQuads: (quads) => void;
+readonly setLayout: (layout) => void;
 ```
 
-Defined in: [Text.ts:358](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Text.ts#L358)
+Defined in: [packages/renderer/src/Text.ts:176](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Text.ts#L176)
 
-Point the mesh at a new layout — call after [layout](../variables/layout.mdx) resolves.
+Point the mesh at a new layout — pair with [TextMesh.commit](#commit).
 
 #### Parameters
 
 | Parameter | Type |
 | ------ | ------ |
-| `quads` | [`GlyphQuads`](./GlyphQuads.mdx) |
+| `layout` | `LayoutResult` |
 
 #### Returns
 

@@ -348,7 +348,7 @@ describe("depth of field request", () => {
 		const sync = Sync.make(registry());
 		Effect.runSync(Sync.syncFrame(sync, withDof));
 		expect(sync.dof.on).toBe(true);
-		expect(sync.dof.strengthUv).toBeCloseTo((2 * 2) / 300, 10);
+		expect(sync.dof.aperture).toBe(2);
 		expect(sync.dof.focusDistance).toBe(frame.camera.focusDistance);
 	});
 });

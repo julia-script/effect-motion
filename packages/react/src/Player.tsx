@@ -40,24 +40,43 @@ class PlayerError extends Data.TaggedError("PlayerError")<{
 }
 
 /**
- * The device pixel ratio to render at — 75% of the way from 1 to the
- * display's native ratio.
+ * The viewport for a `width` × `height` frame shown in `canvas`: logical size
+ * is the frame's, pixel density follows how big the canvas is displayed.
  *
  * @remarks
- * Rendering at full native ratio on a high-DPI display costs several times
- * the pixels for a difference nobody sees in motion. Softening it keeps text
- * and edges sharp at a fraction of the fill cost.
+ * Scene coordinates, camera and HUD stay in frame units; only the pixel ratio
+ * changes, set so the backing store matches the displayed CSS size at device
+ * density — a 1920-wide scene shown 700 CSS px wide on a 2× display renders
+ * 1400 px wide, not 3840. Capped at the device ratio, so never more detail
+ * than the display can show. Before layout (width 0) it falls back to the
+ * device ratio.
  *
- * Read on every render, so dragging a window between monitors picks up the
- * new ratio.
+ * `pw`/`ph` are the backing-store size three will set (it floors), used to
+ * skip resizes that would not change a pixel.
  */
-const calculateDpr = () =>
-	typeof window === "undefined" ? 1 : 1 + (window.devicePixelRatio - 1) * 0.75;
+const viewportFor = (
+	canvas: HTMLCanvasElement,
+	width: number,
+	height: number,
+) => {
+	const dpr = window.devicePixelRatio;
+	const displayed = canvas.clientWidth;
+	const ratio = displayed > 0 ? Math.min(dpr, (displayed * dpr) / width) : dpr;
+	return {
+		width,
+		height,
+		ratio,
+		pw: Math.floor(width * ratio),
+		ph: Math.floor(height * ratio),
+	};
+};
 
 const PlayerScene = Context.Service<{
 	render: (frameIndex: number) => Effect.Effect<void, PlayerError>;
 	load: (frameIndex: number) => Effect.Effect<void, PlayerError>;
 	play: Effect.Effect<void, PlayerError>;
+	/** Re-render the shown frame if the canvas's backing size is now stale. */
+	redraw: Effect.Effect<void, PlayerError>;
 	pause: Effect.Effect<void, never, never>;
 
 	readonly frameIndex: Effect.Effect<number>;
@@ -207,8 +226,9 @@ const useScene = (
 					}).pipe(
 						Effect.mapError(PlayerError.of("Error acquiring the renderer")),
 					);
-					// viewport tracking: sized from frame metadata on first render
-					let sized = { width: 0, height: 0, dpr: 0 };
+					// viewport tracking: sized from frame metadata + displayed size
+					// on first render, then on every resize / DPR change
+					let sized = { width: 0, height: 0, ratio: 0, pw: 0, ph: 0 };
 					// pipeline pre-warm happens once, on the first rendered frame,
 					// before playback reveals motion — no first-frame compile jank
 					let prewarmed = false;
@@ -274,50 +294,78 @@ const useScene = (
 
 					const renderSemaphore = yield* Semaphore.make(1);
 
+					// unlocked: callers hold renderSemaphore
+					const renderFrame = (frameIndex: number) =>
+						Effect.gen(function* () {
+							if (!canvasRef.current) {
+								return;
+							}
+
+							const framebuffer = yield* loadFrameBuffer(frameIndex);
+							if (!framebuffer) {
+								return;
+							}
+							// use the resolved index, not the requested one: a seek/advance
+							// past the buffered edge resolves to the edge (clamped in
+							// loadFrameBuffer), and the playhead must reflect what's shown
+							updateCurrentFrame(framebuffer.index);
+
+							const frame = framebuffer.frame;
+							const next = viewportFor(canvas, frame.width, frame.height);
+							if (
+								next.width !== sized.width ||
+								next.height !== sized.height ||
+								next.pw !== sized.pw ||
+								next.ph !== sized.ph
+							) {
+								sized = next;
+								FrameRenderer.setViewport(
+									sink,
+									next.width,
+									next.height,
+									next.ratio,
+								);
+							}
+							// font loaders resolve from this runtime's context (the
+							// renderLayers merge); missing loaders defect loudly
+							yield* FrameRenderer.resolveResources(sink, frame);
+							yield* FrameRenderer.syncFrame(sink, frame);
+							if (!prewarmed) {
+								prewarmed = true;
+								yield* FrameRenderer.prewarm(sink);
+							}
+							yield* FrameRenderer.render(sink);
+						}).pipe(Effect.mapError(PlayerError.of("Error rendering frame")));
+
 					const render: (
 						frameIndex: number,
 					) => Effect.Effect<void, PlayerError> = (frameIndex) =>
-						renderSemaphore.withPermitsIfAvailable(1)(
-							Effect.gen(function* () {
-								if (!canvasRef.current) {
-									return;
-								}
+						renderSemaphore.withPermitsIfAvailable(1)(renderFrame(frameIndex));
 
-								const framebuffer = yield* loadFrameBuffer(frameIndex);
-								if (!framebuffer) {
-									return;
+					// resize / DPR change: resizing clears the canvas, so re-render
+					// the shown frame (a paused player would otherwise stay blank or
+					// scaled). Waits for the permit rather than dropping, so the
+					// final size of a drag is never lost; at most one waits.
+					let redrawQueued = false;
+					const redraw = Effect.suspend(() => {
+						if (redrawQueued) {
+							return Effect.void;
+						}
+						redrawQueued = true;
+						return renderSemaphore.withPermits(1)(
+							Effect.suspend(() => {
+								redrawQueued = false;
+								// unsized: the first render has not run yet and will size
+								if (sized.width === 0) {
+									return Effect.void;
 								}
-								// use the resolved index, not the requested one: a seek/advance
-								// past the buffered edge resolves to the edge (clamped in
-								// loadFrameBuffer), and the playhead must reflect what's shown
-								updateCurrentFrame(framebuffer.index);
-
-								const frame = framebuffer.frame;
-								const dpr = calculateDpr();
-								if (
-									sized.width !== frame.width ||
-									sized.height !== frame.height ||
-									sized.dpr !== dpr
-								) {
-									sized = { width: frame.width, height: frame.height, dpr };
-									FrameRenderer.setViewport(
-										sink,
-										frame.width,
-										frame.height,
-										dpr,
-									);
-								}
-								// font loaders resolve from this runtime's context (the
-								// renderLayers merge); missing loaders defect loudly
-								yield* FrameRenderer.resolveResources(sink, frame);
-								yield* FrameRenderer.syncFrame(sink, frame);
-								if (!prewarmed) {
-									prewarmed = true;
-									yield* FrameRenderer.prewarm(sink);
-								}
-								yield* FrameRenderer.render(sink);
-							}).pipe(Effect.mapError(PlayerError.of("Error rendering frame"))),
+								const next = viewportFor(canvas, sized.width, sized.height);
+								return next.pw === sized.pw && next.ph === sized.ph
+									? Effect.void
+									: renderFrame(currentFrame);
+							}),
 						);
+					});
 
 					const play = Effect.suspend(() => {
 						if (isPlaying) return Effect.void;
@@ -401,6 +449,7 @@ const useScene = (
 					return Context.make(PlayerScene, {
 						play,
 						pause,
+						redraw,
 						frameIndex: Effect.sync(() => currentFrame),
 						render,
 						load: (frameIndex?: number) => loadFrameBuffer(frameIndex),
@@ -508,6 +557,39 @@ const useScene = (
 		if (autoPlay) {
 			play();
 		}
+	}, []);
+
+	const redraw = useEffectEvent(() =>
+		runReported(
+			Effect.service(PlayerScene).pipe(
+				Effect.flatMap((e) => e.redraw),
+				Effect.scoped,
+			),
+		),
+	);
+
+	// keep the backing store at displayed size × device pixel ratio: the
+	// observer covers container resize and fullscreen; the resolution query
+	// covers DPR changes that leave the CSS size alone (monitor move, zoom)
+	useEffect(() => {
+		const canvas = canvasRef.current;
+		if (canvas === null) {
+			return;
+		}
+		const observer = new ResizeObserver(() => redraw());
+		observer.observe(canvas);
+		let media: MediaQueryList | null = null;
+		const onDprChange = () => {
+			media?.removeEventListener("change", onDprChange);
+			media = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+			media.addEventListener("change", onDprChange);
+			redraw();
+		};
+		onDprChange();
+		return () => {
+			observer.disconnect();
+			media?.removeEventListener("change", onDprChange);
+		};
 	}, []);
 
 	// scene time in seconds of the current frame, and total when known

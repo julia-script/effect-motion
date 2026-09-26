@@ -27,7 +27,7 @@ const Camera: TaggedStruct<"Camera", {
 }>;
 ```
 
-Defined in: [packages/motion/src/Entity.ts:284](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Entity.ts#L284)
+Defined in: [packages/motion/src/Entity.ts:295](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Entity.ts#L295)
 
 The viewpoint — the one entity that is never drawn.
 
@@ -49,6 +49,16 @@ content at `z = 0` renders exactly as flat 2D.
 that world point and any explicit `rotation` composes on top of the aim.
 The `Camera` module's helpers are the ergonomic way to drive it.
 
-`aperture` and `focusDistance` describe depth of field. They are carried
-on the frame but currently have NO visual effect — depth-of-field
-rendering is not implemented, and every frame renders sharp.
+`aperture` and `focusDistance` drive depth of field. `focusDistance` is
+the view-space distance to the sharp plane (the runner defaults it to the
+resting distance, so `z = 0` is in focus). `aperture` is the lens radius in
+world units; 0 (the default) is a pinhole and bypasses DoF entirely. A
+point at view distance d blurs to a disc of radius
+`aperture · |d − focusDistance| / d` world units on the focus plane — at
+rest, where one world unit is one pixel on that plane, that is its blur
+radius in pixels. Rack focus is a plain tween of `focusDistance`.
+
+Limits: blur is computed from the depth buffer, so it is correct for
+opaque shapes only — a semi-transparent shape blurs at its own depth, not
+what shows through it. Perspective cameras only. DoF roughly doubles the
+scene's draw cost (the scene renders twice per frame).

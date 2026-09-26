@@ -4,7 +4,7 @@ description: "The services a renderer implementation gets from the engine: coord
 ---
 # Interface: RenderContext
 
-Defined in: [EntityRenderer.ts:52](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L52)
+Defined in: [packages/renderer/src/EntityRenderer.ts:52](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L52)
 
 The services a renderer implementation gets from the engine: coordinate
 conversion, viewport size, async registration, and the shared text and
@@ -18,7 +18,7 @@ image actors.
 readonly height: number;
 ```
 
-Defined in: [EntityRenderer.ts:67](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L67)
+Defined in: [packages/renderer/src/EntityRenderer.ts:66](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L66)
 
 Current viewport height in scene units.
 
@@ -30,7 +30,7 @@ Current viewport height in scene units.
 readonly images: Images;
 ```
 
-Defined in: [EntityRenderer.ts:81](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L81)
+Defined in: [packages/renderer/src/EntityRenderer.ts:80](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L80)
 
 Decoded image textures, cached for the renderer's scope.
 
@@ -42,7 +42,7 @@ Decoded image textures, cached for the renderer's scope.
 readonly text: Text;
 ```
 
-Defined in: [EntityRenderer.ts:79](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L79)
+Defined in: [packages/renderer/src/EntityRenderer.ts:78](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L78)
 
 The shared SDF text actor: registered fonts, the glyph atlas, layout.
 
@@ -54,7 +54,7 @@ The shared SDF text actor: registered fonts, the glyph atlas, layout.
 readonly toThree: (x, y, z) => Vector3;
 ```
 
-Defined in: [EntityRenderer.ts:63](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L63)
+Defined in: [packages/renderer/src/EntityRenderer.ts:62](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L62)
 
 Convert scene coordinates to three coordinates.
 
@@ -72,11 +72,10 @@ Convert scene coordinates to three coordinates.
 
 #### Remarks
 
-The two spaces disagree about the origin and the y axis: scene space
-puts (0, 0) at the top-left with y increasing DOWNWARD, three puts it at
-the viewport center with y increasing upward. `z` means the same in
-both. Always position objects through this rather than converting by
-hand.
+The two spaces are axis-identical (x right, y up, origin at the
+viewport center), so this is the identity — kept as the one named
+boundary seam. Always position objects through this rather than
+assuming the equivalence at call sites.
 
 ***
 
@@ -86,7 +85,7 @@ hand.
 readonly waitFor: (work) => void;
 ```
 
-Defined in: [EntityRenderer.ts:77](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L77)
+Defined in: [packages/renderer/src/EntityRenderer.ts:76](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L76)
 
 Register async work the frame must not be drawn without.
 
@@ -115,6 +114,6 @@ half-built. Failures surface in the render call's error channel.
 readonly width: number;
 ```
 
-Defined in: [EntityRenderer.ts:65](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L65)
+Defined in: [packages/renderer/src/EntityRenderer.ts:64](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L64)
 
 Current viewport width in scene units.

@@ -1,0 +1,73 @@
+---
+title: "DepthAwareDofNode"
+description: "type DepthAwareDofNode = Node & {"
+---
+# Type Alias: DepthAwareDofNode
+
+```ts
+type DepthAwareDofNode = Node & {
+  aperture: Node & {
+     value: number;
+  };
+  focusDistance: Node & {
+     value: number;
+  };
+  maxBlurPx: Node & {
+     value: number;
+  };
+};
+```
+
+Defined in: [packages/three/src/DepthAwareDof.ts:155](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/DepthAwareDof.ts#L155)
+
+The output node, with its parameters as uniforms (set `.value`).
+
+## Type Declaration
+
+### aperture
+
+```ts
+aperture: Node & {
+  value: number;
+};
+```
+
+#### Type Declaration
+
+##### value
+
+```ts
+value: number;
+```
+
+### focusDistance
+
+```ts
+focusDistance: Node & {
+  value: number;
+};
+```
+
+#### Type Declaration
+
+##### value
+
+```ts
+value: number;
+```
+
+### maxBlurPx
+
+```ts
+maxBlurPx: Node & {
+  value: number;
+};
+```
+
+#### Type Declaration
+
+##### value
+
+```ts
+value: number;
+```
