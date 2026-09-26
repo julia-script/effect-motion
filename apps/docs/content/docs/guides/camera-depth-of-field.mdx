@@ -1,0 +1,109 @@
+---
+title: Depth of field
+description: Give the camera a lens — a sharp focus plane, and blur that grows with depth
+---
+
+The default camera is a pinhole: everything is sharp at every depth. Give it
+an `aperture` and it becomes a lens. One plane in front of it stays sharp, and
+everything nearer or farther blurs, more the farther it sits from that plane.
+Both settings are ordinary numeric camera fields, so the animators you already
+use drive them, and a rack focus is just a tween.
+
+## The two fields
+
+- **`focusDistance`**: how far in front of the lens the sharp plane sits,
+  measured along the view. It defaults to the camera's resting distance, so
+  for an untouched camera the `z: 0` plane is in focus.
+- **`aperture`**: the lens radius, in world units. `0` (the default) is a
+  pinhole, and the renderer skips depth of field entirely. Bigger values give
+  a shallower depth of field: less of the scene stays sharp.
+
+Set them like any other field:
+
+```ts
+const camera = yield* Scene.camera;
+yield* Scene.update(camera, (props) => ({ ...props, aperture: 40 }));
+```
+
+## How much blur
+
+The blur follows the thin-lens model. A point at view distance `d` blurs to a
+disc of radius
+
+```
+aperture · |d − focusDistance| / d
+```
+
+in world units on the focus plane. At the camera's resting distance one world
+unit on the focus plane is one pixel, so for a resting camera this is the blur
+radius in pixels.
+
+As an example, take a 1920-wide scene. Its camera rests about 2667 units back,
+so the focus plane is at `z: 0`. With `aperture: 40`, a shape at `z: -1000`
+sits at `d ≈ 3667` and blurs by about `40 · 1000 / 3667 ≈ 11` px. A shape
+1000 units *in front* of the plane (`d ≈ 1667`) blurs by about 24 px: blur
+grows faster in front of the focus plane than behind it, just like a real
+lens. The renderer caps the blur radius at 30 px.
+
+Blur is worked out per pixel from depth, not per shape. A plane tilted away
+from the camera is sharp along one band and softens smoothly on either side,
+with no steps. See the [tilted plane](/docs/examples/tilted-plane) example.
+
+## Focusing on something
+
+`focusDistance` is a distance from the lens, not a `z` coordinate. For a
+camera that isn't rotated, focusing on a layer at depth `z` means
+`focusDistance = camera.z - z`:
+
+```ts
+const { position } = yield* Scene.data(camera);
+const focusOn = (z: number) => ({ focusDistance: position.z - z });
+```
+
+For a camera aimed with `Camera.lookAt`, the distance to the point of interest
+is the one that keeps the subject sharp. `Camera.orbitTo` keeps that distance
+the same, so the focus holds while the camera orbits. `Camera.dollyTo` changes
+it, so pull focus along with the dolly, using the same duration and easing:
+
+```ts
+yield* Scene.all([
+	Camera.dollyTo(camera, 1900, "2 seconds", "easeInOutCubic"),
+	Motion.tweenTo(camera, { focusDistance: 1900 }, "2 seconds", "easeInOutCubic"),
+]);
+```
+
+## Rack focus
+
+A rack focus moves the sharp plane from one subject to another while the
+camera holds still. That's a `focusDistance` tween:
+
+```ts
+yield* camera.pipe(
+	Motion.tweenTo(focusOn(FRONT), "1200 millis", "easeInOutCubic"),
+	Motion.wait("700 millis"),
+	Motion.tweenTo(focusOn(BACK), "1200 millis", "easeInOutCubic"),
+);
+```
+
+<Example name="rack-focus" />
+
+## The HUD stays sharp
+
+`Hud` content is drawn after, and on top of, the depth-of-field pass. Titles
+and labels on the HUD stay crisp whatever the camera's aperture.
+
+## Limits
+
+- **Opaque shapes only.** Blur comes from the depth buffer, which holds one
+  depth per pixel. A semi-transparent shape blurs at its own depth, not at the
+  depth of whatever shows through it. Keep shapes in depth-of-field scenes at
+  `opacity: 1`.
+- **Perspective cameras only.**
+- **Cost.** With `aperture > 0` the scene is drawn twice per frame, so it
+  costs roughly double. At `aperture: 0` there is no extra cost.
+- **Outlines.** Shapes default to a 1 px black stroke. A layer close to the
+  lens scales that up into a visible dark outline, so flat-colour scenes
+  usually set `strokeWidth: 0`.
+
+For a camera orbiting a sharp subject through a field of blurred shapes, see
+[focus orbit](/docs/examples/focus-orbit).

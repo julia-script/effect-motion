@@ -16,6 +16,7 @@
 ### Modified Capabilities
 
 - `depth-of-field`: aperture is a world-unit lens radius with a thin-lens CoC; HUD content is exempt; the opaque-only limit is pinned.
+- `docs-site`: depth of field is documented again (a camera/DoF guide plus live examples) now that it renders.
 
 ## Impact
 

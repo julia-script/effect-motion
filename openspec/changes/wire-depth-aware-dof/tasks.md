@@ -8,3 +8,7 @@
 ## 2. Verification
 
 - [x] 2.1 Headless Dawn tests: aperture 0 plain path, focus plane sharp, blur grows with distance from focus, HUD sharp
+
+## 3. Docs
+
+- [x] 3.1 DoF examples (rack focus, tilted plane, focus orbit) and a camera depth-of-field guide
