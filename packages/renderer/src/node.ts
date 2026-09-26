@@ -210,27 +210,18 @@ export interface NodeRenderer {
 }
 
 /**
- * Render one frame and return it as PNG bytes.
+ * Render one frame and return its raw RGBA pixels.
  *
  * @remarks
- * The whole export path in one call: resolve the frame's fonts and images,
- * sync the retained scene, wait for glyph layouts and decodes, render, read
- * the pixels back off the GPU, and encode.
- *
- * Call it once per frame on the SAME renderer; state is retained between
- * calls, so consecutive frames only pay for what changed.
- *
- * The frame's dimensions must match the renderer's. A mismatch is a defect
- * naming both sizes, not a silent rescale.
- *
- * Output is `pixelWidth × pixelHeight` — larger than the logical size when
- * a `pixelRatio` was given.
+ * {@link renderToPng} without the encode: `pixelWidth * pixelHeight * 4`
+ * bytes, row-major, 8 bits per channel. Use it when the pixels are going
+ * somewhere other than a PNG file — compositing a contact sheet, say.
  *
  * @param renderer - A renderer from {@link make}.
  * @param frame - The frame to draw.
- * @returns PNG file bytes.
+ * @returns RGBA bytes, `pixelWidth × pixelHeight`.
  */
-export const renderToPng = Effect.fnUntraced(function* (
+export const renderToRgba = Effect.fnUntraced(function* (
 	renderer: NodeRenderer,
 	frame: AnyFrame,
 ): Effect.fn.Return<
@@ -269,12 +260,43 @@ export const renderToPng = Effect.fnUntraced(function* (
 		? renderer.post
 		: renderer.postWithHud;
 	yield* PostProcessing.render(pipeline);
-	const rgba = yield* Gpu.readRenderTarget(
+	return yield* Gpu.readRenderTarget(
 		renderer.gpu,
 		renderer.target,
 		renderer.pixelWidth,
 		renderer.pixelHeight,
 	);
+});
+
+/**
+ * Render one frame and return it as PNG bytes.
+ *
+ * @remarks
+ * The whole export path in one call: resolve the frame's fonts and images,
+ * sync the retained scene, wait for glyph layouts and decodes, render, read
+ * the pixels back off the GPU, and encode.
+ *
+ * Call it once per frame on the SAME renderer; state is retained between
+ * calls, so consecutive frames only pay for what changed.
+ *
+ * The frame's dimensions must match the renderer's. A mismatch is a defect
+ * naming both sizes, not a silent rescale.
+ *
+ * Output is `pixelWidth × pixelHeight` — larger than the logical size when
+ * a `pixelRatio` was given.
+ *
+ * @param renderer - A renderer from {@link make}.
+ * @param frame - The frame to draw.
+ * @returns PNG file bytes.
+ */
+export const renderToPng = Effect.fnUntraced(function* (
+	renderer: NodeRenderer,
+	frame: AnyFrame,
+): Effect.fn.Return<
+	Uint8Array,
+	ThreeException | EffectMotionError | RenderException
+> {
+	const rgba = yield* renderToRgba(renderer, frame);
 	return encodePng(rgba, renderer.pixelWidth, renderer.pixelHeight);
 });
 
