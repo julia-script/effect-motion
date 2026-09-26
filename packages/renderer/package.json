@@ -1,6 +1,6 @@
 {
 	"name": "@effect-motion/renderer",
-	"version": "0.5.0",
+	"version": "0.6.0",
 	"description": "Retained three.js frame renderer for effect-motion",
 	"type": "module",
 	"license": "MIT",
