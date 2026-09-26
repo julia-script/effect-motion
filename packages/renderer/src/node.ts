@@ -15,7 +15,12 @@ import type { Frame } from "effect-motion/Scene";
 import { builtinRegistry } from "./Builtins.js";
 import type { EntityRenderer } from "./EntityRenderer.js";
 import type { RenderException } from "./RenderException.js";
-import { makeDofNode, renderCompTargets, setDofUniforms } from "./Renderer.js";
+import {
+	makeDofNode,
+	makeHudOver,
+	renderCompTargets,
+	setDofUniforms,
+} from "./Renderer.js";
 import * as Sync from "./Sync.js";
 
 /**
@@ -353,22 +358,9 @@ export const make = Effect.fn("NodeRenderer.make")(function* (
 	const scenePass = PostProcessing.pass(sync.scene, sync.camera);
 	const sceneColor = scenePass.getTextureNode();
 	const post = PostProcessing.makePipeline(gpu, sceneColor);
-	// HUD composite variant: the HUD pass (identity camera, transparent
-	// background) blended over the world INSIDE the pipeline, so the sRGB
-	// output transform applies exactly once. Chosen per frame only when
-	// HUD content exists — the plain pipeline never pays for the pass.
-	// ponytail: TSL typing quarantined as in Text.ts.
-	interface Node {
-		readonly rgb: Node;
-		readonly a: Node;
-		mul(v: unknown): Node;
-		add(v: unknown): Node;
-		oneMinus(): Node;
-	}
-	const hudScenePass = PostProcessing.pass(sync.hudScene, sync.hudCamera);
-	const hudTex = hudScenePass.getTextureNode() as Node;
-	const overHud = (world: unknown): unknown =>
-		(world as Node).mul(hudTex.a.oneMinus()).add(hudTex.rgb.mul(hudTex.a));
+	// HUD composite variant, chosen per frame only when HUD content exists —
+	// the plain pipeline never pays for the pass
+	const overHud = makeHudOver(sync);
 	const postWithHud = PostProcessing.makePipeline(gpu, overHud(sceneColor));
 	const target = yield* RenderTarget.make(pixelWidth, pixelHeight);
 	Gpu.setRenderTarget(gpu, target);

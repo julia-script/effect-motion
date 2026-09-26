@@ -54,6 +54,17 @@ export const scene = Scene.make(
 			...flat("#073b4c"),
 		});
 
+		// a HUD caption: pinned to the screen and exempt from the blur
+		const caption = yield* Scene.instantiate("Text", {
+			position: Entity.vec3({ y: 440 }),
+			text: "rack focus",
+			fontSize: 56,
+			fillColor: Color.hex("#073b4c"),
+			textAnchor: "middle",
+			baseline: "middle",
+		});
+		yield* Scene.instantiate("Hud", { children: [caption] });
+
 		// focusDistance is a VIEW distance, so each layer's is the camera's
 		// resting z minus the layer's z
 		const camera = yield* Scene.camera;
