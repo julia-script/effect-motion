@@ -29,14 +29,14 @@ Frames are deterministic: same scene + settings → same JSON. `%`, `end` and `-
 A scene is an Effect generator: instantiate entities, then yield animations.
 
 ```ts
-import { Color, Motion, Physics, Scene, Shapes } from "effect-motion";
+import { Color, Entity, Motion, Physics, Scene } from "effect-motion";
 
 export const scene = Scene.make(function* () {
-	const dot = yield* Scene.instantiate(Shapes.Circle, {
-		x: 300, y: 540, radius: 80, fill: Color.hex("#7f5af0"),
+	const dot = yield* Scene.instantiate("Circle", {
+		position: Entity.vec3({ x: -660 }), radius: 80, fillColor: Color.hex("#7f5af0"),
 	});
-	yield* Motion.tweenTo(dot, { x: 1620 }, "1200 millis", "easeInOutCubic");
-	yield* Physics.springTo(dot, { y: 300 }, Physics.springs.wobbly);
+	yield* Motion.moveTo(dot, { x: 660 }, "1200 millis", "easeInOutCubic");
+	yield* Physics.springTo(dot, { y: 240 }, Physics.springs.wobbly);
 });
 ```
 
