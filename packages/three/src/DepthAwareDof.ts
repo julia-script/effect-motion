@@ -4,7 +4,10 @@
  *
  * @remarks
  * Ported verbatim (algorithm and constants) from the standalone
- * `DepthAwareDofNode.ts` prototype; only typing and lint conventions differ.
+ * `DepthAwareDofNode.ts` prototype; only typing and lint conventions differ,
+ * plus one fix: the near gather reaches nearR + 0.5 and the centre tap's
+ * coverage no longer double-counts, so opaque near surfaces at a few px of
+ * CoC stay opaque.
  * Exposed as `PostProcessing.depthAwareDof`.
  *
  * ```ts
@@ -350,9 +353,13 @@ export function depthAwareDof(
 
 			// Near field
 			const nearR = nearTile.sample(uv).x;
-			const tapArea = nearR.mul(nearR).div(NEAR_TAPS);
+			// A tap's reach ramps out at r = c + 0.5, so gather that far: cut at
+			// nearR, the ramp's outer half is lost and α ≈ 1 − 0.25 / c inside an
+			// opaque near surface (see-through at a few px of CoC).
+			const gatherR = nearR.add(0.5);
+			const tapArea = gatherR.mul(gatherR).div(NEAR_TAPS);
 			const spread = (c: V) => t.max(t.max(c.mul(c), tapArea), MIN_AREA);
-			// Centre tap: a near pixel covers itself (α ≈ 1 when it is nearly sharp).
+			// Centre tap: a near pixel's own colour counts in its near average.
 			// Only a surface blurred by more than 1 px counts as near: a barely-near
 			// one is in focus (CoC < 1 px), so nearer blur composites over it via the
 			// far path instead of being normalized together with its centre tap.
@@ -362,10 +369,16 @@ export function depthAwareDof(
 			const w0 = t.select(nearP, t.float(1).div(spread(cP)), 0);
 			const nearSum = center.rgb.mul(w0).toVar();
 			const nearW = w0.toVar();
-			const alphaSum = w0.mul(t.max(tapArea, MIN_AREA)).toVar();
+			// The centre tap's coverage is only what the disc taps under-sample:
+			// spaced for gatherR, they resolve p's own disc (area ∝ cP²) when
+			// gatherR ≈ cP but miss it when a bigger nearby CoC dilated the tile.
+			// A flat extra term would double-count and bulge α at edges.
+			const alphaSum = w0
+				.mul(t.max(tapArea.sub(cP.mul(cP).div(NEAR_TAPS)), 0))
+				.toVar();
 			t.If(nearR.greaterThan(0.5), () => {
 				t.Loop(NEAR_TAPS, ({ i }) => {
-					const [off, r] = vogel(i, NEAR_TAPS, nearR, rot);
+					const [off, r] = vogel(i, NEAR_TAPS, gatherR, rot);
 					const q = packed.sample(uv.add(off.mul(texel)));
 					const c = t.negate(q.a);
 					const isNear = c.greaterThan(0);
