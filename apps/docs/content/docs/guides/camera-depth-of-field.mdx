@@ -43,7 +43,8 @@ so the focus plane is at `z: 0`. With `aperture: 40`, a shape at `z: -1000`
 sits at `d ≈ 3667` and blurs by about `40 · 1000 / 3667 ≈ 11` px. A shape
 1000 units *in front* of the plane (`d ≈ 1667`) blurs by about 24 px: blur
 grows faster in front of the focus plane than behind it, just like a real
-lens. The renderer caps the blur radius at 30 px.
+lens. The renderer caps the blur radius at 30 rendered pixels, which is 15
+px on screen at a pixel ratio of 2.
 
 Blur is worked out per pixel from depth, not per shape. A plane tilted away
 from the camera is sharp along one band and softens smoothly on either side,
@@ -99,8 +100,14 @@ and labels on the HUD stay crisp whatever the camera's aperture.
   depth of whatever shows through it. Keep shapes in depth-of-field scenes at
   `opacity: 1`.
 - **Perspective cameras only.**
-- **Cost.** With `aperture > 0` the scene is drawn twice per frame, so it
-  costs roughly double. At `aperture: 0` there is no extra cost.
+- **Cost.** With `aperture > 0` the scene is drawn twice per frame and every
+  pixel gathers dozens of blur samples; most of the cost is the sampling, and
+  it grows with the pixel count. At `aperture: 0` there is no extra cost.
+- **Real time vs export.** The browser renderer (and so the `Player`) takes
+  half the blur samples by default, so playback holds its frame rate; the blur
+  shape is the same, with a little more fine grain. Video export always uses
+  full quality. For full quality in the browser, for example when recording
+  the canvas, pass `dofQuality: "full"` to `Renderer.make`.
 - **Outlines.** Shapes default to a 1 px black stroke. A layer close to the
   lens scales that up into a visible dark outline, so flat-colour scenes
   usually set `strokeWidth: 0`.

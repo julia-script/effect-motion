@@ -86,6 +86,13 @@ export const renderCompTargets = Effect.fnUntraced(function* (
 });
 
 /**
+ * Depth-of-field sample quality: `"full"` is the node's default tap count
+ * (export quality); `"realtime"` halves it — about half the GPU cost, a
+ * little more sample noise, same blur shape and edges.
+ */
+export type DofQuality = "realtime" | "full";
+
+/**
  * The depth-aware DoF node over a sync's world scene.
  *
  * @remarks
@@ -98,10 +105,15 @@ export const renderCompTargets = Effect.fnUntraced(function* (
  */
 export const makeDofNode = (
 	sync: Sync.Sync,
+	quality: DofQuality = "full",
 ): PostProcessing.DepthAwareDofNode =>
 	PostProcessing.depthAwareDof(PostProcessing.pass(sync.scene, sync.camera), {
 		focusDistance: sync.dof.focusDistance,
 		aperture: sync.dof.aperture,
+		// ponytail: a fixed half tap count (tilted-plane holds 60 fps at DPR
+		// 1.75 on an M-series Mac). Scale taps by pixel count or measured frame
+		// time if a bigger canvas or slower GPU still drops frames.
+		...(quality === "realtime" ? { taps: { near: 32, far: 24 } } : {}),
 	});
 
 /** Copy this frame's focus and lens radius into the DoF node's uniforms. */
@@ -154,7 +166,7 @@ const renderWorldWithDof = (
 	hud: boolean,
 ): Effect.Effect<void, ThreeException> => {
 	if (renderer.dofChain === null) {
-		const node = makeDofNode(renderer.sync);
+		const node = makeDofNode(renderer.sync, renderer.dofQuality);
 		renderer.dofChain = {
 			node,
 			pipeline: PostProcessing.makePipeline(renderer.gpu, node),
@@ -190,6 +202,15 @@ export interface MakeOptions {
 	 * Merged over the built-in manifest by entity tag.
 	 */
 	readonly renderers?: Record<string, AnyEntityRenderer>;
+	/**
+	 * Depth-of-field sample quality. `"realtime"` halves the blur's gather
+	 * taps so playback holds its frame rate; pass `"full"` for export-quality
+	 * blur (what the Node renderer always uses) when frame rate does not
+	 * matter, e.g. recording the canvas.
+	 *
+	 * @defaultValue `"realtime"`
+	 */
+	readonly dofQuality?: DofQuality;
 }
 
 /**
@@ -226,6 +247,8 @@ export interface Renderer {
 	 * their own.
 	 */
 	readonly scope: Scope.Scope;
+	/** Depth-of-field sample quality, from {@link MakeOptions.dofQuality}. */
+	readonly dofQuality: DofQuality;
 	/** internal: the DoF pipeline, built the first time a frame asks for it */
 	dofChain: {
 		readonly node: PostProcessing.DepthAwareDofNode;
@@ -426,5 +449,11 @@ export const make = Effect.fn("Renderer.make")(function* (
 	});
 	yield* Effect.addFinalizer(() => Sync.dispose(sync));
 	const scope = yield* Effect.scope;
-	return { sync, gpu, scope, dofChain: null };
+	return {
+		sync,
+		gpu,
+		scope,
+		dofQuality: options.dofQuality ?? "realtime",
+		dofChain: null,
+	};
 });

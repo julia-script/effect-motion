@@ -1,22 +1,23 @@
 ---
 title: "makeDofNode"
-description: "function makeDofNode(sync): DepthAwareDofNode;"
+description: "function makeDofNode(sync, quality?): DepthAwareDofNode;"
 ---
 # Function: makeDofNode()
 
 ```ts
-function makeDofNode(sync): DepthAwareDofNode;
+function makeDofNode(sync, quality?): DepthAwareDofNode;
 ```
 
-Defined in: [packages/renderer/src/Renderer.ts:99](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Renderer.ts#L99)
+Defined in: [packages/renderer/src/Renderer.ts:106](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Renderer.ts#L106)
 
 The depth-aware DoF node over a sync's world scene.
 
 ## Parameters
 
-| Parameter | Type |
-| ------ | ------ |
-| `sync` | [`Sync`](../../Sync/interfaces/Sync.mdx) |
+| Parameter | Type | Default value |
+| ------ | ------ | ------ |
+| `sync` | [`Sync`](../../Sync/interfaces/Sync.mdx) | `undefined` |
+| `quality` | [`DofQuality`](../type-aliases/DofQuality.mdx) | `"full"` |
 
 ## Returns
 

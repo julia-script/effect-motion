@@ -4,7 +4,7 @@ description: "aperture: FloatParam;"
 ---
 # Interface: DepthAwareDofOptions
 
-Defined in: [packages/three/src/DepthAwareDof.ts:139](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/DepthAwareDof.ts#L139)
+Defined in: [packages/three/src/DepthAwareDof.ts:144](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/DepthAwareDof.ts#L144)
 
 ## Properties
 
@@ -14,7 +14,7 @@ Defined in: [packages/three/src/DepthAwareDof.ts:139](https://github.com/julia-s
 aperture: FloatParam;
 ```
 
-Defined in: [packages/three/src/DepthAwareDof.ts:141](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/DepthAwareDof.ts#L141)
+Defined in: [packages/three/src/DepthAwareDof.ts:146](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/DepthAwareDof.ts#L146)
 
 ***
 
@@ -24,7 +24,7 @@ Defined in: [packages/three/src/DepthAwareDof.ts:141](https://github.com/julia-s
 focusDistance: FloatParam;
 ```
 
-Defined in: [packages/three/src/DepthAwareDof.ts:140](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/DepthAwareDof.ts#L140)
+Defined in: [packages/three/src/DepthAwareDof.ts:145](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/DepthAwareDof.ts#L145)
 
 ***
 
@@ -34,4 +34,33 @@ Defined in: [packages/three/src/DepthAwareDof.ts:140](https://github.com/julia-s
 optional maxBlurPx?: FloatParam;
 ```
 
-Defined in: [packages/three/src/DepthAwareDof.ts:142](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/DepthAwareDof.ts#L142)
+Defined in: [packages/three/src/DepthAwareDof.ts:147](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/DepthAwareDof.ts#L147)
+
+***
+
+### taps?
+
+```ts
+optional taps?: {
+  far: number;
+  near: number;
+};
+```
+
+Defined in: [packages/three/src/DepthAwareDof.ts:153](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/DepthAwareDof.ts#L153)
+
+Gather taps per pixel for the near and far fields (default 64 / 48). Fewer
+taps cost proportionally less GPU time for more sample noise; the blur
+shape and edges are unchanged. Fixed when the node is built.
+
+#### far
+
+```ts
+readonly far: number;
+```
+
+#### near
+
+```ts
+readonly near: number;
+```

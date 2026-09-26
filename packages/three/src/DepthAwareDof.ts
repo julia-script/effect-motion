@@ -31,6 +31,8 @@
  *   The uncapped CoC scales with H, so it looks the same at any pixel ratio;
  *   the cap does not (at DPR 2, 30 caps at 15 CSS px). It is not scaled by
  *   DPR internally because 30 · 2 would pass the 48 px limit.
+ * - `taps` (default near 64 / far 48, plain numbers fixed at build): the gather
+ *   cost is about linear in them; halving trades GPU time for sample noise.
  *
  * Requirements: WebGPURenderer + RenderPipeline, a PerspectiveCamera, opaque
  * geometry. Resize, pixel ratio and camera near/far/fov/zoom changes are
@@ -116,6 +118,8 @@ const t = TSL as unknown as {
 	uniformArray: (values: Vector3[], type: string) => { element(i: V): V };
 	uniform: (value: number) => U;
 	pass: (scene: Object3D, camera: Camera) => PassNode;
+	mrt: (outputs: { output: V }) => Parameters<PassNode["setMRT"]>[0];
+	output: V;
 	context: (value: object) => PassNode["contextNode"];
 	Discard: (cond: V) => void;
 	perspectiveDepthToViewZ: (depth: V, near: V, far: V) => V;
@@ -125,8 +129,6 @@ const t = TSL as unknown as {
 	cameraFar: V;
 };
 
-const NEAR_TAPS = 64;
-const FAR_TAPS = 48;
 /** Near-CoC tile size (px) and dilation reach (tiles): covers ≥ (REACH − 1) · TILE px. */
 const TILE = 16;
 const REACH = 4;
@@ -143,6 +145,12 @@ export interface DepthAwareDofOptions {
 	focusDistance: FloatParam;
 	aperture: FloatParam;
 	maxBlurPx?: FloatParam;
+	/**
+	 * Gather taps per pixel for the near and far fields (default 64 / 48). Fewer
+	 * taps cost proportionally less GPU time for more sample noise; the blur
+	 * shape and edges are unchanged. Fixed when the node is built.
+	 */
+	taps?: { readonly near: number; readonly far: number };
 }
 
 /** The output node, with its parameters as uniforms (set `.value`). */
@@ -221,7 +229,12 @@ function vogel(i: V, n: number, radius: V, rot: V): [V, V] {
  */
 export function depthAwareDof(
 	pass: Pass,
-	{ focusDistance, aperture, maxBlurPx = 30 }: DepthAwareDofOptions,
+	{
+		focusDistance,
+		aperture,
+		maxBlurPx = 30,
+		taps: { near: nearTaps, far: farTaps } = { near: 64, far: 48 },
+	}: DepthAwareDofOptions,
 ): DepthAwareDofNode {
 	const scenePass: PassNode = pass["~three.pass"];
 	const focus = asUniform(focusDistance);
@@ -275,6 +288,11 @@ export function depthAwareDof(
 		t.cameraNear,
 		t.cameraFar,
 	);
+	// Own MRT = own render context. three keys render contexts by target
+	// format only, so without it the peel shares the front pass's context, and
+	// every scene object's render object is rebuilt twice a frame as the
+	// renderer context node flips between the two passes (CPU-bound playback).
+	back.setMRT(t.mrt({ output: t.output }));
 	back.contextNode = t.context({
 		getOutput: (output: V) => {
 			t.Discard(
@@ -357,7 +375,7 @@ export function depthAwareDof(
 			// nearR, the ramp's outer half is lost and α ≈ 1 − 0.25 / c inside an
 			// opaque near surface (see-through at a few px of CoC).
 			const gatherR = nearR.add(0.5);
-			const tapArea = gatherR.mul(gatherR).div(NEAR_TAPS);
+			const tapArea = gatherR.mul(gatherR).div(nearTaps);
 			const spread = (c: V) => t.max(t.max(c.mul(c), tapArea), MIN_AREA);
 			// Centre tap: a near pixel's own colour counts in its near average.
 			// Only a surface blurred by more than 1 px counts as near: a barely-near
@@ -374,11 +392,11 @@ export function depthAwareDof(
 			// gatherR ≈ cP but miss it when a bigger nearby CoC dilated the tile.
 			// A flat extra term would double-count and bulge α at edges.
 			const alphaSum = w0
-				.mul(t.max(tapArea.sub(cP.mul(cP).div(NEAR_TAPS)), 0))
+				.mul(t.max(tapArea.sub(cP.mul(cP).div(nearTaps)), 0))
 				.toVar();
 			t.If(nearR.greaterThan(0.5), () => {
-				t.Loop(NEAR_TAPS, ({ i }) => {
-					const [off, r] = vogel(i, NEAR_TAPS, gatherR, rot);
+				t.Loop(nearTaps, ({ i }) => {
+					const [off, r] = vogel(i, nearTaps, gatherR, rot);
 					const q = packed.sample(uv.add(off.mul(texel)));
 					const c = t.negate(q.a);
 					const isNear = c.greaterThan(0);
@@ -401,12 +419,12 @@ export function depthAwareDof(
 			const cB = t.abs(sB);
 			const farColor = bP.rgb.toVar();
 			t.If(cB.greaterThan(0.5), () => {
-				const farArea = t.max(cB.mul(cB).div(FAR_TAPS), MIN_AREA);
+				const farArea = t.max(cB.mul(cB).div(farTaps), MIN_AREA);
 				const spreadF = (c: V) => t.max(c.mul(c), farArea);
 				const sum = bP.rgb.div(spreadF(cB)).toVar();
 				const wSum = t.float(1).div(spreadF(cB)).toVar();
-				t.Loop(FAR_TAPS, ({ i }) => {
-					const [off, r] = vogel(i, FAR_TAPS, cB, rot);
+				t.Loop(farTaps, ({ i }) => {
+					const [off, r] = vogel(i, farTaps, cB, rot);
 					const quv = uv.add(off.mul(texel));
 					const q1 = packed.sample(quv);
 					const c1 = t.min(t.abs(q1.a), cB);
