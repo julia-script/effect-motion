@@ -343,6 +343,8 @@ export const make = Effect.fn("NodeRenderer.make")(function* (
 		canvas: canvas as unknown as HTMLCanvasElement,
 		context: context as never,
 		antialias: true,
+		// reversed-Z float depth — see Renderer.make
+		reversedDepthBuffer: true,
 		device,
 		width: options.width,
 		height: options.height,

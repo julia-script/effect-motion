@@ -40,6 +40,9 @@ const setColor = (
 	material.color.setRGB(r / 255, g / 255, b / 255, THREE.SRGBColorSpace);
 	material.opacity = (a / 255) * shapeOpacity;
 	material.transparent = true;
+	// see-through layers don't write depth: a fading card must not punch
+	// holes in what is drawn after it (paint order: Sync's syncLayers)
+	material.depthWrite = material.opacity >= 1;
 };
 
 /**
@@ -597,6 +600,7 @@ const image: EntityRenderer<Entity.EntityByTag<"Image">> = {
 			applySize(mesh.userData.natural as { width: number; height: number });
 		}
 		material.opacity = data.opacity;
+		material.depthWrite = data.opacity >= 1;
 		if (mesh.userData.natural !== undefined) {
 			mesh.visible = data.opacity > 0;
 		}

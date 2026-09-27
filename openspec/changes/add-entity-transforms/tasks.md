@@ -10,8 +10,13 @@
 
 - [x] 2.1 `Motion.scale`/`scaleTo`, `Motion.rotate`/`rotateTo` as base/To duals
 
-## 3. Verification
+## 3. Paint order
 
-- [x] 3.1 Structural renderer tests: scaled/rotated shape, rotated+scaled Group carrying children, nested composition, Group opacity
-- [x] 3.2 Headless GPU pixel test and a viewed contact sheet
-- [x] 3.3 Animator tests land exactly on target
+- [x] 3.1 Tree-order homothety nudge per leaf/comp (`Sync.syncLayers`), reversed-Z float depth (both render paths + comp targets)
+- [x] 3.2 Opacity < 1 materials don't write depth; drop Text's z-lift
+
+## 4. Verification
+
+- [x] 4.1 Structural renderer tests: scaled/rotated shape, rotated+scaled Group carrying children, nested composition, Group opacity
+- [x] 4.2 Headless GPU pixel test and a viewed contact sheet
+- [x] 4.3 Animator tests land exactly on target

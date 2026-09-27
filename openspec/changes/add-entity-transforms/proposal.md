@@ -9,6 +9,7 @@ The schema has always advertised `scale` and `rotation` on every paintable entit
 - Skeletal builtins (Line, Path) map every local point through the composed matrix; Path fills triangulate in local space.
 - A Group's opacity multiplies into every descendant (leaf data reaches renderers with ancestor opacity already applied), and into a comp's composite.
 - The entity-renderer contract's `Leaf` gains `transform` (composed matrix, orientation, per-axis scale, and whether anything rotates). `Leaf.world` is kept.
+- Equal-depth content paints in tree order (dogfood bugs 4, 5): each leaf is nudged toward the camera by a projection-preserving homothety of `rank·1e-6` of its distance, so later layers win depth ties without moving a pixel; the depth buffer is reversed-Z float so that nudge is resolvable at any distance; see-through materials (opacity < 1) stop writing depth; Text's fixed z-lift is gone.
 - `Motion.scale`/`scaleTo` (number = uniform, or partial Vec3) and `Motion.rotate`/`rotateTo` (number = in-plane z spin in radians, or partial Euler Vec3), as base/To duals like `move`/`moveTo`.
 
 ## Capabilities
@@ -17,7 +18,9 @@ The schema has always advertised `scale` and `rotation` on every paintable entit
 
 - `entity-transform`: transform composition semantics made concrete; Group opacity; scale/rotate animators.
 - `object-depth`: orientation applies to every planar shape, not just Rect.
-- `motion-renderer`: walk composes full transforms and opacity; `Leaf.transform`; billboard rule generalized.
+- `motion-renderer`: walk composes full transforms and opacity; `Leaf.transform`; billboard rule generalized; tree-order paint at depth ties.
+- `depth-render-order`: equal-depth ties break by tree order (was instance id); translucent content writes no depth.
+- `three-text`: text over a coplanar backdrop wins by paint order, not a z-lift.
 
 ## Impact
 
@@ -27,4 +30,4 @@ The schema has always advertised `scale` and `rotation` on every paintable entit
 
 ## Non-goals
 
-Same-z overlap / depth ordering (next task), comps redesign, shear (still not expressible), stroke width scaling with `scale`, springs over scale/rotation (use easings or `Motion.drive`).
+Comps redesign, shear (still not expressible), stroke width scaling with `scale`, springs over scale/rotation (use easings or `Motion.drive`).

@@ -1,11 +1,11 @@
 ## MODIFIED Requirements
 
 ### Requirement: Frame pipeline preserved
-The renderer SHALL walk a frame's instance tree composing ancestor transforms (translate, rotate, scale — see entity-transform) and ancestor opacities, sync the result into its retained three scene, and render world content with GPU depth-buffer occlusion; `Shapes.Hud` subtrees render camera-independent after and above world content (see the hud-layer capability). Translucent content at equal or near-equal depth SHALL draw in a deterministic order derived from the stable instance-id tie-break. Hidden instances (`$visible === false`) and their subtrees SHALL be skipped. A duplicate parent / cycle SHALL be a loud defect naming the instance. An unknown or missing instance id SHALL be a loud defect.
+The renderer SHALL walk a frame's instance tree composing ancestor transforms (translate, rotate, scale — see entity-transform) and ancestor opacities, sync the result into its retained three scene, and render world content with GPU depth-buffer occlusion; `Shapes.Hud` subtrees render camera-independent after and above world content (see the hud-layer capability). Content at equal depth SHALL paint in tree order — later over earlier, like After Effects layers — and translucent content SHALL NOT write depth (see depth-render-order). Hidden instances (`$visible === false`) and their subtrees SHALL be skipped. A duplicate parent / cycle SHALL be a loud defect naming the instance. An unknown or missing instance id SHALL be a loud defect.
 
 #### Scenario: Deterministic order on depth ties
-- **WHEN** multiple translucent paintables share a view depth
-- **THEN** they blend in ascending instance-id order, identically across runs and across browser and Node
+- **WHEN** multiple paintables share a view depth
+- **THEN** they paint in tree order, identically across runs and across browser and Node
 
 #### Scenario: HUD tier renders after the world tier
 - **WHEN** a frame contains both world and Hud content

@@ -2,6 +2,7 @@ import type { ThreeException } from "@effect-motion/three";
 import {
 	Renderer as Gpu,
 	RenderTarget,
+	ThreeRaw as THREE,
 	Scene as ThreeScene,
 } from "@effect-motion/three";
 import { Effect, Scope } from "effect";
@@ -68,7 +69,13 @@ export const renderCompTargets = Effect.fnUntraced(function* (
 			if (comp.rt !== null) {
 				RenderTarget.dispose(comp.rt);
 			}
-			comp.rt = RenderTarget.makeUnsafe(pw, ph);
+			// float depth: the reversed-Z precision paint order relies on
+			// (Sync's syncLayers) — a default target gets depth24plus
+			const depthTexture = new THREE.DepthTexture(pw, ph);
+			depthTexture.type = THREE.FloatType;
+			comp.rt = RenderTarget.fromRaw(
+				new THREE.RenderTarget(pw, ph, { depthTexture }),
+			);
 			comp.material.map = RenderTarget.texture(comp.rt);
 			comp.material.needsUpdate = true;
 		}
@@ -315,6 +322,9 @@ export const make = Effect.fn("Renderer.make")(function* (
 	const gpu = yield* Gpu.make({
 		...(options.canvas !== undefined ? { canvas: options.canvas } : {}),
 		antialias: true,
+		// reversed-Z float depth: uniform relative precision at any
+		// distance, which Sync's paint-order nudge relies on
+		reversedDepthBuffer: true,
 		width: options.width,
 		height: options.height,
 		...(options.pixelRatio !== undefined
