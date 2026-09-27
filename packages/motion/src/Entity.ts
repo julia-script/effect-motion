@@ -85,11 +85,22 @@ const paintableMixin = {
 	...appearanceMixin,
 };
 
+/** A Line IS its stroke, so it defaults to a visible black 1-unit one. */
 const strokeMixin = {
 	strokeWidth: defaultedNumber(1),
 	strokeColor: Color.Color.pipe(
 		Schema.withConstructorDefault(Effect.succeed(Color.black)),
 	),
+};
+
+/**
+ * Filled shapes draw no outline unless `strokeColor` is set. Tweening
+ * `strokeColor` from unset dies naming the field — set a start color (or
+ * pass an explicit `from`) first.
+ */
+const outlineMixin = {
+	strokeWidth: defaultedNumber(1),
+	strokeColor: Schema.optionalKey(Color.Color),
 };
 
 const fillMixin = {
@@ -151,7 +162,7 @@ export const Line = Schema.TaggedStruct("Line", {
 export const Path = Schema.TaggedStruct("Path", {
 	...paintableMixin,
 	...fillMixin,
-	...strokeMixin,
+	...outlineMixin,
 	commands: Schema.NonEmptyArray(PathCommand).check(
 		Schema.makeFilter((commands) =>
 			commands[0]._tag === "M"
@@ -168,7 +179,7 @@ export const Path = Schema.TaggedStruct("Path", {
 export const Rect = Schema.TaggedStruct("Rect", {
 	...paintableMixin,
 	...fillMixin,
-	...strokeMixin,
+	...outlineMixin,
 	width: defaultedNumber(100),
 	height: defaultedNumber(100),
 });
@@ -177,7 +188,7 @@ export const Rect = Schema.TaggedStruct("Rect", {
 export const Circle = Schema.TaggedStruct("Circle", {
 	...paintableMixin,
 	...fillMixin,
-	...strokeMixin,
+	...outlineMixin,
 	radius: defaultedNumber(10),
 });
 
@@ -185,7 +196,7 @@ export const Circle = Schema.TaggedStruct("Circle", {
 export const Ellipse = Schema.TaggedStruct("Ellipse", {
 	...paintableMixin,
 	...fillMixin,
-	...strokeMixin,
+	...outlineMixin,
 	radiusX: defaultedNumber(20),
 	radiusY: defaultedNumber(10),
 });

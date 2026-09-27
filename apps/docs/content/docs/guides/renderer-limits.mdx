@@ -34,6 +34,9 @@ A few details:
   with rotation 0 faces the camera. Any other rotation, its own or an
   ancestor's, makes it a real plane in 3D. `Line` and `Path` are always
   drawn in 3D space as authored.
+- **Outlines** are opt-in: `Rect`, `Circle`, `Ellipse` and `Path` draw none
+  until you set `strokeColor` (`strokeWidth` defaults to 1). A `Line` is its
+  stroke, so it defaults to black at width 1.
 - **Strokes** scale with the shape: the drawn width is `strokeWidth` times
   the narrower of `|scale.x|` and `|scale.y|` (ancestors included), so a
   shape scaled to zero on either axis draws nothing.

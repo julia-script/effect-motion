@@ -405,6 +405,7 @@ describe("headless Dawn rendering", () => {
 					width: 100,
 					height: 40,
 					fillColor: white,
+					strokeColor: Color.black,
 					scale: S.vec3({ x: 1, y: 0.02, z: 1 }),
 				});
 			});
