@@ -6,6 +6,7 @@
 		"custom-fonts",
 		"images",
 		"camera-depth-of-field",
+		"masks",
 		"renderer-limits",
 		"precomps",
 		"custom-entities",

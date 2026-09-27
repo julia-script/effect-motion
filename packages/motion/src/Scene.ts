@@ -777,7 +777,21 @@ export const removeChild = (
 		runner.removeChild(parent, child);
 	});
 
-/** Attach an existing paintable source to a target at the current scene frame. */
+/**
+ * Attaches an existing paintable instance as a target's alpha mask at the current scene frame.
+ *
+ * **Details**
+ *
+ * The source remains in the instance tree and can animate independently. While attached,
+ * its subtree supplies alpha coverage instead of painting into the scene. Normal mode
+ * (the default) multiplies target alpha by source coverage; `inverse` uses the
+ * complement. Attaching another source replaces the target's previous mask.
+ * Both handles must be mounted in the same composition and render tier, and one
+ * source can serve only one target. Invalid relationships fail with a named defect.
+ *
+ * @see {@link clearMask} to restore ordinary rendering of the source.
+ * @category transforming
+ */
 export const setMask = Effect.fn("Scene.setMask")(function* (
 	target: Instance.Instance<Entity.MaskableTag>,
 	source: Instance.Instance<Entity.MaskableTag>,
@@ -791,7 +805,17 @@ export const setMask = Effect.fn("Scene.setMask")(function* (
 	return target;
 });
 
-/** Remove a target's mask at the current scene frame; an unmasked target is unchanged. */
+/**
+ * Removes a target's mask at the current scene frame and returns the target.
+ *
+ * **Details**
+ *
+ * The former source resumes ordinary rendering if it is mounted and visible.
+ * Calling this on an unmasked target leaves it unchanged.
+ *
+ * @see {@link setMask} to attach or replace a mask.
+ * @category transforming
+ */
 export const clearMask = Effect.fn("Scene.clearMask")(function* (
 	target: Instance.Instance<Entity.MaskableTag>,
 ) {
