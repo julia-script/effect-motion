@@ -1,0 +1,34 @@
+---
+title: "cocRadiusPx"
+description: "function cocRadiusPx("
+---
+# Function: cocRadiusPx()
+
+```ts
+function cocRadiusPx(
+   d, 
+   focusDistance, 
+   aperture, 
+   pxPerUnit): number;
+```
+
+Defined in: [packages/three/src/DepthAwareDof.ts:193](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/DepthAwareDof.ts#L193)
+
+Physical thin-lens CoC radius (px) at view distance d = −viewZ: a lens of
+radius `aperture` focused at `focusDistance` images the point as a disc of
+world radius aperture · |d − focus| / d on the focus plane, projected by
+`pxPerUnit` ([pxPerUnitAtFocus](./pxPerUnitAtFocus.mdx)). Near blur grows without bound as
+d → 0; far blur saturates at aperture · pxPerUnit.
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `d` | `number` |
+| `focusDistance` | `number` |
+| `aperture` | `number` |
+| `pxPerUnit` | `number` |
+
+## Returns
+
+`number`

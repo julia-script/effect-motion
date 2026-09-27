@@ -15,6 +15,7 @@
 
 - [x] 3.1 Tree-order homothety nudge per leaf/comp (`Sync.syncLayers`), reversed-Z float depth (both render paths + comp targets)
 - [x] 3.2 Opacity < 1 materials don't write depth; drop Text's z-lift
+- [x] 3.3 Depth of field (main's depth-aware DoF): see-through materials write depth for the DoF render only (`Sync.withSeeThroughDepth`), so they blur at their own depth; reversed-Z depth is linearized by three's `perspectiveDepthToViewZ` (honours `reversedDepthBuffer`), pinned by a both-sides-of-focus Dawn test
 
 ## 4. Verification
 

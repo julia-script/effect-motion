@@ -12,6 +12,8 @@ The Runner held one active camera; `Scene.camera` returned it wherever it was ca
 
 **D4 — Comp HUD pass.** The comp's `hudScene` was synced but never rendered. `renderCompTargets` now renders it after the world into the same target (autoClear off, depth cleared), mirroring the browser root path. The render target has no output transform, so no double sRGB concern.
 
+**D5 — Depth of field: the parent's only.** Main's depth-aware DoF runs as a post chain whose passes size themselves to the drawing buffer and end in the sRGB output transform, so it cannot draw into a comp target as is. A comp therefore renders sharp — the child camera's `aperture` / `focusDistance` are ignored — and its composited plane takes the parent's DoF at the plane's depth, like any layer. Alternative: a per-comp DoF chain sized to the comp target with the output transform off — deferred (ponytail in `renderCompTargets`) until a precomp needs its own focus.
+
 ## Risks
 
 - Behavior change for a child that moved the root camera by accident of the old sharing — now it moves its own. Intended: nested must equal standalone.

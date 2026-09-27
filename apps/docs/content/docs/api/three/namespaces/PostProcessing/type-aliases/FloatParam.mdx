@@ -1,0 +1,17 @@
+---
+title: "FloatParam"
+description: "type FloatParam ="
+---
+# Type Alias: FloatParam
+
+```ts
+type FloatParam = 
+  | number
+  | Node & {
+  value: number;
+};
+```
+
+Defined in: [packages/three/src/DepthAwareDof.ts:153](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/DepthAwareDof.ts#L153)
+
+A float parameter: a plain number or a `uniform()` node.

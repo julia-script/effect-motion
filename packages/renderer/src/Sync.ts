@@ -185,18 +185,17 @@ export interface SyncStats {
  * The depth-of-field request derived from a frame's camera.
  *
  * @remarks
- * Currently computed but NOT consumed: depth-of-field rendering is not
- * implemented, and both render paths draw every frame sharp. The values are
- * kept in step with the camera so the feature can be rebuilt without
- * re-deriving them.
+ * Both render paths read it per frame: when `on`, the world draws through the
+ * depth-aware DoF post chain with these values as its uniforms; otherwise the
+ * plain path runs and the chain is never touched.
  */
 export interface DofState {
 	/** Whether the camera asked for DoF (`aperture` and `focusDistance` both > 0). */
 	on: boolean;
-	/** View-space distance to the intended sharp plane. */
+	/** View-space distance to the sharp plane, world units. */
 	focusDistance: number;
-	/** Blur radius in uv units, derived from the aperture; 0 is off. */
-	strengthUv: number;
+	/** Lens radius, world units; 0 is a pinhole (off). */
+	aperture: number;
 }
 
 /**
@@ -258,10 +257,7 @@ export interface Sync {
 	readonly hudScene: ThreeScene.Scene;
 	readonly hudCamera: THREE.PerspectiveCamera;
 	readonly stats: SyncStats;
-	/**
-	 * Depth-of-field request derived from the frame's camera — currently
-	 * derived but not drawn. See {@link DofState}.
-	 */
+	/** Depth-of-field request derived from the frame's camera. See {@link DofState}. */
 	readonly dof: DofState;
 	/** the renderer's SDF text actor (fonts, atlas, layout) */
 	readonly text: Text.Text;
@@ -304,7 +300,7 @@ export const make = (
 		hudScene: ThreeScene.makeUnsafe(new THREE.Scene()),
 		hudCamera: new THREE.PerspectiveCamera(50, 1, NEAR, FAR),
 		stats: { objects: 0, lastSyncMs: 0 },
-		dof: { on: false, focusDistance: 0, strengthUv: 0 },
+		dof: { on: false, focusDistance: 0, aperture: 0 },
 		text: resources.text,
 		images: resources.images,
 		comps: new Map<string, CompState>(),
@@ -395,10 +391,7 @@ const syncCameras = (sync: Sync, frame: AnyFrame): void => {
 
 	sync.dof.on = camera.aperture > 0 && camera.focusDistance > 0;
 	sync.dof.focusDistance = camera.focusDistance;
-	// aperture → uv-space CoC scale, matched against the ThorVG sigma
-	// curve (sigma = aperture·f·|d−F|/(d·F) ≈ aperture·|d−F|/F at rest):
-	// blur radius ≈ 2σ → strength = 2·aperture / viewport height.
-	sync.dof.strengthUv = (camera.aperture * 2) / frame.height;
+	sync.dof.aperture = camera.aperture;
 };
 
 /** One walked leaf: the leaf handed to its renderer, its tier, and the
@@ -783,9 +776,7 @@ const syncComp = (
 		0,
 		Math.min(1, opacityOf(groupData) * parentOpacity),
 	);
-	// see-through layers don't write depth, so they never hide what is
-	// drawn after them
-	comp.material.depthWrite = comp.material.opacity >= 1;
+	applyDepthWrite(comp.material);
 	comp.holder.visible = comp.material.opacity > 0;
 	// the comp's own transform is on the holder, composed like any entity's
 	comp.transformHolder.matrixAutoUpdate = true;
@@ -793,6 +784,61 @@ const syncComp = (
 	comp.transformHolder.rotation.set(0, 0, 0);
 	comp.transformHolder.scale.set(1, 1, 1);
 };
+
+/**
+ * Set a layer's depth write from its opacity.
+ *
+ * @remarks
+ * Internal. See-through layers (opacity < 1) write no depth, so a fading
+ * card never punches holes in what is drawn after it (paint order:
+ * `syncLayers`). They are tagged so a depth-of-field render can lend them
+ * depth — see {@link withSeeThroughDepth}.
+ */
+export const applyDepthWrite = (material: THREE.Material): void => {
+	material.depthWrite = material.opacity >= 1;
+	material.userData.seeThrough = !material.depthWrite;
+};
+
+/**
+ * Run a depth-of-field render with see-through layers writing depth.
+ *
+ * @remarks
+ * Internal, shared by both render paths. DoF reads each pixel's blur from the
+ * depth buffer, so a layer that writes none would take the blur of whatever
+ * lies behind it — over the empty background that is the far-field maximum,
+ * and a title fading in on the focus plane would pop from blurred to sharp.
+ * Lent for the DoF render only and restored after, so the plain path keeps
+ * the no-holes rule; under DoF a see-through layer can hide see-through
+ * content the transparent sort draws after it (DoF is opaque-only anyway).
+ */
+export const withSeeThroughDepth = <A, E, R>(
+	sync: Sync,
+	render: Effect.Effect<A, E, R>,
+): Effect.Effect<A, E, R> =>
+	Effect.acquireUseRelease(
+		Effect.sync(() => {
+			const lent: Array<THREE.Material> = [];
+			sync.scene["~three.scene"].traverse((object) => {
+				if (!(object instanceof THREE.Mesh)) {
+					return;
+				}
+				for (const material of [object.material].flat()) {
+					if (material.userData.seeThrough === true && !material.depthWrite) {
+						material.depthWrite = true;
+						lent.push(material);
+					}
+				}
+			});
+			return lent;
+		}),
+		() => render,
+		(lent) =>
+			Effect.sync(() => {
+				for (const material of lent) {
+					material.depthWrite = false;
+				}
+			}),
+	);
 
 /** a comp's objects only — its text/image actors are the root's, which the
  * root's `dispose` releases once */

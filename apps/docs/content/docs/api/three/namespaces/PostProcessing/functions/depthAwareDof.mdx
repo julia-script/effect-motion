@@ -1,0 +1,33 @@
+---
+title: "depthAwareDof"
+description: "function depthAwareDof(pass, __namedParameters): DepthAwareDofNode;"
+---
+# Function: depthAwareDof()
+
+```ts
+function depthAwareDof(pass, __namedParameters): DepthAwareDofNode;
+```
+
+Defined in: [packages/three/src/DepthAwareDof.ts:245](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/DepthAwareDof.ts#L245)
+
+Depth-aware gather DOF on a continuous per-pixel signed CoC s (px, \< 0 near).
+
+- Near field: scatter-as-gather over a disc sized by the dilated near-CoC
+  tile max, so blurred foreground spreads over sharp pixels behind it. Each
+  near tap covers R²/N px and spreads over π c², giving coverage α.
+- Far field: disc of the pixel's own CoC; a tap reaches with min(s_q, s_p),
+  so sharp (s ≈ 0) neighbours mask themselves out and the rest is
+  renormalized — the hidden background is filled from its visible part.
+- Hidden surfaces come from a depth-peeled second layer: behind near pixels,
+  and behind a missed front tap across a depth jump.
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `pass` | [`Pass`](../interfaces/Pass.mdx) |
+| `__namedParameters` | [`DepthAwareDofOptions`](../interfaces/DepthAwareDofOptions.mdx) |
+
+## Returns
+
+[`DepthAwareDofNode`](../type-aliases/DepthAwareDofNode.mdx)

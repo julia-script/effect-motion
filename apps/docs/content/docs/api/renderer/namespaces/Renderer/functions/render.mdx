@@ -8,7 +8,7 @@ description: "function render(renderer): Effect<void, EffectMotionError | ThreeE
 function render(renderer): Effect<void, EffectMotionError | ThreeException>;
 ```
 
-Defined in: [packages/renderer/src/Renderer.ts:250](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Renderer.ts#L250)
+Defined in: [packages/renderer/src/Renderer.ts:385](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Renderer.ts#L385)
 
 Draw the current retained scene to the canvas.
 
@@ -33,5 +33,6 @@ Nested sub-compositions are drawn to their own render targets first, then
 the world, then any HUD content composited on top through an identity
 camera so it ignores camera movement.
 
-Depth of field is not applied: every frame renders sharp, regardless of a
-camera's `aperture`.
+With a camera `aperture > 0` the world draws through the depth-aware
+depth-of-field chain (built on first use); at aperture 0 it is never
+touched. HUD content is drawn after it and stays sharp.

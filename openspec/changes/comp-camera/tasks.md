@@ -14,3 +14,8 @@
 
 - [x] 3.1 motion: child camera moves land on the comp, root camera stays at rest; unmoved child carries the resting view; setCamera + width defaults in a child equal standalone
 - [x] 3.2 renderer (Dawn): a child that pans its camera renders like standalone; an unmoved child unchanged; a Hud in a child stays pinned
+
+## 4. Depth of field (merged with main's depth-aware DoF)
+
+- [x] 4.1 Comp targets render sharp — the child camera's aperture is not applied; the comp plane blurs by the parent's DoF at its depth (ponytail in `renderCompTargets`: a per-comp DoF chain sized to the comp target is the upgrade path)
+- [x] 4.2 renderer (Dawn): a child that opens its lens renders byte-identical to aperture 0

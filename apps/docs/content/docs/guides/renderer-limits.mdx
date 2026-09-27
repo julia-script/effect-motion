@@ -44,9 +44,13 @@ A few details:
   other show through one another while the group fades. To fade a section
   as one flat layer, build it as its own scene and mount it with
   `Scene.play`, then fade the mount.
-- **Camera `aperture` and `focusDistance`** are carried on the frame but
-  have no visual effect: depth of field is currently disabled, and every
-  frame renders sharp.
+- **Depth of field** follows the camera's `aperture` and `focusDistance`
+  (see [Camera depth of field](/docs/guides/camera-depth-of-field)). Blur
+  comes from the depth buffer, so it is correct for opaque content; a
+  translucent shape blurs at its own depth. `Hud` content stays sharp. A
+  scene mounted with `Scene.play` renders sharp inside, whatever its own
+  camera's `aperture`, and its plane blurs as one layer by the parent
+  camera's lens.
 
 ## Overlaps
 
@@ -83,6 +87,6 @@ Plan around these; none of them render today:
   `Scene.play` clips to its own bounds, which covers rectangular masks and
   reveals (see [Precomps, masks and HUD](/docs/guides/precomps));
 - per-letter text (a `Text` is one block; use one `Text` per word or line);
-- blur of any kind, including motion blur and depth of field;
+- motion blur, and blur of any kind other than depth of field;
 - lit or shaded 3D meshes;
 - curves, arcs and holes in `Path`.

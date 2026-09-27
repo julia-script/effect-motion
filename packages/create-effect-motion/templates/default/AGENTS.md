@@ -74,9 +74,10 @@ Scene space: x right, y up, +z toward the camera, origin at frame center. Angles
 | Type reveals | one `Text` per word or line; stagger `moveTo` + `fadeTo`, or pop `fontSize` |
 | Precomps | build a section as its own scene; mount it with `Scene.play(section)`. Each precomp has its own camera (`Scene.camera` inside it) and clips to its own `width`×`height`; move, fade or scale `handle.group` to transform it as one layer |
 | Rectangular masks, masked type reveals | a precomp smaller than the frame is a rectangular mask: content outside its bounds is clipped. Slide text into a text-high precomp (recipe below) |
+| Rack focus, depth blur | open the camera's lens once, then pull focus with a plain tween (recipe below). `aperture` is the lens radius in world units: at rest, content far behind the focus plane blurs up to about `aperture` px (capped at 30); 20–60 reads at 1920×1080. `focusDistance` is a view distance: camera `z` minus the layer's `z`. A `Hud` stays sharp; a precomp renders sharp inside (its own camera's `aperture` is ignored) and blurs as one layer by the parent's lens |
 | Labels, lower thirds, wipes | children of a `Hud` are in screen space: the camera doesn't move them and they paint on top. A full-frame `Rect` in a `Hud` sliding across is a wipe (recipe below) |
 
-**Not available yet — design around it:** masks other than rectangles (only a precomp's bounds clip) and track mattes; per-letter text (a `Text` is one block); blur of any kind (motion blur, depth of field — the camera's `aperture` does nothing); lit or shaded 3D meshes; curves and holes in `Path` (straight `M`/`L`/`Z` segments — sample a curve into points yourself; each closed subpath fills on its own); images other than PNG/JPEG in `motion frames`/`motion render`. Overlaps: nearer `z` wins; at equal `z` the later-instantiated entity paints on top.
+**Not available yet — design around it:** masks other than rectangles (only a precomp's bounds clip) and track mattes; per-letter text (a `Text` is one block); motion blur and other blurs (depth of field is the only one); lit or shaded 3D meshes; curves and holes in `Path` (straight `M`/`L`/`Z` segments — sample a curve into points yourself; each closed subpath fills on its own); images other than PNG/JPEG in `motion frames`/`motion render`. Overlaps: nearer `z` wins; at equal `z` the later-instantiated entity paints on top.
 
 Recipe — camera push through z-layered cards:
 
@@ -140,6 +141,26 @@ yield* Motion.moveTo(wipe, { x: 0 }, "400 millis", "easeInExpo"); // cover the f
 ```
 
 Hud coordinates are the frame's: origin at the center, 1 unit = 1 px of the scene's `width`×`height`, whatever the camera does. A `Hud` inside a precomp pins to that precomp's frame.
+
+Recipe — rack focus from a title to the backdrop:
+
+```ts
+yield* Scene.instantiate("Rect", { // far backdrop, soft while the title is in focus
+	position: Entity.vec3({ x: 450, z: -2500 }), width: 1400, height: 1400, fillColor: Color.hex("#ff5a1f"),
+});
+const card = yield* Scene.instantiate("Rect", { width: 900, height: 360, fillColor: Color.hex("#e8e8f0"), opacity: 0 });
+const title = yield* Scene.instantiate("Text", {
+	text: "IN FOCUS", fontSize: 160, textAnchor: "middle", baseline: "middle", fillColor: Color.hex("#1a1a2e"), opacity: 0,
+});
+const camera = yield* Scene.camera;
+const { position } = yield* Scene.data(camera);
+const focusOn = (z: number) => ({ focusDistance: position.z - z }); // a view distance
+yield* Scene.update(camera, (p) => ({ ...p, aperture: 40, ...focusOn(0) }));
+yield* Scene.all([Motion.fadeTo(card, 1, "600 millis"), Motion.fadeTo(title, 1, "600 millis")]);
+yield* Motion.tweenTo(camera, focusOn(-2500), "1200 millis", "easeInOutCubic"); // title softens, backdrop sharpens
+```
+
+Depth of field is correct for opaque content; a see-through layer blurs at its own depth. It roughly doubles render time.
 
 Recipe — staggered dot floor in 3D (`import { Schedule } from "effect"`):
 

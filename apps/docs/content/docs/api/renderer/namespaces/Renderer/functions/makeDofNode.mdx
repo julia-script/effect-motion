@@ -1,0 +1,33 @@
+---
+title: "makeDofNode"
+description: "function makeDofNode(sync, quality?): DepthAwareDofNode;"
+---
+# Function: makeDofNode()
+
+```ts
+function makeDofNode(sync, quality?): DepthAwareDofNode;
+```
+
+Defined in: [packages/renderer/src/Renderer.ts:135](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Renderer.ts#L135)
+
+The depth-aware DoF node over a sync's world scene.
+
+## Parameters
+
+| Parameter | Type | Default value |
+| ------ | ------ | ------ |
+| `sync` | [`Sync`](../../Sync/interfaces/Sync.mdx) | `undefined` |
+| `quality` | [`DofQuality`](../type-aliases/DofQuality.mdx) | `"full"` |
+
+## Returns
+
+`DepthAwareDofNode`
+
+## Remarks
+
+Internal, shared by both render paths. Built once per renderer, the first
+time a frame asks for DoF; [setDofUniforms](./setDofUniforms.mdx) feeds it each frame.
+
+`maxBlurPx` is the node default (30 render px) here; the browser path
+rescales it per frame with the pixel ratio (see renderWorldWithDof).
+Node export keeps 30 render px.

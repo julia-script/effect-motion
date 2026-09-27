@@ -4,18 +4,29 @@ description: "The depth-of-field request derived from a frame's camera."
 ---
 # Interface: DofState
 
-Defined in: [packages/renderer/src/Sync.ts:193](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L193)
+Defined in: [packages/renderer/src/Sync.ts:192](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L192)
 
 The depth-of-field request derived from a frame's camera.
 
 ## Remarks
 
-Currently computed but NOT consumed: depth-of-field rendering is not
-implemented, and both render paths draw every frame sharp. The values are
-kept in step with the camera so the feature can be rebuilt without
-re-deriving them.
+Both render paths read it per frame: when `on`, the world draws through the
+depth-aware DoF post chain with these values as its uniforms; otherwise the
+plain path runs and the chain is never touched.
 
 ## Properties
+
+### aperture
+
+```ts
+aperture: number;
+```
+
+Defined in: [packages/renderer/src/Sync.ts:198](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L198)
+
+Lens radius, world units; 0 is a pinhole (off).
+
+***
 
 ### focusDistance
 
@@ -23,9 +34,9 @@ re-deriving them.
 focusDistance: number;
 ```
 
-Defined in: [packages/renderer/src/Sync.ts:197](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L197)
+Defined in: [packages/renderer/src/Sync.ts:196](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L196)
 
-View-space distance to the intended sharp plane.
+View-space distance to the sharp plane, world units.
 
 ***
 
@@ -35,18 +46,6 @@ View-space distance to the intended sharp plane.
 on: boolean;
 ```
 
-Defined in: [packages/renderer/src/Sync.ts:195](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L195)
+Defined in: [packages/renderer/src/Sync.ts:194](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L194)
 
 Whether the camera asked for DoF (`aperture` and `focusDistance` both > 0).
-
-***
-
-### strengthUv
-
-```ts
-strengthUv: number;
-```
-
-Defined in: [packages/renderer/src/Sync.ts:199](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L199)
-
-Blur radius in uv units, derived from the aperture; 0 is off.

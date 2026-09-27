@@ -1,0 +1,66 @@
+---
+title: "DepthAwareDofOptions"
+description: "aperture: FloatParam;"
+---
+# Interface: DepthAwareDofOptions
+
+Defined in: [packages/three/src/DepthAwareDof.ts:155](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/DepthAwareDof.ts#L155)
+
+## Properties
+
+### aperture
+
+```ts
+aperture: FloatParam;
+```
+
+Defined in: [packages/three/src/DepthAwareDof.ts:157](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/DepthAwareDof.ts#L157)
+
+***
+
+### focusDistance
+
+```ts
+focusDistance: FloatParam;
+```
+
+Defined in: [packages/three/src/DepthAwareDof.ts:156](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/DepthAwareDof.ts#L156)
+
+***
+
+### maxBlurPx?
+
+```ts
+optional maxBlurPx?: FloatParam;
+```
+
+Defined in: [packages/three/src/DepthAwareDof.ts:158](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/DepthAwareDof.ts#L158)
+
+***
+
+### taps?
+
+```ts
+optional taps?: {
+  far: number;
+  near: number;
+};
+```
+
+Defined in: [packages/three/src/DepthAwareDof.ts:164](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/DepthAwareDof.ts#L164)
+
+Gather taps per pixel for the near and far fields (default 64 / 48). Fewer
+taps cost proportionally less GPU time for more sample noise; the blur
+shape and edges are unchanged. Fixed when the node is built.
+
+#### far
+
+```ts
+readonly far: number;
+```
+
+#### near
+
+```ts
+readonly near: number;
+```
