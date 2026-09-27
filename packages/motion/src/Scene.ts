@@ -1196,6 +1196,31 @@ export const play = <E, R>(
 	}) as never;
 
 /**
+ * The list argument of {@link all}, {@link chain} and {@link stagger}.
+ *
+ * @remarks
+ * A bare Effect is itself iterable (it yields itself), so a plain
+ * `Iterable<Eff>` would accept `Scene.all(effect)` and silently run just
+ * that one effect. The `TypeId` guard rejects a lone Effect at compile time.
+ */
+export type Effects<Eff> = Iterable<Eff> & {
+	readonly [Effect.TypeId]?: never;
+};
+
+// runtime half of the Effects guard, for callers that cast past the types
+const toList = <Eff>(
+	combinator: string,
+	effects: Effects<Eff>,
+): Effect.Effect<Array<Eff>> =>
+	Effect.isEffect(effects)
+		? Effect.die(
+				new TypeError(
+					`Scene.${combinator} expects a list of effects but got a single Effect — wrap it: Scene.${combinator}([effect])`,
+				),
+			)
+		: Effect.succeed(Array.from(effects));
+
+/**
  * Run animations simultaneously, and resolve when the last one finishes.
  *
  * @remarks
@@ -1223,10 +1248,10 @@ export const play = <E, R>(
  */
 export const all = Effect.fnUntraced(function* <
 	Eff extends Effect.Effect<any, any, any>,
->(effects: Iterable<Eff>) {
+>(effects: Effects<Eff>) {
+	const list = yield* toList("all", effects);
 	const runner = yield* Runner.Runner;
-	// runner.phaser
-	return yield* Phaser.all(effects).pipe(
+	return yield* Phaser.all(list).pipe(
 		Effect.provideService(Phaser.Phaser, runner.phaser),
 	);
 });
@@ -1266,7 +1291,7 @@ export const chain = <
 	ScheduleE = never,
 	ScheduleR = never,
 >(
-	effects: Iterable<Eff>,
+	effects: Effects<Eff>,
 	schedule?: Schedule.Schedule<
 		unknown,
 		Eff extends Effect.Effect<infer A, any, any> ? A : never,
@@ -1281,7 +1306,7 @@ export const chain = <
 	| ScheduleR
 > =>
 	Effect.gen(function* () {
-		const list = Array.from(effects);
+		const list = yield* toList("chain", effects);
 		const runner = yield* Runner.Runner;
 		const driver =
 			schedule === undefined
@@ -1344,7 +1369,7 @@ export const stagger = <
 	ScheduleE = never,
 	ScheduleR = never,
 >(
-	effects: Iterable<Eff>,
+	effects: Effects<Eff>,
 	schedule: Schedule.Schedule<unknown, void, ScheduleE, ScheduleR>,
 ): Effect.Effect<
 	{ released: number },
@@ -1354,7 +1379,7 @@ export const stagger = <
 	| ScheduleR
 > =>
 	Effect.gen(function* () {
-		const list = Array.from(effects);
+		const list = yield* toList("stagger", effects);
 		const runner = yield* Runner.Runner;
 		const driver = yield* Time.scheduleDriver(
 			schedule,
