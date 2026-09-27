@@ -1,0 +1,30 @@
+---
+title: "tile"
+description: "function tile("
+---
+# Function: tile()
+
+```ts
+function tile(
+   tiles, 
+   tileWidth, 
+   tileHeight, 
+   options?): Grid;
+```
+
+Defined in: [packages/export/src/Stills.ts:166](https://github.com/julia-script/effect-motion/blob/main/packages/export/src/Stills.ts#L166)
+
+Tile same-sized RGBA images row-major into one grid. Pure.
+
+## Parameters
+
+| Parameter | Type | Description |
+| ------ | ------ | ------ |
+| `tiles` | readonly `Uint8Array`\<`ArrayBufferLike`\>[] | Each exactly `tileWidth * tileHeight * 4` bytes. |
+| `tileWidth` | `number` | - |
+| `tileHeight` | `number` | - |
+| `options` | [`TileOptions`](../interfaces/TileOptions.mdx) & \{ `background?`: \{ `a`: `number`; `b`: `number`; `g`: `number`; `r`: `number`; \}; \} | - |
+
+## Returns
+
+[`Grid`](../interfaces/Grid.mdx)

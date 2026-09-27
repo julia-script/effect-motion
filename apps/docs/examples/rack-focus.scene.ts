@@ -7,8 +7,8 @@ import * as Scene from "effect-motion/Scene";
 // the camera never moves — only `focusDistance` travels, and the sharp plane
 // slides from the foreground to the back and home again.
 
-// flat colour, no outline (shapes default to a 1px black stroke)
-const flat = (hex: string) => ({ fillColor: Color.hex(hex), strokeWidth: 0 });
+// flat colour (shapes draw no outline unless a strokeColor is set)
+const flat = (hex: string) => ({ fillColor: Color.hex(hex) });
 
 const FRONT = 1500;
 const MID = 0;

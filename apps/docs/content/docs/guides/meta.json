@@ -6,7 +6,10 @@
 		"custom-fonts",
 		"images",
 		"camera-depth-of-field",
+		"renderer-limits",
+		"precomps",
 		"custom-entities",
-		"cli"
+		"cli",
+		"preview-frames"
 	]
 }

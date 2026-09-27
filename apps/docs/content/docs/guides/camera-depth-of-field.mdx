@@ -98,8 +98,11 @@ and labels on the HUD stay crisp whatever the camera's aperture.
 
 - **Opaque shapes only.** Blur comes from the depth buffer, which holds one
   depth per pixel. A semi-transparent shape blurs at its own depth, not at the
-  depth of whatever shows through it. Keep shapes in depth-of-field scenes at
-  `opacity: 1`.
+  depth of whatever shows through it, so a fade on the focus plane stays sharp
+  but the content seen through it takes the fading shape's blur.
+- **Precomps render sharp inside.** A scene mounted with `Scene.play` ignores
+  its own camera's `aperture`; its plane blurs as one layer by the parent
+  camera's lens, at the plane's depth.
 - **Perspective cameras only.**
 - **Cost.** With `aperture > 0` the scene is drawn twice per frame and every
   pixel gathers dozens of blur samples. The sampling cost grows with the pixel
@@ -111,9 +114,6 @@ and labels on the HUD stay crisp whatever the camera's aperture.
   shape is the same, with a little more fine grain. Video export always uses
   full quality. For full quality in the browser, for example when recording
   the canvas, pass `dofQuality: "full"` to `Renderer.make`.
-- **Outlines.** Shapes default to a 1 px black stroke. A layer close to the
-  lens scales that up into a visible dark outline, so flat-colour scenes
-  usually set `strokeWidth: 0`.
 
 For a camera orbiting a sharp subject through a field of blurred shapes, see
 [focus orbit](/docs/examples/focus-orbit).

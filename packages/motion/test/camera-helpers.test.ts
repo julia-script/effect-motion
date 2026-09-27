@@ -139,6 +139,16 @@ describe("lookAt", () => {
 		expect(first.x).toBeCloseTo(seed.x + (target.x - seed.x) * t, 8);
 		expect(first.z).toBeCloseTo(seed.z + (target.z - seed.z) * t, 8);
 	});
+
+	it("eased re-aim lands exactly on the target (no ulp drift)", async () => {
+		const target = { x: 0.1, y: 0.7, z: 1.9 };
+		const frames = await framesOf(function* () {
+			const cam = yield* Scene.camera;
+			yield* cam.pipe(Camera.lookAt({ x: 0.7, y: 0.1, z: -3.3 }));
+			yield* cam.pipe(Camera.lookAt(target, "100 millis"));
+		});
+		expect(poiOf(frames.at(-1) ?? unreachable())).toEqual(target);
+	});
 });
 
 describe("follow", () => {

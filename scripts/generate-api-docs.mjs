@@ -64,6 +64,15 @@ const packages = [
 		title: "react",
 		description: "The <Player> component for playing scenes in the browser.",
 	},
+	{
+		dir: "export",
+		name: "@effect-motion/export",
+		/** the module directory TypeDoc nests output under */
+		moduleDir: "@effect-motion/export",
+		title: "export",
+		description:
+			"Node-only export: sample frames, render stills and encode videos.",
+	},
 ];
 
 const walk = (dir, ext = ".md") => {
@@ -182,6 +191,13 @@ for (const pkg of packages) {
 	// ("renderer/@effect-motion/renderer/namespaces/..."), which reads as
 	// doubled crumbs in the sidebar. Collapse those segments and rewrite the
 	// links that pointed through them.
+	// Files TypeDoc wrote outside the module directory (the package README,
+	// and for some packages top-level exports like export's `interfaces/`)
+	// are never moved, so their links resolve from where they are.
+	const moduleRoot = join(out, (pkg.moduleDir ?? pkg.name).split("/")[0]);
+	const unmoved = new Set(
+		walk(out).filter((f) => !f.startsWith(`${moduleRoot}/`)),
+	);
 	const hoistedSegments = [];
 	for (const segment of (pkg.moduleDir ?? pkg.name).split("/")) {
 		const nested = join(out, segment);
@@ -210,10 +226,7 @@ for (const pkg of packages) {
 					if (/^(?:https?:|\/)/.test(target)) {
 						return whole;
 					}
-					// The package README is written at the root and was never moved,
-					// so its links still name the hoisted segment directly.
-					const from =
-						file.endsWith("README.md") && dirname(file) === out ? out : wasDir;
+					const from = unmoved.has(file) ? dirname(file) : wasDir;
 					const absolute = resolve(from, target);
 					// links into the hoisted segment land at their post-hoist home
 					const withinModule = relative(join(out, hoisted), absolute);
@@ -232,6 +245,12 @@ for (const pkg of packages) {
 			/\]\(([^)]+?)\.md(#[^)]*)?\)/g,
 			(_m, path, hash = "") =>
 				`](${path.endsWith("README") ? `${path.slice(0, -"README".length)}index` : path}.mdx${hash})`,
+		);
+		// dependency sources aren't in the repo, so their GitHub links 404:
+		// keep the path, drop the link
+		raw = raw.replace(
+			/\[(node\\_modules\/[^\]]+)\]\(https:\/\/github\.com\/[^)]+\)/g,
+			"$1",
 		);
 		const body = escapeMdx(raw);
 		// The filename is the symbol, except for a README, which indexes the
@@ -282,6 +301,13 @@ writeFileSync(
 		null,
 		"\t",
 	)}\n`,
+);
+
+// JSON.stringify spreads short arrays over lines; match the committed style
+execFileSync(
+	"bunx",
+	["--no-install", "biome", "format", "--write", relative(root, outRoot)],
+	{ cwd: root, stdio: ["ignore", "ignore", "inherit"] },
 );
 
 console.log(

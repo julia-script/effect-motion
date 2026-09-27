@@ -30,5 +30,5 @@ first layout resolves. Appearance setters are inert until
 [TextMesh.commit](../interfaces/TextMesh.mdx#commit) runs; the entity renderer registers commits with
 `ctx.waitFor`, so a frame is never drawn with half-built text.
 
-The mesh carries a tiny z-lift so text sits above coplanar backdrops
-(invisible at ordinary scales, deterministic).
+No z-lift: text over a coplanar backdrop wins by paint order (Sync's
+`syncLayers`), like any other layer.

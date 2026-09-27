@@ -12,8 +12,8 @@ import * as Scene from "effect-motion/Scene";
 
 const PALETTE = ["#ff006e", "#fb5607", "#3a86ff", "#8338ec", "#06d6a0"];
 
-// flat colour, no outline (shapes default to a 1px black stroke)
-const flat = (hex: string) => ({ fillColor: Color.hex(hex), strokeWidth: 0 });
+// flat colour (shapes draw no outline unless a strokeColor is set)
+const flat = (hex: string) => ({ fillColor: Color.hex(hex) });
 
 export const scene = Scene.make(
 	"focus orbit",

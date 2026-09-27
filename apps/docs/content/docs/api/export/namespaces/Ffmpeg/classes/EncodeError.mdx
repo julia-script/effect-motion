@@ -1,0 +1,101 @@
+---
+title: "EncodeError"
+description: "A failure encoding a video: ffmpeg not spawnable (not installed / not on"
+---
+# Class: EncodeError
+
+Defined in: [packages/export/src/Ffmpeg.ts:51](https://github.com/julia-script/effect-motion/blob/main/packages/export/src/Ffmpeg.ts#L51)
+
+A failure encoding a video: ffmpeg not spawnable (not installed / not on
+PATH), or a nonzero exit. `stderr` carries ffmpeg's diagnostics when the
+process ran; it is empty when the binary could not be spawned at all.
+
+## Extends
+
+- `YieldableError`\<`this`\> & \{
+\} & `Readonly`\<\{
+  `cause`: `unknown`;
+  `message`: `string`;
+  `stderr`: `string`;
+\}\>
+
+## Constructors
+
+### Constructor
+
+```ts
+new EncodeError(args): EncodeError;
+```
+
+Defined in: node\_modules/.bun/effect@4.0.0-rc.115/node\_modules/effect/dist/Data.d.ts:966
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `args` | \{ `cause`: `unknown`; `message`: `string`; `stderr`: `string`; \} |
+| `args.cause` | `unknown` |
+| `args.message` | `string` |
+| `args.stderr` | `string` |
+
+#### Returns
+
+`EncodeError`
+
+#### Inherited from
+
+```ts
+Data.TaggedError("EncodeError")<{
+	readonly message: string;
+	readonly stderr: string;
+	readonly cause: unknown;
+}>.constructor
+```
+
+## Properties
+
+### cause
+
+```ts
+cause: unknown;
+```
+
+Defined in: node\_modules/.bun/typescript@5.9.3/node\_modules/typescript/lib/lib.es2022.error.d.ts:26
+
+#### Inherited from
+
+```ts
+Data.TaggedError("EncodeError").cause
+```
+
+***
+
+### message
+
+```ts
+message: string;
+```
+
+Defined in: node\_modules/.bun/typescript@5.9.3/node\_modules/typescript/lib/lib.es5.d.ts:1077
+
+#### Inherited from
+
+```ts
+Data.TaggedError("EncodeError").message
+```
+
+***
+
+### stderr
+
+```ts
+readonly stderr: string;
+```
+
+Defined in: [packages/export/src/Ffmpeg.ts:53](https://github.com/julia-script/effect-motion/blob/main/packages/export/src/Ffmpeg.ts#L53)
+
+#### Inherited from
+
+```ts
+Data.TaggedError("EncodeError").stderr
+```

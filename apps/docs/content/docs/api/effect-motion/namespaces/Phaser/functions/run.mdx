@@ -1,14 +1,17 @@
 ---
 title: "run"
-description: "function run<A, E, R>(phaser, scene): Effect<Fiber<A, E>, never, Exclude<R, Phaser>>;"
+description: "function run<A, E, R>("
 ---
 # Function: run()
 
 ```ts
-function run<A, E, R>(phaser, scene): Effect<Fiber<A, E>, never, Exclude<R, Phaser>>;
+function run<A, E, R>(
+   phaser, 
+   scene, 
+onExit?): Effect<Fiber<A, E>, never, Exclude<R, Phaser>>;
 ```
 
-Defined in: [packages/motion/src/Phaser.ts:132](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Phaser.ts#L132)
+Defined in: [packages/motion/src/Phaser.ts:137](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Phaser.ts#L137)
 
 Fork `scene` as the root party of `phaser`.
 
@@ -16,6 +19,11 @@ Registration happens synchronously before the fork, so between combinators
 the scene is registered-but-running and `awaitAdvance` can never resolve
 during a sequential handoff or before the scene starts. The slot is
 released by a finalizer on success, failure, and interrupt alike.
+
+`onExit` runs before the slot is released. Both finalizers are installed
+while the fiber is still uninterruptible: a fiber interrupted before its
+first step (its parent ended in the same tick) would otherwise skip them
+and leak the slot, deadlocking every later phase.
 
 ## Type Parameters
 
@@ -36,6 +44,7 @@ released by a finalizer on success, failure, and interrupt alike.
 | `phaser.register` | (`n`) => `void` | - |
 | `phaser.snapshotUnsafe` | () => \{ `arrived`: `number`; `parties`: `number`; `phase`: `number`; `state`: `"idle"` \| `"pending"` \| `"running"`; \} | debug/test view of the internal counters |
 | `scene` | `Effect`\<`A`, `E`, `R`\> | - |
+| `onExit` | (`exit`) => `Effect`\<`void`\> | - |
 
 ## Returns
 

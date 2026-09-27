@@ -131,6 +131,10 @@ const worldPosition = Effect.fnUntraced(function* (cam: CamInstance) {
 	};
 });
 
+// t = 1 returns `to` itself: from + (to - from) can miss it by an ulp
+const lerp = (from: number, to: number, t: number) =>
+	t === 1 ? to : from + (to - from) * t;
+
 const lookAtImpl = Effect.fnUntraced(function* (
 	camOrEffect: CamOrEffect,
 	target: CameraTarget,
@@ -180,9 +184,9 @@ const lookAtImpl = Effect.fnUntraced(function* (
 		const p = yield* read;
 		yield* Scene.update(cam, (d) =>
 			setPoi(d, {
-				x: start.x + (p.x - start.x) * t,
-				y: start.y + (p.y - start.y) * t,
-				z: start.z + (p.z - start.z) * t,
+				x: lerp(start.x, p.x, t),
+				y: lerp(start.y, p.y, t),
+				z: lerp(start.z, p.z, t),
 			}),
 		);
 		yield* Scene.tick;
@@ -340,7 +344,7 @@ const orbitImpl = Effect.fnUntraced(function* (
 		const data = d;
 		// POI read from live data: orbiting a moving POI stays centered on it
 		const p = poiOrDie(data);
-		const angle = startAzimuth + (to - startAzimuth) * t;
+		const angle = lerp(startAzimuth, to, t);
 		return {
 			...d,
 			position: Entity.vec3({
@@ -475,7 +479,7 @@ const dollyImpl = Effect.fnUntraced(function* (
 	return yield* Motion.drive(cam, duration, timing ?? "linear", (t, d) => {
 		const data = d;
 		const p = poiOrDie(data);
-		const dist = d0 + (to - d0) * t;
+		const dist = lerp(d0, to, t);
 		return {
 			...d,
 			position: Entity.vec3({

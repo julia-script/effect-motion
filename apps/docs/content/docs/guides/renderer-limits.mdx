@@ -1,0 +1,92 @@
+---
+title: What the renderer draws
+description: Which entity fields reach the screen, how overlaps resolve, and what is not supported yet
+---
+
+Every entity field is part of the frame data, but not every field has a
+visual effect. This page lists what `@effect-motion/renderer` draws today,
+in the browser (studio, `Player`) and in Node (`motion frames`,
+`motion render`). Both renderers draw the same things.
+
+## Fields that render
+
+Every paintable entity renders `position`, `rotation`, `scale`, `opacity`
+and `visible`. Rotation and scale act about `position`, and all of them
+compose down the tree: moving, fading, scaling or rotating a `Group`
+carries its whole subtree.
+
+| Entity | Its own fields |
+|---|---|
+| `Circle` | `radius`, `fillColor`, `strokeColor`, `strokeWidth` |
+| `Ellipse` | `radiusX`, `radiusY`, `fillColor`, `strokeColor`, `strokeWidth` |
+| `Rect` | `width`, `height`, `fillColor`, `strokeColor`, `strokeWidth` |
+| `Line` | `start`, `end`, `strokeColor`, `strokeWidth` |
+| `Path` | `commands` (`M`, `L`, `Z`), `fillColor`, `strokeColor`, `strokeWidth` |
+| `Text` | `text`, `fontSize`, `fontFamily`, `fillColor`, `textAnchor`, `baseline` |
+| `Image` | `image`, `width`, `height` (both, or neither for natural size) |
+| `Group` | `children` (paints nothing itself) |
+| `Hud` | `children`, drawn in screen space on top of everything |
+| `Camera` | `position`, `rotation`, `poi`, `focalLength` |
+
+A few details:
+
+- **Facing.** A planar shape (`Circle`, `Ellipse`, `Rect`, `Text`, `Image`)
+  with rotation 0 faces the camera. Any other rotation, its own or an
+  ancestor's, makes it a real plane in 3D. `Line` and `Path` are always
+  drawn in 3D space as authored.
+- **Outlines** are opt-in: `Rect`, `Circle`, `Ellipse` and `Path` draw none
+  until you set `strokeColor` (`strokeWidth` defaults to 1). A `Line` is its
+  stroke, so it defaults to black at width 1.
+- **Strokes** scale with the shape: the drawn width is `strokeWidth` times
+  the narrower of `|scale.x|` and `|scale.y|` (ancestors included), so a
+  shape scaled to zero on either axis draws nothing.
+- **Group opacity** multiplies into each child. Children that overlap each
+  other show through one another while the group fades. To fade a section
+  as one flat layer, build it as its own scene and mount it with
+  `Scene.play`, then fade the mount.
+- **Depth of field** follows the camera's `aperture` and `focusDistance`
+  (see [Camera depth of field](/docs/guides/camera-depth-of-field)). Blur
+  comes from the depth buffer, so it is correct for opaque content; a
+  translucent shape blurs at its own depth. `Hud` content stays sharp. A
+  scene mounted with `Scene.play` renders sharp inside, whatever its own
+  camera's `aperture`, and its plane blurs as one layer by the parent
+  camera's lens.
+
+## Overlaps
+
+Occlusion follows depth, not the order you created things in:
+
+- Content nearer the camera (larger `z` under the default camera) hides
+  content behind it, whatever the tree order.
+- Content at the **same depth** paints in tree order, later over earlier,
+  like layers in a compositing tool. Text on a card at the same `z` is
+  drawn on top as long as the text is created after the card.
+- Translucent content (`opacity` below 1) does not hide what is drawn after
+  it: a fading card tints the text behind it instead of cutting holes.
+
+## Images
+
+In the browser an `Image` decodes anything the browser's
+`createImageBitmap` supports. In Node (`motion frames`, `motion render`)
+only **PNG and JPEG** decode; any other format fails loudly with the
+image's id. Use PNG or JPEG for assets that must render in both. SVG is not
+an image format here — trace it into `Path`s instead.
+
+## Paths
+
+`Path` commands are straight segments only: `M` (move), `L` (line) and `Z`
+(close). There are no curves or arcs; sample a curve into points yourself.
+Each closed subpath fills on its own, so there are no holes: a ring or the
+counter of a letter needs separate shapes layered on top.
+
+## Not available yet
+
+Plan around these; none of them render today:
+
+- masks other than rectangles, and track mattes. A scene mounted with
+  `Scene.play` clips to its own bounds, which covers rectangular masks and
+  reveals (see [Precomps, masks and HUD](/docs/guides/precomps));
+- per-letter text (a `Text` is one block; use one `Text` per word or line);
+- motion blur, and blur of any kind other than depth of field;
+- lit or shaded 3D meshes;
+- curves, arcs and holes in `Path`.

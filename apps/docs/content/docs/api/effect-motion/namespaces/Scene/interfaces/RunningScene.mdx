@@ -4,7 +4,7 @@ description: "readonly done: boolean;"
 ---
 # Interface: RunningScene\<E, R\>
 
-Defined in: [packages/motion/src/Scene.ts:430](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L430)
+Defined in: [packages/motion/src/Scene.ts:431](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L431)
 
 ## Type Parameters
 
@@ -21,7 +21,7 @@ Defined in: [packages/motion/src/Scene.ts:430](https://github.com/julia-script/e
 readonly done: boolean;
 ```
 
-Defined in: [packages/motion/src/Scene.ts:436](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L436)
+Defined in: [packages/motion/src/Scene.ts:437](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L437)
 
 ***
 
@@ -31,7 +31,7 @@ Defined in: [packages/motion/src/Scene.ts:436](https://github.com/julia-script/e
 readonly fiber: Fiber<void, E>;
 ```
 
-Defined in: [packages/motion/src/Scene.ts:435](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L435)
+Defined in: [packages/motion/src/Scene.ts:436](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L436)
 
 ***
 
@@ -41,7 +41,7 @@ Defined in: [packages/motion/src/Scene.ts:435](https://github.com/julia-script/e
 framesDelivered: number;
 ```
 
-Defined in: [packages/motion/src/Scene.ts:438](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L438)
+Defined in: [packages/motion/src/Scene.ts:439](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L439)
 
 frames delivered so far — mutated by `step` for the maxFrames cap
 
@@ -55,6 +55,7 @@ readonly runner: {
   awaitedCount: () => number;
   backgrounds: Set<BranchEntry>;
   camera: Instance<"Camera">;
+  cameraOf: (compId) => Instance<"Camera">;
   comp: CompConfig;
   countAwaited: (n) => void;
   destroy: (instance) => void;
@@ -91,7 +92,7 @@ readonly runner: {
   registerComp: (id, config) => void;
   removeChild: (parent, child) => void;
   root: GroupInstance;
-  setCamera: (instance) => void;
+  setCamera: (instance, compId) => void;
   setDataUnsafe: <Tag>(instance, state) => void;
   settings: {
      frameRate: number;
@@ -102,7 +103,7 @@ readonly runner: {
      backgroundColor: Color;
      camera: CameraView & PointOfInterest;
      comps: {
-      [k: string]: CompConfig;
+      [k: string]: CompFrame;
      };
      frameRate: number;
      height: number;
@@ -181,7 +182,7 @@ readonly runner: {
               y: number;
               z: number;
            };
-           strokeColor: Color;
+           strokeColor?: Color;
            strokeWidth: number;
            visible: boolean;
          }
@@ -204,7 +205,7 @@ readonly runner: {
               y: number;
               z: number;
            };
-           strokeColor: Color;
+           strokeColor?: Color;
            strokeWidth: number;
            visible: boolean;
            width: number;
@@ -228,7 +229,7 @@ readonly runner: {
               y: number;
               z: number;
            };
-           strokeColor: Color;
+           strokeColor?: Color;
            strokeWidth: number;
            visible: boolean;
          }
@@ -252,7 +253,7 @@ readonly runner: {
               y: number;
               z: number;
            };
-           strokeColor: Color;
+           strokeColor?: Color;
            strokeWidth: number;
            visible: boolean;
          }
@@ -375,7 +376,7 @@ readonly runner: {
 };
 ```
 
-Defined in: [packages/motion/src/Scene.ts:431](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L431)
+Defined in: [packages/motion/src/Scene.ts:432](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L432)
 
 #### appendChild
 
@@ -415,6 +416,22 @@ backgrounds: Set<BranchEntry>;
 ```ts
 camera: Instance<"Camera">;
 ```
+
+#### cameraOf
+
+```ts
+cameraOf: (compId) => Instance<"Camera">;
+```
+
+##### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `compId` | `string` \| `null` |
+
+##### Returns
+
+[`Instance`](../../Instance/interfaces/Instance.mdx)\<`"Camera"`\>
 
 #### comp
 
@@ -542,7 +559,7 @@ rewrite; see `particlesEscapeInstantiate`.
 
 | Parameter | Type |
 | ------ | ------ |
-| ...`args` | \[ \| \{ `end`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `start`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `strokeColor`: [`Color`](../../Color/classes/Color.mdx); `strokeWidth`: `number`; `visible`: `boolean`; \} \| \{ `commands`: readonly \[ \| \{ \} \| \{ `x`: `number`; `y`: `number`; `z?`: `number`; \} \| \{ `x`: `number`; `y`: `number`; `z?`: `number`; \}, \| \{ \} \| \{ `x`: `number`; `y`: `number`; `z?`: `number`; \} \| \{ `x`: `number`; `y`: `number`; `z?`: `number`; \}\]; `fillColor`: [`Color`](../../Color/classes/Color.mdx); `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `strokeColor`: [`Color`](../../Color/classes/Color.mdx); `strokeWidth`: `number`; `visible`: `boolean`; \} \| \{ `fillColor`: [`Color`](../../Color/classes/Color.mdx); `height`: `number`; `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `strokeColor`: [`Color`](../../Color/classes/Color.mdx); `strokeWidth`: `number`; `visible`: `boolean`; `width`: `number`; \} \| \{ `fillColor`: [`Color`](../../Color/classes/Color.mdx); `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `radius`: `number`; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `strokeColor`: [`Color`](../../Color/classes/Color.mdx); `strokeWidth`: `number`; `visible`: `boolean`; \} \| \{ `fillColor`: [`Color`](../../Color/classes/Color.mdx); `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `radiusX`: `number`; `radiusY`: `number`; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `strokeColor`: [`Color`](../../Color/classes/Color.mdx); `strokeWidth`: `number`; `visible`: `boolean`; \} \| \{ `baseline?`: `"middle"` \| `"auto"` \| `"hanging"`; `fillColor`: [`Color`](../../Color/classes/Color.mdx); `fontFamily`: \{ `id`: `string`; \}; `fontSize`: `number`; `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `text`: `string`; `textAnchor?`: `"start"` \| `"end"` \| `"middle"`; `visible`: `boolean`; \} \| \{ `children`: readonly `string`[]; `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `visible`: `boolean`; \} \| \{ `children`: readonly `string`[]; `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `visible`: `boolean`; \} \| \{ `height?`: `number`; `image`: \{ `id`: `string`; \}; `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `visible`: `boolean`; `width?`: `number`; \} \| \{ `aperture`: `number`; `focalLength`: `number`; `focusDistance`: `number`; `poi`: \| \{ `x`: `number`; `y`: `number`; `z`: `number`; \} \| `null`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; \}\] |
+| ...`args` | \[ \| \{ `end`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `start`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `strokeColor`: [`Color`](../../Color/classes/Color.mdx); `strokeWidth`: `number`; `visible`: `boolean`; \} \| \{ `commands`: readonly \[ \| \{ \} \| \{ `x`: `number`; `y`: `number`; `z?`: `number`; \} \| \{ `x`: `number`; `y`: `number`; `z?`: `number`; \}, \| \{ \} \| \{ `x`: `number`; `y`: `number`; `z?`: `number`; \} \| \{ `x`: `number`; `y`: `number`; `z?`: `number`; \}\]; `fillColor`: [`Color`](../../Color/classes/Color.mdx); `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `strokeColor?`: [`Color`](../../Color/classes/Color.mdx); `strokeWidth`: `number`; `visible`: `boolean`; \} \| \{ `fillColor`: [`Color`](../../Color/classes/Color.mdx); `height`: `number`; `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `strokeColor?`: [`Color`](../../Color/classes/Color.mdx); `strokeWidth`: `number`; `visible`: `boolean`; `width`: `number`; \} \| \{ `fillColor`: [`Color`](../../Color/classes/Color.mdx); `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `radius`: `number`; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `strokeColor?`: [`Color`](../../Color/classes/Color.mdx); `strokeWidth`: `number`; `visible`: `boolean`; \} \| \{ `fillColor`: [`Color`](../../Color/classes/Color.mdx); `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `radiusX`: `number`; `radiusY`: `number`; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `strokeColor?`: [`Color`](../../Color/classes/Color.mdx); `strokeWidth`: `number`; `visible`: `boolean`; \} \| \{ `baseline?`: `"middle"` \| `"auto"` \| `"hanging"`; `fillColor`: [`Color`](../../Color/classes/Color.mdx); `fontFamily`: \{ `id`: `string`; \}; `fontSize`: `number`; `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `text`: `string`; `textAnchor?`: `"start"` \| `"end"` \| `"middle"`; `visible`: `boolean`; \} \| \{ `children`: readonly `string`[]; `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `visible`: `boolean`; \} \| \{ `children`: readonly `string`[]; `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `visible`: `boolean`; \} \| \{ `height?`: `number`; `image`: \{ `id`: `string`; \}; `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `visible`: `boolean`; `width?`: `number`; \} \| \{ `aperture`: `number`; `focalLength`: `number`; `focusDistance`: `number`; `poi`: \| \{ `x`: `number`; `y`: `number`; `z`: `number`; \} \| `null`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; \}\] |
 
 ##### Returns
 
@@ -726,14 +743,15 @@ root: GroupInstance;
 #### setCamera
 
 ```ts
-setCamera: (instance) => void;
+setCamera: (instance, compId) => void;
 ```
 
 ##### Parameters
 
-| Parameter | Type |
-| ------ | ------ |
-| `instance` | [`Instance`](../../Instance/interfaces/Instance.mdx)\<`"Camera"`\> |
+| Parameter | Type | Default value |
+| ------ | ------ | ------ |
+| `instance` | [`Instance`](../../Instance/interfaces/Instance.mdx)\<`"Camera"`\> | `undefined` |
+| `compId` | `string` \| `null` | `null` |
 
 ##### Returns
 
@@ -797,7 +815,7 @@ state: Effect<{
   backgroundColor: Color;
   camera: CameraView & PointOfInterest;
   comps: {
-   [k: string]: CompConfig;
+   [k: string]: CompFrame;
   };
   frameRate: number;
   height: number;
@@ -876,7 +894,7 @@ state: Effect<{
            y: number;
            z: number;
         };
-        strokeColor: Color;
+        strokeColor?: Color;
         strokeWidth: number;
         visible: boolean;
       }
@@ -899,7 +917,7 @@ state: Effect<{
            y: number;
            z: number;
         };
-        strokeColor: Color;
+        strokeColor?: Color;
         strokeWidth: number;
         visible: boolean;
         width: number;
@@ -923,7 +941,7 @@ state: Effect<{
            y: number;
            z: number;
         };
-        strokeColor: Color;
+        strokeColor?: Color;
         strokeWidth: number;
         visible: boolean;
       }
@@ -947,7 +965,7 @@ state: Effect<{
            y: number;
            z: number;
         };
-        strokeColor: Color;
+        strokeColor?: Color;
         strokeWidth: number;
         visible: boolean;
       }
@@ -1077,4 +1095,4 @@ state: Effect<{
 readonly scene: Scene<E, R>;
 ```
 
-Defined in: [packages/motion/src/Scene.ts:433](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L433)
+Defined in: [packages/motion/src/Scene.ts:434](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L434)

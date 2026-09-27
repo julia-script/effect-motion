@@ -1,0 +1,30 @@
+---
+title: "applyDepthWrite"
+description: "function applyDepthWrite(material): void;"
+---
+# Function: applyDepthWrite()
+
+```ts
+function applyDepthWrite(material): void;
+```
+
+Defined in: [packages/renderer/src/Sync.ts:797](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L797)
+
+Set a layer's depth write from its opacity.
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `material` | `Material` |
+
+## Returns
+
+`void`
+
+## Remarks
+
+Internal. See-through layers (opacity \< 1) write no depth, so a fading
+card never punches holes in what is drawn after it (paint order:
+`syncLayers`). They are tagged so a depth-of-field render can lend them
+depth — see [withSeeThroughDepth](./withSeeThroughDepth.mdx).

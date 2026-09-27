@@ -93,6 +93,15 @@ export type CompConfig = {
 	backgroundColor: Color.Color;
 };
 
+/**
+ * A mounted scene as a frame carries it: its bounds plus the view of the
+ * child's OWN active camera, resolved this frame. The renderer draws the
+ * comp through it, so a child renders exactly as it does standalone.
+ */
+export type CompFrame = CompConfig & {
+	readonly camera: Projection.CameraView & Projection.PointOfInterest;
+};
+
 export const defaultComp: CompConfig = {
 	width: 1920,
 	height: 1080,
@@ -133,6 +142,16 @@ export type InstantiateProps<Tag extends Entity.EntityTag> = Omit<
  */
 export const CurrentParent = Context.Reference<GroupInstance | null>(
 	"motion/Runner/CurrentParent",
+	{ defaultValue: () => null },
+);
+
+/**
+ * The mounted scene a piece of scene code runs in — the id of its
+ * `Scene.play` mount group, provided per evaluation; `null` means the root
+ * scene. Scopes the camera: each scene owns its own active camera.
+ */
+export const CurrentComp = Context.Reference<string | null>(
+	"motion/Runner/CurrentComp",
 	{ defaultValue: () => null },
 );
 
@@ -220,12 +239,14 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 		 * Mounted scenes, by the id of the group they mount under.
 		 *
 		 * A comp is a render-to-texture boundary — its own scene, render
-		 * target, and identity camera — created ONLY by `Scene.play`. It used
+		 * target, and camera — created ONLY by `Scene.play`. It used
 		 * to be inferred from a Group carrying width/height, which duplicated
 		 * what the child Scene already owned and made "is this a comp" a
 		 * question about field presence. It is now declared here explicitly.
 		 */
 		const comps = new Map<string, CompConfig>();
+		const compWidth = (compId: string | null): number =>
+			(compId === null ? undefined : comps.get(compId)?.width) ?? comp.width;
 
 		const setDataUnsafe = <Tag extends Entity.EntityTag>(
 			instance: Instance.Instance<Tag>,
@@ -267,14 +288,19 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 			"camera",
 			"Camera",
 		);
-		let activeCameraId = camera.id;
-		const cameraState = (): Projection.CameraView &
-			Projection.PointOfInterest => {
-			const entry = tree.getEntry(activeCameraId);
+		// every scene owns its cameras: the root's above, and one resting
+		// camera per mounted scene (created at registerComp), keyed by the
+		// comp's mount-group id — so a child moving "the" camera moves its own
+		const defaultCameras = new Map<string, Instance.Instance<"Camera">>();
+		const activeCameras = new Map<string | null, string>([[null, camera.id]]);
+		const cameraState = (
+			compId: string | null,
+		): Projection.CameraView & Projection.PointOfInterest => {
+			const entry = tree.getEntry(activeCameras.get(compId) ?? "");
 			// a destroyed (or swapped-to-non-camera) active camera falls back to
 			// the resting view rather than dying: the view is not scene-critical
 			if (entry === null || entry.state._tag !== "Camera") {
-				return toCameraView(identityCamera(comp.width));
+				return toCameraView(identityCamera(compWidth(compId)));
 			}
 			return toCameraView(entry.state);
 		};
@@ -341,8 +367,12 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 				// (AE's 50mm equivalent): the schema cannot default them because
 				// only the Runner knows the comp width. Filled for EVERY Camera,
 				// not just the built-in one, so a setCamera swap never jumps zoom.
+				// The width is the enclosing scene's, so a camera inside a
+				// mounted scene frames that scene as it would standalone.
 				const defaults =
-					kind === "Camera" ? cameraDefaults(raw, comp.width) : undefined;
+					kind === "Camera"
+						? cameraDefaults(raw, compWidth(yield* CurrentComp))
+						: undefined;
 
 				// raw children never reach stored data: normalized ids are
 				// appended through the tree below, in list order
@@ -392,8 +422,9 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 				// but it is view state, not a renderable instance — omit it from
 				// the frame's instance map (its data is surfaced as `camera`)
 				const instances: Record<string, { data: Entity.Entity }> = {};
+				const active = new Set(activeCameras.values());
 				for (const [id, entry] of Object.entries(tree.map)) {
-					if (id === activeCameraId) {
+					if (active.has(id)) {
 						continue;
 					}
 					instances[id] = { data: entry.state };
@@ -405,11 +436,17 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 					width: comp.width,
 					height: comp.height,
 					backgroundColor: comp.backgroundColor,
-					camera: cameraState(),
+					camera: cameraState(null),
 					// mounted scenes, by mount-group id: the renderer reads this
 					// to know a subtree is a render-to-texture boundary, instead
-					// of inferring it from a group carrying a size
-					comps: Object.fromEntries(comps),
+					// of inferring it from a group carrying a size — each with
+					// its own camera's view
+					comps: Object.fromEntries(
+						[...comps].map(([id, config]): [string, CompFrame] => [
+							id,
+							{ ...config, camera: cameraState(id) },
+						]),
+					),
 				};
 			}),
 
@@ -427,17 +464,34 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 			}),
 
 			// declare the group at `id` to be a mounted scene with these bounds
-			// (see `comps`); called by Scene.play, never by authors
+			// (see `comps`); called by Scene.play, never by authors. The comp
+			// gets its own resting camera, as a standalone scene would — at a
+			// fixed id, so it never shifts the ids of instances created after
 			registerComp: (id: string, config: CompConfig): void => {
 				comps.set(id, config);
+				const entry = tree.createNode(
+					identityCamera(config.width),
+					`${id}/camera`,
+				);
+				defaultCameras.set(id, Instance.makeInstance(entry.id, "Camera"));
+				activeCameras.set(id, entry.id);
 			},
 
-			// the default resting camera (animate it, or swap via setCamera)
+			// the root scene's default resting camera (animate it, or swap via
+			// setCamera)
 			camera,
-			// swap the active camera to another instance; its live data becomes
-			// the view on every subsequent frame
-			setCamera: (instance: Instance.Instance<"Camera">): void => {
-				activeCameraId = instance.id;
+			// the default resting camera of the scene `compId` names (`null`:
+			// the root) — what `Scene.camera` returns inside that scene
+			cameraOf: (compId: string | null): Instance.Instance<"Camera"> =>
+				(compId === null ? undefined : defaultCameras.get(compId)) ?? camera,
+			// swap the active camera of scene `compId` (default: the root) to
+			// another instance; its live data becomes that scene's view on
+			// every subsequent frame
+			setCamera: (
+				instance: Instance.Instance<"Camera">,
+				compId: string | null = null,
+			): void => {
+				activeCameras.set(compId, instance.id);
 			},
 
 			destroy: (instance: Instance.Instance): void => {

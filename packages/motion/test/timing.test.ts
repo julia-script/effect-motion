@@ -8,9 +8,11 @@ describe("endpoints", () => {
 		if (periodic.has(name)) {
 			continue;
 		}
+		// exact, not close: f(1) = 1 is what lands a tween on its target
+		// (=== so the -0 some curves return at t = 0 counts as 0)
 		it(`${name}: f(0) = 0 and f(1) = 1`, () => {
-			expect(fn(0)).toBeCloseTo(0, 10);
-			expect(fn(1)).toBeCloseTo(1, 10);
+			expect(fn(0) === 0).toBe(true);
+			expect(fn(1)).toBe(1);
 		});
 	}
 

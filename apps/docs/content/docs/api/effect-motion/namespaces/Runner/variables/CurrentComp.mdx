@@ -1,0 +1,15 @@
+---
+title: "CurrentComp"
+description: "const CurrentComp: Reference<string | null>;"
+---
+# Variable: CurrentComp
+
+```ts
+const CurrentComp: Reference<string | null>;
+```
+
+Defined in: [packages/motion/src/Runner.ts:153](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Runner.ts#L153)
+
+The mounted scene a piece of scene code runs in — the id of its
+`Scene.play` mount group, provided per evaluation; `null` means the root
+scene. Scopes the camera: each scene owns its own active camera.

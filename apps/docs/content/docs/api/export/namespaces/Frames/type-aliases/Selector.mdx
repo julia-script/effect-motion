@@ -1,0 +1,28 @@
+---
+title: "Selector"
+description: "type Selector ="
+---
+# Type Alias: Selector
+
+```ts
+type Selector = 
+  | {
+  _tag: "Frame";
+  frame: number;
+}
+  | {
+  _tag: "Time";
+  seconds: number;
+}
+  | {
+  _tag: "Percent";
+  percent: number;
+}
+  | {
+  _tag: "End";
+};
+```
+
+Defined in: [packages/export/src/Frames.ts:16](https://github.com/julia-script/effect-motion/blob/main/packages/export/src/Frames.ts#L16)
+
+One requested point in a scene.

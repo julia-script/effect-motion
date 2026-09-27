@@ -4,7 +4,7 @@ description: "`appendChild`: (`parent`, `child`) => `void`;"
 ---
 # Class: Runner
 
-Defined in: [packages/motion/src/Runner.ts:197](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Runner.ts#L197)
+Defined in: [packages/motion/src/Runner.ts:216](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Runner.ts#L216)
 
 ## Extends
 
@@ -13,6 +13,7 @@ Defined in: [packages/motion/src/Runner.ts:197](https://github.com/julia-script/
   `awaitedCount`: () => `number`;
   `backgrounds`: `Set`\<[`BranchEntry`](../interfaces/BranchEntry.mdx)\>;
   `camera`: [`Instance`](../../Instance/interfaces/Instance.mdx)\<`"Camera"`\>;
+  `cameraOf`: (`compId`) => [`Instance`](../../Instance/interfaces/Instance.mdx)\<`"Camera"`\>;
   `comp`: [`CompConfig`](../type-aliases/CompConfig.mdx);
   `countAwaited`: (`n`) => `void`;
   `destroy`: (`instance`) => `void`;
@@ -49,7 +50,7 @@ Defined in: [packages/motion/src/Runner.ts:197](https://github.com/julia-script/
   `registerComp`: (`id`, `config`) => `void`;
   `removeChild`: (`parent`, `child`) => `void`;
   `root`: [`GroupInstance`](../type-aliases/GroupInstance.mdx);
-  `setCamera`: (`instance`) => `void`;
+  `setCamera`: (`instance`, `compId`) => `void`;
   `setDataUnsafe`: \<`Tag`\>(`instance`, `state`) => `void`;
   `settings`: \{
      `frameRate`: `number`;
@@ -60,7 +61,7 @@ Defined in: [packages/motion/src/Runner.ts:197](https://github.com/julia-script/
      `backgroundColor`: [`Color`](../../Color/classes/Color.mdx);
      `camera`: `CameraView` & `PointOfInterest`;
      `comps`: \{
-      \[`k`: `string`\]: [`CompConfig`](../type-aliases/CompConfig.mdx);
+      \[`k`: `string`\]: [`CompFrame`](../type-aliases/CompFrame.mdx);
      \};
      `frameRate`: `number`;
      `height`: `number`;
@@ -115,7 +116,7 @@ Defined in: [packages/motion/src/Runner.ts:197](https://github.com/julia-script/
               `y`: `number`;
               `z`: `number`;
            \};
-           `strokeColor`: [`Color`](../../Color/classes/Color.mdx);
+           `strokeColor?`: [`Color`](../../Color/classes/Color.mdx);
            `strokeWidth`: `number`;
            `visible`: `boolean`;
          \}
@@ -138,7 +139,7 @@ Defined in: [packages/motion/src/Runner.ts:197](https://github.com/julia-script/
               `y`: `number`;
               `z`: `number`;
            \};
-           `strokeColor`: [`Color`](../../Color/classes/Color.mdx);
+           `strokeColor?`: [`Color`](../../Color/classes/Color.mdx);
            `strokeWidth`: `number`;
            `visible`: `boolean`;
            `width`: `number`;
@@ -162,7 +163,7 @@ Defined in: [packages/motion/src/Runner.ts:197](https://github.com/julia-script/
               `y`: `number`;
               `z`: `number`;
            \};
-           `strokeColor`: [`Color`](../../Color/classes/Color.mdx);
+           `strokeColor?`: [`Color`](../../Color/classes/Color.mdx);
            `strokeWidth`: `number`;
            `visible`: `boolean`;
          \}
@@ -186,7 +187,7 @@ Defined in: [packages/motion/src/Runner.ts:197](https://github.com/julia-script/
               `y`: `number`;
               `z`: `number`;
            \};
-           `strokeColor`: [`Color`](../../Color/classes/Color.mdx);
+           `strokeColor?`: [`Color`](../../Color/classes/Color.mdx);
            `strokeWidth`: `number`;
            `visible`: `boolean`;
          \}
@@ -316,7 +317,7 @@ Defined in: [packages/motion/src/Runner.ts:197](https://github.com/julia-script/
 new Runner(_): Runner;
 ```
 
-Defined in: [node\_modules/.bun/effect@4.0.0-rc.115/node\_modules/effect/dist/Context.d.ts:115](https://github.com/julia-script/effect-motion/blob/main/node_modules/.bun/effect@4.0.0-rc.115/node_modules/effect/dist/Context.d.ts#L115)
+Defined in: node\_modules/.bun/effect@4.0.0-rc.115/node\_modules/effect/dist/Context.d.ts:115
 
 #### Parameters
 
@@ -357,12 +358,14 @@ Context.Service<Runner>()("Runner", {
 		  Mounted scenes, by the id of the group they mount under.
 		 
 		  A comp is a render-to-texture boundary — its own scene, render
-		  target, and identity camera — created ONLY by Scene.play. It used
+		  target, and camera — created ONLY by Scene.play. It used
 		  to be inferred from a Group carrying width/height, which duplicated
 		  what the child Scene already owned and made "is this a comp" a
 		  question about field presence. It is now declared here explicitly.
 		 /
 		const comps = new Map<string, CompConfig>();
+		const compWidth = (compId: string | null): number =>
+			(compId === null ? undefined : comps.get(compId)?.width) ?? comp.width;
 
 		const setDataUnsafe = <Tag extends Entity.EntityTag>(
 			instance: Instance.Instance<Tag>,
@@ -404,14 +407,19 @@ Context.Service<Runner>()("Runner", {
 			"camera",
 			"Camera",
 		);
-		let activeCameraId = camera.id;
-		const cameraState = (): Projection.CameraView &
-			Projection.PointOfInterest => {
-			const entry = tree.getEntry(activeCameraId);
+		// every scene owns its cameras: the root's above, and one resting
+		// camera per mounted scene (created at registerComp), keyed by the
+		// comp's mount-group id — so a child moving "the" camera moves its own
+		const defaultCameras = new Map<string, Instance.Instance<"Camera">>();
+		const activeCameras = new Map<string | null, string>([[null, camera.id]]);
+		const cameraState = (
+			compId: string | null,
+		): Projection.CameraView & Projection.PointOfInterest => {
+			const entry = tree.getEntry(activeCameras.get(compId) ?? "");
 			// a destroyed (or swapped-to-non-camera) active camera falls back to
 			// the resting view rather than dying: the view is not scene-critical
 			if (entry === null || entry.state._tag !== "Camera") {
-				return toCameraView(identityCamera(comp.width));
+				return toCameraView(identityCamera(compWidth(compId)));
 			}
 			return toCameraView(entry.state);
 		};
@@ -478,8 +486,12 @@ Context.Service<Runner>()("Runner", {
 				// (AE's 50mm equivalent): the schema cannot default them because
 				// only the Runner knows the comp width. Filled for EVERY Camera,
 				// not just the built-in one, so a setCamera swap never jumps zoom.
+				// The width is the enclosing scene's, so a camera inside a
+				// mounted scene frames that scene as it would standalone.
 				const defaults =
-					kind === "Camera" ? cameraDefaults(raw, comp.width) : undefined;
+					kind === "Camera"
+						? cameraDefaults(raw, compWidth(yield CurrentComp))
+						: undefined;
 
 				// raw children never reach stored data: normalized ids are
 				// appended through the tree below, in list order
@@ -529,8 +541,9 @@ Context.Service<Runner>()("Runner", {
 				// but it is view state, not a renderable instance — omit it from
 				// the frame's instance map (its data is surfaced as camera)
 				const instances: Record<string, { data: Entity.Entity }> = {};
+				const active = new Set(activeCameras.values());
 				for (const [id, entry] of Object.entries(tree.map)) {
-					if (id === activeCameraId) {
+					if (active.has(id)) {
 						continue;
 					}
 					instances[id] = { data: entry.state };
@@ -542,11 +555,17 @@ Context.Service<Runner>()("Runner", {
 					width: comp.width,
 					height: comp.height,
 					backgroundColor: comp.backgroundColor,
-					camera: cameraState(),
+					camera: cameraState(null),
 					// mounted scenes, by mount-group id: the renderer reads this
 					// to know a subtree is a render-to-texture boundary, instead
-					// of inferring it from a group carrying a size
-					comps: Object.fromEntries(comps),
+					// of inferring it from a group carrying a size — each with
+					// its own camera's view
+					comps: Object.fromEntries(
+						[...comps].map(([id, config]): [string, CompFrame] => [
+							id,
+							{ ...config, camera: cameraState(id) },
+						]),
+					),
 				};
 			}),
 
@@ -564,17 +583,34 @@ Context.Service<Runner>()("Runner", {
 			}),
 
 			// declare the group at id to be a mounted scene with these bounds
-			// (see comps); called by Scene.play, never by authors
+			// (see comps); called by Scene.play, never by authors. The comp
+			// gets its own resting camera, as a standalone scene would — at a
+			// fixed id, so it never shifts the ids of instances created after
 			registerComp: (id: string, config: CompConfig): void => {
 				comps.set(id, config);
+				const entry = tree.createNode(
+					identityCamera(config.width),
+					${id}/camera,
+				);
+				defaultCameras.set(id, Instance.makeInstance(entry.id, "Camera"));
+				activeCameras.set(id, entry.id);
 			},
 
-			// the default resting camera (animate it, or swap via setCamera)
+			// the root scene's default resting camera (animate it, or swap via
+			// setCamera)
 			camera,
-			// swap the active camera to another instance; its live data becomes
-			// the view on every subsequent frame
-			setCamera: (instance: Instance.Instance<"Camera">): void => {
-				activeCameraId = instance.id;
+			// the default resting camera of the scene compId names (null:
+			// the root) — what Scene.camera returns inside that scene
+			cameraOf: (compId: string | null): Instance.Instance<"Camera"> =>
+				(compId === null ? undefined : defaultCameras.get(compId)) ?? camera,
+			// swap the active camera of scene compId (default: the root) to
+			// another instance; its live data becomes that scene's view on
+			// every subsequent frame
+			setCamera: (
+				instance: Instance.Instance<"Camera">,
+				compId: string | null = null,
+			): void => {
+				activeCameras.set(compId, instance.id);
 			},
 
 			destroy: (instance: Instance.Instance): void => {

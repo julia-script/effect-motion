@@ -1,0 +1,63 @@
+---
+title: "rotateTo"
+description: "const rotateTo: <Tag>(to, duration, timing?) => <E, R>(instance) => Effect<Instance<Tag>, E, Runner | R> & <Tag, E, R>(instance, to, duration, timing?"
+---
+# Variable: rotateTo
+
+```ts
+const rotateTo: <Tag>(to, duration, timing?) => <E, R>(instance) => Effect<Instance<Tag>, E, Runner | R> & <Tag, E, R>(instance, to, duration, timing?) => Effect<Instance<Tag>, E, Runner | R>;
+```
+
+Defined in: [packages/motion/src/Motion.ts:874](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Motion.ts#L874)
+
+Rotate an instance to `to` (radians) over `duration`, starting from its
+current rotation.
+
+## Remarks
+
+Rotation turns the entity about its `position` (its anchor — the center
+for centered shapes) and composes down the tree: rotating a Group swings
+its children around the group's position and turns each with it. A number
+spins in the picture plane; a vector tilts in 3D (`x` pitches, `y` yaws),
+which is how a card flips or a floor lies down.
+
+Interpolation is per Euler channel, so the value lands exactly on `to` —
+`rotateTo(2 * Math.PI)` makes a full turn rather than standing still.
+
+## Param
+
+**to**
+
+Target angle in radians: an in-plane spin, or Euler channels
+  (omitted channels hold).
+
+## Param
+
+**duration**
+
+How long, in scene time.
+
+## Param
+
+**timing**
+
+An easing name or function.
+
+## Default Value
+
+`timing` — `"linear"`
+
+## Returns
+
+The instance, so animators chain.
+
+## See
+
+[rotate](./rotate.mdx) to start from an explicit angle.
+
+## Example
+
+One full clockwise-looking turn (negative z is clockwise with y up).
+```typescript
+yield* gear.pipe(Motion.rotateTo(-2 * Math.PI, "2 seconds", "easeInOutCubic"));
+```

@@ -2,6 +2,7 @@ import { Effect, Random, Schedule } from "effect";
 import * as Stream from "effect/Stream";
 import { describe, expect, it } from "vitest";
 import * as S from "../src/Entity";
+import type * as Instance from "../src/Instance";
 import * as Motion from "../src/Motion";
 import * as Runner from "../src/Runner";
 import * as Scene from "../src/Scene";
@@ -51,6 +52,20 @@ describe("Scene.play", () => {
 		const bBirth = frames.findIndex((f) => f.length === 2);
 		expect(bBirth).toBeGreaterThanOrEqual(30);
 		expect(frames[bBirth]?.[0]?.position.x).toBe(100); // A already done
+	});
+
+	it("handle.group is typed as a Group instance — no cast needed", async () => {
+		const kinds: Array<string> = [];
+		const takesGroup = (group: Instance.Instance<"Group">) => {
+			kinds.push(group.kind);
+		};
+		const movie = Scene.make(function* () {
+			const handle = yield* Scene.play(riser() as never);
+			takesGroup(handle.group);
+			yield* handle.finished;
+		} as never);
+		await collectRaw(movie);
+		expect(kinds).toEqual(["Group"]);
 	});
 
 	it("concurrent nesting: scenes share frames; the movie awaits both", async () => {
@@ -113,6 +128,76 @@ describe("Scene.play", () => {
 		await collectRaw(movie);
 		expect(finalizedAt).toBeGreaterThanOrEqual(29);
 		expect(finalizedAt).toBeLessThanOrEqual(31); // child end, not ~60
+	});
+
+	it("a fork at the child's end plays out; the child ends when it would standalone", async () => {
+		// the exit tail is forked as the body's LAST statement: the child's
+		// fiber returns in the same step the fork is spawned
+		const exiting = Scene.make(function* () {
+			const c = yield* Scene.instantiate("Circle", {
+				position: S.vec3({ x: 0 }),
+			});
+			yield* Motion.move(c, { x: 0 }, { x: 100 }, "0.5 seconds");
+			yield* Scene.fork(Motion.moveTo(c, { x: 200 }, "0.5 seconds"));
+		});
+		const standalone = await collectRaw(exiting);
+		const concurrent = await collectRaw(
+			Scene.make(function* () {
+				yield* Scene.play(exiting);
+			}),
+		);
+		expect(concurrent).toHaveLength(standalone.length);
+		expect(dataFrames(concurrent).at(-1)?.[0]?.position.x).toBe(200);
+
+		// awaited: the handle resolves after the exit, never cutting it
+		const awaited = await collectRaw(
+			Scene.make(function* () {
+				const h = yield* Scene.play(exiting);
+				yield* h.finished;
+			}),
+		);
+		expect(dataFrames(awaited).at(-1)?.[0]?.position.x).toBe(200);
+		// same "next frame boundary" as a child with no fork
+		const plain = Scene.make(function* () {
+			yield* Scene.sleep("1 second");
+		});
+		const plainAwaited = await collectRaw(
+			Scene.make(function* () {
+				const h = yield* Scene.play(plain);
+				yield* h.finished;
+			}),
+		);
+		expect(awaited).toHaveLength(plainAwaited.length);
+	});
+
+	it("a background spawned as the child's last statement does not hang", async () => {
+		// the background is cut before its fiber ever runs: its phaser slot
+		// must still be released
+		const child = (ambient: boolean) =>
+			Scene.make(function* () {
+				const c = yield* Scene.instantiate("Circle", {
+					position: S.vec3({ x: 0 }),
+				});
+				yield* Scene.sleep("200 millis");
+				if (ambient) {
+					yield* Scene.background(
+						Scene.repeat(
+							Motion.move(c, { x: 0 }, { x: 10 }, "100 millis"),
+							Schedule.forever,
+						),
+					);
+				}
+			});
+		const movie = (ambient: boolean) =>
+			Scene.make(function* () {
+				const h = yield* Scene.play(child(ambient));
+				yield* h.finished;
+				yield* Scene.sleep("100 millis");
+			});
+		// a background never extends the child
+		expect(await collectRaw(movie(true))).toHaveLength(
+			(await collectRaw(movie(false))).length,
+		);
 	});
 
 	it("seed stability: nested playback equals a standalone run with the movie's seed", async () => {
@@ -252,5 +337,75 @@ describe("Scene.play mounting", () => {
 		for (const [, entry] of circles as any[]) {
 			expect(entry.data.position.x).toBe(100);
 		}
+	});
+});
+
+describe("Scene.play cameras", () => {
+	// a child that dollies its camera; standalone, the frame's camera moves
+	const dolly = () =>
+		Scene.make(
+			function* () {
+				yield* Scene.instantiate("Circle", { position: S.vec3({}) });
+				const camera = yield* Scene.camera;
+				yield* Motion.moveTo(camera, { x: 40 }, "0.25 seconds");
+			} as never,
+			{ width: 400, height: 300 },
+		);
+
+	it("a child's Scene.camera is its own: the comp carries its moves, the root's stays at rest", async () => {
+		const standalone = (await collectRaw(dolly())).at(-1) ?? unreachable();
+		const frames = await collectRaw(
+			Scene.make(function* () {
+				const h = yield* Scene.play(dolly() as never);
+				yield* h.finished;
+			} as never),
+		);
+		const last = frames.at(-1) ?? unreachable();
+		const [comp] = Object.values(last.comps) as Array<Runner.CompFrame>;
+		expect(comp?.camera).toEqual(standalone.camera);
+		expect(comp?.camera.x).toBe(40);
+		expect(last.camera).toEqual(Runner.identityCameraView(1920));
+		// the child's active camera is view state, never a frame instance
+		for (const { data } of Object.values(last.instances) as any[]) {
+			expect(data._tag).not.toBe("Camera");
+		}
+	});
+
+	it("an unmoved child carries the resting camera for its own width", async () => {
+		const frames = await collectRaw(
+			Scene.make(function* () {
+				const h = yield* Scene.play(riser() as never);
+				yield* h.finished;
+			} as never),
+		);
+		for (const frame of frames) {
+			for (const comp of Object.values(frame.comps) as any[]) {
+				expect(comp.camera).toEqual(Runner.identityCameraView(comp.width));
+			}
+		}
+	});
+
+	it("setCamera inside a child swaps the child's view; a child camera gets the child's width defaults", async () => {
+		const child = Scene.make(
+			function* () {
+				const cam = yield* Scene.instantiate("Camera", {});
+				yield* Scene.setCamera(cam);
+				yield* Scene.tick;
+			} as never,
+			{ width: 400, height: 300 },
+		);
+		const standalone = (await collectRaw(child)).at(-1) ?? unreachable();
+		const last =
+			(
+				await collectRaw(
+					Scene.make(function* () {
+						const h = yield* Scene.play(child as never);
+						yield* h.finished;
+					} as never),
+				)
+			).at(-1) ?? unreachable();
+		const [comp] = Object.values(last.comps) as Array<Runner.CompFrame>;
+		expect(comp?.camera).toEqual(standalone.camera);
+		expect(last.camera).toEqual(Runner.identityCameraView(1920));
 	});
 });

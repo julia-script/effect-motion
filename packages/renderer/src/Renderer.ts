@@ -3,6 +3,7 @@ import {
 	Renderer as Gpu,
 	PostProcessing,
 	RenderTarget,
+	ThreeRaw as THREE,
 	Scene as ThreeScene,
 } from "@effect-motion/three";
 import { Effect, Scope } from "effect";
@@ -49,6 +50,13 @@ type AnyEntityRenderer = EntityRenderer<never>;
  * so a comp nested inside another is drawn before its parent samples it, and
  * the previously bound target is always restored — including when a render
  * fails.
+ *
+ * Comps render sharp: the child camera's `aperture` is not applied, and the
+ * comp's plane takes the parent's depth of field at its own depth.
+ * ponytail: the DoF chain sizes its passes to the drawing buffer and ends in
+ * the sRGB output transform, so it can't draw into a comp target; a per-comp
+ * chain sized to the target, output transform off, if a precomp needs its
+ * own focus.
  */
 export const renderCompTargets = Effect.fnUntraced(function* (
 	renderer: Gpu.Renderer,
@@ -69,15 +77,36 @@ export const renderCompTargets = Effect.fnUntraced(function* (
 			if (comp.rt !== null) {
 				RenderTarget.dispose(comp.rt);
 			}
-			comp.rt = RenderTarget.makeUnsafe(pw, ph);
+			// float depth: the reversed-Z precision paint order relies on
+			// (Sync's syncLayers) — a default target gets depth24plus
+			const depthTexture = new THREE.DepthTexture(pw, ph);
+			depthTexture.type = THREE.FloatType;
+			comp.rt = RenderTarget.fromRaw(
+				new THREE.RenderTarget(pw, ph, { depthTexture }),
+			);
 			comp.material.map = RenderTarget.texture(comp.rt);
 			comp.material.needsUpdate = true;
 		}
 		const previous = Gpu.getRenderTarget(renderer);
 		Gpu.setRenderTarget(renderer, comp.rt);
+		// the comp's HUD tier composites over its world inside the target,
+		// through the comp's identity camera — pinned while the child's own
+		// camera moves, exactly as at the root
+		const hud = ThreeScene.isEmpty(comp.sync.hudScene)
+			? Effect.void
+			: Effect.sync(() => {
+					Gpu.setAutoClear(renderer, false);
+					Gpu.clearDepth(renderer);
+				}).pipe(
+					Effect.flatMap(() =>
+						Gpu.render(renderer, comp.sync.hudScene, comp.sync.hudCamera),
+					),
+					Effect.ensuring(Effect.sync(() => Gpu.setAutoClear(renderer, true))),
+				);
 		// ensuring: the previous target comes back even when the render
 		// fails — the sync version silently skipped the restore on a throw
 		yield* Gpu.render(renderer, comp.sync.scene, comp.sync.camera).pipe(
+			Effect.andThen(hud),
 			Effect.ensuring(
 				Effect.sync(() => Gpu.setRenderTarget(renderer, previous)),
 			),
@@ -185,8 +214,11 @@ const renderWorldWithDof = (
 		30 * Gpu.getPixelRatio(renderer.gpu),
 	);
 	Gpu.advanceFrame(renderer.gpu);
-	return PostProcessing.render(
-		hud ? renderer.dofChain.pipelineWithHud : renderer.dofChain.pipeline,
+	return Sync.withSeeThroughDepth(
+		renderer.sync,
+		PostProcessing.render(
+			hud ? renderer.dofChain.pipelineWithHud : renderer.dofChain.pipeline,
+		),
 	);
 };
 
@@ -448,6 +480,9 @@ export const make = Effect.fn("Renderer.make")(function* (
 	const gpu = yield* Gpu.make({
 		...(options.canvas !== undefined ? { canvas: options.canvas } : {}),
 		antialias: true,
+		// reversed-Z float depth: uniform relative precision at any
+		// distance, which Sync's paint-order nudge relies on
+		reversedDepthBuffer: true,
 		width: options.width,
 		height: options.height,
 		...(options.pixelRatio !== undefined

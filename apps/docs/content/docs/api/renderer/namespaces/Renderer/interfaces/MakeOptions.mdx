@@ -4,7 +4,7 @@ description: "readonly optional canvas?: HTMLCanvasElement;"
 ---
 # Interface: MakeOptions
 
-Defined in: [packages/renderer/src/Renderer.ts:187](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Renderer.ts#L187)
+Defined in: [packages/renderer/src/Renderer.ts:225](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Renderer.ts#L225)
 
 ## Properties
 
@@ -14,7 +14,7 @@ Defined in: [packages/renderer/src/Renderer.ts:187](https://github.com/julia-scr
 readonly optional canvas?: HTMLCanvasElement;
 ```
 
-Defined in: [packages/renderer/src/Renderer.ts:189](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Renderer.ts#L189)
+Defined in: [packages/renderer/src/Renderer.ts:227](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Renderer.ts#L227)
 
 Canvas to draw into; one is created if omitted.
 
@@ -26,7 +26,7 @@ Canvas to draw into; one is created if omitted.
 readonly optional dofQuality?: DofQuality;
 ```
 
-Defined in: [packages/renderer/src/Renderer.ts:214](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Renderer.ts#L214)
+Defined in: [packages/renderer/src/Renderer.ts:252](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Renderer.ts#L252)
 
 Depth-of-field sample quality. `"realtime"` halves the blur's gather
 taps, about half the blur's GPU time, for a little more sample noise;
@@ -45,7 +45,7 @@ uses) when frame rate does not matter, e.g. recording the canvas.
 readonly height: number;
 ```
 
-Defined in: [packages/renderer/src/Renderer.ts:193](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Renderer.ts#L193)
+Defined in: [packages/renderer/src/Renderer.ts:231](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Renderer.ts#L231)
 
 Logical height in CSS pixels.
 
@@ -57,7 +57,7 @@ Logical height in CSS pixels.
 readonly optional pixelRatio?: number;
 ```
 
-Defined in: [packages/renderer/src/Renderer.ts:200](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Renderer.ts#L200)
+Defined in: [packages/renderer/src/Renderer.ts:238](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Renderer.ts#L238)
 
 Device pixels per logical pixel — pass `window.devicePixelRatio` for a
 sharp result on a high-DPI display.
@@ -74,7 +74,7 @@ sharp result on a high-DPI display.
 readonly optional renderers?: Record<string, AnyEntityRenderer>;
 ```
 
-Defined in: [packages/renderer/src/Renderer.ts:205](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Renderer.ts#L205)
+Defined in: [packages/renderer/src/Renderer.ts:243](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Renderer.ts#L243)
 
 Renderers for custom entity kinds, or overrides for built-in ones.
 Merged over the built-in manifest by entity tag.
@@ -87,6 +87,6 @@ Merged over the built-in manifest by entity tag.
 readonly width: number;
 ```
 
-Defined in: [packages/renderer/src/Renderer.ts:191](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Renderer.ts#L191)
+Defined in: [packages/renderer/src/Renderer.ts:229](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Renderer.ts#L229)
 
 Logical width in CSS pixels.

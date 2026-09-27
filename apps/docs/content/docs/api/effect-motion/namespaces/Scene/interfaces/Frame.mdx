@@ -4,7 +4,7 @@ description: "One rendered moment: every entity's state at a single instant, plu
 ---
 # Interface: Frame\<Resources\>
 
-Defined in: [packages/motion/src/Scene.ts:325](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L325)
+Defined in: [packages/motion/src/Scene.ts:326](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L326)
 
 One rendered moment: every entity's state at a single instant, plus the
 metadata needed to draw it.
@@ -35,7 +35,7 @@ which is never itself drawn.
 readonly optional ~resources?: Resources;
 ```
 
-Defined in: [packages/motion/src/Scene.ts:331](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L331)
+Defined in: [packages/motion/src/Scene.ts:332](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L332)
 
 phantom: the loader requirements the renderer will demand for this
 frame. Never a runtime value — an unused type parameter would be
@@ -49,7 +49,7 @@ structurally erased, so it must anchor on an (always-absent) field.
 backgroundColor: Color;
 ```
 
-Defined in: [packages/motion/src/Scene.ts:340](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L340)
+Defined in: [packages/motion/src/Scene.ts:341](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L341)
 
 ***
 
@@ -59,7 +59,7 @@ Defined in: [packages/motion/src/Scene.ts:340](https://github.com/julia-script/e
 camera: CameraView & PointOfInterest;
 ```
 
-Defined in: [packages/motion/src/Scene.ts:342](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L342)
+Defined in: [packages/motion/src/Scene.ts:343](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L343)
 
 the active camera's view; the resting view when unused
 
@@ -68,15 +68,15 @@ the active camera's view; the resting view when unused
 ### comps
 
 ```ts
-comps: Record<string, CompConfig>;
+comps: Record<string, CompFrame>;
 ```
 
-Defined in: [packages/motion/src/Scene.ts:349](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L349)
+Defined in: [packages/motion/src/Scene.ts:350](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L350)
 
 Mounted scenes (`Scene.play`), keyed by the id of the group they mount
 under. Each is a render-to-texture boundary: the renderer draws the
-subtree to its own target at these bounds, under an identity camera,
-and composites the result. An id absent here is a plain group.
+subtree to its own target at these bounds, through the child's own
+camera, and composites the result. An id absent here is a plain group.
 
 ***
 
@@ -86,7 +86,7 @@ and composites the result. An id absent here is a plain group.
 frameRate: number;
 ```
 
-Defined in: [packages/motion/src/Scene.ts:337](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L337)
+Defined in: [packages/motion/src/Scene.ts:338](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L338)
 
 render metadata — frameRate from the runner settings, resolution and
 background from the ROOT scene's comp config; a frame is self-describing
@@ -99,7 +99,7 @@ background from the ROOT scene's comp config; a frame is self-describing
 height: number;
 ```
 
-Defined in: [packages/motion/src/Scene.ts:339](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L339)
+Defined in: [packages/motion/src/Scene.ts:340](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L340)
 
 ***
 
@@ -109,7 +109,7 @@ Defined in: [packages/motion/src/Scene.ts:339](https://github.com/julia-script/e
 instances: Record<string, FrameEntry>;
 ```
 
-Defined in: [packages/motion/src/Scene.ts:332](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L332)
+Defined in: [packages/motion/src/Scene.ts:333](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L333)
 
 ***
 
@@ -119,7 +119,7 @@ Defined in: [packages/motion/src/Scene.ts:332](https://github.com/julia-script/e
 root: string;
 ```
 
-Defined in: [packages/motion/src/Scene.ts:334](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L334)
+Defined in: [packages/motion/src/Scene.ts:335](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L335)
 
 id of the root group (conventionally "root"); never rendered itself
 
@@ -131,4 +131,4 @@ id of the root group (conventionally "root"); never rendered itself
 width: number;
 ```
 
-Defined in: [packages/motion/src/Scene.ts:338](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L338)
+Defined in: [packages/motion/src/Scene.ts:339](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L339)

@@ -1,0 +1,26 @@
+---
+title: "Selection"
+description: "type Selection ="
+---
+# Type Alias: Selection
+
+```ts
+type Selection = 
+  | {
+  _tag: "At";
+  selectors: ReadonlyArray<Selector>;
+}
+  | {
+  _tag: "Count";
+  count: number;
+  range?: {
+     from: Selector;
+     to: Selector;
+  };
+};
+```
+
+Defined in: [packages/export/src/Frames.ts:26](https://github.com/julia-script/effect-motion/blob/main/packages/export/src/Frames.ts#L26)
+
+Which frames to sample: explicit points, or N evenly spaced frames — over
+the whole scene, or over `range` (both ends included).

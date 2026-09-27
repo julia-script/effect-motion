@@ -19,8 +19,8 @@ bounce *easing* instead (fixed duration, physics-flavored curve).
 
 ## Presets and parameters
 
-The second argument is a named preset — `Physics.springs` ships tuned ones
-like `"swing"`, `"bounce"`, and `"jump"` — or explicit parameters:
+The second argument is a named preset from `Physics.springs` or explicit
+parameters:
 
 ```ts
 Physics.springTo({ y: 0 }, { mass: 0.4, stiffness: 120, damping: 4 });
@@ -31,6 +31,27 @@ Physics.springTo({ y: 0 }, { mass: 0.4, stiffness: 120, damping: 4 });
 - **damping** — how fast oscillation dies out; low values ring.
 
 Invalid parameters fail loudly with a defect naming the offender.
+
+### How long the presets take
+
+A spring runs until it settles, and the scene waits for it. Settle times
+at 60 fps, measured for moves of 100 px and 1000 px (longer moves take a
+little longer):
+
+| Preset | Character | 100 px | 1000 px |
+|---|---|---|---|
+| `strike` | hardest and fastest, launched with velocity | 0.8 s | 0.9 s |
+| `jump` | a quick launched hop | 1.4 s | 1.6 s |
+| `smooth` | mild overshoot, unobtrusive | 2.0 s | 2.4 s |
+| `beat` | a small, tight pulse | 2.6 s | 3.2 s |
+| `swing` | a relaxed, pendulum-like arc | 3.5 s | 4.0 s |
+| `plop` | lands heavy and wobbles | 7.0 s | 8.2 s |
+| `bounce` | barely damped, rings for a long time | 37 s | 44 s |
+
+`bounce` and `plop` are accents, not transitions: one `bounce` in a
+sequence adds more than half a minute to the scene. Check a scene's length
+with `motion frames` (the scene list prints each scene's frames and
+seconds).
 
 ## Why springs compose well
 

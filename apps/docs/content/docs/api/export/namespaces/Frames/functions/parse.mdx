@@ -1,0 +1,26 @@
+---
+title: "parse"
+description: "function parse(input): Effect<Selection, FrameSelectionError>;"
+---
+# Function: parse()
+
+```ts
+function parse(input): Effect<Selection, FrameSelectionError>;
+```
+
+Defined in: [packages/export/src/Frames.ts:86](https://github.com/julia-script/effect-motion/blob/main/packages/export/src/Frames.ts#L86)
+
+Parse a selection string: a comma-separated list of frame indices (`0,30`),
+times (`1.5s`, `500ms`), percentages (`50%`) and `end` — or `count N` for N
+evenly spaced frames including the first and last, optionally within a
+range of any two selectors (`count 5 7.5s..8.5s`, `count 4 50%..end`).
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `input` | `string` |
+
+## Returns
+
+`Effect`\<[`Selection`](../type-aliases/Selection.mdx), [`FrameSelectionError`](../classes/FrameSelectionError.mdx)\>

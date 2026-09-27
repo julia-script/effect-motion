@@ -43,6 +43,10 @@ const framesOf = (
 
 const registry = () => builtinRegistry;
 
+// each retained object sits under its Sync-owned paint-order layer group
+const objectsOf = (scene: ThreeScene.Scene): Array<THREE.Object3D> =>
+	ThreeScene.children(scene).map((layer) => layer.children[0] ?? unreachable());
+
 describe("coordinate mapping and the 2D identity invariant", () => {
 	it("z=0 content under the untouched camera lands where authored", async () => {
 		const frames = await framesOf(function* () {
@@ -56,7 +60,7 @@ describe("coordinate mapping and the 2D identity invariant", () => {
 		Effect.runSync(Sync.syncFrame(sync, frames.at(-1) ?? unreachable()));
 		expect(ThreeScene.children(sync.scene)).toHaveLength(1);
 		// a fill shape is a group (position/billboard) holding the fill mesh
-		const group = ThreeScene.children(sync.scene)[0] ?? unreachable();
+		const group = objectsOf(sync.scene)[0] ?? unreachable();
 		// scene space = three space: authored coordinates pass through
 		expect(group.position.x).toBe(100);
 		expect(group.position.y).toBe(50);
@@ -230,7 +234,7 @@ describe("line endpoints", () => {
 		});
 		const sync = Sync.make(registry());
 		Effect.runSync(Sync.syncFrame(sync, frames.at(-1) ?? unreachable()));
-		const fatLine = ThreeScene.children(sync.scene)[0] ?? unreachable();
+		const fatLine = objectsOf(sync.scene)[0] ?? unreachable();
 		const positions = (
 			fatLine as unknown as {
 				geometry: { attributes: { instanceStart: { array: Float32Array } } };
@@ -253,7 +257,7 @@ describe("billboards and tilted planes", () => {
 		});
 		const sync = Sync.make(registry());
 		Effect.runSync(Sync.syncFrame(sync, frames.at(-1) ?? unreachable()));
-		const mesh = ThreeScene.children(sync.scene)[0] ?? unreachable();
+		const mesh = objectsOf(sync.scene)[0] ?? unreachable();
 		expect(mesh.quaternion.equals(sync.camera.quaternion)).toBe(true);
 	});
 
@@ -266,8 +270,135 @@ describe("billboards and tilted planes", () => {
 		});
 		const sync = Sync.make(registry());
 		Effect.runSync(Sync.syncFrame(sync, frames.at(-1) ?? unreachable()));
-		const mesh = ThreeScene.children(sync.scene)[0] ?? unreachable();
+		const mesh = objectsOf(sync.scene)[0] ?? unreachable();
 		expect(mesh.rotation.y).toBeCloseTo(Math.PI / 4, 10);
+	});
+});
+
+describe("entity and group transforms", () => {
+	const syncLast = async (
+		make: () => Generator<Effect.Effect<any, any, any>, void, never>,
+	) => {
+		const frames = await framesOf(make);
+		const sync = Sync.make(registry());
+		Effect.runSync(Sync.syncFrame(sync, frames.at(-1) ?? unreachable()));
+		return sync;
+	};
+
+	it("a shape honors its own scale and spin, about its position", async () => {
+		const sync = await syncLast(function* () {
+			yield* Scene.instantiate("Circle", {
+				position: S.vec3({ x: 40, y: 10 }),
+				scale: S.vec3({ x: 2, y: 0.5, z: 1 }),
+				radius: 5,
+			});
+			yield* Scene.instantiate("Text", {
+				text: "hi",
+				rotation: S.vec3({ z: Math.PI / 2 }),
+			});
+			yield* Scene.tick;
+		});
+		const [circle, text] = objectsOf(sync.scene);
+		// placement on the object, size on its child mesh
+		expect(circle?.position.x).toBe(40);
+		expect(circle?.scale.toArray()).toEqual([2, 0.5, 1]);
+		expect(circle?.children[0]?.scale.x).toBe(5);
+		// unrotated: still billboards
+		expect(circle?.quaternion.equals(sync.camera.quaternion)).toBe(true);
+		// rotated: a real oriented plane with the composed orientation
+		expect(text?.rotation.z).toBeCloseTo(Math.PI / 2, 12);
+	});
+
+	it("a rotated, scaled Group carries its children around its position", async () => {
+		const sync = await syncLast(function* () {
+			const dot = yield* Scene.instantiate("Circle", {
+				position: S.vec3({ x: 10 }),
+			});
+			const line = yield* Scene.instantiate("Line", {
+				start: S.vec3({ x: 0 }),
+				end: S.vec3({ x: 10 }),
+			});
+			yield* Scene.instantiate("Group", {
+				position: S.vec3({ x: 100, y: 50 }),
+				rotation: S.vec3({ z: Math.PI / 2 }),
+				scale: S.vec3({ x: 3, y: 3, z: 1 }),
+				children: [dot, line],
+			});
+			yield* Scene.tick;
+		});
+		const [dot, line] = objectsOf(sync.scene);
+		// (10, 0) scaled ×3 → (30, 0), turned 90° → (0, 30), + (100, 50)
+		expect(dot?.position.x).toBeCloseTo(100, 10);
+		expect(dot?.position.y).toBeCloseTo(80, 10);
+		expect(dot?.scale.x).toBe(3);
+		// the child turns with its parent instead of billboarding
+		expect(dot?.rotation.z).toBeCloseTo(Math.PI / 2, 12);
+		// skeletal: each endpoint maps through the composed transform
+		const positions = (
+			line as unknown as {
+				geometry: { attributes: { instanceStart: { array: Float32Array } } };
+			}
+		).geometry.attributes.instanceStart.array;
+		expect(positions[0]).toBeCloseTo(100, 4);
+		expect(positions[1]).toBeCloseTo(50, 4);
+		expect(positions[3]).toBeCloseTo(100, 4);
+		expect(positions[4]).toBeCloseTo(80, 4);
+	});
+
+	it("nested group transforms compose", async () => {
+		const sync = await syncLast(function* () {
+			const dot = yield* Scene.instantiate("Circle", {
+				position: S.vec3({ x: 1 }),
+			});
+			const inner = yield* Scene.instantiate("Group", {
+				scale: S.vec3({ x: 2, y: 2, z: 1 }),
+				children: [dot],
+			});
+			yield* Scene.instantiate("Group", {
+				position: S.vec3({ y: 10 }),
+				scale: S.vec3({ x: 5, y: 5, z: 1 }),
+				children: [inner],
+			});
+			yield* Scene.tick;
+		});
+		const dot = objectsOf(sync.scene)[0];
+		expect(dot?.position.x).toBe(10);
+		expect(dot?.position.y).toBe(10);
+		expect(dot?.scale.x).toBe(10);
+	});
+
+	it("group opacity multiplies into every descendant", async () => {
+		const sync = await syncLast(function* () {
+			const dot = yield* Scene.instantiate("Circle", { opacity: 0.5 });
+			const inner = yield* Scene.instantiate("Group", {
+				opacity: 0.5,
+				children: [dot],
+			});
+			yield* Scene.instantiate("Group", { opacity: 0.4, children: [inner] });
+			yield* Scene.tick;
+		});
+		const mesh = objectsOf(sync.scene)[0]?.children[0] as
+			| THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicNodeMaterial>
+			| undefined;
+		expect(mesh?.material.opacity).toBeCloseTo(0.1, 12);
+	});
+
+	it("a fading group re-renders its unchanged children", async () => {
+		const frames = await framesOf(function* () {
+			const dot = yield* Scene.instantiate("Circle", {});
+			const group = yield* Scene.instantiate("Group", { children: [dot] });
+			yield* Scene.tick;
+			yield* Scene.update(group, (data) => ({ ...data, opacity: 0.25 }));
+			yield* Scene.tick;
+		});
+		const sync = Sync.make(registry());
+		for (const frame of frames) {
+			Effect.runSync(Sync.syncFrame(sync, frame));
+		}
+		const mesh = objectsOf(sync.scene)[0]?.children[0] as
+			| THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicNodeMaterial>
+			| undefined;
+		expect(mesh?.material.opacity).toBe(0.25);
 	});
 });
 
@@ -353,6 +484,46 @@ describe("depth of field request", () => {
 	});
 });
 
+describe("paint order at equal depth", () => {
+	it("later leaves are nudged toward the camera without moving on screen", async () => {
+		const frames = await framesOf(function* () {
+			yield* Scene.instantiate("Circle", { position: S.vec3({ x: 40 }) });
+			yield* Scene.instantiate("Rect", {
+				position: S.vec3({ x: 40 }),
+				opacity: 0.3,
+			});
+			yield* Scene.tick;
+		});
+		const sync = Sync.make(registry());
+		Effect.runSync(Sync.syncFrame(sync, frames.at(-1) ?? unreachable()));
+		const [first, second] = ThreeScene.children(sync.scene);
+		const [circle = unreachable(), rect = unreachable()] = objectsOf(
+			sync.scene,
+		);
+		// rank 0 is untouched; rank 1 is scaled about the eye, a hair closer
+		expect(first?.scale.x).toBe(1);
+		expect(second?.scale.x).toBeLessThan(1);
+		sync.scene["~three.scene"].updateMatrixWorld(true);
+		sync.camera.updateMatrixWorld(true);
+		const center = (o: THREE.Object3D) =>
+			new THREE.Vector3().setFromMatrixPosition(o.matrixWorld);
+		const eye = sync.camera.position;
+		expect(center(rect).distanceTo(eye)).toBeLessThan(
+			center(circle).distanceTo(eye),
+		);
+		// same pixel: the anchor projects exactly where it did
+		const projected = center(rect).project(sync.camera);
+		const authored = new THREE.Vector3(40, 0, 0).project(sync.camera);
+		expect(projected.x).toBeCloseTo(authored.x, 9);
+		expect(projected.y).toBeCloseTo(authored.y, 9);
+		// see-through fills don't write depth
+		const material = (m: THREE.Object3D) =>
+			(m.children[0] as THREE.Mesh).material as THREE.Material;
+		expect(material(circle).depthWrite).toBe(true);
+		expect(material(rect).depthWrite).toBe(false);
+	});
+});
+
 describe("screen-space HUD tier", () => {
 	it("a Hud subtree routes to the hud scene with identity billboarding", async () => {
 		const frames = await framesOf(function* () {
@@ -368,7 +539,7 @@ describe("screen-space HUD tier", () => {
 		expect(ThreeScene.children(sync.scene)).toHaveLength(1);
 		expect(ThreeScene.children(sync.hudScene)).toHaveLength(1);
 		// hud billboards face the identity camera, not the world camera
-		const hudObject = ThreeScene.children(sync.hudScene)[0] ?? unreachable();
+		const hudObject = objectsOf(sync.hudScene)[0] ?? unreachable();
 		expect(hudObject.quaternion.equals(sync.hudCamera.quaternion)).toBe(true);
 	});
 });
@@ -397,7 +568,7 @@ describe("mounted-scene sub-compositions", () => {
 		const comp = [...sync.comps.values()][0] ?? unreachable();
 		// the comp's subtree syncs into its own scene, comp-local
 		expect(ThreeScene.children(comp.sync.scene)).toHaveLength(1);
-		const inner = ThreeScene.children(comp.sync.scene)[0] ?? unreachable();
+		const inner = objectsOf(comp.sync.scene)[0] ?? unreachable();
 		// comp-local coords: the child sits at its own (x, y), center-origin
 		expect(inner.position.x).toBe(30);
 		expect(inner.position.y).toBe(20);

@@ -1,0 +1,64 @@
+---
+title: "sample"
+description: "function sample<E, R>("
+---
+# Function: sample()
+
+```ts
+function sample<E, R>(
+   scene, 
+   selection, 
+   settings?): Effect<{
+  data: Frame<ExtractLoaders<R>>;
+  frame: number;
+  time: number;
+}[], 
+  | FrameSelectionError
+| Exclude<E, Done<any>>, Exclude<Exclude<Exclude<Exclude<Exclude<Exclude<ExcludeLoaders<R>, Scope>, never>, Phaser>, Runner>, Scope>, Scope>>;
+```
+
+Defined in: [packages/export/src/Frames.ts:214](https://github.com/julia-script/effect-motion/blob/main/packages/export/src/Frames.ts#L214)
+
+Sample frames from a scene, in the order requested (duplicates kept).
+`count N` larger than the scene (or its range) clamps to every frame, once
+each.
+
+The scene ends where its video ends: when the body and every fork are
+done. Backgrounds and tails still running after `Scene.finish` are cut
+there, exactly as `Video.render` and the player cut them, so `end` is
+the last frame that ever renders.
+
+Only `%`, `end` and a range-less `count` need the scene's length; for those the scene is
+run once to the end to count its frames (no rendering), then again to pick
+them. A selection needing the end of an infinite scene
+(`maxFrames: Infinity`) fails; a frame past the scene's end fails naming
+the frame and the scene length.
+
+ponytail: the length pass re-runs the scene (scenes are pure functions of
+settings, so both passes agree); buffer frames instead if scenes get slow
+enough for a second pass to matter.
+
+## Type Parameters
+
+| Type Parameter |
+| ------ |
+| `E` |
+| `R` |
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `scene` | `Scene`\<`E`, `R`\> |
+| `selection` | `string` \| [`Selection`](../type-aliases/Selection.mdx) |
+| `settings` | `Partial`\<`Runner.Settings`\> |
+
+## Returns
+
+`Effect`\<\{
+  `data`: `Frame`\<`ExtractLoaders`\<`R`\>\>;
+  `frame`: `number`;
+  `time`: `number`;
+\}[], 
+  \| [`FrameSelectionError`](../classes/FrameSelectionError.mdx)
+  \| `Exclude`\<`E`, `Done`\<`any`\>\>, `Exclude`\<`Exclude`\<`Exclude`\<`Exclude`\<`Exclude`\<`Exclude`\<`ExcludeLoaders`\<`R`\>, `Scope`\>, `never`\>, `Phaser`\>, `Runner`\>, `Scope`\>, `Scope`\>\>

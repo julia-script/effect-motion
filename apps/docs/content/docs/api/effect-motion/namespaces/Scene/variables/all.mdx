@@ -10,7 +10,7 @@ const all: <Eff>(...args) => Effect<void, Eff extends Effect<any, E, any> ? E : 
 | Exclude<Eff extends Effect<any, any, R> ? R : never, Phaser>>;
 ```
 
-Defined in: [packages/motion/src/Scene.ts:1224](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L1224)
+Defined in: [packages/motion/src/Scene.ts:1338](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L1338)
 
 Run animations simultaneously, and resolve when the last one finishes.
 
@@ -24,7 +24,7 @@ Run animations simultaneously, and resolve when the last one finishes.
 
 | Parameter | Type |
 | ------ | ------ |
-| ...`args` | \[`Iterable`\<`Eff`, `any`, `any`\>\] |
+| ...`args` | \[[`Effects`](../type-aliases/Effects.mdx)\<`Eff`\>\] |
 
 ## Returns
 

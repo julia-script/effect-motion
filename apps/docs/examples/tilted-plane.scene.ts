@@ -13,8 +13,8 @@ const FLOOR_Y = -400;
 const TILE = 400;
 const SUBJECT = { x: 0, y: FLOOR_Y + 260, z: -1400 };
 
-// flat colour, no outline (shapes default to a 1px black stroke)
-const flat = (hex: string) => ({ fillColor: Color.hex(hex), strokeWidth: 0 });
+// flat colour (shapes draw no outline unless a strokeColor is set)
+const flat = (hex: string) => ({ fillColor: Color.hex(hex) });
 
 export const scene = Scene.make(
 	"tilted plane",

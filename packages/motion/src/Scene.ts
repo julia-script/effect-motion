@@ -48,6 +48,7 @@ import * as Exit from "effect/Exit";
 import * as Fiber from "effect/Fiber";
 import * as Random from "effect/Random";
 import type * as Schedule from "effect/Schedule";
+import * as SchemaAST from "effect/SchemaAST";
 import type * as Scope from "effect/Scope";
 import * as Stream from "effect/Stream";
 import type * as Color from "./Color.js";
@@ -343,10 +344,10 @@ export interface Frame<out Resources = never> {
 	/**
 	 * Mounted scenes (`Scene.play`), keyed by the id of the group they mount
 	 * under. Each is a render-to-texture boundary: the renderer draws the
-	 * subtree to its own target at these bounds, under an identity camera,
-	 * and composites the result. An id absent here is a plain group.
+	 * subtree to its own target at these bounds, through the child's own
+	 * camera, and composites the result. An id absent here is a plain group.
 	 */
-	comps: Record<string, Runner.CompConfig>;
+	comps: Record<string, Runner.CompFrame>;
 }
 /**
  * Advance a running scene by exactly one frame.
@@ -624,6 +625,23 @@ const isUpdaterFn = <Data>(
 	props: Updater<Data>,
 ): props is (data: Data) => Data => typeof props === "function";
 
+// required (non-optionalKey) fields per entity kind, computed once per tag
+const requiredFieldsCache = new Map<Entity.EntityTag, ReadonlyArray<string>>();
+const requiredFields = (tag: Entity.EntityTag): ReadonlyArray<string> => {
+	const cached = requiredFieldsCache.get(tag);
+	if (cached !== undefined) {
+		return cached;
+	}
+	const fields: Record<string, { readonly ast: SchemaAST.AST }> =
+		Entity.getEntityDefinitionByTag(tag).fields;
+	const required = Object.keys(fields).filter((key) => {
+		const field = fields[key];
+		return field !== undefined && !SchemaAST.isOptional(field.ast);
+	});
+	requiredFieldsCache.set(tag, required);
+	return required;
+};
+
 /**
  * Read an entity's current data.
  *
@@ -676,6 +694,8 @@ export const data = <Tag extends Entity.EntityTag>(
  * atomically.
  *
  * Updating a destroyed entity is a no-op returning `false`, not an error.
+ * Data missing a required field (a partial object from untyped code) dies
+ * naming the instance and the missing fields, rather than corrupting it.
  *
  * @param instance - Handle to update.
  * @param props - New data, or `(current) => next`.
@@ -696,15 +716,31 @@ export const update = <Tag extends Entity.EntityTag>(
 ) =>
 	Effect.gen(function* () {
 		const runner = yield* Runner.Runner;
+		let next: Entity.EntityByTag<Tag>;
 		if (isUpdaterFn(props)) {
 			const current = runner.getDataUnsafe(instance);
 			// instance was destroyed: nothing to update
 			if (current === null) {
 				return false;
 			}
-			return runner.setDataUnsafe(instance, props(current));
+			next = props(current);
+		} else {
+			next = props;
 		}
-		return runner.setDataUnsafe(instance, props);
+		// untyped callers can pass a partial object; storing it would corrupt
+		// the entity silently, so name the offender and the missing fields
+		const record: object = next;
+		const missing = requiredFields(instance.kind).filter(
+			(key) => !(key in record),
+		);
+		if (missing.length > 0) {
+			return yield* Effect.die(
+				new Error(
+					`Scene.update: ${instance.kind} ${instance.id} is missing required field(s) ${missing.join(", ")} — pass the full data, or an updater (d) => ({ ...d, ... })`,
+				),
+			);
+		}
+		return runner.setDataUnsafe(instance, next);
 	});
 
 /**
@@ -771,14 +807,17 @@ export const comp = Effect.fnUntraced(function* () {
  */
 export const camera = Effect.gen(function* () {
 	const runner = yield* Runner.Runner;
-	return runner.camera;
+	return runner.cameraOf(yield* Runner.CurrentComp);
 });
 
-/** Swap the active camera to `instance`; its live data becomes the view. */
+/**
+ * Swap the active camera to `instance`; its live data becomes the view.
+ * Inside a played scene this swaps that scene's camera, not the parent's.
+ */
 export const setCamera = (instance: Instance.Instance<"Camera">) =>
 	Effect.gen(function* () {
 		const runner = yield* Runner.Runner;
-		runner.setCamera(instance);
+		runner.setCamera(instance, yield* Runner.CurrentComp);
 	});
 
 // ── branches: semantic vs physical ends ────────────────────────────────
@@ -811,9 +850,27 @@ const currentBranch = <A, E = never>() =>
 		defaultValue: () => null,
 	});
 
+/**
+ * The un-finished forks of the innermost played scene, which it drains
+ * before ending. `drained` is set once the scene's body has returned: the
+ * last fork to finish calls it, finishing the played scene in the same
+ * step — so it ends on the same frame it would standalone.
+ */
+interface ForkOwner {
+	readonly forks: Set<Runner.BranchEntry>;
+	drained: (() => void) | null;
+}
+
+/** null = directly in the root, whose forks `run` drains */
+const CurrentForks = Context.Reference<ForkOwner | null>(
+	"motion/Scene/CurrentForks",
+	{ defaultValue: () => null },
+);
+
 const makeBranch = <A, E = never>(
 	runner: Runner.Runner["Service"],
 	kind: "fork" | "background" | "root",
+	owner: ForkOwner | null = null,
 ): BranchInternal<A, E> => {
 	const latch = Latch.makeUnsafe();
 	let finished = false;
@@ -838,6 +895,9 @@ const makeBranch = <A, E = never>(
 			// interrupted with the backgrounds at scene end
 			runner.forks.delete(entry);
 			runner.backgrounds.add(entry);
+			if (owner?.forks.delete(entry) && owner.forks.size === 0) {
+				owner.drained?.();
+			}
 		}
 		latch.openUnsafe();
 	};
@@ -894,7 +954,8 @@ const forkBranch = <A, E = never, R = never>(
 	kind: "fork" | "background",
 ) =>
 	Effect.gen(function* () {
-		const branch = makeBranch<A, E>(runner, kind);
+		const owner = yield* CurrentForks;
+		const branch = makeBranch<A, E>(runner, kind, owner);
 		if (kind === "fork") {
 			// counted before the fork (no gap); undone exactly once by the
 			// branch's finish/completion — synchronous with its party release
@@ -902,26 +963,27 @@ const forkBranch = <A, E = never, R = never>(
 		}
 		const fiber = yield* Phaser.run(
 			runner.phaser,
-			effect.pipe(
-				Effect.onExit((exit) =>
-					Effect.sync(() => {
-						// tail failures (post-finish) are deliberately dropped
-						if (
-							!branch.isFinished() &&
-							Exit.isFailure(exit) &&
-							!Cause.hasInterruptsOnly(exit.cause)
-						) {
-							runner.recordFailure(exit.cause);
-						}
-						branch.finishUnsafe();
-					}),
-				),
-				Effect.provideService(currentBranch<A, E>(), branch),
-			),
+			Effect.provideService(effect, currentBranch<A, E>(), branch),
+			// installed by Phaser.run before the fiber can be interrupted, so
+			// even a branch cut before its first step (its spawner ended in
+			// the same tick) finishes and stops holding the scene open
+			(exit) =>
+				Effect.sync(() => {
+					// tail failures (post-finish) are deliberately dropped
+					if (
+						!branch.isFinished() &&
+						Exit.isFailure(exit) &&
+						!Cause.hasInterruptsOnly(exit.cause)
+					) {
+						runner.recordFailure(exit.cause);
+					}
+					branch.finishUnsafe();
+				}),
 		);
 		branch.entry.fiber = fiber;
 		if (kind === "fork" && !branch.isFinished()) {
 			runner.forks.add(branch.entry);
+			owner?.forks.add(branch.entry);
 		} else {
 			// backgrounds — and forks that completed synchronously before we
 			// could track them (their demotion already targeted these sets)
@@ -1108,7 +1170,7 @@ export interface PlayOptions {
  * fade, or scale it and the entire child scene follows, its bounds included.
  */
 export interface PlayHandle<A = void, E = never> extends BranchHandle<A, E> {
-	readonly group: Runner.GroupInstance;
+	readonly group: Instance.Instance<"Group">;
 }
 
 /**
@@ -1131,8 +1193,16 @@ export interface PlayHandle<A = void, E = never> extends BranchHandle<A, E> {
  * stream, so a nested scene animates exactly as it did standalone under the
  * same seed — nesting never perturbs a child's randomness.
  *
+ * The child also keeps its OWN camera: `Scene.camera` inside it is the
+ * child's, and the nested scene renders through it — camera moves, depth,
+ * and parallax show exactly as standalone, clipped to its bounds. The
+ * parent's camera only places the child's composited plane.
+ *
  * Awaited like a {@link fork}: yield `handle.finished` to play children in
- * sequence, or skip the await to run them concurrently.
+ * sequence, or skip the await to run them concurrently. As standalone, the
+ * child's end includes the forks it spawned — an exit tail forked at the
+ * end of its body plays out before `finished` resolves. To overlap that
+ * exit with what follows, call {@link finish} before forking it.
  *
  * @param scene - The scene to nest.
  * @param options - `parent` to mount elsewhere, `seed` to vary this
@@ -1178,10 +1248,29 @@ export const play = <E, R>(
 			height: scene.height,
 			backgroundColor: scene.backgroundColor,
 		});
+		// A played scene is a scene: like a standalone run, its end waits for
+		// the forks it spawned (an exit tail forked at the end of the body
+		// plays out) instead of cutting them when the body returns. The last
+		// fork finishes this branch synchronously; the fiber ticks meanwhile
+		// to keep its phaser party arriving, then exits — cutting the child's
+		// backgrounds and finished tails, as a standalone scene end does.
+		const owner: ForkOwner = { forks: new Set(), drained: null };
+		const drain = Effect.gen(function* () {
+			const self = yield* currentBranch<void, never>();
+			owner.drained = () => self?.finishUnsafe();
+			while (owner.forks.size > 0) {
+				yield* tick;
+			}
+		});
 		const body = scene.runner.pipe(
 			Effect.scoped,
+			Effect.andThen(drain),
+			Effect.provideService(CurrentForks, owner),
 			// the child's instances mount under its bounds group
 			Effect.provideService(Runner.CurrentParent, group),
+			// and its camera is its own: Scene.camera inside the child is the
+			// child's resting camera, rendered through for the comp
+			Effect.provideService(Runner.CurrentComp, group.id),
 			// fresh stream per evaluation: nested playback must equal a
 			// standalone run with the same seed, never inherit the parent's
 			// stream position
@@ -1194,6 +1283,31 @@ export const play = <E, R>(
 		)) as BranchHandle<void, E>;
 		return { ...handle, group } satisfies PlayHandle<void, E>;
 	}) as never;
+
+/**
+ * The list argument of {@link all}, {@link chain} and {@link stagger}.
+ *
+ * @remarks
+ * A bare Effect is itself iterable (it yields itself), so a plain
+ * `Iterable<Eff>` would accept `Scene.all(effect)` and silently run just
+ * that one effect. The `TypeId` guard rejects a lone Effect at compile time.
+ */
+export type Effects<Eff> = Iterable<Eff> & {
+	readonly [Effect.TypeId]?: never;
+};
+
+// runtime half of the Effects guard, for callers that cast past the types
+const toList = <Eff>(
+	combinator: string,
+	effects: Effects<Eff>,
+): Effect.Effect<Array<Eff>> =>
+	Effect.isEffect(effects)
+		? Effect.die(
+				new TypeError(
+					`Scene.${combinator} expects a list of effects but got a single Effect — wrap it: Scene.${combinator}([effect])`,
+				),
+			)
+		: Effect.succeed(Array.from(effects));
 
 /**
  * Run animations simultaneously, and resolve when the last one finishes.
@@ -1223,10 +1337,10 @@ export const play = <E, R>(
  */
 export const all = Effect.fnUntraced(function* <
 	Eff extends Effect.Effect<any, any, any>,
->(effects: Iterable<Eff>) {
+>(effects: Effects<Eff>) {
+	const list = yield* toList("all", effects);
 	const runner = yield* Runner.Runner;
-	// runner.phaser
-	return yield* Phaser.all(effects).pipe(
+	return yield* Phaser.all(list).pipe(
 		Effect.provideService(Phaser.Phaser, runner.phaser),
 	);
 });
@@ -1266,7 +1380,7 @@ export const chain = <
 	ScheduleE = never,
 	ScheduleR = never,
 >(
-	effects: Iterable<Eff>,
+	effects: Effects<Eff>,
 	schedule?: Schedule.Schedule<
 		unknown,
 		Eff extends Effect.Effect<infer A, any, any> ? A : never,
@@ -1281,7 +1395,7 @@ export const chain = <
 	| ScheduleR
 > =>
 	Effect.gen(function* () {
-		const list = Array.from(effects);
+		const list = yield* toList("chain", effects);
 		const runner = yield* Runner.Runner;
 		const driver =
 			schedule === undefined
@@ -1344,7 +1458,7 @@ export const stagger = <
 	ScheduleE = never,
 	ScheduleR = never,
 >(
-	effects: Iterable<Eff>,
+	effects: Effects<Eff>,
 	schedule: Schedule.Schedule<unknown, void, ScheduleE, ScheduleR>,
 ): Effect.Effect<
 	{ released: number },
@@ -1354,7 +1468,7 @@ export const stagger = <
 	| ScheduleR
 > =>
 	Effect.gen(function* () {
-		const list = Array.from(effects);
+		const list = yield* toList("stagger", effects);
 		const runner = yield* Runner.Runner;
 		const driver = yield* Time.scheduleDriver(
 			schedule,

@@ -1,0 +1,33 @@
+---
+title: "encode"
+description: "function encode("
+---
+# Function: encode()
+
+```ts
+function encode(
+   pngStream, 
+   outPath, 
+options): Effect<void, EncodeError, ChildProcessSpawner>;
+```
+
+Defined in: [packages/export/src/Ffmpeg.ts:78](https://github.com/julia-script/effect-motion/blob/main/packages/export/src/Ffmpeg.ts#L78)
+
+Encode a stream of PNG frames into a video file at `outPath`.
+
+Pipes the PNG bytes into ffmpeg's stdin via the `image2pipe` demuxer;
+when the stream ends, stdin closes and ffmpeg finalizes the file. A
+nonzero exit or an unspawnable binary fails with a tagged
+[EncodeError](../classes/EncodeError.mdx).
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `pngStream` | `Stream`\<`Uint8Array`\<`ArrayBufferLike`\>\> |
+| `outPath` | `string` |
+| `options` | [`EncodeOptions`](../interfaces/EncodeOptions.mdx) |
+
+## Returns
+
+`Effect`\<`void`, [`EncodeError`](../classes/EncodeError.mdx), `ChildProcessSpawner`\>

@@ -19,14 +19,15 @@ const withAperture = (frame: AnyFrame, aperture: number): AnyFrame => ({
 	camera: { ...frame.camera, aperture },
 });
 
-/** A red rect at depth `z`, optionally pinned to the HUD. */
-const rectAt = (z: number, hud = false): Promise<AnyFrame> => {
+/** A red rect at depth `z`, optionally pinned to the HUD or see-through. */
+const rectAt = (z: number, hud = false, opacity = 1): Promise<AnyFrame> => {
 	const scene = Scene.make(
 		function* () {
 			const rect = yield* Scene.instantiate("Rect", {
 				position: S.vec3({ z }),
 				width: 120,
 				height: 80,
+				opacity,
 				fillColor: Color.rgba(255, 0, 0),
 			});
 			if (hud) {
@@ -93,7 +94,11 @@ const render = (...frames: ReadonlyArray<AnyFrame>) =>
 				for (const frame of frames) {
 					pngs.push(yield* NodeRenderer.renderToPng(renderer, frame));
 				}
-				return { pngs, dofBuilt: renderer.dofChain !== null };
+				return {
+					pngs,
+					dofBuilt: renderer.dofChain !== null,
+					reversedZ: renderer.gpu["~three.renderer"].reversedDepthBuffer,
+				};
 			}),
 		),
 	);
@@ -214,6 +219,37 @@ const renderAt = (pixelRatio: number, ...frames: ReadonlyArray<AnyFrame>) =>
 		),
 	);
 
+/**
+ * A parent that mounts a child comp (Scene.play) whose own camera opens its
+ * lens to `aperture`; the child holds a red rect off its focus plane.
+ */
+const compWithChildAperture = (aperture: number): Promise<AnyFrame> => {
+	const child = Scene.make(
+		function* () {
+			yield* Scene.instantiate("Rect", {
+				position: S.vec3({ z: -300 }),
+				width: 120,
+				height: 80,
+				fillColor: Color.rgba(255, 0, 0),
+			});
+			const camera = yield* Scene.camera;
+			yield* Scene.update(camera, (props) => ({ ...props, aperture }));
+			yield* Scene.tick;
+		},
+		{ width: W, height: H, backgroundColor: Color.rgba(0, 0, 0) },
+	);
+	const parent = Scene.make(
+		function* () {
+			const handle = yield* Scene.play(child);
+			yield* handle.finished;
+		},
+		{ width: W, height: H, backgroundColor: Color.rgba(0, 0, 0) },
+	);
+	return Effect.runPromise(Scene.stream(parent).pipe(Stream.runCollect)).then(
+		(chunk) => [...chunk].at(-1) ?? unreachable(),
+	);
+};
+
 describe("depth of field (headless Dawn)", () => {
 	it("aperture 0 never builds the DoF chain and renders the plain path", async () => {
 		const frame = await rectAt(-300);
@@ -229,6 +265,16 @@ describe("depth of field (headless Dawn)", () => {
 		);
 		expect(edgeSpread(blurred ?? unreachable())).toBeGreaterThan(
 			edgeSpread(back ?? unreachable()) + 2,
+		);
+		// the depth DoF lends see-through layers is handed back: aperture 0
+		// after a DoF frame matches a renderer that never drew one
+		const seeThrough = await rectAt(-300, false, 0.5);
+		const [fresh] = (await render(seeThrough)).pngs;
+		const [, restored] = (
+			await render(withAperture(seeThrough, 10), seeThrough)
+		).pngs;
+		expect(Buffer.from(restored ?? unreachable())).toEqual(
+			Buffer.from(fresh ?? unreachable()),
 		);
 	}, 60_000);
 
@@ -257,6 +303,49 @@ describe("depth of field (headless Dawn)", () => {
 		expect(farBlur).toBeGreaterThan((nearBlur ?? 0) + 2);
 	}, 60_000);
 
+	it("depth reads correctly through the reversed-Z buffer", async () => {
+		// both sides of the focus plane blur: a sign or linearization slip in
+		// reading reversed depth would blur one side and not the other
+		const [front, focus, behind] = await Promise.all([
+			rectAt(150),
+			rectAt(0),
+			rectAt(-150),
+		]);
+		const { pngs, reversedZ } = await render(
+			...[front, focus, behind].flatMap((f) => [f, withAperture(f, 10)]),
+		);
+		expect(reversedZ).toBe(true);
+		const [
+			frontSharp,
+			frontBlur,
+			focusSharp,
+			focused,
+			behindSharp,
+			behindBlur,
+		] = pngs.map((p) => edgeSpread(p));
+		// CoC ≈ 10·|d − F|/d px: ~7 px in front (d ≈ 206), 0 on the plane,
+		// ~3 px behind (d ≈ 506)
+		expect(frontBlur).toBeGreaterThan((frontSharp ?? 0) + 4);
+		expect(Math.abs((focused ?? 0) - (focusSharp ?? 0))).toBeLessThanOrEqual(1);
+		expect(behindBlur).toBeGreaterThan((behindSharp ?? 0) + 2);
+		expect(frontBlur).toBeGreaterThan(behindBlur ?? 0);
+	}, 60_000);
+
+	it("a see-through shape on the focus plane stays sharp", async () => {
+		// see-through layers write no depth on the plain path; without the
+		// depth DoF lends them, this took the empty background's far-field
+		// blur (a 28 px edge spread)
+		const frame = await rectAt(0, false, 0.5);
+		const { pngs } = await render(frame, withAperture(frame, 10));
+		const [sharp, focused] = pngs;
+		expect(
+			Math.abs(
+				edgeSpread(focused ?? unreachable()) -
+					edgeSpread(sharp ?? unreachable()),
+			),
+		).toBeLessThanOrEqual(1);
+	}, 60_000);
+
 	it("an opaque near shape stays opaque at a few px of CoC", async () => {
 		// d ≈ 206, focus ≈ 356: CoC ≈ 0.73 · aperture px. Before the near
 		// gather reached c + 0.5, ~1–10 px CoC let the wall show through
@@ -282,6 +371,21 @@ describe("depth of field (headless Dawn)", () => {
 				edgeSpread(on ?? unreachable()) - edgeSpread(off ?? unreachable()),
 			),
 		).toBeLessThanOrEqual(1);
+	}, 60_000);
+
+	it("a comp renders sharp: its own camera's aperture is not applied", async () => {
+		// the decision recorded in the comp-camera openspec change: the comp
+		// layer takes the PARENT camera's DoF at its own depth, never its own
+		const [open, closed] = await Promise.all([
+			compWithChildAperture(20),
+			compWithChildAperture(0),
+		]);
+		const { pngs, dofBuilt } = await render(open, closed);
+		expect(dofBuilt).toBe(false);
+		expect(centreRed(pngs[0] ?? unreachable())).toBeGreaterThan(200);
+		expect(Buffer.from(pngs[0] ?? unreachable())).toEqual(
+			Buffer.from(pngs[1] ?? unreachable()),
+		);
 	}, 60_000);
 
 	it("a frame does not depend on the frames rendered before it", async () => {

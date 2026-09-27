@@ -1,0 +1,42 @@
+---
+title: "withSeeThroughDepth"
+description: "function withSeeThroughDepth<A, E, R>(sync, render): Effect<A, E, R>;"
+---
+# Function: withSeeThroughDepth()
+
+```ts
+function withSeeThroughDepth<A, E, R>(sync, render): Effect<A, E, R>;
+```
+
+Defined in: [packages/renderer/src/Sync.ts:814](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L814)
+
+Run a depth-of-field render with see-through layers writing depth.
+
+## Type Parameters
+
+| Type Parameter |
+| ------ |
+| `A` |
+| `E` |
+| `R` |
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `sync` | [`Sync`](../interfaces/Sync.mdx) |
+| `render` | `Effect`\<`A`, `E`, `R`\> |
+
+## Returns
+
+`Effect`\<`A`, `E`, `R`\>
+
+## Remarks
+
+Internal, shared by both render paths. DoF reads each pixel's blur from the
+depth buffer, so a layer that writes none would take the blur of whatever
+lies behind it — over the empty background that is the far-field maximum,
+and a title fading in on the focus plane would pop from blurred to sharp.
+Lent for the DoF render only and restored after, so the plain path keeps
+the no-holes rule; under DoF a see-through layer can hide see-through
+content the transparent sort draws after it (DoF is opaque-only anyway).

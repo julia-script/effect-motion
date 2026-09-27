@@ -4,7 +4,7 @@ description: "How to draw one kind of entity."
 ---
 # Interface: EntityRenderer\<Ent\>
 
-Defined in: [packages/renderer/src/EntityRenderer.ts:166](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L166)
+Defined in: [packages/renderer/src/EntityRenderer.ts:199](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L199)
 
 How to draw one kind of entity.
 
@@ -61,7 +61,7 @@ const renderer = yield* NodeRenderer.make({
 readonly build: (leaf, ctx) => Retained;
 ```
 
-Defined in: [packages/renderer/src/EntityRenderer.ts:174](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L174)
+Defined in: [packages/renderer/src/EntityRenderer.ts:207](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L207)
 
 Create the three object for a newly appeared instance.
 
@@ -89,7 +89,7 @@ must be released by the returned [Retained](./Retained.mdx)'s `dispose`.
 readonly update: (retained, leaf, ctx) => void;
 ```
 
-Defined in: [packages/renderer/src/EntityRenderer.ts:183](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L183)
+Defined in: [packages/renderer/src/EntityRenderer.ts:216](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L216)
 
 Mutate an existing object because its data or world position changed.
 

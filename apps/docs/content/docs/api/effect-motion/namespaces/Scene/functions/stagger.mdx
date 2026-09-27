@@ -15,7 +15,7 @@ function stagger<Eff, ScheduleE, ScheduleR>(effects, schedule): Effect<{
 | Eff extends Effect<any, any, R> ? R : never>;
 ```
 
-Defined in: [packages/motion/src/Scene.ts:1342](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L1342)
+Defined in: [packages/motion/src/Scene.ts:1456](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L1456)
 
 Start animations one after another WITHOUT waiting for each to finish —
 the cascade.
@@ -32,7 +32,7 @@ the cascade.
 
 | Parameter | Type | Description |
 | ------ | ------ | ------ |
-| `effects` | `Iterable`\<`Eff`\> | The animations to release in order. |
+| `effects` | [`Effects`](../type-aliases/Effects.mdx)\<`Eff`\> | The animations to release in order. |
 | `schedule` | `Schedule`\<`unknown`, `void`, `ScheduleE`, `ScheduleR`\> | When to release each subsequent one. |
 
 ## Returns

@@ -45,7 +45,7 @@ const EntityMap: {
         y: withConstructorDefault<Number>;
         z: withConstructorDefault<Number>;
      }>>;
-     strokeColor: withConstructorDefault<typeof Color>;
+     strokeColor: optionalKey<typeof Color>;
      strokeWidth: withConstructorDefault<Number>;
      visible: withConstructorDefault<Boolean>;
   }>;
@@ -69,7 +69,7 @@ const EntityMap: {
         y: withConstructorDefault<Number>;
         z: withConstructorDefault<Number>;
      }>>;
-     strokeColor: withConstructorDefault<typeof Color>;
+     strokeColor: optionalKey<typeof Color>;
      strokeWidth: withConstructorDefault<Number>;
      visible: withConstructorDefault<Boolean>;
   }>;
@@ -200,7 +200,7 @@ const EntityMap: {
         y: withConstructorDefault<Number>;
         z: withConstructorDefault<Number>;
      }>>;
-     strokeColor: withConstructorDefault<typeof Color>;
+     strokeColor: optionalKey<typeof Color>;
      strokeWidth: withConstructorDefault<Number>;
      visible: withConstructorDefault<Boolean>;
   }>;
@@ -223,7 +223,7 @@ const EntityMap: {
         y: withConstructorDefault<Number>;
         z: withConstructorDefault<Number>;
      }>>;
-     strokeColor: withConstructorDefault<typeof Color>;
+     strokeColor: optionalKey<typeof Color>;
      strokeWidth: withConstructorDefault<Number>;
      visible: withConstructorDefault<Boolean>;
      width: withConstructorDefault<Number>;
@@ -258,7 +258,7 @@ const EntityMap: {
 };
 ```
 
-Defined in: [packages/motion/src/Entity.ts:308](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Entity.ts#L308)
+Defined in: [packages/motion/src/Entity.ts:325](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Entity.ts#L325)
 
 ## Type Declaration
 
@@ -343,7 +343,7 @@ Circle: TaggedStruct<"Circle", {
      y: withConstructorDefault<Number>;
      z: withConstructorDefault<Number>;
   }>>;
-  strokeColor: withConstructorDefault<typeof Color>;
+  strokeColor: optionalKey<typeof Color>;
   strokeWidth: withConstructorDefault<Number>;
   visible: withConstructorDefault<Boolean>;
 }>;
@@ -374,7 +374,7 @@ Ellipse: TaggedStruct<"Ellipse", {
      y: withConstructorDefault<Number>;
      z: withConstructorDefault<Number>;
   }>>;
-  strokeColor: withConstructorDefault<typeof Color>;
+  strokeColor: optionalKey<typeof Color>;
   strokeWidth: withConstructorDefault<Number>;
   visible: withConstructorDefault<Boolean>;
 }>;
@@ -449,6 +449,10 @@ the entity's own coordinate space, world for world content and screen for
 HUD content. A Hud must be a top-level child of the root (or of another
 Hud); nesting one inside world content is a loud defect.
 
+Coordinates are the frame's: origin at the center, one unit per pixel of
+the scene's width and height. Inside a scene mounted with `Scene.play`, a
+Hud pins to that scene's frame and is clipped with it.
+
 ### Image
 
 ```ts
@@ -478,8 +482,10 @@ Image: TaggedStruct<"Image", {
 }>;
 ```
 
-A raster/vector image leaf. `image` is an Image resource reference; the
-bytes live in the scene's requirements, never in frame data.
+A bitmap image leaf. `image` is an Image resource reference; the bytes
+live in the scene's requirements, never in frame data. Use PNG or JPEG:
+the Node renderer decodes only those (the browser decodes whatever
+`createImageBitmap` supports). SVG is not supported — trace it into Paths.
 
 `width`/`height` are optional and undefaulted: set BOTH to draw at that
 size (numeric, so they tween), leave both absent for the source's natural
@@ -561,7 +567,7 @@ Path: TaggedStruct<"Path", {
      y: withConstructorDefault<Number>;
      z: withConstructorDefault<Number>;
   }>>;
-  strokeColor: withConstructorDefault<typeof Color>;
+  strokeColor: optionalKey<typeof Color>;
   strokeWidth: withConstructorDefault<Number>;
   visible: withConstructorDefault<Boolean>;
 }>;
@@ -593,7 +599,7 @@ Rect: TaggedStruct<"Rect", {
      y: withConstructorDefault<Number>;
      z: withConstructorDefault<Number>;
   }>>;
-  strokeColor: withConstructorDefault<typeof Color>;
+  strokeColor: optionalKey<typeof Color>;
   strokeWidth: withConstructorDefault<Number>;
   visible: withConstructorDefault<Boolean>;
   width: withConstructorDefault<Number>;

@@ -1,25 +1,21 @@
 import { readFileSync } from "node:fs";
 import * as Console from "effect/Console";
 import * as Effect from "effect/Effect";
-import { CliError, Command, Flag, GlobalFlag } from "effect/unstable/cli";
+import { CliError, Command } from "effect/unstable/cli";
+import { framesCommand } from "./commands/frames.js";
 import { renderCommand } from "./commands/render.js";
 import { studioCommand } from "./commands/studio.js";
-import { type MotionCliError, renderForTerminal } from "./MotionCliError.js";
-
-// registered globally so `--verbose` parses anywhere on the command line;
-// the reporter reads argv directly because it sits outside handler context
-const verboseFlag = GlobalFlag.Setting("verbose")({
-	flag: Flag.Boolean("verbose").pipe(
-		Flag.withDefault(false),
-		Flag.withDescription("Print full error cause chains"),
-	),
-});
+import {
+	type MotionCliError,
+	renderForTerminal,
+	verboseFlag,
+} from "./MotionCliError.js";
 
 export const rootCommand = Command.make("motion").pipe(
 	Command.withDescription(
-		"effect-motion: preview scenes and render videos (scaffold new projects with `bun create effect-motion`)",
+		"effect-motion: preview scenes, render videos and sample frames (scaffold new projects with `bun create effect-motion`)",
 	),
-	Command.withSubcommands([studioCommand, renderCommand]),
+	Command.withSubcommands([studioCommand, renderCommand, framesCommand]),
 	Command.withGlobalFlags([verboseFlag]),
 );
 

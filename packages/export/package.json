@@ -24,6 +24,18 @@
 		".": {
 			"types": "./dist/index.d.ts",
 			"default": "./dist/index.js"
+		},
+		"./Frames": {
+			"types": "./dist/Frames.d.ts",
+			"default": "./dist/Frames.js"
+		},
+		"./Stills": {
+			"types": "./dist/Stills.d.ts",
+			"default": "./dist/Stills.js"
+		},
+		"./Video": {
+			"types": "./dist/Video.d.ts",
+			"default": "./dist/Video.js"
 		}
 	},
 	"files": [
