@@ -749,6 +749,11 @@ const diffRetained = (sync: Sync, walked: WalkResult): void => {
 			existing.lastOpacity === opacity &&
 			sameTransform(existing.lastTransform, leaf.transform);
 		if (!unchanged) {
+			// Path.update replaces and disposes its native children. Mask variants
+			// borrow their geometry, so detach them before that rebuild.
+			if (leaf.data._tag === "Path") {
+				releaseDrawablesWithin(sync, existing.retained.object);
+			}
 			dispatch(existing.renderer).update(existing.retained, leaf, sync.ctx);
 			existing.lastSource = source;
 			existing.lastOpacity = opacity;

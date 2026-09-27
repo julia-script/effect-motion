@@ -107,8 +107,8 @@ export const makeUnsafe = (
 		const variant = original.clone() as DrawableMaterial;
 		variant.opacityNode = baseOpacity.mul(mask) as never;
 		const membership = opaque
-			? effective.greaterThanEqual(1 - 1 / 255)
-			: effective.greaterThan(0).and(effective.lessThan(1 - 1 / 255));
+			? effective.greaterThanEqual(1)
+			: effective.greaterThan(0).and(effective.lessThan(1));
 		variant.maskNode = (
 			ordinaryMask === null ? membership : ordinaryMask.and(membership)
 		) as never;

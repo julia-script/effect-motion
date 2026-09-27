@@ -102,6 +102,36 @@ describe("headless alpha masks", () => {
 		expect(outside[2]).toBeLessThan(30);
 	}, 30_000);
 
+	it("keeps 254/255 mask coverage fractional over a translucent layer", async () => {
+		const makeFrame = (alpha: number) =>
+			frameOf(function* () {
+				yield* Scene.instantiate("Rect", {
+					position: Entity.vec3({ z: -20 }),
+					width: 40,
+					height: 40,
+					fillColor: Color.rgba(255, 0, 0, 0.9),
+				});
+				const target = yield* Scene.instantiate("Rect", {
+					width: 40,
+					height: 40,
+					fillColor: Color.rgba(0, 0, 255),
+				});
+				const source = yield* Scene.instantiate("Circle", {
+					radius: 20,
+					fillColor: Color.rgba(255, 255, 255, alpha),
+				});
+				yield* Scene.setMask(target, source);
+				yield* Scene.tick;
+			});
+		const opaque = pixel(await pixelsOf(await makeFrame(1)), 0, 0);
+		const fractional = pixel(await pixelsOf(await makeFrame(254 / 255)), 0, 0);
+		expect(opaque[0]).toBeLessThan(3);
+		// The red translucent sibling is behind the blue target. Its color
+		// survives only when the near-opaque target blends without writing depth.
+		expect(fractional[0]).toBeGreaterThan(5);
+		expect(fractional[2]).toBeGreaterThan(250);
+	}, 30_000);
+
 	it("ignores source RGB and treats an invisible source as zero coverage", async () => {
 		const makeFrame = (color: Color.Color, visible = true) =>
 			frameOf(function* () {
@@ -483,6 +513,99 @@ describe("headless alpha masks", () => {
 		expect(sync?.maskTargets.size).toBe(0);
 		expect(sync?.maskDrawables.size).toBe(0);
 		expect(pixel(result.rgba, 0, 0)[0]).toBeGreaterThan(230);
+	}, 30_000);
+
+	it("disposes masked Path geometry and variants once on rebuild and teardown", async () => {
+		const frames = await framesOf(function* () {
+			const target = yield* Scene.instantiate("Path", {
+				commands: [
+					{ _tag: "M", x: -8, y: -8 },
+					{ _tag: "L", x: 8, y: -8 },
+					{ _tag: "L", x: 0, y: 8 },
+					{ _tag: "Z" },
+				],
+				fillColor: Color.rgba(0, 0, 255),
+			});
+			const source = yield* Scene.instantiate("Circle", { radius: 20 });
+			yield* Scene.setMask(target, source);
+			yield* Scene.tick;
+			yield* Scene.update(target, (data) => ({
+				...data,
+				position: Entity.vec3({ x: 3 }),
+			}));
+			yield* Scene.tick;
+		});
+		const masked = frames.filter(
+			(frame) => Object.keys(frame.masks ?? {}).length > 0,
+		);
+		const firstFrame = masked[0] ?? unreachable();
+		const secondFrame = masked.at(-1) ?? unreachable();
+		const result = await Effect.runPromise(
+			Effect.scoped(
+				Effect.gen(function* () {
+					const renderer = yield* NodeRenderer.make({ width: 64, height: 64 });
+					yield* NodeRenderer.renderToRgba(renderer, firstFrame);
+					const first =
+						[...renderer.sync.maskDrawables.values()][0] ?? unreachable();
+					const observe = (entry: typeof first) => {
+						const counts = {
+							geometry: 0,
+							material: 0,
+							opaque: 0,
+							fractional: 0,
+						};
+						entry.source.geometry.addEventListener(
+							"dispose",
+							() => counts.geometry++,
+						);
+						entry.material.addEventListener("dispose", () => counts.material++);
+						entry.variants["~three.opaque"].addEventListener(
+							"dispose",
+							() => counts.opaque++,
+						);
+						entry.variants["~three.fractional"].addEventListener(
+							"dispose",
+							() => counts.fractional++,
+						);
+						return counts;
+					};
+					const old = observe(first);
+					yield* NodeRenderer.renderToRgba(renderer, secondFrame);
+					const second =
+						[...renderer.sync.maskDrawables.values()][0] ?? unreachable();
+					const current = observe(second);
+					return {
+						old,
+						current,
+						afterUpdate: { ...old },
+						beforeTeardown: { ...current },
+						shared: first.opaque.geometry === first.source.geometry,
+						rebuilt: first.source.geometry !== second.source.geometry,
+					};
+				}),
+			),
+		);
+		expect(result.shared).toBe(true);
+		expect(result.rebuilt).toBe(true);
+		expect(result.afterUpdate).toEqual({
+			geometry: 1,
+			material: 1,
+			opaque: 1,
+			fractional: 1,
+		});
+		expect(result.beforeTeardown).toEqual({
+			geometry: 0,
+			material: 0,
+			opaque: 0,
+			fractional: 0,
+		});
+		expect(result.old).toEqual(result.afterUpdate);
+		expect(result.current).toEqual({
+			geometry: 1,
+			material: 1,
+			opaque: 1,
+			fractional: 1,
+		});
 	}, 30_000);
 
 	it("resolves child masks inside a composition and masks its parent plane", async () => {
