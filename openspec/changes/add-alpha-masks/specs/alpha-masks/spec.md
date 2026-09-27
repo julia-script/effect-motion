@@ -96,7 +96,7 @@ A mask source and its target SHALL be mounted in the same composition and render
 
 ### Requirement: Masked depth and depth of field
 
-For an ordinary world target, masking SHALL preserve the target's own depth and existing depth ordering against unmasked content. Fully removed pixels SHALL neither color nor occlude; fully opaque covered pixels of an opaque target SHALL retain normal depth occlusion. Partially transparent masked pixels SHALL follow the renderer's existing translucent depth behavior. Depth of field SHALL use the target's depth after masking, with mask edges blurred as part of that target; source depth SHALL NOT independently affect blur. The existing limitation for semi-transparent content under depth of field SHALL apply. HUD masks and targets SHALL remain exempt from world depth of field. A played scene SHALL still render sharp internally and take only its parent's depth of field at its composited plane.
+For an ordinary world target, masking SHALL preserve every target drawable's own fragment depth and existing depth ordering against unmasked content, including separate subpaths or strokes within one Path instance. Masking SHALL NOT preblend different target depths into one image before those fragments compete with unrelated scene content. Fully removed pixels SHALL neither color nor occlude; fully opaque covered pixels of an opaque target SHALL retain normal depth occlusion. Partially transparent masked pixels SHALL follow the renderer's existing translucent depth behavior. Depth of field SHALL use the target's depth after masking, with mask edges blurred as part of that target; source depth SHALL NOT independently affect blur. The existing limitation for semi-transparent content under depth of field SHALL apply. HUD masks and targets SHALL remain exempt from world depth of field. A played scene SHALL still render sharp internally and take only its parent's depth of field at its composited plane.
 
 #### Scenario: Mask holes reveal objects behind
 - **WHEN** an opaque world target masks to zero coverage at a pixel and a farther object occupies that pixel
@@ -109,6 +109,10 @@ For an ordinary world target, masking SHALL preserve the target's own depth and 
 #### Scenario: Partially transparent target retains its depth
 - **WHEN** a Rect with intrinsic alpha `0.5` is masked by an opaque Circle at a depth distinct from a sibling and the background
 - **THEN** its revealed pixels blend at the Rect's depth, respect the sibling's depth order, and use the Rect's depth for the existing depth-of-field approximation even though its ordinary material writes no depth
+
+#### Scenario: Path subpaths interleave with a sibling
+- **WHEN** one masked Path has overlapping near and far subpaths at alpha `0.5`, and an opaque sibling lies between their depths
+- **THEN** the far subpath remains hidden behind the sibling while the near subpath blends in front, exactly as their unmasked fragments would at the same mask coverage
 
 ### Requirement: Valid references and lifecycle
 
@@ -132,7 +136,7 @@ An attachment SHALL reject missing, destroyed, or unmounted instances; identical
 
 ### Requirement: Shared renderer behavior and resource lifetime
 
-Browser playback and headless export SHALL use the same frame mask contract and show visually equivalent results; byte-exact pixels are not required. A stable frame SHALL reuse retained mask resources rather than allocate new GPU targets or materials for every presentation. Replacing or clearing a mask, removing its instances, and closing the renderer SHALL release resources owned by that attachment. A custom entity renderer that cannot provide coverage-aware target depth SHALL fail by name when its instance is masked; its unmasked rendering SHALL remain supported. Unmasked scenes SHALL retain their present rendering behavior and avoid mask work. Documentation and runnable examples SHALL demonstrate normal, inverse, partially transparent, and animated masks on a leaf and a Group.
+Browser playback and headless export SHALL use the same frame mask contract and show visually equivalent results; byte-exact pixels are not required. A stable frame SHALL reuse retained mask resources rather than allocate new GPU targets or materials for every presentation. Replacing or clearing a mask, removing its instances, and closing the renderer SHALL release resources owned by that attachment. A custom entity renderer that cannot apply mask factors at its drawable fragments SHALL fail by name when its instance is masked; its unmasked rendering SHALL remain supported. Unmasked scenes SHALL retain their present rendering behavior and avoid mask work. Documentation and runnable examples SHALL demonstrate normal, inverse, partially transparent, and animated masks on a leaf and a Group.
 
 #### Scenario: Stable frame reuse
 - **WHEN** the same masked frame is presented repeatedly
@@ -147,5 +151,5 @@ Browser playback and headless export SHALL use the same frame mask contract and 
 - **THEN** it follows the existing unmasked rendering behavior without allocating mask resources
 
 #### Scenario: Unsupported custom masked renderer
-- **WHEN** a custom renderer without coverage-aware target depth is used for a masked instance
-- **THEN** rendering fails naming that entity and the missing mask-depth capability, while its unmasked rendering still works
+- **WHEN** a custom renderer without fragment-level mask support is used for a masked instance
+- **THEN** rendering fails naming that entity and the missing mask-fragment capability, while its unmasked rendering still works
