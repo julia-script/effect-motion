@@ -245,9 +245,43 @@ export const lifecycle = Scene.make(
 	settings,
 );
 
+export const hudTransition = Scene.make(
+	"masked HUD transition",
+	function* () {
+		const camera = yield* Scene.camera;
+		yield* Scene.update(camera, (data) => ({
+			...data,
+			aperture: 18,
+			focusDistance: 160,
+		}));
+		yield* Scene.instantiate("Rect", {
+			position: Entity.vec3({ z: -100 }),
+			width: 300,
+			height: 180,
+			fillColor: Color.hex("#454f9d"),
+		});
+		yield* Scene.tick;
+		const target = yield* Scene.instantiate("Rect", {
+			position: Entity.vec3({ x: 100, y: 75 }),
+			width: 60,
+			height: 40,
+			fillColor: Color.hex("#ffde73"),
+		});
+		const source = yield* Scene.instantiate("Circle", {
+			position: Entity.vec3({ x: 100, y: 75 }),
+			radius: 24,
+		});
+		yield* Scene.instantiate("Hud", { children: [target, source] });
+		yield* Scene.setMask(target, source);
+		yield* Scene.tick;
+	},
+	settings,
+);
+
 export const scenes = {
 	"alpha-media": alphaAndMedia,
 	"nested-groups": nestedGroups,
 	"composition-hud-focus": compositionHudFocus,
 	lifecycle,
+	"hud-transition": hudTransition,
 };
