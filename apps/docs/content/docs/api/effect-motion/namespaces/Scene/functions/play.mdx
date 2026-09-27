@@ -8,7 +8,7 @@ description: "function play<E, R>(scene, options?): Effect<PlayHandle<void, E>, 
 function play<E, R>(scene, options?): Effect<PlayHandle<void, E>, never, Runner | Exclude<R, Scope>>;
 ```
 
-Defined in: [packages/motion/src/Scene.ts:1133](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L1133)
+Defined in: [packages/motion/src/Scene.ts:1178](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L1178)
 
 Nest a whole scene inside the current one — the precomp.
 
@@ -51,7 +51,10 @@ stream, so a nested scene animates exactly as it did standalone under the
 same seed — nesting never perturbs a child's randomness.
 
 Awaited like a [fork](./fork.mdx): yield `handle.finished` to play children in
-sequence, or skip the await to run them concurrently.
+sequence, or skip the await to run them concurrently. As standalone, the
+child's end includes the forks it spawned — an exit tail forked at the
+end of its body plays out before `finished` resolves. To overlap that
+exit with what follows, call [finish](../variables/finish.mdx) before forking it.
 
 ## Example
 

@@ -10,7 +10,7 @@ function background<A, E, R>(effect): Effect<BranchHandle<A, E>, never,
 | Exclude<Exclude<R, never>, Phaser>>;
 ```
 
-Defined in: [packages/motion/src/Scene.ts:1069](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L1069)
+Defined in: [packages/motion/src/Scene.ts:1111](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L1111)
 
 Like [fork](./fork.mdx), but the animation is CUT OFF at scene end rather than
 awaited.
@@ -48,11 +48,12 @@ the ambient loop simply stops when everything else is done.
 "Scene end" includes the fork drain: backgrounds keep animating while
 awaited forks finish, and are stopped only after the last one.
 
-Because backgrounds do not keep a scene alive, a scene whose body has
-nothing else to do will not end on its own — it has no content to
-finish, and the background is not content. Always pair one with
-something that defines the length, whether a real animation or an
-explicit [sleep](./sleep.mdx).
+Because backgrounds do not keep a scene alive, a body that spawns only
+backgrounds ends immediately and produces NO frames — the background is
+not content, so there is nothing to give the scene a length. Pair one
+with something that does define the length, whether a real animation or
+an explicit [sleep](./sleep.mdx), or the ambient motion never gets a frame to
+play on.
 
 ## Example
 

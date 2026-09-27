@@ -4,7 +4,7 @@ description: "A nested scene (from `Scene.play`) as the renderer holds it."
 ---
 # Interface: CompState
 
-Defined in: [Sync.ts:143](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L143)
+Defined in: [packages/renderer/src/Sync.ts:223](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L223)
 
 A nested scene (from `Scene.play`) as the renderer holds it.
 
@@ -30,7 +30,7 @@ design if a scene ever wants it.
 height: number;
 ```
 
-Defined in: [Sync.ts:154](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L154)
+Defined in: [packages/renderer/src/Sync.ts:236](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L236)
 
 ***
 
@@ -40,9 +40,10 @@ Defined in: [Sync.ts:154](https://github.com/julia-script/effect-motion/blob/mai
 readonly holder: Group;
 ```
 
-Defined in: [Sync.ts:146](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L146)
+Defined in: [packages/renderer/src/Sync.ts:227](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L227)
 
-billboarded holder at the group's world anchor (in a scene tier)
+holder at the group's world anchor (in a scene tier); billboarded
+unless the group's composed transform rotates it
 
 ***
 
@@ -52,7 +53,7 @@ billboarded holder at the group's world anchor (in a scene tier)
 hud: boolean;
 ```
 
-Defined in: [Sync.ts:155](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L155)
+Defined in: [packages/renderer/src/Sync.ts:237](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L237)
 
 ***
 
@@ -62,7 +63,7 @@ Defined in: [Sync.ts:155](https://github.com/julia-script/effect-motion/blob/mai
 readonly material: MeshBasicNodeMaterial;
 ```
 
-Defined in: [Sync.ts:150](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L150)
+Defined in: [packages/renderer/src/Sync.ts:232](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L232)
 
 ***
 
@@ -72,7 +73,17 @@ Defined in: [Sync.ts:150](https://github.com/julia-script/effect-motion/blob/mai
 readonly plane: Mesh;
 ```
 
-Defined in: [Sync.ts:149](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L149)
+Defined in: [packages/renderer/src/Sync.ts:231](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L231)
+
+***
+
+### rotated
+
+```ts
+rotated: boolean;
+```
+
+Defined in: [packages/renderer/src/Sync.ts:228](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L228)
 
 ***
 
@@ -82,7 +93,7 @@ Defined in: [Sync.ts:149](https://github.com/julia-script/effect-motion/blob/mai
 rt: RenderTarget | null;
 ```
 
-Defined in: [Sync.ts:152](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L152)
+Defined in: [packages/renderer/src/Sync.ts:234](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L234)
 
 created/resized by the render path (GPU-side)
 
@@ -94,7 +105,7 @@ created/resized by the render path (GPU-side)
 readonly sync: Sync;
 ```
 
-Defined in: [Sync.ts:144](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L144)
+Defined in: [packages/renderer/src/Sync.ts:224](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L224)
 
 ***
 
@@ -104,7 +115,7 @@ Defined in: [Sync.ts:144](https://github.com/julia-script/effect-motion/blob/mai
 readonly transformHolder: Group;
 ```
 
-Defined in: [Sync.ts:148](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L148)
+Defined in: [packages/renderer/src/Sync.ts:230](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L230)
 
 carries the group's 2D affine about the bounds center
 
@@ -116,4 +127,4 @@ carries the group's 2D affine about the bounds center
 width: number;
 ```
 
-Defined in: [Sync.ts:153](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L153)
+Defined in: [packages/renderer/src/Sync.ts:235](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L235)

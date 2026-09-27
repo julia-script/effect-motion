@@ -1,0 +1,35 @@
+---
+title: "Effects"
+description: "type Effects<Eff> = Iterable<Eff> & {"
+---
+# Type Alias: Effects\<Eff\>
+
+```ts
+type Effects<Eff> = Iterable<Eff> & {
+  ~effect/Effect?: never;
+};
+```
+
+Defined in: [packages/motion/src/Scene.ts:1248](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L1248)
+
+The list argument of [all](../variables/all.mdx), [chain](../functions/chain.mdx) and [stagger](../functions/stagger.mdx).
+
+## Type Declaration
+
+### ~effect/Effect?
+
+```ts
+readonly optional ~effect/Effect?: never;
+```
+
+## Type Parameters
+
+| Type Parameter |
+| ------ |
+| `Eff` |
+
+## Remarks
+
+A bare Effect is itself iterable (it yields itself), so a plain
+`Iterable<Eff>` would accept `Scene.all(effect)` and silently run just
+that one effect. The `TypeId` guard rejects a lone Effect at compile time.

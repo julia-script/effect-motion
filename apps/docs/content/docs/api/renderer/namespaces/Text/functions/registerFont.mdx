@@ -8,12 +8,12 @@ description: "function registerFont("
 function registerFont(
    text, 
    id, 
-   bytes): void;
+bytes): Effect<void, EffectMotionError>;
 ```
 
-Defined in: [Text.ts:157](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Text.ts#L157)
+Defined in: [packages/renderer/src/Text.ts:66](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Text.ts#L66)
 
-Register a font's bytes under its id.
+Load a font's bytes under its id.
 
 ## Parameters
 
@@ -25,10 +25,11 @@ Register a font's bytes under its id.
 
 ## Returns
 
-`void`
+`Effect`\<`void`, `EffectMotionError`\>
 
 ## Remarks
 
 Idempotent per id — registering the same font twice does nothing the
 second time. A font must be registered before any string using it can be
-laid out; `Sync.resolveResources` handles that for frames.
+laid out; `Sync.resolveResources` handles that for frames. Effectful
+because font parsing initializes WASM shaping state.

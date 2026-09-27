@@ -1,0 +1,59 @@
+---
+title: "scale"
+description: "const scale: <Tag>(from, to, duration, timing?) => <E, R>(instance) => Effect<Instance<Tag>, E, Runner | R> & <Tag, E, R>(instance, from, to, duration"
+---
+# Variable: scale
+
+```ts
+const scale: <Tag>(from, to, duration, timing?) => <E, R>(instance) => Effect<Instance<Tag>, E, Runner | R> & <Tag, E, R>(instance, from, to, duration, timing?) => Effect<Instance<Tag>, E, Runner | R>;
+```
+
+Defined in: [packages/motion/src/Motion.ts:818](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Motion.ts#L818)
+
+Like [scaleTo](./scaleTo.mdx), but starting from an explicit scale.
+
+## Remarks
+
+The entrance idiom: an entity is born at scale 1, so popping it in means
+stating the origin — `scale(0, 1, …)` — rather than first writing
+`scale: 0` at instantiate time.
+
+## Param
+
+**from**
+
+Starting scale: uniform, or per-axis (omitted axes start at
+  the current value).
+
+## Param
+
+**to**
+
+Target scale: uniform, or per-axis (omitted axes hold).
+
+## Param
+
+**duration**
+
+How long, in scene time.
+
+## Param
+
+**timing**
+
+An easing name or function.
+
+## Default Value
+
+`timing` — `"linear"`
+
+## Returns
+
+The instance, so animators chain.
+
+## Example
+
+Pop a badge in from nothing with a little overshoot.
+```typescript
+yield* badge.pipe(Motion.scale(0, 1, "400 millis", "easeOutBack"));
+```
