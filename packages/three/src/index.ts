@@ -69,6 +69,7 @@
 export * as ThreeRaw from "three/webgpu";
 export * as Interop from "./Interop.js";
 export * as Line2 from "./Line2.js";
+export * as MaskMaterial from "./MaskMaterial.js";
 export * as Object3D from "./Object3D.js";
 export * as PostProcessing from "./PostProcessing.js";
 export * as Renderer from "./Renderer.js";

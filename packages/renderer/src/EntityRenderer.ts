@@ -197,6 +197,8 @@ export interface Retained {
  * ```
  */
 export interface EntityRenderer<Ent> {
+	/** Fragment-level mask support; absent custom renderers fail when masked. */
+	readonly supportsMaskFragments?: true;
 	/**
 	 * Create the three object for a newly appeared instance.
 	 *

@@ -1,4 +1,5 @@
 import {
+	MaskMaterial,
 	RenderTarget,
 	ThreeRaw as THREE,
 	Scene as ThreeScene,
@@ -18,6 +19,7 @@ import type {
 	World,
 } from "./EntityRenderer.js";
 import * as Images from "./Images.js";
+import * as MaskPlan from "./MaskPlan.js";
 import { RenderException } from "./RenderException.js";
 import * as Text from "./Text.js";
 
@@ -115,6 +117,22 @@ interface RetainedEntry {
 	lastSource: unknown;
 	lastOpacity: number;
 	lastTransform: Transform;
+}
+
+interface MaskTarget {
+	readonly attachment: MaskPlan.Attachment;
+	readonly rt: RenderTarget.RenderTarget;
+	readonly factor: MaskMaterial.Factor;
+}
+
+interface MaskDrawable {
+	readonly source: THREE.Mesh;
+	readonly material: THREE.MeshBasicNodeMaterial | THREE.Line2NodeMaterial;
+	readonly opaque: THREE.Mesh;
+	readonly fractional: THREE.Mesh;
+	readonly variants: MaskMaterial.Variants;
+	readonly signature: string;
+	readonly targetIds: ReadonlySet<string>;
 }
 
 // ── transform composition ────────────────────────────────────────────────
@@ -246,6 +264,11 @@ export interface CompState {
  * identity camera, above everything, so it stays fixed to the glass.
  */
 export interface Sync {
+	/** Mask references for the current composition; null is the unmasked path. */
+	maskPlan: MaskPlan.Plan | null;
+	readonly maskTargets: Map<string, MaskTarget>;
+	readonly maskDrawables: Map<THREE.Mesh, MaskDrawable>;
+	readonly domainId: string;
 	/** the world scene, branded — the render paths take the wrapper */
 	readonly scene: ThreeScene.Scene;
 	readonly camera: THREE.PerspectiveCamera;
@@ -289,10 +312,15 @@ export const make = (
 		readonly text: Text.Text;
 		readonly images: Images.Images;
 	} = { text: Text.make(), images: Images.make() },
+	domainId = "",
 ): Sync => {
 	const camera = new THREE.PerspectiveCamera(50, 1, NEAR, FAR);
 	camera.rotation.order = "ZYX";
 	const base = {
+		maskPlan: null as MaskPlan.Plan | null,
+		maskTargets: new Map<string, MaskTarget>(),
+		maskDrawables: new Map<THREE.Mesh, MaskDrawable>(),
+		domainId,
 		// makeUnsafe: this Sync owns the scenes' lifetime through its own
 		// dispose, so they are not separately scope-registered
 		scene: ThreeScene.makeUnsafe(new THREE.Scene()),
@@ -351,6 +379,142 @@ export const whenReady = (sync: Sync): Effect.Effect<void, EffectMotionError> =>
 					discard: true,
 				});
 	});
+
+const releaseDrawable = (sync: Sync, entry: MaskDrawable): void => {
+	entry.material.visible = true;
+	entry.opaque.parent?.remove(entry.opaque);
+	entry.fractional.parent?.remove(entry.fractional);
+	MaskMaterial.dispose(entry.variants);
+	sync.maskDrawables.delete(entry.source);
+};
+
+const releaseDrawablesWithin = (sync: Sync, object: THREE.Object3D): void => {
+	const owned: Array<MaskDrawable> = [];
+	object.traverse((child) => {
+		if (child instanceof THREE.Mesh) {
+			const entry = sync.maskDrawables.get(child);
+			if (entry !== undefined) owned.push(entry);
+		}
+	});
+	for (const entry of owned) releaseDrawable(sync, entry);
+};
+
+/**
+ * Bind the current mask factors at each native drawable. Glyph meshes arrive
+ * after async layout, so this runs after `whenReady`, just before drawing.
+ */
+export const prepareMaskDrawables = (sync: Sync): void => {
+	const plan = sync.maskPlan;
+	if (plan === null) {
+		for (const entry of [...sync.maskDrawables.values()])
+			releaseDrawable(sync, entry);
+		return;
+	}
+	const seen = new Set<THREE.Mesh>();
+	const prepare = (id: string, object: THREE.Object3D): void => {
+		const factorRefs = MaskPlan.factorsOf(plan, id);
+		const factors = factorRefs.flatMap((attachment) => {
+			const target = sync.maskTargets.get(attachment.targetId);
+			return target === undefined ? [] : [target.factor];
+		});
+		if (factors.length === 0) return;
+		const signature = factorRefs
+			.map((a) => `${a.targetId}:${a.sourceId}:${a.mode}`)
+			.join("|");
+		object.traverse((drawable) => {
+			if (
+				!(drawable instanceof THREE.Mesh) ||
+				drawable.userData.maskVariant === true
+			)
+				return;
+			const material = drawable.material;
+			if (
+				!(
+					material instanceof THREE.MeshBasicNodeMaterial ||
+					material instanceof THREE.Line2NodeMaterial
+				)
+			)
+				return;
+			seen.add(drawable);
+			let prior = sync.maskDrawables.get(drawable);
+			if (
+				prior !== undefined &&
+				(prior.material !== material || prior.signature !== signature)
+			) {
+				releaseDrawable(sync, prior);
+				prior = undefined;
+			}
+			if (prior === undefined) {
+				const variants = MaskMaterial.makeUnsafe(material, factors);
+				const opaque = MaskMaterial.makeDrawable(drawable, variants, "opaque");
+				const fractional = MaskMaterial.makeDrawable(
+					drawable,
+					variants,
+					"fractional",
+				);
+				opaque.userData.maskVariant = true;
+				fractional.userData.maskVariant = true;
+				const parent = drawable.parent;
+				if (parent === null) return;
+				parent.add(opaque, fractional);
+				prior = {
+					source: drawable,
+					material,
+					opaque,
+					fractional,
+					variants,
+					signature,
+					targetIds: new Set(
+						factorRefs.map((attachment) => attachment.targetId),
+					),
+				};
+				sync.maskDrawables.set(drawable, prior);
+			}
+			MaskMaterial.syncVariants(prior.variants, material);
+			MaskMaterial.syncDrawable(prior.opaque, drawable);
+			MaskMaterial.syncDrawable(prior.fractional, drawable);
+			prior.opaque.visible = drawable.visible;
+			prior.fractional.visible = drawable.visible;
+			material.visible = false;
+		});
+	};
+	for (const [id, entry] of sync.retained) prepare(id, entry.retained.object);
+	for (const [id, comp] of sync.comps) prepare(id, comp.plane);
+	for (const entry of [...sync.maskDrawables.values()]) {
+		if (!seen.has(entry.source)) releaseDrawable(sync, entry);
+	}
+};
+
+/** Switch the scene to one source pass or to ordinary output. */
+export const setMaskPass = (sync: Sync, sourceId: string | null): void => {
+	const plan = sync.maskPlan;
+	if (plan === null) return;
+	for (const [id, entry] of sync.retained) {
+		entry.layer.visible =
+			sourceId === null
+				? !plan.nodes
+						.get(id)
+						?.ancestors.some((ancestor) => plan.sources.has(ancestor))
+				: MaskPlan.inSource(plan, sourceId, id);
+	}
+	for (const [id, comp] of sync.comps) {
+		comp.holder.visible =
+			sourceId === null
+				? !plan.nodes
+						.get(id)
+						?.ancestors.some((ancestor) => plan.sources.has(ancestor))
+				: MaskPlan.inSource(plan, sourceId, id);
+	}
+	for (const target of sync.maskTargets.values()) {
+		const ancestor =
+			sourceId !== null &&
+			plan.nodes
+				.get(sourceId)
+				?.ancestors.slice(0, -1)
+				.includes(target.attachment.targetId);
+		MaskMaterial.setEnabled(target.factor, !ancestor);
+	}
+};
 
 /**
  * Phase 1 — cameras, background, and the DoF request.
@@ -420,7 +584,11 @@ interface WalkResult {
  * composed transform and its opacity multiplied by every ancestor's. HUD subtrees route to the screen-space
  * tier. THROWS on scene-graph violations — see the module doc.
  */
-const walkTree = (sync: Sync, frame: AnyFrame): WalkResult => {
+const walkTree = (
+	sync: Sync,
+	frame: AnyFrame,
+	plan: MaskPlan.Plan | null,
+): WalkResult => {
 	const leaves: Array<WalkedLeaf> = [];
 	const visited = new Set<string>();
 	const seenComps = new Set<string>();
@@ -478,6 +646,7 @@ const walkTree = (sync: Sync, frame: AnyFrame): WalkResult => {
 					opacity,
 					subtreeHud,
 					frame,
+					plan,
 				);
 				seenComps.add(id);
 				order.push(id);
@@ -542,6 +711,15 @@ const diffRetained = (sync: Sync, walked: WalkResult): void => {
 					`no entity renderer registered for "${leaf.data._tag}" — instance "${leaf.id}"`,
 				);
 			}
+			if (
+				sync.maskPlan !== null &&
+				MaskPlan.factorsOf(sync.maskPlan, leaf.id).length > 0 &&
+				renderer.supportsMaskFragments !== true
+			) {
+				throw new Error(
+					`Renderer: instance "${leaf.id}" (${leaf.data._tag}) has no mask-fragment capability`,
+				);
+			}
 			const retained = dispatch(renderer).build(leaf, sync.ctx);
 			const layer = new THREE.Group();
 			layer.add(retained.object);
@@ -557,6 +735,15 @@ const diffRetained = (sync: Sync, walked: WalkResult): void => {
 			ThreeScene.add(hud ? sync.hudScene : sync.scene, [layer]);
 			continue;
 		}
+		if (
+			sync.maskPlan !== null &&
+			MaskPlan.factorsOf(sync.maskPlan, leaf.id).length > 0 &&
+			existing.renderer.supportsMaskFragments !== true
+		) {
+			throw new Error(
+				`Renderer: instance "${leaf.id}" (${leaf.data._tag}) has no mask-fragment capability`,
+			);
+		}
 		const unchanged =
 			existing.lastSource === source &&
 			existing.lastOpacity === opacity &&
@@ -570,6 +757,7 @@ const diffRetained = (sync: Sync, walked: WalkResult): void => {
 	}
 	for (const [id, entry] of sync.retained) {
 		if (!seen.has(id)) {
+			releaseDrawablesWithin(sync, entry.retained.object);
 			ThreeScene.remove(entry.hud ? sync.hudScene : sync.scene, [entry.layer]);
 			entry.retained.dispose();
 			sync.retained.delete(id);
@@ -577,6 +765,7 @@ const diffRetained = (sync: Sync, walked: WalkResult): void => {
 	}
 	for (const [id, comp] of sync.comps) {
 		if (!walked.seenComps.has(id)) {
+			releaseDrawablesWithin(sync, comp.plane);
 			ThreeScene.remove(comp.hud ? sync.hudScene : sync.scene, [comp.holder]);
 			disposeComp(comp);
 			sync.comps.delete(id);
@@ -658,13 +847,61 @@ const syncBillboards = (sync: Sync): void => {
  * recurse through this, and their violations propagate to the outermost
  * `syncFrame`'s single catch.
  */
-const syncFrameUnsafe = (sync: Sync, frame: AnyFrame): void => {
+const syncFrameUnsafe = (
+	sync: Sync,
+	frame: AnyFrame,
+	plan: MaskPlan.Plan | null = frame.masks === undefined ||
+	Object.keys(frame.masks).length === 0
+		? null
+		: MaskPlan.make(frame),
+): void => {
 	const t0 = performance.now();
+	const hadMasks = sync.maskPlan !== null;
+	sync.maskPlan = plan;
+	const domainId = sync.domainId || frame.root;
+	for (const [targetId, target] of sync.maskTargets) {
+		const next = plan?.attachments.get(targetId);
+		if (
+			next === undefined ||
+			next.domainId !== domainId ||
+			next.sourceId !== target.attachment.sourceId ||
+			next.mode !== target.attachment.mode
+		) {
+			for (const drawable of [...sync.maskDrawables.values()]) {
+				if (drawable.targetIds.has(targetId)) releaseDrawable(sync, drawable);
+			}
+			RenderTarget.dispose(target.rt);
+			sync.maskTargets.delete(targetId);
+		}
+	}
+	if (plan !== null) {
+		for (const attachment of plan.attachments.values()) {
+			if (
+				attachment.domainId !== domainId ||
+				sync.maskTargets.has(attachment.targetId)
+			)
+				continue;
+			const rt = RenderTarget.makeFloatDepthUnsafe(1, 1);
+			sync.maskTargets.set(attachment.targetId, {
+				attachment,
+				rt,
+				factor: MaskMaterial.makeFactor(
+					RenderTarget.texture(rt),
+					attachment.mode,
+				),
+			});
+		}
+	}
 	sync.width = frame.width;
 	sync.height = frame.height;
 	syncCameras(sync, frame);
-	const walked = walkTree(sync, frame);
+	const walked = walkTree(sync, frame, plan);
 	diffRetained(sync, walked);
+	if (hadMasks && plan === null) {
+		for (const entry of sync.retained.values()) entry.layer.visible = true;
+		for (const comp of sync.comps.values())
+			comp.holder.visible = comp.material.opacity > 0;
+	}
 	syncLayers(sync, walked.order);
 	syncBillboards(sync);
 	sync.stats.objects = sync.retained.size;
@@ -717,6 +954,7 @@ const syncComp = (
 	parentOpacity: number,
 	hud: boolean,
 	frame: AnyFrame,
+	plan: MaskPlan.Plan | null,
 ): void => {
 	let comp = sync.comps.get(id);
 	if (comp === undefined) {
@@ -729,7 +967,7 @@ const syncComp = (
 		const holder = new THREE.Group();
 		holder.add(transformHolder);
 		comp = {
-			sync: make(sync.registry, sync),
+			sync: make(sync.registry, sync, id),
 			holder,
 			transformHolder,
 			plane,
@@ -750,14 +988,18 @@ const syncComp = (
 	// Unsafe: violations inside a comp propagate to the outermost
 	// syncFrame's catch, which is the whole point of one seam per frame.
 	const background = compConfig.backgroundColor ?? null;
-	syncFrameUnsafe(comp.sync, {
-		...frame,
-		root: id,
-		width: compConfig.width,
-		height: compConfig.height,
-		backgroundColor: background ?? Color.transparent,
-		camera: compConfig.camera,
-	});
+	syncFrameUnsafe(
+		comp.sync,
+		{
+			...frame,
+			root: id,
+			width: compConfig.width,
+			height: compConfig.height,
+			backgroundColor: background ?? Color.transparent,
+			camera: compConfig.camera,
+		},
+		plan,
+	);
 	if (background === null || Color.bytes(background).a === 0) {
 		ThreeScene.setBackground(comp.sync.scene, null);
 	}
@@ -851,6 +1093,11 @@ const disposeComp = (comp: CompState): void => {
 };
 
 const disposeObjects = (sync: Sync): void => {
+	for (const entry of [...sync.maskDrawables.values()])
+		releaseDrawable(sync, entry);
+	for (const target of sync.maskTargets.values())
+		RenderTarget.dispose(target.rt);
+	sync.maskTargets.clear();
 	for (const entry of sync.retained.values()) {
 		ThreeScene.remove(entry.hud ? sync.hudScene : sync.scene, [entry.layer]);
 		entry.retained.dispose();
