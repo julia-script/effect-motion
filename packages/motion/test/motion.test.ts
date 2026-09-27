@@ -1,6 +1,7 @@
 import { Effect } from "effect";
 import * as Stream from "effect/Stream";
 import { describe, expect, it } from "vitest";
+import * as Color from "../src/Color";
 import * as S from "../src/Entity";
 import * as Motion from "../src/Motion";
 import * as Scene from "../src/Scene";
@@ -196,5 +197,81 @@ describe("Motion.wait", () => {
 		expect(track).toHaveLength(10);
 		expect(track.slice(0, 6)).toEqual([0, 0, 0, 0, 0, 0]);
 		expect(track.at(-1)).toBe(10);
+	});
+});
+
+describe("final frame lands exactly on target", () => {
+	const targets = [
+		Color.white,
+		Color.hex("#7f5af0"),
+		Color.hex("#ff890680"),
+		Color.rgba(22, 22, 29),
+	];
+	const timings: ReadonlyArray<Timing.TimingInput> = [
+		"linear",
+		"easeInSine",
+		"easeInBack",
+		"easeOutBack",
+		"easeOutElastic",
+	];
+
+	for (const to of targets) {
+		for (const timing of timings) {
+			it(`color tween to ${JSON.stringify(to)} (${timing})`, async () => {
+				const track = await runScene(
+					function* () {
+						const circle = yield* Scene.instantiate("Circle", {
+							fillColor: Color.hex("#16161d"),
+						});
+						yield* Motion.tweenTo(
+							circle,
+							{ fillColor: to },
+							"100 millis",
+							timing,
+						);
+					},
+					(data) => data.fillColor,
+				);
+				expect(track.at(-1)).toEqual(to);
+			});
+		}
+	}
+
+	it("interpolator form (Motion.color) in every mode", async () => {
+		const to = Color.hex("#7f5af0");
+		for (const mode of ["rgb", "lab", "lch", "hsl", "oklab"] as const) {
+			const track = await runScene(
+				function* () {
+					const circle = yield* Scene.instantiate("Circle", {
+						fillColor: Color.hex("#2cb67d"),
+					});
+					yield* Motion.tweenTo(
+						circle,
+						{ fillColor: Motion.color(to, mode) },
+						"100 millis",
+					);
+				},
+				(data) => data.fillColor,
+			);
+			expect(track.at(-1)).toEqual(to);
+		}
+	});
+
+	it("Vec3 channels where from + (to - from) misses by an ulp", async () => {
+		const track = await runScene(
+			function* () {
+				const circle = yield* Scene.instantiate("Circle", {
+					position: S.vec3({ x: 0.7, y: 0.1, z: -3.3 }),
+				});
+				yield* Motion.moveTo(
+					circle,
+					{ x: 0.1, y: 0.7, z: 1.9 },
+					"100 millis",
+					"easeInSine",
+				);
+			},
+			(data) => data.position,
+		);
+		expect(track.at(-1)).toEqual(S.vec3({ x: 0.1, y: 0.7, z: 1.9 }));
 	});
 });

@@ -76,9 +76,10 @@ type InterpolableOrInterpolator<T> = {
 			: never;
 };
 
-// extrapolating on purpose: eased t goes outside [0, 1] for back/elastic
+// extrapolating on purpose: eased t goes outside [0, 1] for back/elastic.
+// t = 1 returns `to` itself: from + (to - from) can miss it by an ulp
 const lerpNumber = (from: number, to: number, t: number) =>
-	from + (to - from) * t;
+	t === 1 ? to : from + (to - from) * t;
 
 const lerpColor = (
 	from: Color.Color,
