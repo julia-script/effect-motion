@@ -106,6 +106,10 @@ For an ordinary world target, masking SHALL preserve the target's own depth and 
 - **WHEN** an off-focus masked object is rendered with depth of field
 - **THEN** its revealed pixels and mask edge blur according to that object's depth, regardless of source depth
 
+#### Scenario: Partially transparent target retains its depth
+- **WHEN** a Rect with intrinsic alpha `0.5` is masked by an opaque Circle at a depth distinct from a sibling and the background
+- **THEN** its revealed pixels blend at the Rect's depth, respect the sibling's depth order, and use the Rect's depth for the existing depth-of-field approximation even though its ordinary material writes no depth
+
 ### Requirement: Valid references and lifecycle
 
 An attachment SHALL reject missing, destroyed, or unmounted instances; identical source and target; overlapping source/target subtrees in either direction; a source already used by another target; reference cycles; and cross-tier or cross-composition pairs. Diagnostics SHALL name the offending instance ids and reason. An atomic reparent within the same tier and composition SHALL retain the attachment and recompute both transforms. A reparent that makes an attached pair invalid SHALL fail loudly; `Scene.removeChild` detaching either endpoint or an ancestor of it SHALL clear affected attachments. Destroying an endpoint or any ancestor that leaves it unmounted SHALL clear affected attachments, including attachments whose endpoints survive as orphaned descendants. Rendering a forged or stale frame SHALL validate references and fail with a named render diagnostic rather than silently painting incorrect content.
@@ -128,7 +132,7 @@ An attachment SHALL reject missing, destroyed, or unmounted instances; identical
 
 ### Requirement: Shared renderer behavior and resource lifetime
 
-Browser playback and headless export SHALL use the same frame mask contract and show visually equivalent results; byte-exact pixels are not required. A stable frame SHALL reuse retained mask resources rather than allocate new GPU targets or materials for every presentation. Replacing or clearing a mask, removing its instances, and closing the renderer SHALL release resources owned by that attachment. Unmasked scenes SHALL retain their present rendering behavior and avoid mask work. Documentation and runnable examples SHALL demonstrate normal, inverse, partially transparent, and animated masks on a leaf and a Group.
+Browser playback and headless export SHALL use the same frame mask contract and show visually equivalent results; byte-exact pixels are not required. A stable frame SHALL reuse retained mask resources rather than allocate new GPU targets or materials for every presentation. Replacing or clearing a mask, removing its instances, and closing the renderer SHALL release resources owned by that attachment. A custom entity renderer that cannot provide coverage-aware target depth SHALL fail by name when its instance is masked; its unmasked rendering SHALL remain supported. Unmasked scenes SHALL retain their present rendering behavior and avoid mask work. Documentation and runnable examples SHALL demonstrate normal, inverse, partially transparent, and animated masks on a leaf and a Group.
 
 #### Scenario: Stable frame reuse
 - **WHEN** the same masked frame is presented repeatedly
@@ -141,3 +145,7 @@ Browser playback and headless export SHALL use the same frame mask contract and 
 #### Scenario: Unmasked fast path
 - **WHEN** a frame has no mask references
 - **THEN** it follows the existing unmasked rendering behavior without allocating mask resources
+
+#### Scenario: Unsupported custom masked renderer
+- **WHEN** a custom renderer without coverage-aware target depth is used for a masked instance
+- **THEN** rendering fails naming that entity and the missing mask-depth capability, while its unmasked rendering still works
