@@ -19,6 +19,7 @@ import type {
 	Leaf,
 	RenderContext,
 	Retained,
+	Transform,
 	World,
 } from "./EntityRenderer.js";
 import * as Images from "./Images.js";
@@ -39,9 +40,9 @@ import * as Text from "./Text.js";
  *
  * 1. **Cameras** — resolve the world camera (including its point-of-interest
  *    aim) into three's coordinate conventions, and set the background.
- * 2. **Walk** — descend the instance tree, folding ancestor translations
- *    into each leaf's world position and routing HUD subtrees to their own
- *    tier.
+ * 2. **Walk** — descend the instance tree, composing ancestor transforms
+ *    (translate, rotate, scale) and opacities into each leaf and routing
+ *    HUD subtrees to their own tier.
  * 3. **Diff** — build objects that are new, update ones that changed,
  *    dispose ones that left.
  * 4. **Billboards** — turn billboarded objects to face their tier's camera.
@@ -95,9 +96,67 @@ interface RetainedEntry {
 	readonly retained: Retained;
 	/** which tier owns the object: world scene or the screen-space HUD */
 	readonly hud: boolean;
-	lastData: unknown;
-	lastWorld: World;
+	/** the frame's own data (before ancestor opacity) — the diff key */
+	lastSource: unknown;
+	lastOpacity: number;
+	lastTransform: Transform;
 }
+
+// ── transform composition ────────────────────────────────────────────────
+// Each node's local TRS is position · rotation (Euler "ZYX", see the
+// coordinate-mapping note) · scale, about its own position — composed under
+// its parent's. `scale` is the per-axis product (shear dropped, as the
+// entity-transform spec states); `matrix` is exact, for skeletal points.
+
+const ZERO: World = { x: 0, y: 0, z: 0 };
+const ONE: World = { x: 1, y: 1, z: 1 };
+
+const identityTransform = (): Transform => ({
+	matrix: new THREE.Matrix4(),
+	quaternion: new THREE.Quaternion(),
+	scale: new THREE.Vector3(1, 1, 1),
+	rotated: false,
+});
+
+const composeTransform = (
+	parent: Transform,
+	data: Entity.Entity,
+): Transform => {
+	// ponytail: ParticleField (the D10 escape hatch) carries flat x/y/z
+	// instead of a nested position; delete the fallback with the rewrite
+	const p =
+		(data as { position?: World }).position ?? (data as unknown as World);
+	const r = "rotation" in data ? data.rotation : ZERO;
+	const s = "scale" in data ? data.scale : ONE;
+	const quaternion = new THREE.Quaternion().setFromEuler(
+		new THREE.Euler(r.x, r.y, r.z, "ZYX"),
+	);
+	const scale = new THREE.Vector3(s.x, s.y, s.z);
+	const matrix = new THREE.Matrix4()
+		.compose(new THREE.Vector3(p.x, p.y, p.z), quaternion, scale)
+		.premultiply(parent.matrix);
+	return {
+		matrix,
+		quaternion: quaternion.premultiply(parent.quaternion),
+		scale: scale.multiply(parent.scale),
+		rotated: parent.rotated || r.x !== 0 || r.y !== 0 || r.z !== 0,
+	};
+};
+
+const sameTransform = (a: Transform, b: Transform): boolean =>
+	a.rotated === b.rotated &&
+	a.matrix.equals(b.matrix) &&
+	a.quaternion.equals(b.quaternion) &&
+	a.scale.equals(b.scale);
+
+const worldOf = (transform: Transform): World => {
+	const e = transform.matrix.elements;
+	return { x: e[12] ?? 0, y: e[13] ?? 0, z: e[14] ?? 0 };
+};
+
+/** entity opacity, or 1 for the one entity without it (never walked) */
+const opacityOf = (data: Entity.Entity): number =>
+	"opacity" in data ? data.opacity : 1;
 
 /** Diagnostics for the last synced frame. */
 export interface SyncStats {
@@ -143,8 +202,10 @@ export interface DofState {
  */
 export interface CompState {
 	readonly sync: Sync;
-	/** billboarded holder at the group's world anchor (in a scene tier) */
+	/** holder at the group's world anchor (in a scene tier); billboarded
+	 * unless the group's composed transform rotates it */
 	readonly holder: THREE.Group;
+	rotated: boolean;
 	/** carries the group's 2D affine about the bounds center */
 	readonly transformHolder: THREE.Group;
 	readonly plane: THREE.Mesh;
@@ -323,9 +384,18 @@ const syncCameras = (sync: Sync, frame: AnyFrame): void => {
 	sync.dof.strengthUv = (camera.aperture * 2) / frame.height;
 };
 
+/** One walked leaf: the leaf handed to its renderer, its tier, and the
+ * frame's own data + ancestor opacity (the retained diff key). */
+interface WalkedLeaf {
+	readonly leaf: Leaf;
+	readonly hud: boolean;
+	readonly source: Entity.Entity;
+	readonly opacity: number;
+}
+
 /** What one pass of the tree walk produced. */
 interface WalkResult {
-	readonly leaves: ReadonlyArray<{ leaf: Leaf; hud: boolean }>;
+	readonly leaves: ReadonlyArray<WalkedLeaf>;
 	/** comp ids seen this frame — anything absent is disposed */
 	readonly seenComps: ReadonlySet<string>;
 }
@@ -333,18 +403,21 @@ interface WalkResult {
 /**
  * Phase 2 — walk the instance tree, collecting leaves and syncing comps.
  *
- * Containers contribute translation and recurse; sized groups become
- * comps; everything else is a leaf. HUD subtrees route to the screen-space
+ * Containers contribute their transform and opacity and recurse; declared
+ * comps become sub-compositions; everything else is a leaf, handed its
+ * composed transform and its opacity multiplied by every ancestor's. HUD subtrees route to the screen-space
  * tier. THROWS on scene-graph violations — see the module doc.
  */
 const walkTree = (sync: Sync, frame: AnyFrame): WalkResult => {
-	const leaves: Array<{ leaf: Leaf; hud: boolean }> = [];
+	const leaves: Array<WalkedLeaf> = [];
 	const visited = new Set<string>();
 	const seenComps = new Set<string>();
 
 	const walk = (
 		id: string,
-		offset: World,
+		parent: Transform,
+		/** product of every ancestor's opacity */
+		opacity: number,
 		hud: boolean,
 		inWorldContainer: boolean,
 	): void => {
@@ -370,18 +443,10 @@ const walkTree = (sync: Sync, frame: AnyFrame): WalkResult => {
 			);
 		}
 		const subtreeHud = hud || isHud;
-		// ponytail: ParticleField (the D10 escape hatch) carries flat x/y/z
-		// instead of a nested position; delete the fallback with the rewrite
-		const local =
-			(entry.data as { position?: World }).position ??
-			(entry.data as unknown as World);
-		const world: World = {
-			x: offset.x + local.x,
-			y: offset.y + local.y,
-			// a Hud's z is depth WITHIN the screen-space tier (design D12); it
-			// composes exactly like world depth, just in the HUD scene
-			z: offset.z + local.z,
-		};
+		// a Hud's z is depth WITHIN the screen-space tier (design D12); it
+		// composes exactly like world depth, just in the HUD scene
+		const transform = composeTransform(parent, entry.data);
+		const world = worldOf(transform);
 		const childIds = childIdsOf(entry.data);
 		// container-ness comes from the entity CARRYING children, not from
 		// having any: an empty Group (children appended later) renders
@@ -391,30 +456,53 @@ const walkTree = (sync: Sync, frame: AnyFrame): WalkResult => {
 			// carrying a size (design D13)
 			const size = frame.comps[id] ?? null;
 			if (size !== null) {
-				syncComp(sync, id, entry.data, size, world, subtreeHud, frame);
+				syncComp(
+					sync,
+					id,
+					entry.data,
+					size,
+					transform,
+					opacity,
+					subtreeHud,
+					frame,
+				);
 				seenComps.add(id);
 				return;
 			}
-			// a pure container: contribute position, recurse, render
-			// nothing itself. ponytail: translation-only, matching the
-			// ThorVG walk — a Group's 2D affine transform is not yet
-			// threaded into child world coords.
+			// a pure container: contribute transform and opacity, recurse,
+			// render nothing itself
+			const childOpacity = opacity * opacityOf(entry.data);
 			for (const childId of childIds) {
-				walk(childId, world, subtreeHud, inWorldContainer || !subtreeHud);
+				walk(
+					childId,
+					transform,
+					childOpacity,
+					subtreeHud,
+					inWorldContainer || !subtreeHud,
+				);
 			}
 			return;
 		}
+		// ancestor opacity multiplies into the leaf's own, so every renderer
+		// honors a fading Group without knowing about it
+		const data =
+			opacity === 1 || !("opacity" in entry.data)
+				? entry.data
+				: { ...entry.data, opacity: entry.data.opacity * opacity };
 		leaves.push({
-			leaf: { id, data: entry.data, world },
+			leaf: { id, data, world, transform },
 			hud: subtreeHud,
+			source: entry.data,
+			opacity,
 		});
 	};
 
 	const rootEntry = frame.instances[frame.root];
 	if (rootEntry !== undefined) {
 		visited.add(frame.root);
+		const root = identityTransform();
 		for (const childId of childIdsOf(rootEntry.data)) {
-			walk(childId, { x: 0, y: 0, z: 0 }, false, false);
+			walk(childId, root, 1, false, false);
 		}
 	}
 	return { leaves, seenComps };
@@ -422,13 +510,14 @@ const walkTree = (sync: Sync, frame: AnyFrame): WalkResult => {
 
 /**
  * Phase 3 — diff the walked leaves against the retained map: build what
- * is new, update what changed (by reference equality on data and world
- * position), dispose what left the frame. THROWS on an unregistered
+ * is new, update what changed (by reference equality on the frame's data,
+ * plus value equality on the composed transform and ancestor opacity),
+ * dispose what left the frame. THROWS on an unregistered
  * entity — see the module doc.
  */
 const diffRetained = (sync: Sync, walked: WalkResult): void => {
 	const seen = new Set<string>();
-	for (const { leaf, hud } of walked.leaves) {
+	for (const { leaf, hud, source, opacity } of walked.leaves) {
 		seen.add(leaf.id);
 		const existing = sync.retained.get(leaf.id);
 		if (existing === undefined) {
@@ -443,21 +532,22 @@ const diffRetained = (sync: Sync, walked: WalkResult): void => {
 				renderer,
 				retained,
 				hud,
-				lastData: leaf.data,
-				lastWorld: leaf.world,
+				lastSource: source,
+				lastOpacity: opacity,
+				lastTransform: leaf.transform,
 			});
 			ThreeScene.add(hud ? sync.hudScene : sync.scene, [retained.object]);
 			continue;
 		}
-		const sameData = existing.lastData === leaf.data;
-		const sameWorld =
-			existing.lastWorld.x === leaf.world.x &&
-			existing.lastWorld.y === leaf.world.y &&
-			existing.lastWorld.z === leaf.world.z;
-		if (!sameData || !sameWorld) {
+		const unchanged =
+			existing.lastSource === source &&
+			existing.lastOpacity === opacity &&
+			sameTransform(existing.lastTransform, leaf.transform);
+		if (!unchanged) {
 			dispatch(existing.renderer).update(existing.retained, leaf, sync.ctx);
-			existing.lastData = leaf.data;
-			existing.lastWorld = leaf.world;
+			existing.lastSource = source;
+			existing.lastOpacity = opacity;
+			existing.lastTransform = leaf.transform;
 		}
 	}
 	for (const [id, entry] of sync.retained) {
@@ -496,9 +586,11 @@ const syncBillboards = (sync: Sync): void => {
 		}
 	}
 	for (const comp of sync.comps.values()) {
-		comp.holder.quaternion.copy(
-			comp.hud ? sync.hudCamera.quaternion : sync.camera.quaternion,
-		);
+		if (!comp.rotated) {
+			comp.holder.quaternion.copy(
+				comp.hud ? sync.hudCamera.quaternion : sync.camera.quaternion,
+			);
+		}
 	}
 };
 
@@ -524,7 +616,8 @@ const syncFrameUnsafe = (sync: Sync, frame: AnyFrame): void => {
  * @remarks
  * Runs the four phases described in the module overview. Objects are built,
  * updated, or disposed as the frame demands; unchanged ones are skipped by
- * reference equality on their data and world position, so a still scene
+ * reference equality on their data and equality of their composed
+ * transform, so a still scene
  * costs almost nothing to hold.
  *
  * Scene-graph violations arrive as a typed `RenderException` naming the
@@ -557,7 +650,9 @@ const syncComp = (
 		readonly height: number;
 		readonly backgroundColor: Color.Color;
 	},
-	world: World,
+	transform: Transform,
+	/** product of the group's ancestors' opacities */
+	parentOpacity: number,
 	hud: boolean,
 	frame: AnyFrame,
 ): void => {
@@ -578,6 +673,7 @@ const syncComp = (
 			plane,
 			material,
 			rt: null,
+			rotated: false,
 			width: compConfig.width,
 			height: compConfig.height,
 			hud,
@@ -604,16 +700,22 @@ const syncComp = (
 		ThreeScene.setBackground(comp.sync.scene, null);
 	}
 	// outer placement: center-anchored plane (a comp places like an Image of
-	// its own size), group opacity on the composite
+	// its own size) under the group's composed transform, group opacity (and
+	// its ancestors') on the composite
+	const world = worldOf(transform);
 	comp.holder.position.copy(sync.ctx.toThree(world.x, world.y, world.z));
+	comp.holder.scale.copy(transform.scale);
+	comp.rotated = transform.rotated;
+	if (transform.rotated) {
+		comp.holder.quaternion.copy(transform.quaternion);
+	}
 	comp.plane.scale.set(compConfig.width, compConfig.height, 1);
 	comp.material.opacity = Math.max(
 		0,
-		Math.min(1, "opacity" in groupData ? groupData.opacity : 1),
+		Math.min(1, opacityOf(groupData) * parentOpacity),
 	);
 	comp.holder.visible = comp.material.opacity > 0;
-	// Group's 2D affine is gone (task 1.3 found the ops→affine DSL was never
-	// wired up). A comp's own transform composes like any entity's.
+	// the comp's own transform is on the holder, composed like any entity's
 	comp.transformHolder.matrixAutoUpdate = true;
 	comp.transformHolder.position.set(0, 0, 0);
 	comp.transformHolder.rotation.set(0, 0, 0);

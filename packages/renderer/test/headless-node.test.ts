@@ -87,4 +87,55 @@ describe("headless Dawn rendering", () => {
 		);
 		expect(stats.objects).toBe(1);
 	}, 30_000);
+
+	it("pixels honor a rotated, scaled Group and a fading Group", async () => {
+		const frames = await framesOf(function* () {
+			// a 20×4 bar, turned 90° and doubled by its group → an 8×40 column
+			const bar = yield* Scene.instantiate("Rect", {
+				width: 20,
+				height: 4,
+				fillColor: Color.rgba(255, 255, 255),
+			});
+			yield* Scene.instantiate("Group", {
+				position: S.vec3({ x: -30 }),
+				rotation: S.vec3({ z: Math.PI / 2 }),
+				scale: S.vec3({ x: 2, y: 2, z: 1 }),
+				children: [bar],
+			});
+			// a white dot inside a half-faded group
+			const dot = yield* Scene.instantiate("Circle", {
+				radius: 10,
+				fillColor: Color.rgba(255, 255, 255),
+			});
+			yield* Scene.instantiate("Group", {
+				position: S.vec3({ x: 30 }),
+				opacity: 0.5,
+				children: [dot],
+			});
+			yield* Scene.tick;
+		});
+		const frame = frames.at(-1) ?? unreachable();
+		const { rgba, width } = await Effect.runPromise(
+			Effect.scoped(
+				NodeRenderer.make({ width: 128, height: 64 }).pipe(
+					Effect.flatMap((renderer) =>
+						NodeRenderer.renderToRgba(renderer, frame).pipe(
+							Effect.map((rgba) => ({ rgba, width: renderer.pixelWidth })),
+						),
+					),
+				),
+			) as Effect.Effect<{ rgba: Uint8Array; width: number }, never, never>,
+		);
+		// red channel at scene (x, y); y up, origin at the viewport center
+		const red = (x: number, y: number) =>
+			rgba[((32 - y) * width + (64 + x)) * 4] ?? unreachable();
+		// the column reaches 15 above the bar's center…
+		expect(red(-30, 15)).toBeGreaterThan(200);
+		// …and not 15 to its side, where the unrotated bar would be
+		expect(red(-15, 0)).toBeLessThan(40);
+		// the faded dot is partway to white (50% blends in linear light, so
+		// ~188 after sRGB encoding) — neither background nor full white
+		expect(red(30, 0)).toBeGreaterThan(140);
+		expect(red(30, 0)).toBeLessThan(230);
+	}, 30_000);
 });

@@ -42,6 +42,39 @@ const setColor = (
 	material.transparent = true;
 };
 
+/**
+ * Place a planar object from its leaf: world position, composed scale, and —
+ * once any rotation applies (its own or an ancestor's) — composed
+ * orientation. Unrotated planar objects billboard (Sync turns them to face
+ * the camera), so a rotation of exactly zero is the camera-facing default.
+ * Rotation and scale act about the entity's `position` (its anchor: the
+ * center for centered shapes). Size lives on a child, never on this object.
+ *
+ * ponytail: the billboard/oriented switch is discontinuous under a
+ * non-resting camera (a spin starting from 0 snaps off camera-facing);
+ * camera-relative in-plane spin would fix it if a scene needs it.
+ */
+const placePlanar = (
+	retained: Retained,
+	leaf: Leaf<unknown>,
+	ctx: RenderContext,
+): void => {
+	const object = retained.object;
+	object.position.copy(ctx.toThree(leaf.world.x, leaf.world.y, leaf.world.z));
+	object.scale.copy(leaf.transform.scale);
+	retained.billboard = !leaf.transform.rotated;
+	if (leaf.transform.rotated) {
+		object.quaternion.copy(leaf.transform.quaternion);
+	}
+};
+
+/** an entity-local point (offset from `position`) mapped to scene space */
+const toWorld = (
+	leaf: Leaf<unknown>,
+	p: { readonly x: number; readonly y: number; readonly z?: number },
+): THREE.Vector3 =>
+	new THREE.Vector3(p.x, p.y, p.z ?? 0).applyMatrix4(leaf.transform.matrix);
+
 // ── billboard fills (circle / ellipse / square / rect) ───────────────────
 // Each fill is a Group: the fill mesh plus an optional stroke outline
 // (world-unit fat line). Outline geometry is built at actual size in local
@@ -166,9 +199,7 @@ const placeFillGroup = (
 	const material = parts.mesh.material as THREE.MeshBasicNodeMaterial;
 	setColor(material, fill, opacity);
 	parts.mesh.visible = material.opacity > 0;
-	parts.group.position.copy(
-		ctx.toThree(leaf.world.x, leaf.world.y, leaf.world.z),
-	);
+	placePlanar(retained, leaf, ctx);
 	return parts;
 };
 
@@ -250,18 +281,6 @@ const rect: EntityRenderer<Entity.EntityByTag<"Rect">> = {
 				? rectPoints(data.width, data.height)
 				: null,
 		);
-		const { x: rotX, y: rotY, z: rotZ } = data.rotation;
-		const tilted = rotX !== 0 || rotY !== 0 || rotZ !== 0;
-		retained.billboard = !tilted;
-		if (tilted) {
-			// scene Eulers apply X→Y→Z extrinsically (matrix Rz·Ry·Rx), which
-			// is three's Euler order "ZYX" verbatim — no conjugation; rotation
-			// is about the shape's center (the centered unitPlane's origin)
-			parts.group.rotation.order = "ZYX";
-			parts.group.rotation.set(rotX, rotY, rotZ);
-		} else {
-			parts.group.rotation.set(0, 0, 0);
-		}
 	},
 };
 
@@ -300,19 +319,13 @@ const line: EntityRenderer<Entity.EntityByTag<"Line">> = {
 		setColor(material, leaf.data.strokeColor, leaf.data.opacity);
 		material.linewidth = leaf.data.strokeWidth;
 		fatLine.visible = material.opacity > 0;
-		// `world` is the line's position (ancestor offset composed in). Both
 		// `start` and `end` are offsets FROM position, so each endpoint is
-		// world + its own offset — a zero/zero line is a point at position.
-		const a = ctx.toThree(
-			leaf.world.x + leaf.data.start.x,
-			leaf.world.y + leaf.data.start.y,
-			leaf.world.z + leaf.data.start.z,
-		);
-		const b = ctx.toThree(
-			leaf.world.x + leaf.data.end.x,
-			leaf.world.y + leaf.data.end.y,
-			leaf.world.z + leaf.data.end.z,
-		);
+		// mapped through the composed transform (ancestors + own position,
+		// rotation, scale) — a zero/zero line is a point at position.
+		const sa = toWorld(leaf, leaf.data.start);
+		const sb = toWorld(leaf, leaf.data.end);
+		const a = ctx.toThree(sa.x, sa.y, sa.z);
+		const b = ctx.toThree(sb.x, sb.y, sb.z);
 		fatLine.geometry.setPositions([a.x, a.y, a.z, b.x, b.y, b.z]);
 		fatLine.computeLineDistances();
 	},
@@ -323,17 +336,16 @@ interface Subpath {
 	readonly closed: boolean;
 }
 
-const pathSubpaths = (
-	commands: ReadonlyArray<PathCommand>,
-	anchor: { x: number; y: number; z: number },
-): Array<Subpath> => {
+// subpaths in the path's LOCAL space (offsets from position): fills
+// triangulate there, so a tilted or rotated path never degenerates in x/y
+const pathSubpaths = (commands: ReadonlyArray<PathCommand>): Array<Subpath> => {
 	const subpaths: Array<Subpath> = [];
 	let current: Array<{ x: number; y: number; z: number }> = [];
-	let lastMove = { ...anchor };
+	let lastMove = { x: 0, y: 0, z: 0 };
 	const world = (p: { x: number; y: number; z?: number }) => ({
-		x: anchor.x + p.x,
-		y: anchor.y + p.y,
-		z: anchor.z + (p.z ?? 0),
+		x: p.x,
+		y: p.y,
+		z: p.z ?? 0,
 	});
 	const flush = (closed: boolean) => {
 		if (current.length >= 2) {
@@ -395,7 +407,7 @@ const path: EntityRenderer<Entity.EntityByTag<"Path">> = {
 		}
 		const { strokeColor: stroke, fillColor: fill, opacity } = leaf.data;
 		const strokeWidth = leaf.data.strokeWidth ?? 1;
-		const subpaths = pathSubpaths(leaf.data.commands, leaf.world);
+		const subpaths = pathSubpaths(leaf.data.commands);
 		for (const subpath of subpaths) {
 			// fill: closed subpaths only, triangulated in x/y
 			if (subpath.closed && subpath.points.length >= 3) {
@@ -403,7 +415,8 @@ const path: EntityRenderer<Entity.EntityByTag<"Path">> = {
 				const triangles = THREE.ShapeUtils.triangulateShape(contour, []);
 				const positions = new Float32Array(subpath.points.length * 3);
 				for (const [i, p] of subpath.points.entries()) {
-					const v = ctx.toThree(p.x, p.y, p.z);
+					const w = toWorld(leaf, p);
+					const v = ctx.toThree(w.x, w.y, w.z);
 					positions[i * 3] = v.x;
 					positions[i * 3 + 1] = v.y;
 					positions[i * 3 + 2] = v.z;
@@ -430,7 +443,8 @@ const path: EntityRenderer<Entity.EntityByTag<"Path">> = {
 				fatLine.visible = material.opacity > 0;
 				const positions: Array<number> = [];
 				const push = (p: { x: number; y: number; z: number }) => {
-					const v = ctx.toThree(p.x, p.y, p.z);
+					const w = toWorld(leaf, p);
+					const v = ctx.toThree(w.x, w.y, w.z);
 					positions.push(v.x, v.y, v.z);
 				};
 				for (const p of subpath.points) {
@@ -520,9 +534,7 @@ const text: EntityRenderer<Entity.EntityByTag<"Text">> = {
 				ctx.waitFor(textMesh.commit());
 			}
 		}
-		retained.object.position.copy(
-			ctx.toThree(leaf.world.x, leaf.world.y, leaf.world.z),
-		);
+		placePlanar(retained, leaf, ctx);
 	},
 };
 
@@ -537,8 +549,12 @@ const image: EntityRenderer<Entity.EntityByTag<"Image">> = {
 		material.transparent = true;
 		material.side = THREE.DoubleSide;
 		const mesh = new THREE.Mesh(unitPlane, material);
+		// the group carries placement (position/rotation/scale), the mesh
+		// its size — the same split as the fills
+		const group = new THREE.Group();
+		group.add(mesh);
 		const retained: Retained = {
-			object: mesh,
+			object: group,
 			billboard: true,
 			// textures are store-owned (disposed with the renderer scope)
 			dispose: () => material.dispose(),
@@ -547,7 +563,7 @@ const image: EntityRenderer<Entity.EntityByTag<"Image">> = {
 		return retained;
 	},
 	update: (retained, leaf, ctx) => {
-		const mesh = retained.object as THREE.Mesh;
+		const mesh = retained.object.children[0] as THREE.Mesh;
 		const material = mesh.material as THREE.MeshBasicNodeMaterial;
 		const data = leaf.data;
 		const applySize = (natural: { width: number; height: number }) => {
@@ -584,7 +600,7 @@ const image: EntityRenderer<Entity.EntityByTag<"Image">> = {
 		if (mesh.userData.natural !== undefined) {
 			mesh.visible = data.opacity > 0;
 		}
-		mesh.position.copy(ctx.toThree(leaf.world.x, leaf.world.y, leaf.world.z));
+		placePlanar(retained, leaf, ctx);
 	},
 };
 
@@ -699,7 +715,7 @@ const particleField: EntityRenderer<ParticleFieldData> = {
 		colors.needsUpdate = true;
 		geometry.instanceCount = count;
 		mesh.visible = count > 0;
-		mesh.position.copy(ctx.toThree(leaf.world.x, leaf.world.y, leaf.world.z));
+		placePlanar(retained, leaf, ctx);
 	},
 };
 

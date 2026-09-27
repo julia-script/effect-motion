@@ -271,6 +271,133 @@ describe("billboards and tilted planes", () => {
 	});
 });
 
+describe("entity and group transforms", () => {
+	const syncLast = async (
+		make: () => Generator<Effect.Effect<any, any, any>, void, never>,
+	) => {
+		const frames = await framesOf(make);
+		const sync = Sync.make(registry());
+		Effect.runSync(Sync.syncFrame(sync, frames.at(-1) ?? unreachable()));
+		return sync;
+	};
+
+	it("a shape honors its own scale and spin, about its position", async () => {
+		const sync = await syncLast(function* () {
+			yield* Scene.instantiate("Circle", {
+				position: S.vec3({ x: 40, y: 10 }),
+				scale: S.vec3({ x: 2, y: 0.5, z: 1 }),
+				radius: 5,
+			});
+			yield* Scene.instantiate("Text", {
+				text: "hi",
+				rotation: S.vec3({ z: Math.PI / 2 }),
+			});
+			yield* Scene.tick;
+		});
+		const [circle, text] = ThreeScene.children(sync.scene);
+		// placement on the object, size on its child mesh
+		expect(circle?.position.x).toBe(40);
+		expect(circle?.scale.toArray()).toEqual([2, 0.5, 1]);
+		expect(circle?.children[0]?.scale.x).toBe(5);
+		// unrotated: still billboards
+		expect(circle?.quaternion.equals(sync.camera.quaternion)).toBe(true);
+		// rotated: a real oriented plane with the composed orientation
+		expect(text?.rotation.z).toBeCloseTo(Math.PI / 2, 12);
+	});
+
+	it("a rotated, scaled Group carries its children around its position", async () => {
+		const sync = await syncLast(function* () {
+			const dot = yield* Scene.instantiate("Circle", {
+				position: S.vec3({ x: 10 }),
+			});
+			const line = yield* Scene.instantiate("Line", {
+				start: S.vec3({ x: 0 }),
+				end: S.vec3({ x: 10 }),
+			});
+			yield* Scene.instantiate("Group", {
+				position: S.vec3({ x: 100, y: 50 }),
+				rotation: S.vec3({ z: Math.PI / 2 }),
+				scale: S.vec3({ x: 3, y: 3, z: 1 }),
+				children: [dot, line],
+			});
+			yield* Scene.tick;
+		});
+		const [dot, line] = ThreeScene.children(sync.scene);
+		// (10, 0) scaled ×3 → (30, 0), turned 90° → (0, 30), + (100, 50)
+		expect(dot?.position.x).toBeCloseTo(100, 10);
+		expect(dot?.position.y).toBeCloseTo(80, 10);
+		expect(dot?.scale.x).toBe(3);
+		// the child turns with its parent instead of billboarding
+		expect(dot?.rotation.z).toBeCloseTo(Math.PI / 2, 12);
+		// skeletal: each endpoint maps through the composed transform
+		const positions = (
+			line as unknown as {
+				geometry: { attributes: { instanceStart: { array: Float32Array } } };
+			}
+		).geometry.attributes.instanceStart.array;
+		expect(positions[0]).toBeCloseTo(100, 4);
+		expect(positions[1]).toBeCloseTo(50, 4);
+		expect(positions[3]).toBeCloseTo(100, 4);
+		expect(positions[4]).toBeCloseTo(80, 4);
+	});
+
+	it("nested group transforms compose", async () => {
+		const sync = await syncLast(function* () {
+			const dot = yield* Scene.instantiate("Circle", {
+				position: S.vec3({ x: 1 }),
+			});
+			const inner = yield* Scene.instantiate("Group", {
+				scale: S.vec3({ x: 2, y: 2, z: 1 }),
+				children: [dot],
+			});
+			yield* Scene.instantiate("Group", {
+				position: S.vec3({ y: 10 }),
+				scale: S.vec3({ x: 5, y: 5, z: 1 }),
+				children: [inner],
+			});
+			yield* Scene.tick;
+		});
+		const dot = ThreeScene.children(sync.scene)[0];
+		expect(dot?.position.x).toBe(10);
+		expect(dot?.position.y).toBe(10);
+		expect(dot?.scale.x).toBe(10);
+	});
+
+	it("group opacity multiplies into every descendant", async () => {
+		const sync = await syncLast(function* () {
+			const dot = yield* Scene.instantiate("Circle", { opacity: 0.5 });
+			const inner = yield* Scene.instantiate("Group", {
+				opacity: 0.5,
+				children: [dot],
+			});
+			yield* Scene.instantiate("Group", { opacity: 0.4, children: [inner] });
+			yield* Scene.tick;
+		});
+		const mesh = ThreeScene.children(sync.scene)[0]?.children[0] as
+			| THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicNodeMaterial>
+			| undefined;
+		expect(mesh?.material.opacity).toBeCloseTo(0.1, 12);
+	});
+
+	it("a fading group re-renders its unchanged children", async () => {
+		const frames = await framesOf(function* () {
+			const dot = yield* Scene.instantiate("Circle", {});
+			const group = yield* Scene.instantiate("Group", { children: [dot] });
+			yield* Scene.tick;
+			yield* Scene.update(group, (data) => ({ ...data, opacity: 0.25 }));
+			yield* Scene.tick;
+		});
+		const sync = Sync.make(registry());
+		for (const frame of frames) {
+			Effect.runSync(Sync.syncFrame(sync, frame));
+		}
+		const mesh = ThreeScene.children(sync.scene)[0]?.children[0] as
+			| THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicNodeMaterial>
+			| undefined;
+		expect(mesh?.material.opacity).toBe(0.25);
+	});
+});
+
 describe("camera view conjugation", () => {
 	// the scene view transform flips z (in-front is +z view depth), so the
 	// three camera Euler is F-conjugated: set(-rx, -ry, rz), order ZYX. A

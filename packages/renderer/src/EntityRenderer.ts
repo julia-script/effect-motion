@@ -31,7 +31,7 @@ import type * as Text from "./Text.js";
 
 /**
  * A leaf's final position in scene space, with every ancestor group's
- * translation already folded in.
+ * transform (translate, rotate, scale) already folded in.
  *
  * @remarks
  * Absolute, not relative: a renderer never has to walk parents itself. In
@@ -42,6 +42,33 @@ export interface World {
 	readonly x: number;
 	readonly y: number;
 	readonly z: number;
+}
+
+/**
+ * A leaf's full composed transform: every ancestor's translate/rotate/scale
+ * applied over its own, in scene space.
+ *
+ * @remarks
+ * Planar renderers place their object from `quaternion` and `scale` (plus
+ * {@link Leaf.world} for the position); skeletal renderers (Line, Path) map
+ * each local point through `matrix`. The matrix is exact; `scale` is the
+ * per-axis product down the tree, so a non-uniformly scaled parent over a
+ * rotated child drops the shear — shear is not expressible (see the
+ * `entity-transform` spec).
+ */
+export interface Transform {
+	/** maps entity-local points (offsets from `position`) to scene space */
+	readonly matrix: THREE.Matrix4;
+	/** composed orientation: ancestors' rotations, then the entity's own */
+	readonly quaternion: THREE.Quaternion;
+	/** composed per-axis scale: the product of every ancestor's and its own */
+	readonly scale: THREE.Vector3;
+	/**
+	 * Whether any rotation applies, the entity's own or an ancestor's. An
+	 * unrotated planar shape billboards; a rotated one is a real oriented
+	 * plane in the world.
+	 */
+	readonly rotated: boolean;
 }
 
 /**
@@ -82,7 +109,12 @@ export interface RenderContext {
 
 /**
  * One instance as it is handed to a renderer: its id, its entity data for
- * this frame, and its composed world position.
+ * this frame, its composed world position, and its full composed transform.
+ *
+ * @remarks
+ * `data.opacity` already carries every ancestor Group's opacity multiplied
+ * in, so a renderer that honors its own opacity honors a fading parent for
+ * free.
  *
  * @typeParam Ent - The entity data type this renderer draws.
  */
@@ -90,6 +122,7 @@ export interface Leaf<Ent = Entity.Entity> {
 	readonly id: string;
 	readonly data: Ent;
 	readonly world: World;
+	readonly transform: Transform;
 }
 
 /**
