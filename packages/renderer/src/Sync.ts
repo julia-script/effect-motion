@@ -98,8 +98,15 @@ const dispatch = (renderer: AnyEntityRenderer) =>
 // F = diag(1,1,-1) the three camera matrix is F-conjugated per axis:
 //   R_three = Rz(rz)·Ry(-ry)·Rx(-rx)  →  order "ZYX", set(-rx, -ry, rz)
 
-// unit plane centered on its anchor (matches the Builtins module's anchor)
-const unitPlaneShared = new THREE.PlaneGeometry(1, 1);
+// unit comp plane centered on its anchor (matches the Builtins module's
+// anchor), v flipped: three's node materials sample a render target
+// top-row-first on both backends (WebGPU natively, WebGL via its flipY
+// uniform), so plain PlaneGeometry uvs paint every comp upside-down
+const compPlane = new THREE.PlaneGeometry(1, 1);
+const compPlaneUv = compPlane.getAttribute("uv");
+for (let i = 0; i < compPlaneUv.count; i++) {
+	compPlaneUv.setY(i, 1 - compPlaneUv.getY(i));
+}
 
 interface RetainedEntry {
 	readonly renderer: AnyEntityRenderer;
@@ -725,7 +732,7 @@ const syncComp = (
 		const material = new THREE.MeshBasicNodeMaterial();
 		material.transparent = true;
 		material.side = THREE.DoubleSide;
-		const plane = new THREE.Mesh(unitPlaneShared, material);
+		const plane = new THREE.Mesh(compPlane, material);
 		const transformHolder = new THREE.Group();
 		transformHolder.add(plane);
 		const holder = new THREE.Group();

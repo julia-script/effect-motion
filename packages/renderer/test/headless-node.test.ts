@@ -138,4 +138,43 @@ describe("headless Dawn rendering", () => {
 		expect(red(30, 0)).toBeGreaterThan(140);
 		expect(red(30, 0)).toBeLessThan(230);
 	}, 30_000);
+
+	it("a Scene.play comp keeps the inline orientation", async () => {
+		// asymmetric content: a dot above center. A flipped comp texture
+		// would land it below.
+		const content = function* () {
+			yield* Scene.instantiate("Circle", {
+				position: S.vec3({ y: 16 }),
+				radius: 8,
+				fillColor: Color.rgba(255, 255, 255),
+			});
+			yield* Scene.tick;
+		};
+		const inner = Scene.make(content as never, { width: 128, height: 64 });
+		const redAt = async (frames: Awaited<ReturnType<typeof framesOf>>) => {
+			const frame = frames.at(-1) ?? unreachable();
+			const rgba = await Effect.runPromise(
+				Effect.scoped(
+					NodeRenderer.make({ width: 128, height: 64 }).pipe(
+						Effect.flatMap((renderer) =>
+							NodeRenderer.renderToRgba(renderer, frame),
+						),
+					),
+				) as Effect.Effect<Uint8Array, never, never>,
+			);
+			return (x: number, y: number) =>
+				rgba[((32 - y) * 128 + (64 + x)) * 4] ?? unreachable();
+		};
+		const inline = await redAt(await framesOf(content));
+		const comp = await redAt(
+			await framesOf(function* () {
+				const h = yield* Scene.play(inner as never);
+				yield* h.finished;
+			}),
+		);
+		for (const red of [inline, comp]) {
+			expect(red(0, 16)).toBeGreaterThan(200);
+			expect(red(0, -16)).toBeLessThan(40);
+		}
+	}, 30_000);
 });
