@@ -18,4 +18,4 @@
 ## 3. Delivery and integration
 
 - [ ] 3.1 Add a mask guide and runnable examples for normal, inverse, partial alpha, leaf and Group targets, and independent animation; verify examples build and render.
-- [ ] 3.2 Run `rtk bun run check`, `rtk bun run test`, `rtk bun run lint`, and `rtk bun run build`; verify browser playback and headless export visually for mask modes, transparency, text/image sources, nested Groups/comps, cameras, HUD, depth, and depth of field, recording the actual results and evidence.
+- [x] 3.2 Run `rtk bun run check`, `rtk bun run test`, `rtk bun run lint`, and `rtk bun run build`; verify browser playback and headless export visually for mask modes, transparency, text/image sources, nested Groups/comps, cameras, HUD, depth, and depth of field, recording the actual results and evidence.
