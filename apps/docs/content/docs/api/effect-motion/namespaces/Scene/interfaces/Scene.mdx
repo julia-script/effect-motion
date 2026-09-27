@@ -4,7 +4,7 @@ description: "A scene: an animation body plus the composition it plays in."
 ---
 # Interface: Scene\<E, R\>
 
-Defined in: [packages/motion/src/Scene.ts:76](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L76)
+Defined in: [packages/motion/src/Scene.ts:77](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L77)
 
 A scene: an animation body plus the composition it plays in.
 
@@ -30,7 +30,7 @@ rendered at different settings without change.
 readonly ~motion/Scene: "~motion/Scene";
 ```
 
-Defined in: [packages/motion/src/Scene.ts:77](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L77)
+Defined in: [packages/motion/src/Scene.ts:78](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L78)
 
 ***
 
@@ -40,7 +40,7 @@ Defined in: [packages/motion/src/Scene.ts:77](https://github.com/julia-script/ef
 readonly ~resources: ExtractLoaders<R>;
 ```
 
-Defined in: [packages/motion/src/Scene.ts:106](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L106)
+Defined in: [packages/motion/src/Scene.ts:107](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L107)
 
 phantom: the loader members of R, carried to `Frame<Resources>`
 
@@ -52,7 +52,7 @@ phantom: the loader members of R, carried to `Frame<Resources>`
 readonly backgroundColor: Color;
 ```
 
-Defined in: [packages/motion/src/Scene.ts:96](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L96)
+Defined in: [packages/motion/src/Scene.ts:97](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L97)
 
 ***
 
@@ -62,7 +62,7 @@ Defined in: [packages/motion/src/Scene.ts:96](https://github.com/julia-script/ef
 readonly height: number;
 ```
 
-Defined in: [packages/motion/src/Scene.ts:95](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L95)
+Defined in: [packages/motion/src/Scene.ts:96](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L96)
 
 ***
 
@@ -72,7 +72,7 @@ Defined in: [packages/motion/src/Scene.ts:95](https://github.com/julia-script/ef
 readonly optional name?: string;
 ```
 
-Defined in: [packages/motion/src/Scene.ts:104](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L104)
+Defined in: [packages/motion/src/Scene.ts:105](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L105)
 
 DISPLAY-ONLY name (a picker label, never an identifier) — set via the
 optional leading argument of [make](../variables/make.mdx). Names may collide; unique
@@ -90,7 +90,7 @@ readonly runner: Effect<void, E,
 | ExcludeLoaders<R>>;
 ```
 
-Defined in: [packages/motion/src/Scene.ts:84](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L84)
+Defined in: [packages/motion/src/Scene.ts:85](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L85)
 
 The scene body. Loader requirements are EXCLUDED here: frames are pure
 of resource bytes (the engine cannot measure text), so running a scene
@@ -105,7 +105,7 @@ on `Frame<Resources>` via `~resources`).
 readonly width: number;
 ```
 
-Defined in: [packages/motion/src/Scene.ts:94](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L94)
+Defined in: [packages/motion/src/Scene.ts:95](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L95)
 
 composition config, After Effects–style: what this comp IS. The
 runner inherits the ROOT scene's; a played scene keeps its own as

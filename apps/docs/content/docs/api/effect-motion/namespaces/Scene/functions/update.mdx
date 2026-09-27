@@ -8,7 +8,7 @@ description: "function update<Tag>(instance, props): Effect<false | void, never,
 function update<Tag>(instance, props): Effect<false | void, never, Runner>;
 ```
 
-Defined in: [packages/motion/src/Scene.ts:693](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L693)
+Defined in: [packages/motion/src/Scene.ts:713](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L713)
 
 Set an entity's data immediately, with no animation.
 
@@ -41,6 +41,8 @@ current values — the function form is preferred, since it reads and writes
 atomically.
 
 Updating a destroyed entity is a no-op returning `false`, not an error.
+Data missing a required field (a partial object from untyped code) dies
+naming the instance and the missing fields, rather than corrupting it.
 
 ## Example
 

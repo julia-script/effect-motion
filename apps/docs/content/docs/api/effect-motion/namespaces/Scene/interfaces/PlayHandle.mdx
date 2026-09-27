@@ -4,7 +4,7 @@ description: "A played scene's handle: its branch, plus the group it is mounted 
 ---
 # Interface: PlayHandle\<A, E\>
 
-Defined in: [packages/motion/src/Scene.ts:1136](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L1136)
+Defined in: [packages/motion/src/Scene.ts:1172](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L1172)
 
 A played scene's handle: its branch, plus the group it is mounted under.
 
@@ -32,7 +32,7 @@ fade, or scale it and the entire child scene follows, its bounds included.
 readonly fiber: Fiber<A, E>;
 ```
 
-Defined in: [packages/motion/src/Scene.ts:799](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L799)
+Defined in: [packages/motion/src/Scene.ts:835](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L835)
 
 #### Inherited from
 
@@ -46,7 +46,7 @@ Defined in: [packages/motion/src/Scene.ts:799](https://github.com/julia-script/e
 readonly finished: Effect<void, never, Runner>;
 ```
 
-Defined in: [packages/motion/src/Scene.ts:798](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L798)
+Defined in: [packages/motion/src/Scene.ts:834](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L834)
 
 #### Inherited from
 
@@ -57,7 +57,7 @@ Defined in: [packages/motion/src/Scene.ts:798](https://github.com/julia-script/e
 ### group
 
 ```ts
-readonly group: GroupInstance;
+readonly group: Instance<"Group">;
 ```
 
-Defined in: [packages/motion/src/Scene.ts:1137](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L1137)
+Defined in: [packages/motion/src/Scene.ts:1173](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L1173)
