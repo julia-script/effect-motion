@@ -36,7 +36,7 @@ export const scene = Scene.make(function* () {
 		position: Entity.vec3({ x: -660 }), radius: 80, fillColor: Color.hex("#7f5af0"),
 	});
 	yield* Motion.moveTo(dot, { x: 660 }, "1200 millis", "easeInOutCubic");
-	yield* Physics.springTo(dot, { y: 240 }, Physics.springs.wobbly);
+	yield* Physics.springTo(dot, { y: 240 }, "bounce");
 });
 ```
 
@@ -45,6 +45,83 @@ export const scene = Scene.make(function* () {
 - **Springs have no duration** — length emerges from the simulation (presets in `Physics.springs`). Springy motion on raw fields uses elastic/bounce *easings*, not physics.
 - **Every animator is a dual**: `Motion.tweenTo(dot, …)` or `dot.pipe(Motion.tweenTo(…))` — both are idiomatic.
 - **Composition**: sequence by yielding one animation after another; `Scene.all([...])` runs them together; `Scene.chain`/`Scene.stagger` sequence with schedules; `Scene.fork` starts a branch you can join later; `Scene.play(otherScene)` mounts a whole scene (await `handle.finished`). `Scene.finish` marks a scene's semantic end — anything after it is a tail that keeps playing without being waited on.
+
+## Making it look good
+
+Slow, centered, flat scenes read as boring. Plan the beats first, then:
+
+- **Rhythm** — 6–8 beats per 15 s. Cut on the beat: the next idea lands as the last one settles. Hold a finished state 0.3–0.6 s, not seconds.
+- **Overlap** — start the next entrance before the last exit ends: `yield* Scene.fork(exitOfOld)`, then animate the new thing. Never fade to empty and back.
+- **Contrast** — full-bleed color fields that change per beat; oversized type that fills the frame (`fontSize` 200–400 at 1920×1080); one accent color on a neutral palette.
+- **Layered depth** — foreground, midground and background at different `z`, moving at different speeds (usually: the camera moves, parallax does the rest).
+- **Easing** — entrances `easeOutExpo`/`easeOutBack`, exits `easeInExpo`/`easeInCubic`, camera moves `easeInOutCubic`/`easeInOutExpo`, `Physics.springTo` for things that settle. `linear` only for constant drift.
+- Judge taste on the sheet too: a tile that looks empty, sparse or small-in-the-middle is.
+
+Scene space: x right, y up, +z toward the camera, origin at frame center. Angles are radians.
+
+| Effect | How |
+|---|---|
+| Camera push / pull | `camera.pipe(Camera.lookAt(point), Camera.dollyTo(distance, dur, ease))` — distance to the point of interest (default ≈ 2667 at 1920 wide) |
+| Orbit / swing | `Camera.orbitTo(radians, dur, ease)` around the point of interest |
+| High angle / crane | `Scene.update(camera, …)` its `position` (e.g. `y: 1400`), then `lookAt` |
+| Parallax | layers at different `z` + any camera move |
+| Tilted planes, card flips | `Rect` with `rotation: Entity.vec3({ y: 0.6 })`; animate it with `Motion.drive`. Other shapes always face the camera |
+| Grids, dot fields | loops of `Circle`/`Rect` instances placed in 3D, revealed with `Scene.stagger` |
+| Scale punch / pop | tween a size field with `easeOutBack`: `fontSize`, `radius`, `width`/`height` |
+| Color field per beat | a huge `Rect` far back (`z: -3000`, 12000×7000) + `Motion.tweenTo(field, { fillColor }, …)` |
+| Type reveals | one `Text` per word or line; stagger `moveTo` + `fadeTo`, or pop `fontSize` |
+| Precomps | build a section as its own scene; mount it with `Scene.play(section)` |
+
+**Not available yet — design around it:** masks, track mattes and wipes; per-letter text (a `Text` is one block); blur of any kind (motion blur, depth of field); lit or shaded 3D meshes; curves in `Path` (straight `M`/`L` segments — sample a curve into points yourself); rendering of `scale` and of Group `opacity`/`rotation`.
+
+Recipe — camera push through z-layered cards:
+
+```ts
+const field = yield* Scene.instantiate("Rect", {
+	position: Entity.vec3({ z: -3000 }), width: 12000, height: 7000, fillColor: Color.hex("#1a1a2e"),
+});
+for (const [i, z] of [900, 300, -300, -900].entries()) {
+	const side = i % 2 === 0 ? -1 : 1; // cards flank the flight path, tilted toward it
+	yield* Scene.instantiate("Rect", {
+		position: Entity.vec3({ x: side * 700, y: side * 120, z }), rotation: Entity.vec3({ y: side * 0.6 }),
+		width: 620, height: 380, fillColor: Color.hex("#e8e8f0"),
+	});
+}
+yield* Scene.instantiate("Rect", { // the hero the push lands on
+	position: Entity.vec3({ z: -1500 }), width: 800, height: 450, fillColor: Color.hex("#ff5a1f"),
+});
+const camera = yield* Scene.camera;
+yield* Scene.all([
+	camera.pipe(Camera.lookAt({ x: 0, y: 0, z: -1500 }), Camera.dollyTo(1200, "2400 millis", "easeInOutExpo")),
+	Motion.tweenTo(field, { fillColor: Color.hex("#2b1055") }, "2400 millis"),
+]);
+```
+
+Recipe — staggered dot floor in 3D (`import { Schedule } from "effect"`):
+
+```ts
+const rows = [];
+for (let r = 0; r < 12; r++) {
+	const row = [];
+	for (let c = 0; c < 16; c++) {
+		row.push(yield* Scene.instantiate("Circle", {
+			position: Entity.vec3({ x: (c - 7.5) * 110, y: -200, z: (r - 5.5) * 110 }),
+			radius: 14, fillColor: Color.hex("#e8e8f0"), opacity: 0,
+		}));
+	}
+	rows.push(row);
+}
+const camera = yield* Scene.camera; // raise the camera so the floor reads as a plane
+yield* Scene.update(camera, (c) => ({ ...c, position: Entity.vec3({ ...c.position, y: 1400 }) }));
+yield* camera.pipe(Camera.lookAt({ x: 0, y: -200, z: 0 }));
+yield* Scene.all([
+	Scene.stagger(rows.map((row, r) => Scene.all(row.map((dot, c) => Scene.all([
+		Motion.fadeTo(dot, 1, "300 millis"),
+		Motion.moveTo(dot, { y: -200 + 90 * Math.sin(c * 0.6 + r * 0.4) }, "700 millis", "easeOutBack"),
+	])))), Schedule.spaced("60 millis")),
+	camera.pipe(Camera.orbitTo(0.7, "2500 millis", "easeInOutSine")),
+]);
+```
 
 ## Determinism rules (non-negotiable)
 
