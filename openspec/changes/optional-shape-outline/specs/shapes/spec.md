@@ -25,7 +25,7 @@ Every such field SHALL be ordinary schema data, animatable like any other field.
 
 A default-constructed shape SHALL be visible: filled shapes (`Rect`, `Circle`, `Ellipse`, `Path`) default `fillColor` to white with `strokeColor` absent, so they draw no outline unless the scene sets one; `strokeWidth` defaults to 1 so setting `strokeColor` alone draws a 1-unit outline. `Line` defaults `strokeColor` to black with `strokeWidth` 1. `opacity` defaults to 1.
 
-#### Scenario: Default circle has no outline
+#### Scenario: Default circle is visible
 
 - **WHEN** a `Circle` is instantiated with only a radius
 - **THEN** its data has fill white, opacity 1, and no `strokeColor`, and the renderer draws the fill with no outline
