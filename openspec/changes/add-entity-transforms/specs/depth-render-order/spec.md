@@ -20,3 +20,9 @@ Occlusion SHALL be resolved by view-space depth via the GPU depth buffer — tre
 
 - **WHEN** a Rect at 30% opacity overlaps text, before or after it in the tree
 - **THEN** the text's glyphs stay fully drawn, tinted where the Rect covers them.
+
+#### Scenario: Sort is deterministic on ties
+
+- **WHEN** two translucent objects have equal view-space depth
+- **THEN** they blend in tree order, later over earlier
+- **AND** the order is identical across runs and across browser and Node.
