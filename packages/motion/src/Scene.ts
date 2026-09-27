@@ -305,6 +305,12 @@ export interface FrameEntry {
 	data: Entity.Entity;
 }
 
+/** A mask edge between two existing instances, with no tree ownership. */
+export interface MaskAttachment {
+	readonly sourceId: string;
+	readonly mode: "alpha" | "inverse";
+}
+
 /**
  * One rendered moment: every entity's state at a single instant, plus the
  * metadata needed to draw it.
@@ -348,6 +354,8 @@ export interface Frame<out Resources = never> {
 	 * camera, and composites the result. An id absent here is a plain group.
 	 */
 	comps: Record<string, Runner.CompFrame>;
+	/** Plain target-id to source-id references. Absent on older serialized frames. */
+	masks?: Record<string, MaskAttachment>;
 }
 /**
  * Advance a running scene by exactly one frame.
@@ -755,7 +763,8 @@ export const appendChild = (
 ) =>
 	Effect.gen(function* () {
 		const runner = yield* Runner.Runner;
-		runner.appendChild(parent, child);
+		const error = runner.appendChild(parent, child);
+		if (error !== null) return yield* Effect.die(error);
 	});
 
 /** Detach `child` from `parent` (no-op unless it is currently its child). */
@@ -767,6 +776,29 @@ export const removeChild = (
 		const runner = yield* Runner.Runner;
 		runner.removeChild(parent, child);
 	});
+
+/** Attach an existing paintable source to a target at the current scene frame. */
+export const setMask = Effect.fn("Scene.setMask")(function* (
+	target: Instance.Instance<Entity.MaskableTag>,
+	source: Instance.Instance<Entity.MaskableTag>,
+	options: { readonly mode?: MaskAttachment["mode"] } = {},
+) {
+	const runner = yield* Runner.Runner;
+	const error = runner.setMask(target, source, options.mode ?? "alpha");
+	if (error !== null) {
+		return yield* Effect.die(error);
+	}
+	return target;
+});
+
+/** Remove a target's mask at the current scene frame; an unmasked target is unchanged. */
+export const clearMask = Effect.fn("Scene.clearMask")(function* (
+	target: Instance.Instance<Entity.MaskableTag>,
+) {
+	const runner = yield* Runner.Runner;
+	runner.clearMask(target);
+	return target;
+});
 
 export const settings = Effect.fnUntraced(function* () {
 	const runner = yield* Runner.Runner;

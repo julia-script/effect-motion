@@ -2,9 +2,9 @@
 
 ## 1. Scene and frame contract
 
-- [ ] 1.1 Add typed `Scene.setMask`/`clearMask` and Runner attachment state without changing tree ownership; verify TypeScript accepts paintable sources/targets and rejects Camera.
-- [ ] 1.2 Serialize deterministic `Frame.masks` references and verify attach, replace, clear, independent animation, repeated runs, and exact endpoints in core tests.
-- [ ] 1.3 Validate mounted endpoints, unique source ownership, ancestry, cycles, composition/tier domain, and detach/reparent/destroy behavior, including orphaned descendants after ancestor destruction; verify named diagnostics and source restoration in core tests.
+- [x] 1.1 Add typed `Scene.setMask`/`clearMask` and Runner attachment state without changing tree ownership; verify TypeScript accepts paintable sources/targets and rejects Camera.
+- [x] 1.2 Serialize deterministic `Frame.masks` references and verify attach, replace, clear, independent animation, repeated runs, and exact endpoints in core tests.
+- [x] 1.3 Validate mounted endpoints, unique source ownership, ancestry, cycles, composition/tier domain, and detach/reparent/destroy behavior, including orphaned descendants after ancestor destruction; verify named diagnostics and source restoration in core tests.
 
 ## 2. Retained mask rendering
 

@@ -8,6 +8,7 @@ import * as Entity from "./Entity.js";
 import * as Instance from "./Instance.js";
 import * as Phaser from "./Phaser.js";
 import * as Projection from "./Projection.js";
+import type * as Scene from "./Scene.js";
 import { ROOT_ID, Tree } from "./Tree.js";
 
 export const TypeId = "~motion/SceneRunner" as const;
@@ -245,6 +246,154 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 		 * question about field presence. It is now declared here explicitly.
 		 */
 		const comps = new Map<string, CompConfig>();
+		const masks = new Map<string, Scene.MaskAttachment>();
+		const maskError = (
+			targetId: string,
+			sourceId: string,
+			reason: string,
+		): Error =>
+			new Error(
+				`Scene.setMask: target "${targetId}", source "${sourceId}": ${reason}`,
+			);
+		const parentOf = (
+			id: string,
+			moved?: { id: string; parentId: string },
+		): string | null =>
+			moved?.id === id ? moved.parentId : (tree.getEntry(id)?.parentId ?? null);
+		const subtreeIds = (
+			id: string,
+			moved?: { id: string; parentId: string },
+		): Set<string> => {
+			const found = new Set<string>();
+			const visit = (current: string): void => {
+				if (found.has(current)) return;
+				found.add(current);
+				const entry = tree.getEntry(current);
+				if (entry === null || !Entity.isContainer(entry.state)) return;
+				for (const child of entry.state.children) {
+					if (moved?.id !== child || moved.parentId === current) visit(child);
+				}
+				if (moved?.parentId === current) visit(moved.id);
+			};
+			visit(id);
+			return found;
+		};
+		const domainOf = (
+			id: string,
+			moved?: { id: string; parentId: string },
+		): {
+			compId: string | null;
+			tier: "world" | "hud";
+			ancestors: Set<string>;
+		} | null => {
+			const ancestors = new Set<string>();
+			let current: string | null = id;
+			let compId: string | null = null;
+			let tier: "world" | "hud" = "world";
+			while (current !== null) {
+				if (ancestors.has(current)) return null;
+				const entry = tree.getEntry(current);
+				if (entry === null) return null;
+				ancestors.add(current);
+				if (current === ROOT_ID) return { compId, tier, ancestors };
+				if (compId === null && entry.state._tag === "Hud") tier = "hud";
+				const parentId = parentOf(current, moved);
+				if (compId === null && parentId !== null && comps.has(parentId)) {
+					compId = parentId;
+				}
+				current = parentId;
+			}
+			return null;
+		};
+		const validateMasks = (
+			relations: ReadonlyMap<string, Scene.MaskAttachment>,
+			moved?: { id: string; parentId: string },
+		): Error | null => {
+			const owners = new Map<string, string>();
+			for (const [targetId, { sourceId, mode }] of relations) {
+				const target = tree.getEntry(targetId);
+				const source = tree.getEntry(sourceId);
+				if (target === null || source === null)
+					return maskError(targetId, sourceId, "missing or destroyed endpoint");
+				if (target.state._tag === "Camera" || source.state._tag === "Camera")
+					return maskError(targetId, sourceId, "Camera is not paintable");
+				if (mode !== "alpha" && mode !== "inverse")
+					return maskError(targetId, sourceId, `invalid mode "${mode}"`);
+				if (targetId === sourceId)
+					return maskError(
+						targetId,
+						sourceId,
+						"source and target are identical",
+					);
+				const priorOwner = owners.get(sourceId);
+				if (priorOwner !== undefined && priorOwner !== targetId)
+					return maskError(
+						targetId,
+						sourceId,
+						`source already masks target "${priorOwner}"`,
+					);
+				owners.set(sourceId, targetId);
+				const targetDomain = domainOf(targetId, moved);
+				const sourceDomain = domainOf(sourceId, moved);
+				if (targetDomain === null || sourceDomain === null)
+					return maskError(targetId, sourceId, "endpoint is unmounted");
+				if (
+					targetDomain.ancestors.has(sourceId) ||
+					sourceDomain.ancestors.has(targetId)
+				)
+					return maskError(
+						targetId,
+						sourceId,
+						"source and target subtrees overlap",
+					);
+				if (targetDomain.compId !== sourceDomain.compId)
+					return maskError(targetId, sourceId, "cross-composition boundary");
+				if (targetDomain.tier !== sourceDomain.tier)
+					return maskError(targetId, sourceId, "cross-tier world/Hud boundary");
+			}
+			const visiting = new Set<string>();
+			const visited = new Set<string>();
+			const dependsOn = (targetId: string): Set<string> => {
+				const sourceId = relations.get(targetId)?.sourceId;
+				if (sourceId === undefined) return new Set();
+				const dependencies = new Set<string>();
+				const seen = new Set<string>();
+				const visit = (id: string): void => {
+					if (seen.has(id) || (id !== sourceId && owners.has(id))) return;
+					seen.add(id);
+					if (relations.has(id)) dependencies.add(id);
+					const entry = tree.getEntry(id);
+					if (entry === null || !Entity.isContainer(entry.state)) return;
+					for (const child of entry.state.children) {
+						if (moved?.id !== child || moved.parentId === id) visit(child);
+					}
+					if (moved?.parentId === id) visit(moved.id);
+				};
+				visit(sourceId);
+				return dependencies;
+			};
+			const hasCycle = (id: string): boolean => {
+				if (visiting.has(id)) return true;
+				if (visited.has(id)) return false;
+				visiting.add(id);
+				for (const dependency of dependsOn(id)) {
+					if (hasCycle(dependency)) return true;
+				}
+				visiting.delete(id);
+				visited.add(id);
+				return false;
+			};
+			for (const [targetId, { sourceId }] of relations) {
+				if (hasCycle(targetId))
+					return maskError(targetId, sourceId, "mask reference cycle");
+			}
+			return null;
+		};
+		const clearMasksTouching = (ids: ReadonlySet<string>): void => {
+			for (const [targetId, { sourceId }] of masks) {
+				if (ids.has(targetId) || ids.has(sourceId)) masks.delete(targetId);
+			}
+		};
 		const compWidth = (compId: string | null): number =>
 			(compId === null ? undefined : comps.get(compId)?.width) ?? comp.width;
 
@@ -310,12 +459,29 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 		const appendChild = (
 			parent: GroupInstance,
 			child: Instance.Instance,
-		): void => {
+		): Error | null => {
 			const childEntry = tree.getEntry(child.id);
 			if (childEntry === null) {
-				throw new Error(`Runner: child "${child.id}" was destroyed`);
+				return new Error(`Runner: child "${child.id}" was destroyed`);
+			}
+			const parentEntry = tree.getEntry(parent.id);
+			if (parentEntry === null)
+				return new Error(`Runner: parent "${parent.id}" was destroyed`);
+			if (!Entity.isContainer(parentEntry.state))
+				return new Error(`Runner: parent "${parent.id}" cannot have children`);
+			if (subtreeIds(child.id).has(parent.id))
+				return new Error(
+					`Runner: moving "${child.id}" under descendant "${parent.id}" would create a tree cycle`,
+				);
+			if (masks.size > 0) {
+				const error = validateMasks(masks, {
+					id: child.id,
+					parentId: parent.id,
+				});
+				if (error !== null) return error;
 			}
 			tree.appendChild(parent.id, childEntry);
+			return null;
 		};
 
 		const removeChild = (
@@ -324,6 +490,7 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 		): void => {
 			const entry = tree.getEntry(child.id);
 			if (entry !== null && entry.parentId === parent.id) {
+				clearMasksTouching(subtreeIds(child.id));
 				tree.removeFromParent(entry);
 			}
 		};
@@ -397,6 +564,13 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 				// at birth; appendChild moves each under this instance in order
 				if (childIds !== undefined) {
 					for (const childId of childIds) {
+						if (masks.size > 0) {
+							const error = validateMasks(masks, {
+								id: childId,
+								parentId: entry.id,
+							});
+							if (error !== null) return yield* Effect.die(error);
+						}
 						tree.appendChild(entry, childId);
 					}
 				}
@@ -407,6 +581,21 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 			// first, so it is never double-referenced). Instances are born
 			// attached to the ambient parent; this reparents them.
 			appendChild,
+			setMask: (
+				target: Instance.Instance<Entity.MaskableTag>,
+				source: Instance.Instance<Entity.MaskableTag>,
+				mode: Scene.MaskAttachment["mode"],
+			): Error | null => {
+				const candidate = new Map(masks);
+				candidate.set(target.id, { sourceId: source.id, mode });
+				const error = validateMasks(candidate);
+				if (error !== null) return error;
+				masks.set(target.id, { sourceId: source.id, mode });
+				return null;
+			},
+			clearMask: (target: Instance.Instance<Entity.MaskableTag>): void => {
+				masks.delete(target.id);
+			},
 			// detach `child` from `parent` (no-op unless currently its child),
 			// leaving it detached from the tree (still alive, just unmounted)
 			removeChild,
@@ -447,6 +636,7 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 							{ ...config, camera: cameraState(id) },
 						]),
 					),
+					masks: Object.fromEntries(masks),
 				};
 			}),
 
@@ -499,6 +689,7 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 				if (tree.getEntry(instance.id) === null) {
 					return;
 				}
+				clearMasksTouching(subtreeIds(instance.id));
 				tree.remove(instance.id);
 			},
 			phaser,
