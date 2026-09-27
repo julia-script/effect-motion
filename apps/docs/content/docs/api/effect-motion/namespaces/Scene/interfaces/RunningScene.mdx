@@ -182,7 +182,7 @@ readonly runner: {
               y: number;
               z: number;
            };
-           strokeColor: Color;
+           strokeColor?: Color;
            strokeWidth: number;
            visible: boolean;
          }
@@ -205,7 +205,7 @@ readonly runner: {
               y: number;
               z: number;
            };
-           strokeColor: Color;
+           strokeColor?: Color;
            strokeWidth: number;
            visible: boolean;
            width: number;
@@ -229,7 +229,7 @@ readonly runner: {
               y: number;
               z: number;
            };
-           strokeColor: Color;
+           strokeColor?: Color;
            strokeWidth: number;
            visible: boolean;
          }
@@ -253,7 +253,7 @@ readonly runner: {
               y: number;
               z: number;
            };
-           strokeColor: Color;
+           strokeColor?: Color;
            strokeWidth: number;
            visible: boolean;
          }
@@ -559,7 +559,7 @@ rewrite; see `particlesEscapeInstantiate`.
 
 | Parameter | Type |
 | ------ | ------ |
-| ...`args` | \[ \| \{ `end`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `start`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `strokeColor`: [`Color`](../../Color/classes/Color.mdx); `strokeWidth`: `number`; `visible`: `boolean`; \} \| \{ `commands`: readonly \[ \| \{ \} \| \{ `x`: `number`; `y`: `number`; `z?`: `number`; \} \| \{ `x`: `number`; `y`: `number`; `z?`: `number`; \}, \| \{ \} \| \{ `x`: `number`; `y`: `number`; `z?`: `number`; \} \| \{ `x`: `number`; `y`: `number`; `z?`: `number`; \}\]; `fillColor`: [`Color`](../../Color/classes/Color.mdx); `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `strokeColor`: [`Color`](../../Color/classes/Color.mdx); `strokeWidth`: `number`; `visible`: `boolean`; \} \| \{ `fillColor`: [`Color`](../../Color/classes/Color.mdx); `height`: `number`; `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `strokeColor`: [`Color`](../../Color/classes/Color.mdx); `strokeWidth`: `number`; `visible`: `boolean`; `width`: `number`; \} \| \{ `fillColor`: [`Color`](../../Color/classes/Color.mdx); `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `radius`: `number`; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `strokeColor`: [`Color`](../../Color/classes/Color.mdx); `strokeWidth`: `number`; `visible`: `boolean`; \} \| \{ `fillColor`: [`Color`](../../Color/classes/Color.mdx); `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `radiusX`: `number`; `radiusY`: `number`; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `strokeColor`: [`Color`](../../Color/classes/Color.mdx); `strokeWidth`: `number`; `visible`: `boolean`; \} \| \{ `baseline?`: `"middle"` \| `"auto"` \| `"hanging"`; `fillColor`: [`Color`](../../Color/classes/Color.mdx); `fontFamily`: \{ `id`: `string`; \}; `fontSize`: `number`; `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `text`: `string`; `textAnchor?`: `"start"` \| `"end"` \| `"middle"`; `visible`: `boolean`; \} \| \{ `children`: readonly `string`[]; `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `visible`: `boolean`; \} \| \{ `children`: readonly `string`[]; `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `visible`: `boolean`; \} \| \{ `height?`: `number`; `image`: \{ `id`: `string`; \}; `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `visible`: `boolean`; `width?`: `number`; \} \| \{ `aperture`: `number`; `focalLength`: `number`; `focusDistance`: `number`; `poi`: \| \{ `x`: `number`; `y`: `number`; `z`: `number`; \} \| `null`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; \}\] |
+| ...`args` | \[ \| \{ `end`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `start`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `strokeColor`: [`Color`](../../Color/classes/Color.mdx); `strokeWidth`: `number`; `visible`: `boolean`; \} \| \{ `commands`: readonly \[ \| \{ \} \| \{ `x`: `number`; `y`: `number`; `z?`: `number`; \} \| \{ `x`: `number`; `y`: `number`; `z?`: `number`; \}, \| \{ \} \| \{ `x`: `number`; `y`: `number`; `z?`: `number`; \} \| \{ `x`: `number`; `y`: `number`; `z?`: `number`; \}\]; `fillColor`: [`Color`](../../Color/classes/Color.mdx); `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `strokeColor?`: [`Color`](../../Color/classes/Color.mdx); `strokeWidth`: `number`; `visible`: `boolean`; \} \| \{ `fillColor`: [`Color`](../../Color/classes/Color.mdx); `height`: `number`; `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `strokeColor?`: [`Color`](../../Color/classes/Color.mdx); `strokeWidth`: `number`; `visible`: `boolean`; `width`: `number`; \} \| \{ `fillColor`: [`Color`](../../Color/classes/Color.mdx); `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `radius`: `number`; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `strokeColor?`: [`Color`](../../Color/classes/Color.mdx); `strokeWidth`: `number`; `visible`: `boolean`; \} \| \{ `fillColor`: [`Color`](../../Color/classes/Color.mdx); `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `radiusX`: `number`; `radiusY`: `number`; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `strokeColor?`: [`Color`](../../Color/classes/Color.mdx); `strokeWidth`: `number`; `visible`: `boolean`; \} \| \{ `baseline?`: `"middle"` \| `"auto"` \| `"hanging"`; `fillColor`: [`Color`](../../Color/classes/Color.mdx); `fontFamily`: \{ `id`: `string`; \}; `fontSize`: `number`; `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `text`: `string`; `textAnchor?`: `"start"` \| `"end"` \| `"middle"`; `visible`: `boolean`; \} \| \{ `children`: readonly `string`[]; `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `visible`: `boolean`; \} \| \{ `children`: readonly `string`[]; `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `visible`: `boolean`; \} \| \{ `height?`: `number`; `image`: \{ `id`: `string`; \}; `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `visible`: `boolean`; `width?`: `number`; \} \| \{ `aperture`: `number`; `focalLength`: `number`; `focusDistance`: `number`; `poi`: \| \{ `x`: `number`; `y`: `number`; `z`: `number`; \} \| `null`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; \}\] |
 
 ##### Returns
 
@@ -894,7 +894,7 @@ state: Effect<{
            y: number;
            z: number;
         };
-        strokeColor: Color;
+        strokeColor?: Color;
         strokeWidth: number;
         visible: boolean;
       }
@@ -917,7 +917,7 @@ state: Effect<{
            y: number;
            z: number;
         };
-        strokeColor: Color;
+        strokeColor?: Color;
         strokeWidth: number;
         visible: boolean;
         width: number;
@@ -941,7 +941,7 @@ state: Effect<{
            y: number;
            z: number;
         };
-        strokeColor: Color;
+        strokeColor?: Color;
         strokeWidth: number;
         visible: boolean;
       }
@@ -965,7 +965,7 @@ state: Effect<{
            y: number;
            z: number;
         };
-        strokeColor: Color;
+        strokeColor?: Color;
         strokeWidth: number;
         visible: boolean;
       }
