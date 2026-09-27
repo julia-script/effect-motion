@@ -1,13 +1,13 @@
 ---
 title: "ImageLoader"
-description: "A loaded image (encoded bytes — png/jpg/webp per the render session's"
+description: "A loaded image (encoded bytes — PNG or JPEG everywhere; the browser also"
 ---
 # Interface: ImageLoader\<ID\>
 
 Defined in: [packages/motion/src/Image.ts:35](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Image.ts#L35)
 
-A loaded image (encoded bytes — png/jpg/webp per the render session's
-decoder), provided as a context service: bytes are already in memory by
+A loaded image (encoded bytes — PNG or JPEG everywhere; the browser also
+decodes whatever `createImageBitmap` supports, e.g. WebP), provided as a context service: bytes are already in memory by
 the time any consumer reads this (loads run eagerly at layer
 construction — see [layer](../functions/layer.mdx)). A separate shape from FontLoader on
 purpose (kind-specific metadata will diverge); only the loader brand is

@@ -8,7 +8,7 @@ This is an [effect-motion](https://github.com/julia-script/effect-motion) projec
 - `src/main.ts` — the movie: an ordinary scene that sequences the others (`Scene.play` + `handle.finished`). Nothing is special about it.
 - `studio.ts` — the studio registration: `studioConfig({ scenes, layers })`. Record keys are unique identifiers; ONLY registered scenes appear in the picker, so add an import + entry for every new scene. Scenes with typed resources (fonts, images) need their loaders in `layers` — the file will not compile until every registered scene is covered.
 - `render.ts` — an ordinary program default-exporting a `Video.render(...)` effect. More outputs are more calls; loader layers are provided here with `Effect.provide` (compile-checked). Knobs (paths, fps, seed) live in this code — there are no CLI flags.
-- `src/assets/` — static files (images, fonts).
+- `src/assets/` — static files (images, fonts). Load them with the `asset` helper below, which works in both `motion studio` (browser) and `motion frames`/`motion render` (Node).
 - `motion studio [file]` — browser preview with hot reload of `studio.ts` (or the given entrypoint).
 - `motion render [file]` — execute `render.ts` (or the given entrypoint) with the platform provided. `--verbose` prints full error cause chains. The same file runs standalone via `tsx render.ts` by piping through `NodeServices` from `@effect/platform-node`.
 
@@ -18,7 +18,7 @@ This is an [effect-motion](https://github.com/julia-script/effect-motion) projec
 
 Verify every scene change by looking at it — not by reading code alone. After an edit:
 
-1. `motion frames <scene> --sheet` writes `.motion/frames/<scene>/sheet.png`, a grid of evenly spaced frames (`--count N`, default 6), and prints `tile=<i> frame=<f> time=<t>` per tile. Read the sheet image: tiles go left to right, top to bottom. Zoom into a stretch with `--range 7.5s..8.5s` (spreads `--count` over it); tiles are 480 px wide unless you pass `--tile-width`.
+1. `motion frames <scene> --sheet` writes `.motion/frames/<scene>/sheet.png`, a grid of evenly spaced frames (`--count N`, default 6), and prints `tile=<i> frame=<f> time=<t>` per tile (`time` is in seconds, here and in the JSON). Read the sheet image: tiles go left to right, top to bottom. Zoom into a stretch with `--range 7.5s..8.5s` (spreads `--count` over it); tiles are 480 px wide unless you pass `--tile-width`.
 2. For specific moments, `motion frames <scene> --at 0,1.5s,50%,end` writes one PNG per frame (indices, times, percentages, `end`).
 3. For exact positions and values, `motion frames <scene> --at end --json -` prints each frame's camera and every instance's data as JSON on stdout (no GPU needed; `--json out.json` writes a file). Trust the JSON over eyeballing pixels.
 
@@ -65,14 +65,16 @@ Scene space: x right, y up, +z toward the camera, origin at frame center. Angles
 | Orbit / swing | `Camera.orbitTo(radians, dur, ease)` around the point of interest |
 | High angle / crane | `Scene.update(camera, …)` its `position` (e.g. `y: 1400`), then `lookAt` |
 | Parallax | layers at different `z` + any camera move |
-| Tilted planes, card flips | `Rect` with `rotation: Entity.vec3({ y: 0.6 })`; animate it with `Motion.drive`. Other shapes always face the camera |
+| Tilted planes, card flips | `rotation: Entity.vec3({ y: 0.6 })` on any shape, or `Motion.rotateTo(card, { y: Math.PI }, dur, ease)`. At rotation 0 a shape faces the camera; any other rotation makes it a real plane in 3D |
+| Spin | `Motion.rotateTo(logo, -2 * Math.PI, dur, ease)` — a number spins in the picture plane (radians, negative = clockwise) |
 | Grids, dot fields | loops of `Circle`/`Rect` instances placed in 3D, revealed with `Scene.stagger` |
-| Scale punch / pop | tween a size field with `easeOutBack`: `fontSize`, `radius`, `width`/`height` |
+| Scale punch / pop | `Motion.scale(badge, 0, 1, "400 millis", "easeOutBack")` to pop in; `Motion.scaleTo(logo, 1.2, …)` then back to 1 for a punch. Scale works on any shape and on a Group (scales the whole subtree); `{ x: 1.4, y: 0.8 }` stretches |
+| Fade or move a whole section | put it in a `Group` and animate the group: `fadeTo`, `moveTo`, `scaleTo`, `rotateTo` all carry the children |
 | Color field per beat | a huge `Rect` far back (`z: -3000`, 12000×7000) + `Motion.tweenTo(field, { fillColor }, …)` |
 | Type reveals | one `Text` per word or line; stagger `moveTo` + `fadeTo`, or pop `fontSize` |
 | Precomps | build a section as its own scene; mount it with `Scene.play(section)` |
 
-**Not available yet — design around it:** masks, track mattes and wipes; per-letter text (a `Text` is one block); blur of any kind (motion blur, depth of field); lit or shaded 3D meshes; curves in `Path` (straight `M`/`L` segments — sample a curve into points yourself); rendering of `scale` and of Group `opacity`/`rotation`.
+**Not available yet — design around it:** masks, track mattes and wipes; per-letter text (a `Text` is one block); blur of any kind (motion blur, depth of field — the camera's `aperture` does nothing); lit or shaded 3D meshes; curves and holes in `Path` (straight `M`/`L`/`Z` segments — sample a curve into points yourself; each closed subpath fills on its own); images other than PNG/JPEG in `motion frames`/`motion render`. Overlaps: nearer `z` wins; at equal `z` the later-instantiated entity paints on top.
 
 Recipe — camera push through z-layered cards:
 
@@ -122,6 +124,41 @@ yield* Scene.all([
 	camera.pipe(Camera.orbitTo(0.7, "2500 millis", "easeInOutSine")),
 ]);
 ```
+
+## Fonts and images from `src/assets/`
+
+A font or image is a typed resource: declare it, `yield*` it in the scene, and provide its bytes in `studio.ts` `layers` and in `render.ts` (`Effect.provide`). Read files through `import.meta.url` so one loader works in the browser studio and in Node:
+
+```ts
+// src/assets.ts
+import * as Effect from "effect/Effect";
+import * as Layer from "effect/Layer";
+import * as Font from "effect-motion/Font";
+import * as Image from "effect-motion/Image";
+import { EffectMotionError, Resource } from "effect-motion";
+
+const asset = (file: string) => {
+	const url = new URL(`./assets/${file}`, import.meta.url);
+	return url.protocol === "file:" // Node: motion frames / motion render
+		? Effect.tryPromise({
+				try: async () => {
+					const fs = await import("node:fs/promises");
+					return new Uint8Array(await fs.readFile(url));
+				},
+				catch: (cause) => EffectMotionError.of(`could not read ${file}`, cause),
+			})
+		: Resource.fetchBytes(url.href); // browser: motion studio
+};
+
+export const Inter = Font.Font("Inter");
+export const Logo = Image.Image("logo");
+export const layers = Layer.mergeAll(
+	Font.layer(Inter, asset("Inter-Bold.ttf")),
+	Image.layer(Logo, asset("logo.png")), // PNG or JPEG
+);
+```
+
+Helpers that take any font or image use the wide types `Font.Font` / `Image.Image` — not `Font.Font<"Inter">`, which accepts only that one id.
 
 ## Determinism rules (non-negotiable)
 

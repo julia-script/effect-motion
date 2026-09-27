@@ -40,4 +40,51 @@ The bytes load once at mount and decode once per render session; every
 frame reuses the decoded picture. Since `width` and `height` are plain
 numeric fields, scaling an image is just a `tweenTo`.
 
+Use **PNG or JPEG**. The browser decodes whatever it supports, but Node
+(`motion frames`, `motion render`) decodes only those two, and fails
+loudly with the image's id on anything else. See
+[What the renderer draws](/docs/guides/renderer-limits).
+
+## Load files from your project
+
+`Resource.fetchBytes` needs a URL, and Node has no web server for your
+project files. One loader works in both places if it resolves the file
+against `import.meta.url` and branches on the result: in the browser
+(`motion studio`, the `Player`) the URL is `http:`, so fetch it; in Node it
+is a `file:` URL, so read it from disk.
+
+```ts
+// src/assets.ts, next to src/assets/
+import * as Effect from "effect/Effect";
+import * as Layer from "effect/Layer";
+import * as Font from "effect-motion/Font";
+import * as Image from "effect-motion/Image";
+import { EffectMotionError, Resource } from "effect-motion";
+
+const asset = (file: string) => {
+	const url = new URL(`./assets/${file}`, import.meta.url);
+	return url.protocol === "file:"
+		? Effect.tryPromise({
+				try: async () => {
+					const fs = await import("node:fs/promises");
+					return new Uint8Array(await fs.readFile(url));
+				},
+				catch: (cause) => EffectMotionError.of(`could not read ${file}`, cause),
+			})
+		: Resource.fetchBytes(url.href);
+};
+
+export const Logo = Image.Image("logo");
+export const Inter = Font.Font("Inter");
+
+export const layers = Layer.mergeAll(
+	Image.layer(Logo, asset("logo.png")),
+	Font.layer(Inter, asset("Inter-Bold.ttf")),
+);
+```
+
+Pass `layers` to `studioConfig({ scenes, layers })` for the studio and
+`motion frames`, and `Effect.provide(layers)` in `render.ts`. The
+`node:fs/promises` import is dynamic, so the browser never loads it.
+
 <Example name="images" />

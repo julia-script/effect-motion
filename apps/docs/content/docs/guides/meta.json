@@ -5,6 +5,7 @@
 		"react-player",
 		"custom-fonts",
 		"images",
+		"renderer-limits",
 		"custom-entities",
 		"cli",
 		"preview-frames"

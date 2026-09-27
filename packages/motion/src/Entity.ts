@@ -243,8 +243,10 @@ export const Hud = Schema.TaggedStruct("Hud", {
 });
 
 /**
- * A raster/vector image leaf. `image` is an Image resource reference; the
- * bytes live in the scene's requirements, never in frame data.
+ * A bitmap image leaf. `image` is an Image resource reference; the bytes
+ * live in the scene's requirements, never in frame data. Use PNG or JPEG:
+ * the Node renderer decodes only those (the browser decodes whatever
+ * `createImageBitmap` supports). SVG is not supported — trace it into Paths.
  *
  * `width`/`height` are optional and undefaulted: set BOTH to draw at that
  * size (numeric, so they tween), leave both absent for the source's natural

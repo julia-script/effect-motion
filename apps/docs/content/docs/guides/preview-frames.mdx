@@ -53,8 +53,8 @@ Images show roughly where things are; JSON says exactly:
 motion frames hello-world --at end --json -
 ```
 
-This prints each sampled frame's index, time, size, frame rate, camera and
-every instance's data (positions, colors, opacity…) to stdout. It needs no
+This prints each sampled frame's index, time (in seconds, as in the
+`time=` lines above), size, frame rate, camera and every instance's data (positions, colors, opacity…) to stdout. It needs no
 GPU, so it works anywhere Node runs. Write it to a file instead with
 `--json state.json`.
 
