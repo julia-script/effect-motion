@@ -1,0 +1,28 @@
+---
+title: "makeDrawable"
+description: "function makeDrawable("
+---
+# Function: makeDrawable()
+
+```ts
+function makeDrawable(
+   source,
+   variants,
+   kind): Mesh;
+```
+
+Defined in: [packages/three/src/MaskMaterial.ts:156](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/MaskMaterial.ts#L156)
+
+Borrow geometry from a native mesh or fat stroke; the owner keeps it.
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `source` | `Mesh` |
+| `variants` | [`Variants`](../interfaces/Variants.mdx) |
+| `kind` | `"opaque"` \| `"fractional"` |
+
+## Returns
+
+`Mesh`

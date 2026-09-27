@@ -36,6 +36,8 @@
 		"build": "tsc -p tsconfig.build.json",
 		"dev": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
 		"test": "vitest run --passWithNoTests",
+		"visual:masks:browser": "bun build test/visual-mask-matrix/browser.ts --target browser --outdir test/visual-mask-matrix --external module --external '*.wasm' && cp node_modules/@text-rendering-toolkit/font/dist/internal/vendor/harfbuzz.wasm test/visual-mask-matrix/harfbuzz.wasm",
+		"visual:masks:node": "bun test/visual-mask-matrix/node.ts",
 		"check": "tsc --noEmit"
 	},
 	"publishConfig": {

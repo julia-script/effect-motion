@@ -19,6 +19,7 @@ import {
 	makeDofNode,
 	makeHudOver,
 	renderCompTargets,
+	renderMaskTargets,
 	setDofUniforms,
 } from "./Renderer.js";
 import * as Sync from "./Sync.js";
@@ -272,6 +273,7 @@ export const renderToRgba = Effect.fnUntraced(function* (
 	// ensuring, addFinalizer.
 	Gpu.advanceFrame(renderer.gpu);
 	yield* renderCompTargets(renderer.gpu, renderer.sync, renderer.pixelRatio);
+	yield* renderMaskTargets(renderer.gpu, renderer.sync, renderer.pixelRatio);
 	const hud = !ThreeScene.isEmpty(renderer.sync.hudScene);
 	let pipeline = hud ? renderer.postWithHud : renderer.post;
 	if (renderer.sync.dof.on) {

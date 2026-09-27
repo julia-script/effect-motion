@@ -780,15 +780,15 @@ const neverRendered = <T>(tag: string): EntityRenderer<T> =>
  * this map by tag — rather than editing this manifest.
  */
 export const builtinRenderers: EntityRenderers = {
-	Circle: circle,
-	Ellipse: ellipse,
-	Rect: rect,
-	Line: line,
-	Path: path,
-	Text: text,
+	Circle: { ...circle, supportsMaskFragments: true },
+	Ellipse: { ...ellipse, supportsMaskFragments: true },
+	Rect: { ...rect, supportsMaskFragments: true },
+	Line: { ...line, supportsMaskFragments: true },
+	Path: { ...path, supportsMaskFragments: true },
+	Text: { ...text, supportsMaskFragments: true },
 	Group: container("Group"),
 	Hud: container("Hud"),
-	Image: image,
+	Image: { ...image, supportsMaskFragments: true },
 	// the camera is view state and never painted; it is omitted from the
 	// frame's instance map, so this entry is unreachable by construction —
 	// it exists only to satisfy exhaustiveness over the tag union

@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mask integration matrix</title>
+    <style>
+      body { margin: 0; padding: 24px; background: #101820; color: #ecf4fa; font: 14px system-ui; }
+      main { max-width: 760px; margin: auto; }
+      canvas { display: block; width: 640px; height: 480px; max-width: 100%; background: #192330; }
+      .controls { display: flex; align-items: center; gap: 12px; margin: 16px 0; }
+      input { width: 220px; }
+      #device { overflow-wrap: anywhere; color: #a9bbc7; font-size: 12px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Mask integration matrix</h1>
+      <canvas width="320" height="240"></canvas>
+      <div class="controls">
+        <select id="scene">
+          <option value="alpha-media">Alpha, inverse, Text, Image</option>
+          <option value="nested-groups">Nested groups and transforms</option>
+          <option value="composition-hud-focus">Composition, HUD, camera, DoF</option>
+          <option value="lifecycle">Replacement, clear, removal</option>
+          <option value="hud-transition">Masked HUD joins playback</option>
+        </select>
+        <button id="play" type="button">Play</button>
+        <input id="frame" type="range" min="0" max="0" value="0" aria-label="Frame" />
+      </div>
+      <p id="status">Loading WebGPU…</p>
+      <p id="device"></p>
+    </main>
+    <script type="module" src="./browser.js"></script>
+  </body>
+</html>

@@ -110,8 +110,9 @@ export const title = Scene.make(
 The `parent` option mounts the precomp under a group, which places the mask.
 Moving `handle.group` moves the mask and its content together.
 
-Only rectangles clip. Masks of other shapes and track mattes are not
-available yet.
+This is a rectangular composition crop. For an independently animated shape,
+text, or image mask on an entity or Group, use
+[alpha masks](/docs/guides/masks).
 
 ## Screen-space labels and wipes with `Hud`
 

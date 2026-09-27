@@ -305,6 +305,12 @@ export interface FrameEntry {
 	data: Entity.Entity;
 }
 
+/** A mask edge between two existing instances, with no tree ownership. */
+export interface MaskAttachment {
+	readonly sourceId: string;
+	readonly mode: "alpha" | "inverse";
+}
+
 /**
  * One rendered moment: every entity's state at a single instant, plus the
  * metadata needed to draw it.
@@ -348,6 +354,8 @@ export interface Frame<out Resources = never> {
 	 * camera, and composites the result. An id absent here is a plain group.
 	 */
 	comps: Record<string, Runner.CompFrame>;
+	/** Plain target-id to source-id references. Absent on older serialized frames. */
+	masks?: Record<string, MaskAttachment>;
 }
 /**
  * Advance a running scene by exactly one frame.
@@ -755,7 +763,8 @@ export const appendChild = (
 ) =>
 	Effect.gen(function* () {
 		const runner = yield* Runner.Runner;
-		runner.appendChild(parent, child);
+		const error = runner.appendChild(parent, child);
+		if (error !== null) return yield* Effect.die(error);
 	});
 
 /** Detach `child` from `parent` (no-op unless it is currently its child). */
@@ -767,6 +776,53 @@ export const removeChild = (
 		const runner = yield* Runner.Runner;
 		runner.removeChild(parent, child);
 	});
+
+/**
+ * Attaches an existing paintable instance as a target's alpha mask at the current scene frame.
+ *
+ * **Details**
+ *
+ * The source remains in the instance tree and can animate independently. While attached,
+ * its subtree supplies alpha coverage instead of painting into the scene. Normal mode
+ * (the default) multiplies target alpha by source coverage; `inverse` uses the
+ * complement. Attaching another source replaces the target's previous mask.
+ * Both handles must be mounted in the same composition and render tier, and one
+ * source can serve only one target. Invalid relationships fail with a named defect.
+ *
+ * @see {@link clearMask} to restore ordinary rendering of the source.
+ * @category transforming
+ */
+export const setMask = Effect.fn("Scene.setMask")(function* (
+	target: Instance.Instance<Entity.MaskableTag>,
+	source: Instance.Instance<Entity.MaskableTag>,
+	options: { readonly mode?: MaskAttachment["mode"] } = {},
+) {
+	const runner = yield* Runner.Runner;
+	const error = runner.setMask(target, source, options.mode ?? "alpha");
+	if (error !== null) {
+		return yield* Effect.die(error);
+	}
+	return target;
+});
+
+/**
+ * Removes a target's mask at the current scene frame and returns the target.
+ *
+ * **Details**
+ *
+ * The former source resumes ordinary rendering if it is mounted and visible.
+ * Calling this on an unmasked target leaves it unchanged.
+ *
+ * @see {@link setMask} to attach or replace a mask.
+ * @category transforming
+ */
+export const clearMask = Effect.fn("Scene.clearMask")(function* (
+	target: Instance.Instance<Entity.MaskableTag>,
+) {
+	const runner = yield* Runner.Runner;
+	runner.clearMask(target);
+	return target;
+});
 
 export const settings = Effect.fnUntraced(function* () {
 	const runner = yield* Runner.Runner;

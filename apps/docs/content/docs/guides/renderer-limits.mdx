@@ -51,6 +51,9 @@ A few details:
   scene mounted with `Scene.play` renders sharp inside, whatever its own
   camera's `aperture`, and its plane blurs as one layer by the parent
   camera's lens.
+- **Alpha masks** use the rendered alpha of an existing shape, text, image,
+  or group to reveal or hide another entity or group. See
+  [Alpha masks](/docs/guides/masks) for modes, animation, and boundaries.
 
 ## Overlaps
 
@@ -83,9 +86,7 @@ counter of a letter needs separate shapes layered on top.
 
 Plan around these; none of them render today:
 
-- masks other than rectangles, and track mattes. A scene mounted with
-  `Scene.play` clips to its own bounds, which covers rectangular masks and
-  reveals (see [Precomps, masks and HUD](/docs/guides/precomps));
+- luminance masks, dedicated mask feather controls, and Boolean mask operations;
 - per-letter text (a `Text` is one block; use one `Text` per word or line);
 - motion blur, and blur of any kind other than depth of field;
 - lit or shaded 3D meshes;
