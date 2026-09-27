@@ -3,6 +3,7 @@ import { Effect } from "effect";
 import * as Stream from "effect/Stream";
 import { Color, Entity as S, Scene } from "effect-motion";
 import * as Font from "effect-motion/Font";
+import * as Image from "effect-motion/Image";
 import { PNG } from "pngjs";
 import { describe, expect, it } from "vitest";
 import * as NodeRenderer from "../src/node.js";
@@ -224,5 +225,67 @@ describe("SDF text, headless", () => {
 		const { min, max } = luminanceExtrema(png);
 		expect(min).toBeLessThan(60);
 		expect(max).toBeGreaterThan(200);
+	}, 60_000);
+
+	it("a Scene.play comp renders an Image and a custom-font Text", async () => {
+		// comps share the root's font/image actors — resolveResources fills
+		// only the root, so a comp-owned registry would never see its bytes
+		const rgba = new Uint8Array(8 * 8 * 4);
+		for (let i = 0; i < rgba.length; i += 4) {
+			rgba[i + 1] = 255;
+			rgba[i + 3] = 255;
+		}
+		const Dot = Image.Image("dot");
+		const Custom = Font.Font("Custom");
+		const inner = Scene.make(
+			function* () {
+				yield* Scene.instantiate("Image", {
+					image: yield* Dot,
+					position: S.vec3({ x: 60, y: 0 }),
+					width: 40,
+					height: 40,
+				});
+				yield* Scene.instantiate("Text", {
+					position: S.vec3({ x: -110, y: -10 }),
+					text: "Comp",
+					fontSize: 32,
+					fontFamily: yield* Custom,
+					fillColor: Color.rgba(255, 255, 255),
+				});
+				yield* Scene.tick;
+			} as never,
+			{ width: 256, height: 96 },
+		);
+		const frames = await framesOf(function* () {
+			const h = yield* Scene.play(inner as never);
+			yield* h.finished;
+		});
+		const frame = frames.at(-1) ?? unreachable();
+		const png = await Effect.runPromise(
+			Effect.scoped(
+				NodeRenderer.make({ width: 256, height: 96 }).pipe(
+					Effect.flatMap((renderer) =>
+						NodeRenderer.renderToPng(renderer, frame),
+					),
+				),
+			).pipe(
+				Effect.provide(
+					Image.layer(Dot, Effect.succeed(NodeRenderer.encodePng(rgba, 8, 8))),
+				),
+				Effect.provide(Font.layer(Custom, Font.loadDefaultBytes)),
+			) as Effect.Effect<Uint8Array, never, never>,
+		);
+		const decoded = PNG.sync.read(Buffer.from(png));
+		let green = false;
+		let white = false;
+		for (let i = 0; i < decoded.data.length; i += 4) {
+			const r = decoded.data[i] ?? 0;
+			const g = decoded.data[i + 1] ?? 0;
+			const b = decoded.data[i + 2] ?? 0;
+			green ||= g > 200 && r < 60 && b < 60;
+			white ||= r > 200 && g > 200 && b > 200;
+		}
+		expect(green).toBe(true);
+		expect(white).toBe(true);
 	}, 60_000);
 });

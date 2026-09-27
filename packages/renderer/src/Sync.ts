@@ -207,7 +207,15 @@ export interface Sync {
 	readonly pending: Array<Effect.Effect<unknown, EffectMotionError>>;
 }
 
-export const make = (registry: Record<string, AnyEntityRenderer>): Sync => {
+export const make = (
+	registry: Record<string, AnyEntityRenderer>,
+	/** comps pass the root's actors: `resolveResources` fills only the root,
+	 * and the frame's instance map already covers every comp subtree */
+	resources: {
+		readonly text: Text.Text;
+		readonly images: Images.Images;
+	} = { text: Text.make(), images: Images.make() },
+): Sync => {
 	const camera = new THREE.PerspectiveCamera(50, 1, NEAR, FAR);
 	camera.rotation.order = "ZYX";
 	const base = {
@@ -219,8 +227,8 @@ export const make = (registry: Record<string, AnyEntityRenderer>): Sync => {
 		hudCamera: new THREE.PerspectiveCamera(50, 1, NEAR, FAR),
 		stats: { objects: 0, lastSyncMs: 0 },
 		dof: { on: false, focusDistance: 0, strengthUv: 0 },
-		text: Text.make(),
-		images: Images.make(),
+		text: resources.text,
+		images: resources.images,
 		comps: new Map<string, CompState>(),
 		registry,
 		retained: new Map<string, RetainedEntry>(),
@@ -564,7 +572,7 @@ const syncComp = (
 		const holder = new THREE.Group();
 		holder.add(transformHolder);
 		comp = {
-			sync: make(sync.registry),
+			sync: make(sync.registry, sync),
 			holder,
 			transformHolder,
 			plane,
@@ -612,23 +620,17 @@ const syncComp = (
 	comp.transformHolder.scale.set(1, 1, 1);
 };
 
-const disposeComp = Effect.fnUntraced(function* (comp: CompState) {
-	yield* dispose(comp.sync);
+/** a comp's objects only — its text/image actors are the root's, which the
+ * root's `dispose` releases once */
+const disposeComp = (comp: CompState): void => {
+	disposeObjects(comp.sync);
 	comp.material.dispose();
 	if (comp.rt !== null) {
 		RenderTarget.dispose(comp.rt);
 	}
-});
+};
 
-/**
- * Release every retained object, texture, and sub-composition.
- *
- * @remarks
- * Called automatically when a renderer's scope closes; you rarely call it
- * directly. Effectful because decoded image textures live behind Deferreds
- * that may still be in flight.
- */
-export const dispose = Effect.fnUntraced(function* (sync: Sync) {
+const disposeObjects = (sync: Sync): void => {
 	for (const entry of sync.retained.values()) {
 		ThreeScene.remove(entry.hud ? sync.hudScene : sync.scene, [
 			entry.retained.object,
@@ -641,6 +643,18 @@ export const dispose = Effect.fnUntraced(function* (sync: Sync) {
 		disposeComp(comp);
 	}
 	sync.comps.clear();
+};
+
+/**
+ * Release every retained object, texture, and sub-composition.
+ *
+ * @remarks
+ * Called automatically when a renderer's scope closes; you rarely call it
+ * directly. Effectful because decoded image textures live behind Deferreds
+ * that may still be in flight.
+ */
+export const dispose = Effect.fnUntraced(function* (sync: Sync) {
+	disposeObjects(sync);
 	Text.dispose(sync.text);
 	yield* Images.dispose(sync.images);
 });
