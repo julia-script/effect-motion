@@ -30,4 +30,4 @@ The schema has always advertised `scale` and `rotation` on every paintable entit
 
 ## Non-goals
 
-Comps redesign, shear (still not expressible), stroke width scaling with `scale`, springs over scale/rotation (use easings or `Motion.drive`).
+Comps redesign, shear (still not expressible), per-edge stroke scaling (a stroke scales uniformly by the narrower planar axis), springs over scale/rotation (use easings or `Motion.drive`).

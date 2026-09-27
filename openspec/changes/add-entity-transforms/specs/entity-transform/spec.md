@@ -28,6 +28,16 @@ The 2D affine matrix representation and its transform-operation input list are r
 - **WHEN** any paintable entity carries a non-identity `scale` or `rotation`
 - **THEN** it renders scaled and rotated about its own `position`
 
+#### Scenario: A collapsed scale draws nothing
+
+- **WHEN** a Rect, Circle, Text, or Group's composed scale is zero on a planar axis (e.g. `{ x: 0, y: 0.004 }`)
+- **THEN** nothing is drawn — no fill, and no stroke left behind
+
+#### Scenario: Strokes scale with the shape
+
+- **WHEN** a stroked shape or line renders under a composed scale
+- **THEN** its stroke width is `strokeWidth` times the narrower of the planar axes' `|scale|`, so a near-zero shape is a correctly sized sliver of its fill, never a band of its stroke
+
 #### Scenario: No container-specific transform
 
 - **WHEN** a `Group`'s data is inspected

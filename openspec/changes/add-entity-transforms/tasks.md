@@ -5,6 +5,7 @@
 - [x] 1.3 Planar builtins (fills, Text, Image, particles) place from the composed transform; billboard iff unrotated
 - [x] 1.4 Line/Path map local points through the composed matrix; Path triangulates in local space
 - [x] 1.5 Scene.play comps honor the group's transform and ancestor opacity
+- [x] 1.6 Stroke widths scale by the narrower planar `|scale|`; a collapsed shape draws nothing (dogfood: a `{x:0, y:0.004}` Rect left its default black stroke as a bar)
 
 ## 2. Animators
 
@@ -20,3 +21,4 @@
 - [x] 4.1 Structural renderer tests: scaled/rotated shape, rotated+scaled Group carrying children, nested composition, Group opacity
 - [x] 4.2 Headless GPU pixel test and a viewed contact sheet
 - [x] 4.3 Animator tests land exactly on target
+- [x] 4.4 Headless pixel tests: zero/near-zero scale on Rect, Circle, Text, Group draws nothing / a fill-colored sliver

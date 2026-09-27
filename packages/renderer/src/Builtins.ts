@@ -71,6 +71,14 @@ const placePlanar = (
 	}
 };
 
+/**
+ * Stroke widths follow the composed scale, as in After Effects: scaled by
+ * the narrower planar axis, so a shape collapsed to a sliver — or to
+ * nothing — never keeps a full-width stroke around it.
+ */
+const strokeScale = (leaf: Leaf<unknown>): number =>
+	Math.min(Math.abs(leaf.transform.scale.x), Math.abs(leaf.transform.scale.y));
+
 /** an entity-local point (offset from `position`) mapped to scene space */
 const toWorld = (
 	leaf: Leaf<unknown>,
@@ -136,6 +144,7 @@ const setOutline = (
 	parts: FillParts,
 	data: { strokeColor?: Color.Color; strokeWidth?: number; opacity: number },
 	points: ReadonlyArray<readonly [number, number]> | null,
+	widthScale: number,
 ): void => {
 	if (data.strokeColor === undefined || points === null) {
 		if (parts.outline !== null) {
@@ -151,7 +160,7 @@ const setOutline = (
 	}
 	const material = parts.outline.material as THREE.Line2NodeMaterial;
 	setColor(material, data.strokeColor, data.opacity);
-	material.linewidth = data.strokeWidth ?? 1;
+	material.linewidth = (data.strokeWidth ?? 1) * widthScale;
 	const positions: Array<number> = [];
 	for (const [x, y] of points) {
 		positions.push(x, y, 0);
@@ -164,7 +173,7 @@ const setOutline = (
 	parts.outline.geometry = new FatLine.LineGeometry();
 	parts.outline.geometry.setPositions(positions);
 	parts.outline.computeLineDistances();
-	parts.outline.visible = material.opacity > 0;
+	parts.outline.visible = material.opacity > 0 && material.linewidth > 0;
 };
 
 const ellipsePoints = (
@@ -228,6 +237,7 @@ const circle: EntityRenderer<Entity.EntityByTag<"Circle">> = {
 			leaf.data.strokeColor !== undefined
 				? ellipsePoints(leaf.data.radius, leaf.data.radius)
 				: null,
+			strokeScale(leaf),
 		);
 	},
 };
@@ -254,6 +264,7 @@ const ellipse: EntityRenderer<Entity.EntityByTag<"Ellipse">> = {
 			leaf.data.strokeColor !== undefined
 				? ellipsePoints(leaf.data.radiusX, leaf.data.radiusY)
 				: null,
+			strokeScale(leaf),
 		);
 	},
 };
@@ -283,6 +294,7 @@ const rect: EntityRenderer<Entity.EntityByTag<"Rect">> = {
 			data.strokeColor !== undefined
 				? rectPoints(data.width, data.height)
 				: null,
+			strokeScale(leaf),
 		);
 	},
 };
@@ -320,8 +332,8 @@ const line: EntityRenderer<Entity.EntityByTag<"Line">> = {
 		const fatLine = retained.object as FatLine.Line2;
 		const material = fatLine.material as THREE.Line2NodeMaterial;
 		setColor(material, leaf.data.strokeColor, leaf.data.opacity);
-		material.linewidth = leaf.data.strokeWidth;
-		fatLine.visible = material.opacity > 0;
+		material.linewidth = leaf.data.strokeWidth * strokeScale(leaf);
+		fatLine.visible = material.opacity > 0 && material.linewidth > 0;
 		// `start` and `end` are offsets FROM position, so each endpoint is
 		// mapped through the composed transform (ancestors + own position,
 		// rotation, scale) — a zero/zero line is a point at position.
@@ -409,7 +421,7 @@ const path: EntityRenderer<Entity.EntityByTag<"Path">> = {
 			disposePathChild(child);
 		}
 		const { strokeColor: stroke, fillColor: fill, opacity } = leaf.data;
-		const strokeWidth = leaf.data.strokeWidth ?? 1;
+		const strokeWidth = (leaf.data.strokeWidth ?? 1) * strokeScale(leaf);
 		const subpaths = pathSubpaths(leaf.data.commands);
 		for (const subpath of subpaths) {
 			// fill: closed subpaths only, triangulated in x/y
@@ -443,7 +455,7 @@ const path: EntityRenderer<Entity.EntityByTag<"Path">> = {
 				const material = fatLine.material as THREE.Line2NodeMaterial;
 				setColor(material, stroke, opacity);
 				material.linewidth = strokeWidth;
-				fatLine.visible = material.opacity > 0;
+				fatLine.visible = material.opacity > 0 && strokeWidth > 0;
 				const positions: Array<number> = [];
 				const push = (p: { x: number; y: number; z: number }) => {
 					const w = toWorld(leaf, p);

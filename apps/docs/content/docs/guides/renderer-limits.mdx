@@ -34,8 +34,9 @@ A few details:
   with rotation 0 faces the camera. Any other rotation, its own or an
   ancestor's, makes it a real plane in 3D. `Line` and `Path` are always
   drawn in 3D space as authored.
-- **Strokes** keep their width under `scale`: `strokeWidth` is in scene
-  units and is not scaled.
+- **Strokes** scale with the shape: the drawn width is `strokeWidth` times
+  the narrower of `|scale.x|` and `|scale.y|` (ancestors included), so a
+  shape scaled to zero on either axis draws nothing.
 - **Group opacity** multiplies into each child. Children that overlap each
   other show through one another while the group fades. To fade a section
   as one flat layer, build it as its own scene and mount it with

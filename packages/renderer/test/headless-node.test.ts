@@ -10,13 +10,14 @@ import { unreachable } from "./support/raise.js";
 
 const framesOf = (
 	make: () => Generator<Effect.Effect<any, any, any>, void, never>,
+	backgroundColor = Color.rgba(10, 10, 20),
 ): Promise<Array<Parameters<typeof NodeRenderer.renderToPng>[1]>> =>
 	Effect.runPromise(
 		Scene.stream(
 			Scene.make(make as never, {
 				width: 128,
 				height: 64,
-				backgroundColor: Color.rgba(10, 10, 20),
+				backgroundColor,
 			}) as never,
 			{},
 		).pipe(Stream.runCollect) as unknown as Effect.Effect<
@@ -177,4 +178,133 @@ describe("headless Dawn rendering", () => {
 			expect(red(0, -16)).toBeLessThan(40);
 		}
 	}, 30_000);
+
+	describe("degenerate scale", () => {
+		type Body = () => Generator<Effect.Effect<any, any, any>, void, any>;
+		const white = Color.rgba(255, 255, 255);
+		const collapsed = S.vec3({ x: 0, y: 0.004, z: 1 });
+		// pixels off a gray backdrop, with the camera pulled in 3× (default
+		// z ≈ 178 at 128 wide) — the magnified close-up where the unscaled
+		// default stroke showed as a solid black bar
+		const paint = async (body: Body) => {
+			const frames = await framesOf(
+				function* () {
+					yield* body();
+					const camera = yield* Scene.camera;
+					yield* Scene.update(camera, (c) => ({
+						...c,
+						position: S.vec3({ z: 60 }),
+					}));
+					yield* Scene.tick;
+				},
+				Color.rgba(128, 128, 128),
+			);
+			const frame = frames.at(-1) ?? unreachable();
+			const rgba = await Effect.runPromise(
+				Effect.scoped(
+					NodeRenderer.make({ width: 128, height: 64 }).pipe(
+						Effect.flatMap((renderer) =>
+							NodeRenderer.renderToRgba(renderer, frame),
+						),
+					),
+				) as Effect.Effect<Uint8Array, never, never>,
+			);
+			let dark = 0;
+			let bright = 0;
+			for (let i = 0; i < rgba.length; i += 4) {
+				const red = rgba[i] ?? unreachable();
+				dark += red < 118 ? 1 : 0;
+				bright += red > 138 ? 1 : 0;
+			}
+			return { dark, bright };
+		};
+
+		const nothing: ReadonlyArray<readonly [string, Body]> = [
+			[
+				"Rect at scale 0",
+				function* () {
+					yield* Scene.instantiate("Rect", {
+						width: 100,
+						height: 40,
+						fillColor: white,
+						scale: S.vec3({ x: 0, y: 0, z: 1 }),
+					});
+				},
+			],
+			[
+				"Rect at scale (0, 0.004)",
+				function* () {
+					yield* Scene.instantiate("Rect", {
+						width: 100,
+						height: 40,
+						fillColor: white,
+						scale: collapsed,
+					});
+				},
+			],
+			[
+				"Circle at scale (0, 0.004)",
+				function* () {
+					yield* Scene.instantiate("Circle", {
+						radius: 20,
+						fillColor: white,
+						scale: collapsed,
+					});
+				},
+			],
+			[
+				"Text at scale (0, 0.004)",
+				function* () {
+					yield* Scene.instantiate("Text", {
+						text: "Hello",
+						fontSize: 30,
+						fillColor: white,
+						scale: collapsed,
+					});
+				},
+			],
+			[
+				"Group at scale (0, 0.004)",
+				function* () {
+					const rect = yield* Scene.instantiate("Rect", {
+						width: 100,
+						height: 40,
+						fillColor: white,
+					});
+					const dot = yield* Scene.instantiate("Circle", {
+						radius: 20,
+						fillColor: white,
+					});
+					const rule = yield* Scene.instantiate("Line", {
+						start: S.vec3({ x: -40 }),
+						end: S.vec3({ x: 40 }),
+						strokeWidth: 4,
+					});
+					yield* Scene.instantiate("Group", {
+						scale: collapsed,
+						children: [rect, dot, rule],
+					});
+				},
+			],
+		];
+		for (const [name, body] of nothing) {
+			it(`${name} draws nothing`, async () => {
+				expect(await paint(body)).toEqual({ dark: 0, bright: 0 });
+			}, 60_000);
+		}
+
+		it("a near-zero Rect is a fill-colored sliver, its stroke thinned with it", async () => {
+			const { dark, bright } = await paint(function* () {
+				yield* Scene.instantiate("Rect", {
+					width: 100,
+					height: 40,
+					fillColor: white,
+					scale: S.vec3({ x: 1, y: 0.02, z: 1 }),
+				});
+			});
+			// 0.8 units tall, ~2.4 px on screen: white, no black stroke band
+			expect(bright).toBeGreaterThan(0);
+			expect(dark).toBe(0);
+		}, 30_000);
+	});
 });
