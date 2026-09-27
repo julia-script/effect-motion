@@ -82,6 +82,37 @@ describe("mask authoring and frame state", () => {
 		}
 	});
 
+	it("emits separate mask values for each frame and live Runner state", async () => {
+		const scene = Scene.make(function* () {
+			const target = yield* Scene.instantiate("Rect", {});
+			const source = yield* Scene.instantiate("Circle", {});
+			yield* Scene.setMask(target, source);
+			yield* Scene.tick;
+			yield* Scene.tick;
+			yield* Scene.tick;
+		});
+		await Effect.runPromise(
+			Effect.scoped(
+				Effect.gen(function* () {
+					const running = yield* Scene.run(scene);
+					const first = (yield* Scene.step(running)) ?? unreachable();
+					const second = (yield* Scene.step(running)) ?? unreachable();
+					const targetId = childrenOf(first, "root")[0] ?? unreachable();
+					const firstMask = first.masks?.[targetId] ?? unreachable();
+					const secondMask = second.masks?.[targetId] ?? unreachable();
+					expect(firstMask).not.toBe(secondMask);
+					expect(Reflect.set(firstMask, "mode", "inverse")).toBe(true);
+					expect(secondMask.mode).toBe("alpha");
+					expect((yield* running.runner.state).masks[targetId]?.mode).toBe(
+						"alpha",
+					);
+					const third = (yield* Scene.step(running)) ?? unreachable();
+					expect(third.masks?.[targetId]?.mode).toBe("alpha");
+				}),
+			),
+		);
+	});
+
 	it("source and target animate independently with exact, repeatable endpoints", async () => {
 		const scene = Scene.make(function* () {
 			const target = yield* Scene.instantiate("Text", {

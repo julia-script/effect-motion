@@ -636,7 +636,14 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 							{ ...config, camera: cameraState(id) },
 						]),
 					),
-					masks: Object.fromEntries(masks),
+					masks: Object.fromEntries(
+						[...masks].map(
+							([id, attachment]): [string, Scene.MaskAttachment] => [
+								id,
+								{ ...attachment },
+							],
+						),
+					),
 				};
 			}),
 
