@@ -2,6 +2,7 @@ import { Effect, Random, Schedule } from "effect";
 import * as Stream from "effect/Stream";
 import { describe, expect, it } from "vitest";
 import * as S from "../src/Entity";
+import type * as Instance from "../src/Instance";
 import * as Motion from "../src/Motion";
 import * as Runner from "../src/Runner";
 import * as Scene from "../src/Scene";
@@ -51,6 +52,20 @@ describe("Scene.play", () => {
 		const bBirth = frames.findIndex((f) => f.length === 2);
 		expect(bBirth).toBeGreaterThanOrEqual(30);
 		expect(frames[bBirth]?.[0]?.position.x).toBe(100); // A already done
+	});
+
+	it("handle.group is typed as a Group instance — no cast needed", async () => {
+		const kinds: Array<string> = [];
+		const takesGroup = (group: Instance.Instance<"Group">) => {
+			kinds.push(group.kind);
+		};
+		const movie = Scene.make(function* () {
+			const handle = yield* Scene.play(riser() as never);
+			takesGroup(handle.group);
+			yield* handle.finished;
+		} as never);
+		await collectRaw(movie);
+		expect(kinds).toEqual(["Group"]);
 	});
 
 	it("concurrent nesting: scenes share frames; the movie awaits both", async () => {

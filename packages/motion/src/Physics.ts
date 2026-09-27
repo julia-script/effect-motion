@@ -247,18 +247,33 @@ const springPosition = Effect.fnUntraced(function* <
 	// flatten the Vec3 for the simulator: it works on flat numeric records
 	// (design D2), so the tagged struct is unwrapped here and rebuilt below
 	const position = (yield* Scene.data(instance)).position;
-	const current = { x: position.x, y: position.y, z: position.z };
-	// partial targets/origins hold the missing axis at its current value
-	const target = { ...current, ...to };
-	const start = { ...current, ...(from ?? {}) };
+	const current: Motion.Position = {
+		x: position.x,
+		y: position.y,
+		z: position.z,
+	};
+	// only the named axes are simulated: an axis left out of both `from` and
+	// `to` is never touched, so a preset's initialVelocity can't nudge it
+	const axes = (["x", "y", "z"] as const).filter(
+		(axis) => to[axis] !== undefined || from?.[axis] !== undefined,
+	);
+	const pick = (source: Partial<Motion.Position>) =>
+		Object.fromEntries(
+			axes.map((axis) => [axis, source[axis] ?? current[axis]]),
+		);
 	yield* simulate(
-		start,
-		target,
+		pick(from ?? {}),
+		pick(to),
 		springInput ?? defaultSpring,
 		(value) =>
 			Scene.update(instance, (data) => ({
 				...data,
-				position: Entity.vec3(value),
+				position: Entity.vec3({
+					x: data.position.x,
+					y: data.position.y,
+					z: data.position.z,
+					...value,
+				}),
 			})),
 		settleTolerance,
 	);

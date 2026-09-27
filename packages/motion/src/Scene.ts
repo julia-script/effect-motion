@@ -48,6 +48,7 @@ import * as Exit from "effect/Exit";
 import * as Fiber from "effect/Fiber";
 import * as Random from "effect/Random";
 import type * as Schedule from "effect/Schedule";
+import * as SchemaAST from "effect/SchemaAST";
 import type * as Scope from "effect/Scope";
 import * as Stream from "effect/Stream";
 import type * as Color from "./Color.js";
@@ -624,6 +625,23 @@ const isUpdaterFn = <Data>(
 	props: Updater<Data>,
 ): props is (data: Data) => Data => typeof props === "function";
 
+// required (non-optionalKey) fields per entity kind, computed once per tag
+const requiredFieldsCache = new Map<Entity.EntityTag, ReadonlyArray<string>>();
+const requiredFields = (tag: Entity.EntityTag): ReadonlyArray<string> => {
+	const cached = requiredFieldsCache.get(tag);
+	if (cached !== undefined) {
+		return cached;
+	}
+	const fields: Record<string, { readonly ast: SchemaAST.AST }> =
+		Entity.getEntityDefinitionByTag(tag).fields;
+	const required = Object.keys(fields).filter((key) => {
+		const field = fields[key];
+		return field !== undefined && !SchemaAST.isOptional(field.ast);
+	});
+	requiredFieldsCache.set(tag, required);
+	return required;
+};
+
 /**
  * Read an entity's current data.
  *
@@ -676,6 +694,8 @@ export const data = <Tag extends Entity.EntityTag>(
  * atomically.
  *
  * Updating a destroyed entity is a no-op returning `false`, not an error.
+ * Data missing a required field (a partial object from untyped code) dies
+ * naming the instance and the missing fields, rather than corrupting it.
  *
  * @param instance - Handle to update.
  * @param props - New data, or `(current) => next`.
@@ -696,15 +716,31 @@ export const update = <Tag extends Entity.EntityTag>(
 ) =>
 	Effect.gen(function* () {
 		const runner = yield* Runner.Runner;
+		let next: Entity.EntityByTag<Tag>;
 		if (isUpdaterFn(props)) {
 			const current = runner.getDataUnsafe(instance);
 			// instance was destroyed: nothing to update
 			if (current === null) {
 				return false;
 			}
-			return runner.setDataUnsafe(instance, props(current));
+			next = props(current);
+		} else {
+			next = props;
 		}
-		return runner.setDataUnsafe(instance, props);
+		// untyped callers can pass a partial object; storing it would corrupt
+		// the entity silently, so name the offender and the missing fields
+		const record: object = next;
+		const missing = requiredFields(instance.kind).filter(
+			(key) => !(key in record),
+		);
+		if (missing.length > 0) {
+			return yield* Effect.die(
+				new Error(
+					`Scene.update: ${instance.kind} ${instance.id} is missing required field(s) ${missing.join(", ")} — pass the full data, or an updater (d) => ({ ...d, ... })`,
+				),
+			);
+		}
+		return runner.setDataUnsafe(instance, next);
 	});
 
 /**
@@ -1134,7 +1170,7 @@ export interface PlayOptions {
  * fade, or scale it and the entire child scene follows, its bounds included.
  */
 export interface PlayHandle<A = void, E = never> extends BranchHandle<A, E> {
-	readonly group: Runner.GroupInstance;
+	readonly group: Instance.Instance<"Group">;
 }
 
 /**
