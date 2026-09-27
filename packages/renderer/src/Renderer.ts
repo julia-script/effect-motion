@@ -81,9 +81,24 @@ export const renderCompTargets = Effect.fnUntraced(function* (
 		}
 		const previous = Gpu.getRenderTarget(renderer);
 		Gpu.setRenderTarget(renderer, comp.rt);
+		// the comp's HUD tier composites over its world inside the target,
+		// through the comp's identity camera — pinned while the child's own
+		// camera moves, exactly as at the root
+		const hud = ThreeScene.isEmpty(comp.sync.hudScene)
+			? Effect.void
+			: Effect.sync(() => {
+					Gpu.setAutoClear(renderer, false);
+					Gpu.clearDepth(renderer);
+				}).pipe(
+					Effect.flatMap(() =>
+						Gpu.render(renderer, comp.sync.hudScene, comp.sync.hudCamera),
+					),
+					Effect.ensuring(Effect.sync(() => Gpu.setAutoClear(renderer, true))),
+				);
 		// ensuring: the previous target comes back even when the render
 		// fails — the sync version silently skipped the restore on a throw
 		yield* Gpu.render(renderer, comp.sync.scene, comp.sync.camera).pipe(
+			Effect.andThen(hud),
 			Effect.ensuring(
 				Effect.sync(() => Gpu.setRenderTarget(renderer, previous)),
 			),

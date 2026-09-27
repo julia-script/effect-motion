@@ -343,10 +343,10 @@ export interface Frame<out Resources = never> {
 	/**
 	 * Mounted scenes (`Scene.play`), keyed by the id of the group they mount
 	 * under. Each is a render-to-texture boundary: the renderer draws the
-	 * subtree to its own target at these bounds, under an identity camera,
-	 * and composites the result. An id absent here is a plain group.
+	 * subtree to its own target at these bounds, through the child's own
+	 * camera, and composites the result. An id absent here is a plain group.
 	 */
-	comps: Record<string, Runner.CompConfig>;
+	comps: Record<string, Runner.CompFrame>;
 }
 /**
  * Advance a running scene by exactly one frame.
@@ -771,14 +771,17 @@ export const comp = Effect.fnUntraced(function* () {
  */
 export const camera = Effect.gen(function* () {
 	const runner = yield* Runner.Runner;
-	return runner.camera;
+	return runner.cameraOf(yield* Runner.CurrentComp);
 });
 
-/** Swap the active camera to `instance`; its live data becomes the view. */
+/**
+ * Swap the active camera to `instance`; its live data becomes the view.
+ * Inside a played scene this swaps that scene's camera, not the parent's.
+ */
 export const setCamera = (instance: Instance.Instance<"Camera">) =>
 	Effect.gen(function* () {
 		const runner = yield* Runner.Runner;
-		runner.setCamera(instance);
+		runner.setCamera(instance, yield* Runner.CurrentComp);
 	});
 
 // ── branches: semantic vs physical ends ────────────────────────────────
@@ -1154,6 +1157,11 @@ export interface PlayHandle<A = void, E = never> extends BranchHandle<A, E> {
  * stream, so a nested scene animates exactly as it did standalone under the
  * same seed — nesting never perturbs a child's randomness.
  *
+ * The child also keeps its OWN camera: `Scene.camera` inside it is the
+ * child's, and the nested scene renders through it — camera moves, depth,
+ * and parallax show exactly as standalone, clipped to its bounds. The
+ * parent's camera only places the child's composited plane.
+ *
  * Awaited like a {@link fork}: yield `handle.finished` to play children in
  * sequence, or skip the await to run them concurrently. As standalone, the
  * child's end includes the forks it spawned — an exit tail forked at the
@@ -1224,6 +1232,9 @@ export const play = <E, R>(
 			Effect.provideService(CurrentForks, owner),
 			// the child's instances mount under its bounds group
 			Effect.provideService(Runner.CurrentParent, group),
+			// and its camera is its own: Scene.camera inside the child is the
+			// child's resting camera, rendered through for the comp
+			Effect.provideService(Runner.CurrentComp, group.id),
 			// fresh stream per evaluation: nested playback must equal a
 			// standalone run with the same seed, never inherit the parent's
 			// stream position

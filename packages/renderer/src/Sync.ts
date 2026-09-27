@@ -4,12 +4,7 @@ import {
 	Scene as ThreeScene,
 } from "@effect-motion/three";
 import { Context, Effect } from "effect";
-import {
-	Color,
-	type EffectMotionError,
-	type Entity,
-	Runner,
-} from "effect-motion";
+import { Color, type EffectMotionError, type Entity } from "effect-motion";
 import * as Font from "effect-motion/Font";
 import * as ImageResource from "effect-motion/Image";
 import * as Projection from "effect-motion/Projection";
@@ -213,12 +208,14 @@ export interface DofState {
  * That is what lets a whole nested scene be moved, faded, or scaled as one
  * object, and what makes its background and bounds mean something.
  *
- * The child renders through its own identity camera, so its content is
- * flattened before compositing: depth inside a nested scene does not react
- * to the outer camera.
+ * The child renders through its OWN active camera (`frame.comps[id].camera`),
+ * exactly as it would standalone — camera moves, depth, and parallax inside
+ * the child all show — and the result is clipped to the child's bounds. Its
+ * content is flattened before compositing: depth inside a nested scene does
+ * not react to the outer camera, which only places the comp's plane.
  *
- * ponytail: world-camera parallax inside a precomp would need a frustum-clip
- * design if a scene ever wants it.
+ * ponytail: outer-camera parallax INSIDE a precomp (AE's collapse
+ * transformations) would need a frustum-clip design if a scene ever wants it.
  */
 export interface CompState {
 	readonly sync: Sync;
@@ -720,6 +717,7 @@ const syncComp = (
 		readonly width: number;
 		readonly height: number;
 		readonly backgroundColor: Color.Color;
+		readonly camera: AnyFrame["camera"];
 	},
 	transform: Transform,
 	/** product of the group's ancestors' opacities */
@@ -754,8 +752,8 @@ const syncComp = (
 	}
 	comp.width = compConfig.width;
 	comp.height = compConfig.height;
-	// inner sync: the comp's subtree in comp-local space under the
-	// identity camera, with the comp's own background (or transparent).
+	// inner sync: the comp's subtree in comp-local space through the
+	// child's own camera, with the comp's own background (or transparent).
 	// Unsafe: violations inside a comp propagate to the outermost
 	// syncFrame's catch, which is the whole point of one seam per frame.
 	const background = compConfig.backgroundColor ?? null;
@@ -765,7 +763,7 @@ const syncComp = (
 		width: compConfig.width,
 		height: compConfig.height,
 		backgroundColor: background ?? Color.transparent,
-		camera: Runner.identityCameraView(compConfig.width),
+		camera: compConfig.camera,
 	});
 	if (background === null || Color.bytes(background).a === 0) {
 		ThreeScene.setBackground(comp.sync.scene, null);

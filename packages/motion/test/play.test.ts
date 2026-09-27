@@ -324,3 +324,73 @@ describe("Scene.play mounting", () => {
 		}
 	});
 });
+
+describe("Scene.play cameras", () => {
+	// a child that dollies its camera; standalone, the frame's camera moves
+	const dolly = () =>
+		Scene.make(
+			function* () {
+				yield* Scene.instantiate("Circle", { position: S.vec3({}) });
+				const camera = yield* Scene.camera;
+				yield* Motion.moveTo(camera, { x: 40 }, "0.25 seconds");
+			} as never,
+			{ width: 400, height: 300 },
+		);
+
+	it("a child's Scene.camera is its own: the comp carries its moves, the root's stays at rest", async () => {
+		const standalone = (await collectRaw(dolly())).at(-1) ?? unreachable();
+		const frames = await collectRaw(
+			Scene.make(function* () {
+				const h = yield* Scene.play(dolly() as never);
+				yield* h.finished;
+			} as never),
+		);
+		const last = frames.at(-1) ?? unreachable();
+		const [comp] = Object.values(last.comps) as Array<Runner.CompFrame>;
+		expect(comp?.camera).toEqual(standalone.camera);
+		expect(comp?.camera.x).toBe(40);
+		expect(last.camera).toEqual(Runner.identityCameraView(1920));
+		// the child's active camera is view state, never a frame instance
+		for (const { data } of Object.values(last.instances) as any[]) {
+			expect(data._tag).not.toBe("Camera");
+		}
+	});
+
+	it("an unmoved child carries the resting camera for its own width", async () => {
+		const frames = await collectRaw(
+			Scene.make(function* () {
+				const h = yield* Scene.play(riser() as never);
+				yield* h.finished;
+			} as never),
+		);
+		for (const frame of frames) {
+			for (const comp of Object.values(frame.comps) as any[]) {
+				expect(comp.camera).toEqual(Runner.identityCameraView(comp.width));
+			}
+		}
+	});
+
+	it("setCamera inside a child swaps the child's view; a child camera gets the child's width defaults", async () => {
+		const child = Scene.make(
+			function* () {
+				const cam = yield* Scene.instantiate("Camera", {});
+				yield* Scene.setCamera(cam);
+				yield* Scene.tick;
+			} as never,
+			{ width: 400, height: 300 },
+		);
+		const standalone = (await collectRaw(child)).at(-1) ?? unreachable();
+		const last =
+			(
+				await collectRaw(
+					Scene.make(function* () {
+						const h = yield* Scene.play(child as never);
+						yield* h.finished;
+					} as never),
+				)
+			).at(-1) ?? unreachable();
+		const [comp] = Object.values(last.comps) as Array<Runner.CompFrame>;
+		expect(comp?.camera).toEqual(standalone.camera);
+		expect(last.camera).toEqual(Runner.identityCameraView(1920));
+	});
+});

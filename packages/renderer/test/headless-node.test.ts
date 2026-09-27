@@ -179,6 +179,112 @@ describe("headless Dawn rendering", () => {
 		}
 	}, 30_000);
 
+	describe("a Scene.play comp renders through the child's own camera", () => {
+		type Body = () => Generator<Effect.Effect<any, any, any>, void, any>;
+		const bg = Color.rgba(10, 10, 20);
+		const rgbaOf = (frames: Awaited<ReturnType<typeof framesOf>>) =>
+			Effect.runPromise(
+				Effect.scoped(
+					NodeRenderer.make({ width: 128, height: 64 }).pipe(
+						Effect.flatMap((renderer) =>
+							NodeRenderer.renderToRgba(
+								renderer,
+								frames.at(-1) ?? unreachable(),
+							),
+						),
+					),
+				) as Effect.Effect<Uint8Array, never, never>,
+			);
+		// standalone vs mounted (same size, opaque child background, so the
+		// comp covers the frame 1:1): the same pixels up to the comp
+		// texture's resampling (mean ≈ 2.5/255 even for an unmoved child)
+		const compare = async (body: Body) => {
+			const inner = Scene.make(body as never, {
+				width: 128,
+				height: 64,
+				backgroundColor: bg,
+			});
+			const standalone = await rgbaOf(await framesOf(body));
+			const mounted = await rgbaOf(
+				await framesOf(function* () {
+					const h = yield* Scene.play(inner as never);
+					yield* h.finished;
+				}),
+			);
+			let diff = 0;
+			for (let i = 0; i < standalone.length; i++) {
+				diff += Math.abs(
+					(standalone[i] ?? unreachable()) - (mounted[i] ?? unreachable()),
+				);
+			}
+			return { standalone, mounted, meanDiff: diff / standalone.length };
+		};
+		const redAt = (rgba: Uint8Array, x: number, y: number) =>
+			rgba[((32 - y) * 128 + (64 + x)) * 4] ?? unreachable();
+		const dots = function* () {
+			yield* Scene.instantiate("Circle", {
+				position: S.vec3({}),
+				radius: 8,
+				fillColor: Color.rgba(255, 255, 255),
+			});
+			// a far dot: parallax only a moving camera reveals
+			yield* Scene.instantiate("Circle", {
+				position: S.vec3({ x: 30, z: -200 }),
+				radius: 8,
+				fillColor: Color.rgba(255, 255, 255),
+			});
+		};
+
+		it("a camera moved inside the child renders as it does standalone", async () => {
+			const { standalone, mounted, meanDiff } = await compare(function* () {
+				yield* dots();
+				const camera = yield* Scene.camera;
+				yield* Scene.update(camera, (c) => ({
+					...c,
+					position: S.vec3({ x: 40, y: 0, z: c.position.z }),
+				}));
+				yield* Scene.tick;
+			});
+			// the camera panned right: the near dot sits left of center
+			for (const rgba of [standalone, mounted]) {
+				expect(redAt(rgba, -40, 0)).toBeGreaterThan(200);
+				expect(redAt(rgba, 0, 0)).toBeLessThan(40);
+			}
+			expect(meanDiff).toBeLessThan(4);
+		}, 30_000);
+
+		it("an unmoved child still renders as it does standalone", async () => {
+			const { mounted, meanDiff } = await compare(function* () {
+				yield* dots();
+				yield* Scene.tick;
+			});
+			expect(redAt(mounted, 0, 0)).toBeGreaterThan(200);
+			expect(meanDiff).toBeLessThan(4);
+		}, 30_000);
+
+		it("a Hud inside the child stays pinned while the child's camera moves", async () => {
+			const { mounted, meanDiff } = await compare(function* () {
+				yield* Scene.instantiate("Hud", {
+					children: [
+						Scene.instantiate("Circle", {
+							position: S.vec3({ y: 16 }),
+							radius: 6,
+							fillColor: Color.rgba(255, 255, 255),
+						}),
+					],
+				});
+				const camera = yield* Scene.camera;
+				yield* Scene.update(camera, (c) => ({
+					...c,
+					position: S.vec3({ x: 40, y: 0, z: c.position.z }),
+				}));
+				yield* Scene.tick;
+			});
+			expect(redAt(mounted, 0, 16)).toBeGreaterThan(200);
+			expect(meanDiff).toBeLessThan(4);
+		}, 30_000);
+	});
+
 	describe("degenerate scale", () => {
 		type Body = () => Generator<Effect.Effect<any, any, any>, void, any>;
 		const white = Color.rgba(255, 255, 255);
