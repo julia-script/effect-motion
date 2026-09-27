@@ -1,0 +1,52 @@
+---
+title: "contactSheet"
+description: "function contactSheet<Resources>(frames, options?): Effect<{"
+---
+# Function: contactSheet()
+
+```ts
+function contactSheet<Resources>(frames, options?): Effect<{
+  columns: number;
+  height: number;
+  png: Uint8Array<ArrayBufferLike>;
+  rows: number;
+  tileHeight: number;
+  tileWidth: number;
+  width: number;
+}, ThreeException | EffectMotionError | RenderException, Resources>;
+```
+
+Defined in: [packages/export/src/Stills.ts:116](https://github.com/julia-script/effect-motion/blob/main/packages/export/src/Stills.ts#L116)
+
+Render the frames and tile them row-major into one PNG. Gaps take the
+first frame's background color. Fails as a defect on an empty list.
+Requires the frames' font/image loaders, like [render](./render.mdx).
+
+ponytail: no text labels on tiles — callers print the tile → frame
+mapping. Burn labels in (via a Text entity overlay) if a sheet must stand
+alone.
+
+## Type Parameters
+
+| Type Parameter | Default type |
+| ------ | ------ |
+| `Resources` | `never` |
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `frames` | readonly `Frame`\<`Resources`\>[] |
+| `options` | [`ContactSheetOptions`](../interfaces/ContactSheetOptions.mdx) |
+
+## Returns
+
+`Effect`\<\{
+  `columns`: `number`;
+  `height`: `number`;
+  `png`: `Uint8Array`\<`ArrayBufferLike`\>;
+  `rows`: `number`;
+  `tileHeight`: `number`;
+  `tileWidth`: `number`;
+  `width`: `number`;
+\}, `ThreeException` \| `EffectMotionError` \| `RenderException`, `Resources`\>

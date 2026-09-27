@@ -1,0 +1,34 @@
+---
+title: "VideoSceneSettings"
+description: "Playback settings honored by the export path — a subset of the runner's"
+---
+# Interface: VideoSceneSettings
+
+Defined in: [packages/export/src/Video.ts:39](https://github.com/julia-script/effect-motion/blob/main/packages/export/src/Video.ts#L39)
+
+Playback settings honored by the export path — a subset of the runner's
+settings, passed through to `Scene.stream`. The video's dimensions come
+from the SCENE's own composition config (`Scene.make(gen, { width, height })`);
+a framerate set here becomes the video's framerate.
+
+## Properties
+
+### frameRate?
+
+```ts
+readonly optional frameRate?: number;
+```
+
+Defined in: [packages/export/src/Video.ts:40](https://github.com/julia-script/effect-motion/blob/main/packages/export/src/Video.ts#L40)
+
+***
+
+### maxFrames?
+
+```ts
+readonly optional maxFrames?: number;
+```
+
+Defined in: [packages/export/src/Video.ts:42](https://github.com/julia-script/effect-motion/blob/main/packages/export/src/Video.ts#L42)
+
+Set to `Infinity` for an intentionally infinite scene (with `frames`).

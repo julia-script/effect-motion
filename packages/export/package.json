@@ -32,6 +32,10 @@
 		"./Stills": {
 			"types": "./dist/Stills.d.ts",
 			"default": "./dist/Stills.js"
+		},
+		"./Video": {
+			"types": "./dist/Video.d.ts",
+			"default": "./dist/Video.js"
 		}
 	},
 	"files": [

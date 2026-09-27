@@ -1,6 +1,7 @@
 import * as Frames from "@effect-motion/export/Frames";
 import * as Console from "effect/Console";
 import * as Effect from "effect/Effect";
+import * as Exit from "effect/Exit";
 import { FileSystem } from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
@@ -9,7 +10,13 @@ import * as Stream from "effect/Stream";
 import { Argument, Command, Flag } from "effect/unstable/cli";
 import type * as Resource from "effect-motion/Resource";
 import * as Scene from "effect-motion/Scene";
-import { MotionCliError } from "../MotionCliError.js";
+import {
+	causeChain,
+	causeLine,
+	failWithCause,
+	MotionCliError,
+	verboseFlag,
+} from "../MotionCliError.js";
 import { isStudioConfig, resolveEntries } from "../StudioConfig.js";
 import { makeViteLoader } from "../ViteLoader.js";
 
@@ -103,8 +110,8 @@ type FramesInput = {
 
 const seconds = (time: number) => `${Number(time.toFixed(3))}s`;
 
-const renderFailed = (message: string) => (cause: unknown) =>
-	new MotionCliError({ reason: "RenderFailed", message, cause });
+const renderFailed = (message: string) =>
+	failWithCause("RenderFailed", message);
 
 const handler = (input: FramesInput) =>
 	Effect.gen(function* () {
@@ -149,7 +156,7 @@ const handler = (input: FramesInput) =>
 				: Layer.empty
 		) as Layer.Layer<Resource.LoaderBrand, unknown>;
 		const loaders = yield* Layer.build(layers).pipe(
-			Effect.mapError(renderFailed("could not build the studio's layers")),
+			renderFailed("could not build the studio's layers"),
 		);
 		// same settings the studio Player runs the entry with
 		const settingsOf = (entry: (typeof entries)[number]) => {
@@ -162,6 +169,7 @@ const handler = (input: FramesInput) =>
 		// ponytail: runs every scene to the end to measure it (no rendering);
 		// cache lengths if studios grow scenes slow enough to matter
 		if (Option.isNone(input.scene)) {
+			const verbose = yield* verboseFlag;
 			const width = Math.max(...keys.map((k) => k.length));
 			for (const entry of entries) {
 				const settings = settingsOf(entry);
@@ -181,12 +189,13 @@ const handler = (input: FramesInput) =>
 										`${frames} frames  ${frameRate === 0 ? "0s" : seconds(frames / frameRate)}`,
 								),
 							);
-				const shown = yield* Effect.exit(length).pipe(
-					Effect.map((exit) =>
-						exit._tag === "Success" ? exit.value : "failed to run",
-					),
+				const exit = yield* Effect.exit(length);
+				yield* Console.log(
+					`${entry.key.padEnd(width)}  ${Exit.isSuccess(exit) ? exit.value : `failed to run: ${causeLine(exit.cause)}`}`,
 				);
-				yield* Console.log(`${entry.key.padEnd(width)}  ${shown}`);
+				if (verbose && Exit.isFailure(exit)) {
+					for (const line of causeChain(exit.cause)) yield* Console.log(line);
+				}
 			}
 			return;
 		}
@@ -235,8 +244,9 @@ const handler = (input: FramesInput) =>
 							reason: "InvalidFrameSelection",
 							message: `${key}: ${error.message}`,
 						})
-					: renderFailed(`scene "${key}" failed while sampling`)(error),
+					: error,
 			),
+			renderFailed(`scene "${key}" failed while sampling`),
 		);
 
 		const jsonToStdout = Option.getOrUndefined(input.json) === "-";
@@ -256,7 +266,7 @@ const handler = (input: FramesInput) =>
 				yield* typeof data === "string"
 					? fs.writeFileString(file, data)
 					: fs.writeFile(file, data);
-			}).pipe(Effect.mapError(renderFailed(`could not write ${file}`)));
+			}).pipe(renderFailed(`could not write ${file}`));
 
 		if (Option.isSome(input.json)) {
 			const json = `${JSON.stringify(Frames.toJson(samples), null, 2)}\n`;
@@ -276,10 +286,9 @@ const handler = (input: FramesInput) =>
 		const images = input.sheet || Option.isNone(input.json);
 		if (!images) return;
 
-		const Stills = yield* Effect.tryPromise({
-			try: () => import("@effect-motion/export/Stills"),
-			catch: renderFailed("could not load the GPU renderer"),
-		});
+		const Stills = yield* Effect.tryPromise(
+			() => import("@effect-motion/export/Stills"),
+		).pipe(renderFailed("could not load the GPU renderer"));
 		const dpr = Option.getOrElse(input.dpr, () => 1);
 
 		if (input.sheet) {
@@ -288,9 +297,7 @@ const handler = (input: FramesInput) =>
 				{ dpr, maxTileWidth: input.tileWidth },
 			).pipe(
 				Effect.provide(loaders),
-				Effect.mapError(
-					renderFailed(`could not render the sheet for "${key}"`),
-				),
+				renderFailed(`could not render the sheet for "${key}"`),
 			);
 			const file = path.join(outDir, "sheet.png");
 			yield* write(file, sheet.png);
@@ -312,7 +319,7 @@ const handler = (input: FramesInput) =>
 			{ dpr },
 		).pipe(
 			Effect.provide(loaders),
-			Effect.mapError(renderFailed(`could not render stills for "${key}"`)),
+			renderFailed(`could not render stills for "${key}"`),
 		);
 		for (const [i, s] of unique.entries()) {
 			const png = pngs[i];

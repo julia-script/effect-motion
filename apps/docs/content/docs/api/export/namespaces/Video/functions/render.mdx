@@ -1,0 +1,48 @@
+---
+title: "render"
+description: "function render<E, LoaderR>("
+---
+# Function: render()
+
+```ts
+function render<E, LoaderR>(
+   scene, 
+   outPath, 
+   options?): Effect<void, 
+  | EncodeError
+  | ThreeException
+  | EffectMotionError
+| E, ChildProcessSpawner | ExtractLoaders<LoaderR>>;
+```
+
+Defined in: [packages/export/src/Video.ts:78](https://github.com/julia-script/effect-motion/blob/main/packages/export/src/Video.ts#L78)
+
+Render a scene to a video file at `outPath`.
+
+Fails with [Ffmpeg.EncodeError](../../Ffmpeg/classes/EncodeError.mdx) on odd output dimensions (invalid for
+`yuv420p`) — before any ffmpeg process is spawned — or on an ffmpeg failure;
+a GPU render failure surfaces as `ThreeException`; a failed resource
+(font layout, image decode) as `EffectMotionError`.
+
+## Type Parameters
+
+| Type Parameter | Default type |
+| ------ | ------ |
+| `E` | `never` |
+| `LoaderR` | `never` |
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `scene` | `Scene`\<`E`, `LoaderR` \| `SceneInternalR`\> |
+| `outPath` | `string` |
+| `options` | [`VideoOptions`](../../../interfaces/VideoOptions.mdx) |
+
+## Returns
+
+`Effect`\<`void`, 
+  \| [`EncodeError`](../../Ffmpeg/classes/EncodeError.mdx)
+  \| `ThreeException`
+  \| `EffectMotionError`
+  \| `E`, `ChildProcessSpawner` \| `ExtractLoaders`\<`LoaderR`\>\>

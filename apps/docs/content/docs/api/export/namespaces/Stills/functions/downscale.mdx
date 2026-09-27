@@ -1,0 +1,59 @@
+---
+title: "downscale"
+description: "function downscale("
+---
+# Function: downscale()
+
+```ts
+function downscale(
+   rgba, 
+   width, 
+   height, 
+   maxWidth): {
+  height: number;
+  rgba: Uint8Array;
+  width: number;
+};
+```
+
+Defined in: [packages/export/src/Stills.ts:211](https://github.com/julia-script/effect-motion/blob/main/packages/export/src/Stills.ts#L211)
+
+Box-downscale an RGBA image to at most `maxWidth` wide, keeping aspect.
+Returns the input untouched when it already fits. Pure.
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `rgba` | `Uint8Array` |
+| `width` | `number` |
+| `height` | `number` |
+| `maxWidth` | `number` |
+
+## Returns
+
+```ts
+{
+  height: number;
+  rgba: Uint8Array;
+  width: number;
+}
+```
+
+### height
+
+```ts
+height: number;
+```
+
+### rgba
+
+```ts
+rgba: Uint8Array;
+```
+
+### width
+
+```ts
+width: number;
+```

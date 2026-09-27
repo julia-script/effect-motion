@@ -20,7 +20,7 @@ afterAll(() => rmSync(outDir, { recursive: true, force: true }));
 afterEach(() => vi.restoreAllMocks());
 
 // run the CLI and capture what it printed to stdout
-const runCli = async (args: ReadonlyArray<string>) => {
+const runCli = async (args: ReadonlyArray<string>, studioFile = studio) => {
 	const lines: Array<string> = [];
 	vi.spyOn(console, "log").mockImplementation((line: unknown) => {
 		lines.push(String(line));
@@ -39,7 +39,7 @@ const runCli = async (args: ReadonlyArray<string>) => {
 			"frames",
 			...args,
 			"--studio",
-			studio,
+			studioFile,
 		]).pipe(Effect.provide(NodeServices.layer)) as Effect.Effect<void>,
 	);
 	return lines.join("\n");
@@ -192,6 +192,22 @@ describe("motion frames (e2e)", () => {
 		);
 		expect(frames).toEqual([0, 1, 2, 3, 4]);
 		expect(existsSync(join(out, "0000.png"))).toBe(false);
+	});
+
+	it("shows why a scene failed, in the list and when sampling", async () => {
+		const broken = join(dirname(studio), "broken.studio.ts");
+		const cause = /iter\.next is not a function/;
+		const listed = (await runCli([], broken)).split("\n");
+		expect(listed[0]).toBe("dot     5 frames  0.083s");
+		expect(listed[1]).toMatch(/^broken {2}failed to run: TypeError: /);
+		expect(listed[1]).toMatch(cause);
+		// one line per scene; the stack only under --verbose
+		expect(listed).toHaveLength(2);
+		const verbose = await runCli(["--verbose"], broken);
+		expect(verbose).toMatch(/caused by: TypeError: [^\n]*\n\s+at /);
+		await expect(runCli(["broken", "--json", "-"], broken)).rejects.toThrow(
+			/scene "broken" failed while sampling: TypeError: .*iter\.next/,
+		);
 	});
 
 	it("fails naming the bad selector", async () => {
