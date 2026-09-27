@@ -464,12 +464,15 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 			}),
 
 			// declare the group at `id` to be a mounted scene with these bounds
-			// (see `comps`); called by Scene.play, never by authors
 			// (see `comps`); called by Scene.play, never by authors. The comp
-			// gets its own resting camera, as a standalone scene would.
+			// gets its own resting camera, as a standalone scene would — at a
+			// fixed id, so it never shifts the ids of instances created after
 			registerComp: (id: string, config: CompConfig): void => {
 				comps.set(id, config);
-				const entry = tree.createNode(identityCamera(config.width));
+				const entry = tree.createNode(
+					identityCamera(config.width),
+					`${id}/camera`,
+				);
 				defaultCameras.set(id, Instance.makeInstance(entry.id, "Camera"));
 				activeCameras.set(id, entry.id);
 			},
