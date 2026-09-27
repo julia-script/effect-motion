@@ -36,7 +36,7 @@ Mask sources SHALL be ordinary `Line`, `Path`, `Rect`, `Circle`, `Ellipse`, `Tex
 
 ### Requirement: Alpha-only source coverage
 
-For each output pixel, the mask SHALL use the source's rendered alpha coverage `M` in `[0,1]`, including geometry edges, fill/stroke alpha, text glyph coverage, image alpha, opacity, and ancestor opacity. Source RGB and luminance SHALL have no effect. Normal mode SHALL yield content alpha `A × M`; inverse mode SHALL yield `A × (1 − M)`. The target's color SHALL be preserved. A source `visible: false` or outside the current view SHALL supply zero coverage. A Group source SHALL combine its descendant coverage by ordinary alpha-over compositing in the source's depth and paint order; a played scene source SHALL use the alpha of its bounded composite, including its background.
+For each output pixel, the mask SHALL use the source's rendered alpha coverage `M` in `[0,1]`, including geometry edges, fill/stroke alpha, text glyph coverage, image alpha, opacity, and ancestor opacity. Source RGB and luminance SHALL have no effect. Normal mode SHALL yield content alpha `A × M`; inverse mode SHALL yield `A × (1 − M)`. The target's color SHALL be preserved. A source `visible: false` or outside the current view SHALL supply zero coverage. A Group source SHALL combine eligible descendant coverage by ordinary alpha-over compositing in the source's depth and paint order, excluding descendant roots reserved as other active sources; a played scene source SHALL use the alpha of its bounded composite, including its background.
 
 #### Scenario: Partial transparency
 - **WHEN** source coverage is `0.4` over content alpha `0.5`
@@ -52,7 +52,7 @@ For each output pixel, the mask SHALL use the source's rendered alpha coverage `
 
 ### Requirement: Source-only visibility and nested masks
 
-While a source is referenced, its subtree SHALL contribute to mask coverage but SHALL NOT paint into the ordinary world or HUD output. Clearing or replacing its attachment SHALL restore the former source's ordinary visibility, subject to its own `visible` and ancestor state. A mask on a plain Group or Hud SHALL apply to each drawable descendant without turning that container into a flattened paint layer; descendants SHALL retain their transforms, relative alpha, and participation in their tier's depth ordering. Masks on descendants SHALL compose multiplicatively with ancestor masks, evaluating each attachment's selected normal or inverse factor. A mask source MAY itself be masked by another source, provided the reference graph is acyclic.
+While a source is referenced, its subtree SHALL contribute to that source's mask coverage but SHALL NOT paint into the ordinary world or HUD output. A descendant that is itself the root of another active source SHALL be excluded from its enclosing source's coverage; it contributes only when its own source is evaluated. Clearing or replacing an attachment SHALL restore the former source's ordinary visibility, subject to its own `visible` and ancestor state. A source's coverage SHALL include its own direct mask and masks on included descendants, but SHALL NOT inherit mask factors attached to ancestors above the source root. It SHALL still inherit those ancestors' transforms and ordinary opacity. A mask on a plain Group or Hud SHALL apply to each drawable descendant without turning that container into a flattened paint layer; descendants SHALL retain their transforms, relative alpha, and participation in their tier's depth ordering. Masks on descendants SHALL compose multiplicatively with ancestor masks in ordinary output, evaluating each attachment's selected normal or inverse factor exactly once. A mask source MAY itself be masked by another source, provided the reference graph is acyclic.
 
 #### Scenario: Source does not show beside content
 - **WHEN** a visible red Circle masks a blue Rect
@@ -65,6 +65,18 @@ While a source is referenced, its subtree SHALL contribute to mask coverage but 
 #### Scenario: Nested factors
 - **WHEN** a masked child is inside a masked Group
 - **THEN** its alpha is multiplied by both selected mask factors
+
+#### Scenario: Nested source root is suppressed in enclosing source
+- **WHEN** Group G is a mask source and its child C is also an active source for another target
+- **THEN** C contributes no coverage to G's source pass, while C's own source pass includes its eligible descendants
+
+#### Scenario: Ancestor mask applies once
+- **WHEN** source S and target T are siblings inside masked Group G
+- **THEN** S's coverage for T uses G's transform and opacity but excludes G's mask factor, and T's ordinary output receives G's mask factor exactly once
+
+#### Scenario: Source root has its own mask
+- **WHEN** source S is itself masked by source R
+- **THEN** S's coverage includes R's selected factor, while masks attached above S in the instance tree are excluded from S's source pass
 
 ### Requirement: Coordinate, tier, and composition boundaries
 
@@ -96,7 +108,7 @@ For an ordinary world target, masking SHALL preserve the target's own depth and 
 
 ### Requirement: Valid references and lifecycle
 
-An attachment SHALL reject missing, destroyed, or unmounted instances; identical source and target; overlapping source/target subtrees in either direction; a source already used by another target; reference cycles; and cross-tier or cross-composition pairs. Diagnostics SHALL name the offending instance ids and reason. An atomic reparent within the same tier and composition SHALL retain the attachment and recompute both transforms. A reparent that makes an attached pair invalid SHALL fail loudly; `Scene.removeChild` detaching either endpoint or an ancestor of it SHALL clear affected attachments. Destroying an endpoint SHALL clear affected attachments. Rendering a forged or stale frame SHALL validate references and fail with a named render diagnostic rather than silently painting incorrect content.
+An attachment SHALL reject missing, destroyed, or unmounted instances; identical source and target; overlapping source/target subtrees in either direction; a source already used by another target; reference cycles; and cross-tier or cross-composition pairs. Diagnostics SHALL name the offending instance ids and reason. An atomic reparent within the same tier and composition SHALL retain the attachment and recompute both transforms. A reparent that makes an attached pair invalid SHALL fail loudly; `Scene.removeChild` detaching either endpoint or an ancestor of it SHALL clear affected attachments. Destroying an endpoint or any ancestor that leaves it unmounted SHALL clear affected attachments, including attachments whose endpoints survive as orphaned descendants. Rendering a forged or stale frame SHALL validate references and fail with a named render diagnostic rather than silently painting incorrect content.
 
 #### Scenario: Invalid ancestry
 - **WHEN** a Group is selected as source for one of its own descendants
@@ -109,6 +121,10 @@ An attachment SHALL reject missing, destroyed, or unmounted instances; identical
 #### Scenario: Valid reparent
 - **WHEN** a source moves to a different parent in the same composition and tier
 - **THEN** its mask remains attached and follows its new composed transform
+
+#### Scenario: Destroyed ancestor orphans descendants
+- **WHEN** a Group is destroyed and its children remain live but unmounted
+- **THEN** every mask attachment involving any orphaned descendant is cleared, and any still-mounted former source resumes ordinary rendering
 
 ### Requirement: Shared renderer behavior and resource lifetime
 

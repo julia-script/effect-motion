@@ -4,14 +4,14 @@
 
 - [ ] 1.1 Add typed `Scene.setMask`/`clearMask` and Runner attachment state without changing tree ownership; verify TypeScript accepts paintable sources/targets and rejects Camera.
 - [ ] 1.2 Serialize deterministic `Frame.masks` references and verify attach, replace, clear, independent animation, repeated runs, and exact endpoints in core tests.
-- [ ] 1.3 Validate mounted endpoints, unique source ownership, ancestry, cycles, composition/tier domain, and detach/reparent/destroy behavior; verify named diagnostics and source restoration in core tests.
+- [ ] 1.3 Validate mounted endpoints, unique source ownership, ancestry, cycles, composition/tier domain, and detach/reparent/destroy behavior, including orphaned descendants after ancestor destruction; verify named diagnostics and source restoration in core tests.
 
 ## 2. Retained mask rendering
 
-- [ ] 2.1 Extend the shared frame walk to resolve source-only subtrees, composed transforms, nested mask dependencies, and per-comp/per-tier domains; verify retained scene structure and invalid-frame diagnostics in renderer tests.
-- [ ] 2.2 Render shape, text, image, and Group source alpha to reusable transparent coverage targets; verify RGB independence, partial alpha, visibility, and source-only output in renderer tests.
+- [ ] 2.1 Extend the shared frame walk to resolve source-only subtrees, composed transforms, nested mask dependencies, and per-comp/per-tier domains; verify nested source-root suppression, one-time ancestor mask factors, retained scene structure, and invalid-frame diagnostics in renderer tests.
+- [ ] 2.2 Capture native fill, stroke, glyph Text, image, and composition-plane color/depth through one masked-leaf seam and render source alpha to reusable transparent coverage targets; verify RGB independence, partial alpha, visibility, and source-only output in renderer tests.
 - [ ] 2.3 Multiply normal/inverse mask factors per target fragment, including inherited Group and nested factors, while preserving global depth interleaving; verify overlap and independent source/target movement in renderer tests.
-- [ ] 2.4 Preserve target depth for opaque coverage, discard zero coverage, and use translucent depth behavior for fractional coverage; verify behind-object visibility, opaque occlusion, and depth-of-field focus in renderer tests and visual frames.
+- [ ] 2.4 Implement captured-depth proxy fragment classification for opaque/zero/fractional coverage, native depth ordering, and temporary DoF depth lending on fractional proxies; verify fills, strokes, glyph Text, comp planes, behind-object visibility, opaque occlusion, draw order, and depth-of-field focus in renderer tests and visual frames.
 - [ ] 2.5 Integrate world/HUD and nested composition passes, including masks inside a child comp and on its parent plane; verify camera movement, bounds, sharp HUD, and parent-only comp focus in browser and Node frames.
 - [ ] 2.6 Reuse stable mask targets/materials and release owned resources on replacement, clear, disappearance, resize, and renderer close; verify lifecycle instrumentation or retained-resource tests and the unmasked fast path.
 
