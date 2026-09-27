@@ -41,14 +41,75 @@ const pngSize = (file: string) => {
 	return { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) };
 };
 
-// dot: 120×80, 5 frames (0–4)
+// dot, branded (custom font + image): 120×80, 5 frames (0–4), default 60fps
 describe("motion frames (e2e)", () => {
-	it("lists the scene keys when no scene is given", async () => {
-		expect(await runCli([])).toBe("dot");
+	it("lists the scenes with their lengths when no scene is given", async () => {
+		expect((await runCli([])).split("\n")).toEqual([
+			"dot      5 frames  0.083s",
+			"branded  5 frames  0.083s",
+		]);
 	});
 
 	it("fails listing the keys for an unknown scene", async () => {
-		await expect(runCli(["nope"])).rejects.toThrow(/available: dot/);
+		await expect(runCli(["nope"])).rejects.toThrow(/available: dot, branded/);
+	});
+
+	it("renders a scene with a custom font and an image (--sheet and --at)", async () => {
+		const out = join(outDir, "branded");
+		const sheet = await runCli(["branded", "--sheet", "--out", out]);
+		expect(sheet).toMatch(/sheet\.png 3x2 tile=120x80/);
+		const stills = await runCli(["branded", "--at", "end", "--out", out]);
+		expect(stills).toMatch(/0004\.png frame=4/);
+		expect(pngSize(join(out, "0004.png"))).toEqual({ width: 120, height: 80 });
+	});
+
+	it("downscales sheet tiles to --tile-width (default 480)", async () => {
+		const out = join(outDir, "tiles");
+		const dpr8 = await runCli([
+			"dot",
+			"--count",
+			"2",
+			"--sheet",
+			"--dpr",
+			"8",
+			"--out",
+			out,
+		]);
+		// 960px frames → 480px tiles
+		expect(dpr8).toMatch(/tile=480x320/);
+		const small = await runCli([
+			"dot",
+			"--count",
+			"2",
+			"--sheet",
+			"--tile-width",
+			"60",
+			"--out",
+			out,
+		]);
+		expect(small).toMatch(/sheet\.png 2x1 tile=60x40/);
+		expect(pngSize(join(out, "sheet.png"))).toEqual({ width: 124, height: 40 });
+	});
+
+	it("spreads --count over --range", async () => {
+		const printed = await runCli([
+			"dot",
+			"--count",
+			"3",
+			"--range",
+			"1..3",
+			"--json",
+			"-",
+		]);
+		expect(JSON.parse(printed).map((s: { frame: number }) => s.frame)).toEqual([
+			1, 2, 3,
+		]);
+		await expect(runCli(["dot", "--range", "1s"])).rejects.toThrow(
+			/FROM\.\.TO/,
+		);
+		await expect(
+			runCli(["dot", "--at", "0", "--range", "0..1"]),
+		).rejects.toThrow(/--at or --range/);
 	});
 
 	it("writes one still per frame, named by frame index", async () => {

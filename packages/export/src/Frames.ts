@@ -19,10 +19,17 @@ export type Selector =
 	| { readonly _tag: "Percent"; readonly percent: number }
 	| { readonly _tag: "End" };
 
-/** Which frames to sample: explicit points, or N evenly spaced frames. */
+/**
+ * Which frames to sample: explicit points, or N evenly spaced frames — over
+ * the whole scene, or over `range` (both ends included).
+ */
 export type Selection =
 	| { readonly _tag: "At"; readonly selectors: ReadonlyArray<Selector> }
-	| { readonly _tag: "Count"; readonly count: number };
+	| {
+			readonly _tag: "Count";
+			readonly count: number;
+			readonly range?: { readonly from: Selector; readonly to: Selector };
+	  };
 
 /** An invalid selection, an out-of-range frame, or an unanswerable one. */
 export class FrameSelectionError extends Data.TaggedError(
@@ -45,7 +52,7 @@ const patterns = {
 	seconds: new RegExp(`^${num}s$`),
 	millis: new RegExp(`^${num}ms$`),
 	percent: new RegExp(`^${num}%$`),
-	count: /^count\s+(\d+)$/,
+	count: /^count\s+(\d+)(?:\s+(\S+)\.\.(\S+))?$/,
 };
 
 const parseSelector = (
@@ -73,7 +80,8 @@ const parseSelector = (
 /**
  * Parse a selection string: a comma-separated list of frame indices (`0,30`),
  * times (`1.5s`, `500ms`), percentages (`50%`) and `end` — or `count N` for N
- * evenly spaced frames including the first and last.
+ * evenly spaced frames including the first and last, optionally within a
+ * range of any two selectors (`count 5 7.5s..8.5s`, `count 4 50%..end`).
  */
 export const parse = (
 	input: string,
@@ -82,9 +90,23 @@ export const parse = (
 	const count = patterns.count.exec(trimmed);
 	if (count) {
 		const n = Number(count[1]);
-		return n < 1
-			? fail(`Invalid frame count "${trimmed}": count must be at least 1.`)
-			: Effect.succeed({ _tag: "Count", count: n });
+		if (n < 1) {
+			return fail(
+				`Invalid frame count "${trimmed}": count must be at least 1.`,
+			);
+		}
+		const [, , from, to] = count;
+		if (from === undefined || to === undefined) {
+			return Effect.succeed({ _tag: "Count", count: n });
+		}
+		return Effect.map(
+			Effect.all([parseSelector(from), parseSelector(to)]),
+			([f, t]) => ({
+				_tag: "Count" as const,
+				count: n,
+				range: { from: f, to: t },
+			}),
+		);
 	}
 	const tokens = trimmed.split(",").map((t) => t.trim());
 	if (tokens.some((t) => t === "")) {
@@ -109,27 +131,26 @@ const describe = (s: Selector): string => {
 	}
 };
 
+const endRelative = (s: Selector) => s._tag === "Percent" || s._tag === "End";
+
 const needsLength = (selection: Selection): boolean =>
-	selection._tag === "Count" ||
-	selection.selectors.some((s) => s._tag === "Percent" || s._tag === "End");
+	selection._tag === "Count"
+		? selection.range === undefined ||
+			endRelative(selection.range.from) ||
+			endRelative(selection.range.to)
+		: selection.selectors.some(endRelative);
 
 // resolve a selection to frame indices (each with a label for error messages)
 const resolve = (
 	selection: Selection,
 	frameRate: number,
 	length: number | undefined,
-): ReadonlyArray<{ readonly frame: number; readonly label: string }> => {
+): Effect.Effect<
+	ReadonlyArray<{ readonly frame: number; readonly label: string }>,
+	FrameSelectionError
+> => {
 	// needsLength guarantees `length` is known whenever it is read below
 	const last = (length ?? 1) - 1;
-	if (selection._tag === "Count") {
-		// clamp to the scene length: with n ≤ length the spacing is ≥ 1 frame,
-		// so the rounded indices are distinct (no repeated frames)
-		const n = Math.min(selection.count, last + 1);
-		return Array.from({ length: n }, (_, i) => ({
-			frame: n === 1 ? 0 : Math.round((i * last) / (n - 1)),
-			label: `count ${selection.count}`,
-		}));
-	}
 	const frameOf = (s: Selector): number => {
 		switch (s._tag) {
 			case "Frame":
@@ -142,17 +163,45 @@ const resolve = (
 				return last;
 		}
 	};
-	return selection.selectors.map((s) => ({
-		frame: frameOf(s),
-		label: describe(s),
-	}));
+	if (selection._tag === "Count") {
+		const { range } = selection;
+		const from = range === undefined ? 0 : frameOf(range.from);
+		const to = range === undefined ? last : frameOf(range.to);
+		const label =
+			range === undefined
+				? `count ${selection.count}`
+				: `count ${selection.count} ${describe(range.from)}..${describe(range.to)}`;
+		if (to < from) {
+			return fail(
+				`Invalid frame range "${label}": it starts at frame ${from}, after its end at frame ${to}.`,
+			);
+		}
+		// clamp to the span: with n ≤ span the spacing is ≥ 1 frame, so the
+		// rounded indices are distinct (no repeated frames)
+		const n = Math.min(selection.count, to - from + 1);
+		return Effect.succeed(
+			Array.from({ length: n }, (_, i) => ({
+				frame: n === 1 ? from : from + Math.round((i * (to - from)) / (n - 1)),
+				label,
+			})),
+		);
+	}
+	return Effect.succeed(
+		selection.selectors.map((s) => ({ frame: frameOf(s), label: describe(s) })),
+	);
 };
 
 /**
  * Sample frames from a scene, in the order requested (duplicates kept).
- * `count N` larger than the scene clamps to every frame, once each.
+ * `count N` larger than the scene (or its range) clamps to every frame, once
+ * each.
  *
- * Only `%`, `end` and `count` need the scene's length; for those the scene is
+ * The scene ends where its video ends: when the body and every fork are
+ * done. Backgrounds and tails still running after `Scene.finish` are cut
+ * there, exactly as `Video.render` and the player cut them, so `end` is
+ * the last frame that ever renders.
+ *
+ * Only `%`, `end` and a range-less `count` need the scene's length; for those the scene is
  * run once to the end to count its frames (no rendering), then again to pick
  * them. A selection needing the end of an infinite scene
  * (`maxFrames: Infinity`) fails; a frame past the scene's end fails naming
@@ -176,7 +225,7 @@ export const sample = <E, R>(
 			if (needsLength(sel)) {
 				if (settings.maxFrames === Number.POSITIVE_INFINITY) {
 					return yield* fail(
-						`Selection needs the scene's end ("%", "end" or "count"), but the scene is infinite (maxFrames: Infinity). Select frame indices or times instead.`,
+						`Selection needs the scene's end ("%", "end" or a count over the whole scene), but the scene is infinite (maxFrames: Infinity). Select frame indices or times, or a count over a range of them, instead.`,
 					);
 				}
 				length = yield* Stream.runCount(Scene.stream(scene, settings));
@@ -190,7 +239,7 @@ export const sample = <E, R>(
 				return yield* fail("The scene produced no frames to sample.");
 			}
 			const first = head.value;
-			const wanted = resolve(sel, first.frameRate, length);
+			const wanted = yield* resolve(sel, first.frameRate, length);
 			const maxFrame = Math.max(...wanted.map((w) => w.frame));
 
 			const wantedFrames = new Set(wanted.map((w) => w.frame));

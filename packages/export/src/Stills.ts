@@ -14,6 +14,14 @@ import type { Frame } from "effect-motion/Scene";
 
 type AnyFrame = Frame<unknown>;
 
+// frames carry their font/image loaders only as a phantom type; the renderer
+// reads the loaders from context at runtime (a missing one is a defect), so
+// surface them as the effect's requirement — widening from never, no cast
+const requires = <Resources, A, E>(
+	_frames: ReadonlyArray<Frame<Resources>>,
+	effect: Effect.Effect<A, E>,
+): Effect.Effect<A, E, Resources> => effect;
+
 /** Options for {@link render} and {@link contactSheet}. */
 export interface StillsOptions {
 	/** Supersampling factor; output is scene size × dpr. Defaults to 1. */
@@ -77,15 +85,21 @@ const renderAll = (frames: ReadonlyArray<AnyFrame>, options: StillsOptions) =>
 
 /**
  * Render each frame to PNG bytes, in order. An empty list renders nothing.
+ *
+ * Requires the frames' font/image loaders (`Font.layer` / `Image.layer`) —
+ * the same layers the scene is previewed and exported with.
  */
-export const render = (
-	frames: ReadonlyArray<AnyFrame>,
+export const render = <Resources = never>(
+	frames: ReadonlyArray<Frame<Resources>>,
 	options: StillsOptions = {},
 ) =>
-	renderAll(frames, options).pipe(
-		Effect.map((images) =>
-			images.map(({ rgba, width, height }) =>
-				NodeRenderer.encodePng(rgba, width, height),
+	requires(
+		frames,
+		renderAll(frames, options).pipe(
+			Effect.map((images) =>
+				images.map(({ rgba, width, height }) =>
+					NodeRenderer.encodePng(rgba, width, height),
+				),
 			),
 		),
 	);
@@ -93,49 +107,53 @@ export const render = (
 /**
  * Render the frames and tile them row-major into one PNG. Gaps take the
  * first frame's background color. Fails as a defect on an empty list.
+ * Requires the frames' font/image loaders, like {@link render}.
  *
  * ponytail: no text labels on tiles — callers print the tile → frame
  * mapping. Burn labels in (via a Text entity overlay) if a sheet must stand
  * alone.
  */
-export const contactSheet = (
-	frames: ReadonlyArray<AnyFrame>,
+export const contactSheet = <Resources = never>(
+	frames: ReadonlyArray<Frame<Resources>>,
 	options: ContactSheetOptions = {},
 ) =>
-	Effect.gen(function* () {
-		const first = frames[0];
-		if (first === undefined) {
-			return yield* Effect.die(
-				new Error("Stills.contactSheet: no frames to tile"),
+	requires(
+		frames,
+		Effect.gen(function* () {
+			const first = frames[0];
+			if (first === undefined) {
+				return yield* Effect.die(
+					new Error("Stills.contactSheet: no frames to tile"),
+				);
+			}
+			const images = (yield* renderAll(frames, options)).map((image) =>
+				options.maxTileWidth === undefined
+					? image
+					: downscale(
+							image.rgba,
+							image.width,
+							image.height,
+							options.maxTileWidth,
+						),
 			);
-		}
-		const images = (yield* renderAll(frames, options)).map((image) =>
-			options.maxTileWidth === undefined
-				? image
-				: downscale(
-						image.rgba,
-						image.width,
-						image.height,
-						options.maxTileWidth,
-					),
-		);
-		const { width: tileWidth, height: tileHeight } = images[0] ?? first;
-		const grid = tile(
-			images.map((i) => i.rgba),
-			tileWidth,
-			tileHeight,
-			{ ...options, background: Color.bytes(first.backgroundColor) },
-		);
-		return {
-			png: NodeRenderer.encodePng(grid.rgba, grid.width, grid.height),
-			width: grid.width,
-			height: grid.height,
-			columns: grid.columns,
-			rows: grid.rows,
-			tileWidth,
-			tileHeight,
-		} satisfies ContactSheet;
-	});
+			const { width: tileWidth, height: tileHeight } = images[0] ?? first;
+			const grid = tile(
+				images.map((i) => i.rgba),
+				tileWidth,
+				tileHeight,
+				{ ...options, background: Color.bytes(first.backgroundColor) },
+			);
+			return {
+				png: NodeRenderer.encodePng(grid.rgba, grid.width, grid.height),
+				width: grid.width,
+				height: grid.height,
+				columns: grid.columns,
+				rows: grid.rows,
+				tileWidth,
+				tileHeight,
+			} satisfies ContactSheet;
+		}),
+	);
 
 /**
  * Tile same-sized RGBA images row-major into one grid. Pure.

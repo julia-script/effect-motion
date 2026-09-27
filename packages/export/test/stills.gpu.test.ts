@@ -24,11 +24,7 @@ const ihdr = (png: Uint8Array) => {
 
 it("renders a still and a 4-tile contact sheet", async () => {
 	const frames = [
-		...(await Effect.runPromise(
-			Scene.stream(scene as never, {}).pipe(
-				Stream.runCollect,
-			) as unknown as Effect.Effect<Iterable<never>>,
-		)),
+		...(await Effect.runPromise(Stream.runCollect(Scene.stream(scene)))),
 	];
 	expect(frames).toHaveLength(4);
 	const [stills, sheet] = await Effect.runPromise(

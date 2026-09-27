@@ -334,6 +334,10 @@ export const make = Effect.fn("NodeRenderer.make")(function* (
 	};
 	const sync = Sync.make(registry);
 	const device = yield* NodeGpu.makeDevice();
+	// registered before the renderer, so it runs after the renderer's own
+	// release (finalizers run in reverse): a live Dawn device keeps Node's
+	// event loop polling, so scripts would never exit on their own
+	yield* Effect.addFinalizer(() => Effect.sync(() => device.destroy()));
 	const { canvas, context } = NodeGpu.stubCanvas(pixelWidth, pixelHeight);
 	const gpu = yield* Gpu.make({
 		canvas: canvas as unknown as HTMLCanvasElement,

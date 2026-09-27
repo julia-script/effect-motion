@@ -12,13 +12,13 @@ This is an [effect-motion](https://github.com/julia-script/effect-motion) projec
 - `motion studio [file]` — browser preview with hot reload of `studio.ts` (or the given entrypoint).
 - `motion render [file]` — execute `render.ts` (or the given entrypoint) with the platform provided. `--verbose` prints full error cause chains. The same file runs standalone via `tsx render.ts` by piping through `NodeServices` from `@effect/platform-node`.
 
-- `motion frames [scene]` — sample a registered scene headlessly (see below). With no scene, lists the keys.
+- `motion frames [scene]` — sample a registered scene headlessly (see below). With no scene, lists the keys with each scene's length (frames and seconds).
 
 ## Check your work
 
 Verify every scene change by looking at it — not by reading code alone. After an edit:
 
-1. `motion frames <scene> --sheet` writes `.motion/frames/<scene>/sheet.png`, a grid of evenly spaced frames (`--count N`, default 6), and prints `tile=<i> frame=<f> time=<t>` per tile. Read the sheet image: tiles go left to right, top to bottom.
+1. `motion frames <scene> --sheet` writes `.motion/frames/<scene>/sheet.png`, a grid of evenly spaced frames (`--count N`, default 6), and prints `tile=<i> frame=<f> time=<t>` per tile. Read the sheet image: tiles go left to right, top to bottom. Zoom into a stretch with `--range 7.5s..8.5s` (spreads `--count` over it); tiles are 480 px wide unless you pass `--tile-width`.
 2. For specific moments, `motion frames <scene> --at 0,1.5s,50%,end` writes one PNG per frame (indices, times, percentages, `end`).
 3. For exact positions and values, `motion frames <scene> --at end --json -` prints each frame's camera and every instance's data as JSON on stdout (no GPU needed; `--json out.json` writes a file). Trust the JSON over eyeballing pixels.
 

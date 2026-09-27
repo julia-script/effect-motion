@@ -31,7 +31,20 @@ Invalid selectors, out-of-range frames, empty scenes and infinite-end requests f
 ### D6. CLI as a thin wrapper
 `motion frames` resolves the scene key from `studio.ts` (no/unknown key → list available keys), parses flags into a selection, and calls the export library — like `motion render` → `Video.render`.
 
+### D7. The scene ends where its video ends
+`%`, `end` and `count` measure the frames `Scene.stream` produces — exactly what `Video.render` encodes and the player shows. The dogfood run asked for sheets to include exit tails after `Scene.finish`; they are not added. A root-level tail (or background) is cut at the scene's end in every output, so a sheet that showed it would show frames that never render. A beat's exit that should be seen belongs in a fork (awaited at scene end) or before the body returns.
+
+### D8. Loaders reach the renderer, checked by the type system
+Frames carry their font/image loaders only as a phantom type (`Frame<Resources>`); the renderer reads the loaders from context at render time. `Stills.render`/`contactSheet` are generic over the frames' resources and return an effect requiring them, so omitting `Font.layer`/`Image.layer` is a compile error rather than a runtime `no font loader` defect. The CLI builds the studio's `layers` once (`Layer.build`) and provides the context to sampling and rendering; the studio module is untyped at runtime, so the CLI restates the `studioConfig` pairing (scene loaders ⇔ `layers`) as `Resource.LoaderBrand` once, which keeps the missing-provide case a compile error inside the CLI too.
+
+### D9. Sheet size and zoom
+Sheets default to 480 px wide tiles (`--tile-width` overrides; box-downscaled, aspect kept) — full-size 1080p tiles made a nine-tile sheet 7692 px wide, too big for an agent to read cheaply. `--range FROM..TO` spreads `--count` over a span (`count N FROM..TO` in the selection grammar), for zooming into a transition. The scene list prints each scene's length so agents know which times are in range.
+
+### D10. Releasing the GPU
+The Node renderer destroys its Dawn device when its scope closes (after three's own release). A live device kept Node's event loop polling, so scripts using `Stills` directly never exited.
+
 ## Risks / Trade-offs
 
 - **Second pass cost** for `%`/`end`/`count` on long scenes → acceptable (no rendering); upgrade path noted in code.
+- **Listing runs every scene** to measure it → fine for studio-sized projects (the dogfood project's six scenes list in ~1 s); a scene that fails to run lists as `failed to run` rather than hiding the others.
 - **GPU required for PNGs** → GPU tests skip on GPU-less CI like existing e2e tests; JSON path unaffected.

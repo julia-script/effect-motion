@@ -24,7 +24,17 @@
 - [ ] 4.1 Docs page for `motion frames`, included in `llms.txt`
 - [ ] 4.2 Scaffolded `AGENTS.md` tells agents to use `motion frames` to check their work
 
-## 5. Verify
+## 5. Dogfood fixes
 
-- [ ] 5.1 `bun run lint && bun run check && bun run test && bun run build`
-- [ ] 5.2 Manual: the acceptance commands in a scaffolded project; open the sheet PNG
+- [x] 5.1 Provide studio `layers` to stills/sheet rendering; `Stills` typed over frame resources (D8)
+- [x] 5.2 CLI e2e fixture scene with a custom font and an image, run with `--sheet` and `--at`
+- [x] 5.3 Default 480 px sheet tiles, `--tile-width` override (D9)
+- [x] 5.4 `--range FROM..TO` / `count N FROM..TO` (D9); tails decision recorded (D7)
+- [x] 5.5 Scene list shows each scene's length
+- [x] 5.6 Node renderer destroys its GPU device on scope close (D10)
+- [x] 5.7 Docs, template `AGENTS.md`
+
+## 6. Verify
+
+- [ ] 6.1 `bun run lint && bun run check && bun run test && bun run build`
+- [ ] 6.2 Manual: the acceptance commands in a scaffolded project; open the sheet PNG

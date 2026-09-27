@@ -95,10 +95,11 @@ it with `tsx render.ts`. `--verbose` prints full error cause chains.
 ## Sample frames — motion frames
 
 ```bash
-motion frames                          # list the scene keys in ./studio.ts
+motion frames                          # list the scenes in ./studio.ts with their lengths
 motion frames hello-world              # 6 evenly spaced PNG stills
 motion frames hello-world --at 0,1.5s,50%,end
 motion frames hello-world --count 9 --sheet
+motion frames hello-world --count 5 --range 1s..2s --sheet
 motion frames hello-world --at 50% --json -
 ```
 
@@ -110,27 +111,42 @@ the studio uses for that entry (`fps`, `layers`).
 | --- | --- |
 | `--at <selection>` | Comma-separated frames: an index (`30`), a time (`1.5s`, `500ms`), a percentage (`50%`), or `end` |
 | `--count <n>` | `n` evenly spaced frames, first and last included (default `6`; clamps to every frame once) |
+| `--range <from>..<to>` | Spread `--count` over this span instead of the whole scene, both ends included; each end is any single selector (`7.5s..8.5s`, `50%..end`, `120..180`) |
 | `--sheet` | Write one contact sheet (`sheet.png`) instead of stills |
 | `--json <path\|->` | Write frame state as JSON to a file, or to stdout with `-` |
 | `--out <dir>` | Output directory (default `.motion/frames/<scene>/`) |
 | `--dpr <n>` | Supersampling factor for PNGs (default `1`) |
+| `--tile-width <px>` | Max width of each sheet tile; larger frames are downscaled, aspect kept (default `480`) |
 | `--studio <file>` | Studio entrypoint (default `./studio.ts`) |
 
-Pass `--at` or `--count`, not both. A time maps to frame
+With no scene, it lists every scene key with its length in frames and
+seconds (each scene is run once to measure it; nothing is rendered).
+
+Pass `--at` or `--count`/`--range`, not both. A time maps to frame
 `round(seconds × frameRate)`; frame 0 is the first rendered frame.
 
 - **Stills** (the default) are written as `<frame>.png` (e.g. `0015.png`),
   one per distinct frame; each path is printed with its frame and time.
 - **`--sheet`** lays the frames out row-major in one grid and prints
-  `tile=<i> frame=<f> time=<t>` for every tile.
+  `tile=<i> frame=<f> time=<t>` for every tile. Tiles are at most 480 px
+  wide by default, so a nine-tile sheet of a 1080p scene stays around
+  1450 px wide; raise `--tile-width` for detail.
 - **`--json`** writes, per sampled frame, its index, time, width, height,
   frame rate, camera, and every instance's data. With `--json` alone no PNGs
   are written and the GPU renderer is never loaded. With `-`, stdout carries
   only the JSON; other output goes to stderr. Combine with `--sheet` to get
   both.
 
-`%`, `end` and `--count` need the scene's length, so they fail for an
-infinite scene; indices and times still work. Out-of-range frames, bad
+Fonts and images come from the studio's `layers`, the same ones the
+studio previews with; stills and sheets need them, JSON does not.
+
+The scene ends where its video ends: once the body and every fork are
+done. `end` is that last frame; backgrounds and tails still running after
+`Scene.finish` are cut there, in the video and the player too, so no sheet
+shows them.
+
+`%`, `end` and `--count` without `--range` need the scene's length, so they
+fail for an infinite scene; indices, times and ranges of them still work. Out-of-range frames, bad
 selectors and unknown scene keys exit non-zero with a message naming the
 offender. See [Preview frames without a browser](/docs/guides/preview-frames)
 for the edit–check loop.

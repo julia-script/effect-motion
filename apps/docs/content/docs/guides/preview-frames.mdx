@@ -14,7 +14,7 @@ motion frames hello-world --count 9 --sheet
 ```
 
 ```
-.motion/frames/hello-world/sheet.png 3x3
+.motion/frames/hello-world/sheet.png 3x3 tile=480x270
 tile=0 frame=0 time=0s
 tile=1 frame=15 time=0.25s
 …
@@ -23,6 +23,17 @@ tile=1 frame=15 time=0.25s
 Open `sheet.png`: the tiles read left to right, top to bottom, and each
 printed line says which frame and time a tile shows. This is the quickest
 way to see whether motion starts, travels and ends where you meant.
+
+To look closer at one stretch, spread the tiles over a range instead of the
+whole scene:
+
+```bash
+motion frames hello-world --count 6 --range 1.5s..2.5s --sheet
+```
+
+Tiles are downscaled to 480 px wide; pass `--tile-width 960` when you need
+more detail. `motion frames` with no scene lists every scene with its
+length, which tells you what times are in range.
 
 ## Look at specific moments
 

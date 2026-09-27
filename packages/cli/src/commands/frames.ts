@@ -2,10 +2,13 @@ import * as Frames from "@effect-motion/export/Frames";
 import * as Console from "effect/Console";
 import * as Effect from "effect/Effect";
 import { FileSystem } from "effect/FileSystem";
+import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import { Path } from "effect/Path";
+import * as Stream from "effect/Stream";
 import { Argument, Command, Flag } from "effect/unstable/cli";
-import type * as Scene from "effect-motion/Scene";
+import type * as Resource from "effect-motion/Resource";
+import * as Scene from "effect-motion/Scene";
 import { MotionCliError } from "../MotionCliError.js";
 import { isStudioConfig, resolveEntries } from "../StudioConfig.js";
 import { makeViteLoader } from "../ViteLoader.js";
@@ -23,7 +26,7 @@ const framesArgs = {
 	scene: Argument.optional(
 		Argument.String("scene").pipe(
 			Argument.withDescription(
-				"Scene key from studio.ts (omit to list the available keys)",
+				"Scene key from studio.ts (omit to list the scenes and their lengths)",
 			),
 		),
 	),
@@ -38,6 +41,13 @@ const framesArgs = {
 		Flag.Int("count").pipe(
 			Flag.withDescription(
 				"Sample N evenly spaced frames, first and last included (default 6)",
+			),
+		),
+	),
+	range: Flag.optional(
+		Flag.String("range").pipe(
+			Flag.withDescription(
+				'Spread --count over FROM..TO instead of the whole scene, ends included — e.g. "7.5s..8.5s", "50%..end"',
 			),
 		),
 	),
@@ -70,17 +80,25 @@ const framesArgs = {
 			Flag.withDescription("Supersampling factor for PNGs (default 1)"),
 		),
 	),
+	tileWidth: Flag.Int("tile-width").pipe(
+		Flag.withDefault(480),
+		Flag.withDescription(
+			"Max width of each contact-sheet tile in pixels; larger frames are downscaled (default 480)",
+		),
+	),
 };
 
 type FramesInput = {
 	readonly scene: Option.Option<string>;
 	readonly at: Option.Option<string>;
 	readonly count: Option.Option<number>;
+	readonly range: Option.Option<string>;
 	readonly sheet: boolean;
 	readonly json: Option.Option<string>;
 	readonly out: Option.Option<string>;
 	readonly studio: string;
 	readonly dpr: Option.Option<number>;
+	readonly tileWidth: number;
 };
 
 const seconds = (time: number) => `${Number(time.toFixed(3))}s`;
@@ -121,10 +139,55 @@ const handler = (input: FramesInput) =>
 		});
 		const keys = entries.map((e) => e.key);
 
-		// ponytail: keys only — frame counts would run every scene; add when
-		// listing needs durations
+		// the loaded module is untyped: studioConfig checked in the user's
+		// studio.ts that `layers` covers every scene's loaders. Restate that
+		// pairing once, so rendering frames without the layers is a compile
+		// error here (the loaders are read from context at render time)
+		const layers = (
+			isStudioConfig(config) && config.layers !== undefined
+				? config.layers
+				: Layer.empty
+		) as Layer.Layer<Resource.LoaderBrand, unknown>;
+		const loaders = yield* Layer.build(layers).pipe(
+			Effect.mapError(renderFailed("could not build the studio's layers")),
+		);
+		// same settings the studio Player runs the entry with
+		const settingsOf = (entry: (typeof entries)[number]) => {
+			const { fps, settings } = entry.options;
+			return { ...(fps === undefined ? {} : { frameRate: fps }), ...settings };
+		};
+		const sceneOf = (entry: (typeof entries)[number]) =>
+			entry.scene as Scene.Scene<unknown, Resource.LoaderBrand>;
+
+		// ponytail: runs every scene to the end to measure it (no rendering);
+		// cache lengths if studios grow scenes slow enough to matter
 		if (Option.isNone(input.scene)) {
-			yield* Console.log(keys.join("\n"));
+			const width = Math.max(...keys.map((k) => k.length));
+			for (const entry of entries) {
+				const settings = settingsOf(entry);
+				const length =
+					settings.maxFrames === Number.POSITIVE_INFINITY
+						? Effect.succeed("infinite")
+						: Stream.runFold(
+								Scene.stream(sceneOf(entry), settings),
+								() => ({ frames: 0, frameRate: 0 }),
+								(acc, frame) => ({
+									frames: acc.frames + 1,
+									frameRate: frame.frameRate,
+								}),
+							).pipe(
+								Effect.map(
+									({ frames, frameRate }) =>
+										`${frames} frames  ${frameRate === 0 ? "0s" : seconds(frames / frameRate)}`,
+								),
+							);
+				const shown = yield* Effect.exit(length).pipe(
+					Effect.map((exit) =>
+						exit._tag === "Success" ? exit.value : "failed to run",
+					),
+				);
+				yield* Console.log(`${entry.key.padEnd(width)}  ${shown}`);
+			}
 			return;
 		}
 		const key = input.scene.value;
@@ -136,32 +199,35 @@ const handler = (input: FramesInput) =>
 			});
 		}
 
+		const invalid = (message: string) =>
+			new MotionCliError({ reason: "InvalidFrameSelection", message });
 		if (Option.isSome(input.at) && Option.isSome(input.count)) {
-			return yield* new MotionCliError({
-				reason: "InvalidFrameSelection",
-				message: "pass --at or --count, not both",
-			});
+			return yield* invalid("pass --at or --count, not both");
+		}
+		if (Option.isSome(input.at) && Option.isSome(input.range)) {
+			return yield* invalid(
+				"pass --at or --range, not both (--range spreads --count)",
+			);
+		}
+		if (input.tileWidth < 1) {
+			return yield* invalid(
+				`invalid --tile-width ${input.tileWidth}: must be at least 1`,
+			);
+		}
+		const range = Option.getOrUndefined(input.range);
+		if (range !== undefined && !/^\S+\.\.\S+$/.test(range.trim())) {
+			return yield* invalid(
+				`invalid --range "${range}": use FROM..TO, e.g. 7.5s..8.5s or 50%..end`,
+			);
 		}
 		const selection = Option.isSome(input.at)
 			? input.at.value
-			: `count ${Option.getOrElse(input.count, () => 6)}`;
+			: `count ${Option.getOrElse(input.count, () => 6)}${range === undefined ? "" : ` ${range.trim()}`}`;
 
-		// same settings the studio Player runs the entry with
-		const { fps, settings } = entry.options;
-		const layers =
-			isStudioConfig(config) && config.layers !== undefined
-				? config.layers
-				: undefined;
-		// the loaded module is untyped: the scene's loader coverage was
-		// checked in the user's studio.ts (studioConfig), and a scene needing
-		// more than `layers` dies with Effect's named missing-service defect
-		const sampling = Frames.sample(
-			entry.scene as Scene.Scene<unknown, never>,
+		const samples = yield* Frames.sample(
+			sceneOf(entry),
 			selection,
-			{ ...(fps === undefined ? {} : { frameRate: fps }), ...settings },
-		);
-		const samples = yield* (
-			layers === undefined ? sampling : Effect.provide(sampling, layers)
+			settingsOf(entry),
 		).pipe(
 			Effect.mapError((error) =>
 				error instanceof Frames.FrameSelectionError
@@ -215,15 +281,18 @@ const handler = (input: FramesInput) =>
 		if (input.sheet) {
 			const sheet = yield* Stills.contactSheet(
 				samples.map((s) => s.data),
-				{ dpr },
+				{ dpr, maxTileWidth: input.tileWidth },
 			).pipe(
+				Effect.provide(loaders),
 				Effect.mapError(
 					renderFailed(`could not render the sheet for "${key}"`),
 				),
 			);
 			const file = path.join(outDir, "sheet.png");
 			yield* write(file, sheet.png);
-			yield* report(`${shown(file)} ${sheet.columns}x${sheet.rows}`);
+			yield* report(
+				`${shown(file)} ${sheet.columns}x${sheet.rows} tile=${sheet.tileWidth}x${sheet.tileHeight}`,
+			);
 			for (const [tile, s] of samples.entries()) {
 				yield* report(`tile=${tile} frame=${s.frame} time=${seconds(s.time)}`);
 			}
@@ -238,6 +307,7 @@ const handler = (input: FramesInput) =>
 			unique.map((s) => s.data),
 			{ dpr },
 		).pipe(
+			Effect.provide(loaders),
 			Effect.mapError(renderFailed(`could not render stills for "${key}"`)),
 		);
 		for (const [i, s] of unique.entries()) {

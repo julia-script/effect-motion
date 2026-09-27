@@ -60,6 +60,13 @@ describe("parse", () => {
 			_tag: "Count",
 			count: 9,
 		});
+		expect(await Effect.runPromise(Frames.parse("count 3 500ms..end"))).toEqual(
+			{
+				_tag: "Count",
+				count: 3,
+				range: { from: { _tag: "Time", seconds: 0.5 }, to: { _tag: "End" } },
+			},
+		);
 	});
 
 	it.each([
@@ -95,6 +102,16 @@ describe("sample", () => {
 		expect(await frameIndices("count 100")).toEqual(all);
 	});
 
+	it("count N over a range spaces frames within it, ends included", async () => {
+		expect(await frameIndices("count 3 10..20")).toEqual([10, 15, 20]);
+		expect(await frameIndices("count 2 500ms..end")).toEqual([15, 30]);
+		expect(await frameIndices("count 50 0..3")).toEqual([0, 1, 2, 3]);
+		expect((await failure("count 3 20..10")).message).toContain(
+			"starts at frame 20",
+		);
+		expect((await failure("count 3 soon..end")).message).toContain('"soon"');
+	});
+
 	it("carries each frame's time and state", async () => {
 		const [first, last] = await Effect.runPromise(
 			Frames.sample(scene, "0,end", settings),
@@ -120,6 +137,9 @@ describe("sample", () => {
 	it("samples an infinite scene by index, but refuses to find its end", async () => {
 		const inf = { maxFrames: Number.POSITIVE_INFINITY };
 		expect(await frameIndices("0,100", infinite, inf)).toEqual([0, 100]);
+		expect(await frameIndices("count 3 0..1s", infinite, inf)).toEqual([
+			0, 15, 30,
+		]);
 		for (const sel of ["end", "50%", "count 3"]) {
 			expect((await failure(sel, infinite, inf)).message).toContain("infinite");
 		}
