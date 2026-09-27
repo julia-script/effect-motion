@@ -811,9 +811,27 @@ const currentBranch = <A, E = never>() =>
 		defaultValue: () => null,
 	});
 
+/**
+ * The un-finished forks of the innermost played scene, which it drains
+ * before ending. `drained` is set once the scene's body has returned: the
+ * last fork to finish calls it, finishing the played scene in the same
+ * step — so it ends on the same frame it would standalone.
+ */
+interface ForkOwner {
+	readonly forks: Set<Runner.BranchEntry>;
+	drained: (() => void) | null;
+}
+
+/** null = directly in the root, whose forks `run` drains */
+const CurrentForks = Context.Reference<ForkOwner | null>(
+	"motion/Scene/CurrentForks",
+	{ defaultValue: () => null },
+);
+
 const makeBranch = <A, E = never>(
 	runner: Runner.Runner["Service"],
 	kind: "fork" | "background" | "root",
+	owner: ForkOwner | null = null,
 ): BranchInternal<A, E> => {
 	const latch = Latch.makeUnsafe();
 	let finished = false;
@@ -838,6 +856,9 @@ const makeBranch = <A, E = never>(
 			// interrupted with the backgrounds at scene end
 			runner.forks.delete(entry);
 			runner.backgrounds.add(entry);
+			if (owner?.forks.delete(entry) && owner.forks.size === 0) {
+				owner.drained?.();
+			}
 		}
 		latch.openUnsafe();
 	};
@@ -894,7 +915,8 @@ const forkBranch = <A, E = never, R = never>(
 	kind: "fork" | "background",
 ) =>
 	Effect.gen(function* () {
-		const branch = makeBranch<A, E>(runner, kind);
+		const owner = yield* CurrentForks;
+		const branch = makeBranch<A, E>(runner, kind, owner);
 		if (kind === "fork") {
 			// counted before the fork (no gap); undone exactly once by the
 			// branch's finish/completion — synchronous with its party release
@@ -902,26 +924,27 @@ const forkBranch = <A, E = never, R = never>(
 		}
 		const fiber = yield* Phaser.run(
 			runner.phaser,
-			effect.pipe(
-				Effect.onExit((exit) =>
-					Effect.sync(() => {
-						// tail failures (post-finish) are deliberately dropped
-						if (
-							!branch.isFinished() &&
-							Exit.isFailure(exit) &&
-							!Cause.hasInterruptsOnly(exit.cause)
-						) {
-							runner.recordFailure(exit.cause);
-						}
-						branch.finishUnsafe();
-					}),
-				),
-				Effect.provideService(currentBranch<A, E>(), branch),
-			),
+			Effect.provideService(effect, currentBranch<A, E>(), branch),
+			// installed by Phaser.run before the fiber can be interrupted, so
+			// even a branch cut before its first step (its spawner ended in
+			// the same tick) finishes and stops holding the scene open
+			(exit) =>
+				Effect.sync(() => {
+					// tail failures (post-finish) are deliberately dropped
+					if (
+						!branch.isFinished() &&
+						Exit.isFailure(exit) &&
+						!Cause.hasInterruptsOnly(exit.cause)
+					) {
+						runner.recordFailure(exit.cause);
+					}
+					branch.finishUnsafe();
+				}),
 		);
 		branch.entry.fiber = fiber;
 		if (kind === "fork" && !branch.isFinished()) {
 			runner.forks.add(branch.entry);
+			owner?.forks.add(branch.entry);
 		} else {
 			// backgrounds — and forks that completed synchronously before we
 			// could track them (their demotion already targeted these sets)
@@ -1132,7 +1155,10 @@ export interface PlayHandle<A = void, E = never> extends BranchHandle<A, E> {
  * same seed — nesting never perturbs a child's randomness.
  *
  * Awaited like a {@link fork}: yield `handle.finished` to play children in
- * sequence, or skip the await to run them concurrently.
+ * sequence, or skip the await to run them concurrently. As standalone, the
+ * child's end includes the forks it spawned — an exit tail forked at the
+ * end of its body plays out before `finished` resolves. To overlap that
+ * exit with what follows, call {@link finish} before forking it.
  *
  * @param scene - The scene to nest.
  * @param options - `parent` to mount elsewhere, `seed` to vary this
@@ -1178,8 +1204,24 @@ export const play = <E, R>(
 			height: scene.height,
 			backgroundColor: scene.backgroundColor,
 		});
+		// A played scene is a scene: like a standalone run, its end waits for
+		// the forks it spawned (an exit tail forked at the end of the body
+		// plays out) instead of cutting them when the body returns. The last
+		// fork finishes this branch synchronously; the fiber ticks meanwhile
+		// to keep its phaser party arriving, then exits — cutting the child's
+		// backgrounds and finished tails, as a standalone scene end does.
+		const owner: ForkOwner = { forks: new Set(), drained: null };
+		const drain = Effect.gen(function* () {
+			const self = yield* currentBranch<void, never>();
+			owner.drained = () => self?.finishUnsafe();
+			while (owner.forks.size > 0) {
+				yield* tick;
+			}
+		});
 		const body = scene.runner.pipe(
 			Effect.scoped,
+			Effect.andThen(drain),
+			Effect.provideService(CurrentForks, owner),
 			// the child's instances mount under its bounds group
 			Effect.provideService(Runner.CurrentParent, group),
 			// fresh stream per evaluation: nested playback must equal a

@@ -115,6 +115,76 @@ describe("Scene.play", () => {
 		expect(finalizedAt).toBeLessThanOrEqual(31); // child end, not ~60
 	});
 
+	it("a fork at the child's end plays out; the child ends when it would standalone", async () => {
+		// the exit tail is forked as the body's LAST statement: the child's
+		// fiber returns in the same step the fork is spawned
+		const exiting = Scene.make(function* () {
+			const c = yield* Scene.instantiate("Circle", {
+				position: S.vec3({ x: 0 }),
+			});
+			yield* Motion.move(c, { x: 0 }, { x: 100 }, "0.5 seconds");
+			yield* Scene.fork(Motion.moveTo(c, { x: 200 }, "0.5 seconds"));
+		});
+		const standalone = await collectRaw(exiting);
+		const concurrent = await collectRaw(
+			Scene.make(function* () {
+				yield* Scene.play(exiting);
+			}),
+		);
+		expect(concurrent).toHaveLength(standalone.length);
+		expect(dataFrames(concurrent).at(-1)?.[0]?.position.x).toBe(200);
+
+		// awaited: the handle resolves after the exit, never cutting it
+		const awaited = await collectRaw(
+			Scene.make(function* () {
+				const h = yield* Scene.play(exiting);
+				yield* h.finished;
+			}),
+		);
+		expect(dataFrames(awaited).at(-1)?.[0]?.position.x).toBe(200);
+		// same "next frame boundary" as a child with no fork
+		const plain = Scene.make(function* () {
+			yield* Scene.sleep("1 second");
+		});
+		const plainAwaited = await collectRaw(
+			Scene.make(function* () {
+				const h = yield* Scene.play(plain);
+				yield* h.finished;
+			}),
+		);
+		expect(awaited).toHaveLength(plainAwaited.length);
+	});
+
+	it("a background spawned as the child's last statement does not hang", async () => {
+		// the background is cut before its fiber ever runs: its phaser slot
+		// must still be released
+		const child = (ambient: boolean) =>
+			Scene.make(function* () {
+				const c = yield* Scene.instantiate("Circle", {
+					position: S.vec3({ x: 0 }),
+				});
+				yield* Scene.sleep("200 millis");
+				if (ambient) {
+					yield* Scene.background(
+						Scene.repeat(
+							Motion.move(c, { x: 0 }, { x: 10 }, "100 millis"),
+							Schedule.forever,
+						),
+					);
+				}
+			});
+		const movie = (ambient: boolean) =>
+			Scene.make(function* () {
+				const h = yield* Scene.play(child(ambient));
+				yield* h.finished;
+				yield* Scene.sleep("100 millis");
+			});
+		// a background never extends the child
+		expect(await collectRaw(movie(true))).toHaveLength(
+			(await collectRaw(movie(false))).length,
+		);
+	});
+
 	it("seed stability: nested playback equals a standalone run with the movie's seed", async () => {
 		const rand = () =>
 			Scene.make(function* () {
