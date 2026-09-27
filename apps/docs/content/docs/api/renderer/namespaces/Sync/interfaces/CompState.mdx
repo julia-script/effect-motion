@@ -4,7 +4,7 @@ description: "A nested scene (from `Scene.play`) as the renderer holds it."
 ---
 # Interface: CompState
 
-Defined in: [packages/renderer/src/Sync.ts:223](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L223)
+Defined in: [packages/renderer/src/Sync.ts:220](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L220)
 
 A nested scene (from `Scene.play`) as the renderer holds it.
 
@@ -15,12 +15,14 @@ pasted onto a plane in the parent scene, like a precomp in After Effects.
 That is what lets a whole nested scene be moved, faded, or scaled as one
 object, and what makes its background and bounds mean something.
 
-The child renders through its own identity camera, so its content is
-flattened before compositing: depth inside a nested scene does not react
-to the outer camera.
+The child renders through its OWN active camera (`frame.comps[id].camera`),
+exactly as it would standalone — camera moves, depth, and parallax inside
+the child all show — and the result is clipped to the child's bounds. Its
+content is flattened before compositing: depth inside a nested scene does
+not react to the outer camera, which only places the comp's plane.
 
-ponytail: world-camera parallax inside a precomp would need a frustum-clip
-design if a scene ever wants it.
+ponytail: outer-camera parallax INSIDE a precomp (AE's collapse
+transformations) would need a frustum-clip design if a scene ever wants it.
 
 ## Properties
 
@@ -30,7 +32,7 @@ design if a scene ever wants it.
 height: number;
 ```
 
-Defined in: [packages/renderer/src/Sync.ts:236](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L236)
+Defined in: [packages/renderer/src/Sync.ts:233](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L233)
 
 ***
 
@@ -40,7 +42,7 @@ Defined in: [packages/renderer/src/Sync.ts:236](https://github.com/julia-script/
 readonly holder: Group;
 ```
 
-Defined in: [packages/renderer/src/Sync.ts:227](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L227)
+Defined in: [packages/renderer/src/Sync.ts:224](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L224)
 
 holder at the group's world anchor (in a scene tier); billboarded
 unless the group's composed transform rotates it
@@ -53,7 +55,7 @@ unless the group's composed transform rotates it
 hud: boolean;
 ```
 
-Defined in: [packages/renderer/src/Sync.ts:237](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L237)
+Defined in: [packages/renderer/src/Sync.ts:234](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L234)
 
 ***
 
@@ -63,7 +65,7 @@ Defined in: [packages/renderer/src/Sync.ts:237](https://github.com/julia-script/
 readonly material: MeshBasicNodeMaterial;
 ```
 
-Defined in: [packages/renderer/src/Sync.ts:232](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L232)
+Defined in: [packages/renderer/src/Sync.ts:229](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L229)
 
 ***
 
@@ -73,7 +75,7 @@ Defined in: [packages/renderer/src/Sync.ts:232](https://github.com/julia-script/
 readonly plane: Mesh;
 ```
 
-Defined in: [packages/renderer/src/Sync.ts:231](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L231)
+Defined in: [packages/renderer/src/Sync.ts:228](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L228)
 
 ***
 
@@ -83,7 +85,7 @@ Defined in: [packages/renderer/src/Sync.ts:231](https://github.com/julia-script/
 rotated: boolean;
 ```
 
-Defined in: [packages/renderer/src/Sync.ts:228](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L228)
+Defined in: [packages/renderer/src/Sync.ts:225](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L225)
 
 ***
 
@@ -93,7 +95,7 @@ Defined in: [packages/renderer/src/Sync.ts:228](https://github.com/julia-script/
 rt: RenderTarget | null;
 ```
 
-Defined in: [packages/renderer/src/Sync.ts:234](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L234)
+Defined in: [packages/renderer/src/Sync.ts:231](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L231)
 
 created/resized by the render path (GPU-side)
 
@@ -105,7 +107,7 @@ created/resized by the render path (GPU-side)
 readonly sync: Sync;
 ```
 
-Defined in: [packages/renderer/src/Sync.ts:224](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L224)
+Defined in: [packages/renderer/src/Sync.ts:221](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L221)
 
 ***
 
@@ -115,7 +117,7 @@ Defined in: [packages/renderer/src/Sync.ts:224](https://github.com/julia-script/
 readonly transformHolder: Group;
 ```
 
-Defined in: [packages/renderer/src/Sync.ts:230](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L230)
+Defined in: [packages/renderer/src/Sync.ts:227](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L227)
 
 carries the group's 2D affine about the bounds center
 
@@ -127,4 +129,4 @@ carries the group's 2D affine about the bounds center
 width: number;
 ```
 
-Defined in: [packages/renderer/src/Sync.ts:235](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L235)
+Defined in: [packages/renderer/src/Sync.ts:232](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L232)

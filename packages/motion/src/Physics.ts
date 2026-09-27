@@ -94,11 +94,11 @@ export const defaultSpring: Spring = {
  * damping }` space. Pass the NAME to any spring animator — it autocompletes.
  *
  * @remarks
- * Durations below are measured for a 100px move at 60fps and scale with
- * distance; a spring's length is emergent, so treat them as character, not
- * contract:
+ * Durations below are measured for a 100px move at 60fps and grow slightly
+ * with distance (a 1000px move takes up to ~20% longer); a spring's length
+ * is emergent, so treat them as character, not contract:
  *
- * - `strike` — hardest and fastest, launched with initial velocity (~0.7s).
+ * - `strike` — hardest and fastest, launched with initial velocity (~0.8s).
  * - `jump` — a quick launched hop (~1.4s).
  * - `smooth` — mild overshoot, unobtrusive (~2s).
  * - `beat` — a small, tight pulse; the least overshoot of the set (~2.6s).

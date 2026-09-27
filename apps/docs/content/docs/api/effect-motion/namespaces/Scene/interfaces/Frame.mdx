@@ -68,15 +68,15 @@ the active camera's view; the resting view when unused
 ### comps
 
 ```ts
-comps: Record<string, CompConfig>;
+comps: Record<string, CompFrame>;
 ```
 
 Defined in: [packages/motion/src/Scene.ts:349](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L349)
 
 Mounted scenes (`Scene.play`), keyed by the id of the group they mount
 under. Each is a render-to-texture boundary: the renderer draws the
-subtree to its own target at these bounds, under an identity camera,
-and composites the result. An id absent here is a plain group.
+subtree to its own target at these bounds, through the child's own
+camera, and composites the result. An id absent here is a plain group.
 
 ***
 

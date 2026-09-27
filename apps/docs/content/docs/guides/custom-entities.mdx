@@ -45,7 +45,8 @@ computed during playback, so the per-frame path should only render.
 A scene is a plain value, and a movie is a scene that plays other scenes.
 `Scene.play(scene)` runs one as a branch — sharing the movie's runner,
 frame rate, and frame cap — and returns a handle whose `finished` you can
-await. Combined with `Scene.finish` (which lets a scene end while a tail
+await. The played scene keeps its own camera and clips to its own bounds
+([Precomps, masks and HUD](/docs/guides/precomps)). Combined with `Scene.finish` (which lets a scene end while a tail
 keeps animating), transitions stay in the movie's hands:
 
 <Example name="crossfade" />

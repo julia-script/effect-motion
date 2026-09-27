@@ -76,7 +76,9 @@ counter of a letter needs separate shapes layered on top.
 
 Plan around these; none of them render today:
 
-- masks, track mattes and wipes;
+- masks other than rectangles, and track mattes. A scene mounted with
+  `Scene.play` clips to its own bounds, which covers rectangular masks and
+  reveals (see [Precomps, masks and HUD](/docs/guides/precomps));
 - per-letter text (a `Text` is one block; use one `Text` per word or line);
 - blur of any kind, including motion blur and depth of field;
 - lit or shaded 3D meshes;

@@ -1,0 +1,174 @@
+---
+title: Precomps, masks and HUD
+description: Build a movie from per-beat scenes that move their own camera, clip content to a rectangle, and pin labels and wipes to the screen
+---
+
+A scene mounted with `Scene.play` is a precomp: a whole scene nested in
+another as one layer. It keeps its own camera, clips to its own bounds and
+can carry its own screen-space `Hud`. This page shows the three uses that
+follow from that: per-beat precomps, rectangular masks, and screen-space
+labels and wipes.
+
+## Per-beat precomps with camera moves
+
+Write each beat as its own scene and let the movie play them in order.
+Inside a played scene, `Scene.camera` is that scene's camera, so a beat can
+push, orbit or crane exactly as it does standalone. The parent's camera
+only places the finished layer.
+
+```ts
+import * as Camera from "effect-motion/Camera";
+import * as Color from "effect-motion/Color";
+import * as Entity from "effect-motion/Entity";
+import * as Scene from "effect-motion/Scene";
+
+const push = Scene.make(
+	function* () {
+		for (const [i, z] of [600, 0, -600].entries()) {
+			yield* Scene.instantiate("Rect", {
+				position: Entity.vec3({ x: (i - 1) * 500, z }),
+				width: 400,
+				height: 400,
+				fillColor: Color.hex("#e8e8f0"),
+			});
+		}
+		const camera = yield* Scene.camera; // this beat's own camera
+		yield* camera.pipe(
+			Camera.lookAt({ x: 500, y: 0, z: -600 }), // the back card
+			Camera.dollyTo(1400, "1500 millis", "easeInOutExpo"),
+		);
+	},
+	{ width: 1920, height: 1080, backgroundColor: Color.hex("#2b1055") },
+);
+
+export const movie = Scene.make(
+	function* () {
+		for (const beat of [push /* , nextBeat, … */]) {
+			const handle = yield* Scene.play(beat);
+			yield* handle.finished;
+		}
+	},
+	{ width: 1920, height: 1080 },
+);
+```
+
+A beat that moves its camera never moves the movie's camera. To move the
+view over the whole movie, move the camera in the movie scene itself.
+
+`handle.group` is the layer: move, fade, scale or rotate it to transform the
+played scene as one flat object. Use `Scene.finish` inside a beat to let the
+movie cut to the next beat while the beat's exit keeps playing (see the
+crossfade example in [Custom entities](/docs/guides/custom-entities)).
+
+## Rectangular masks
+
+A played scene is clipped to its own `width` × `height`, centered where it is
+mounted. Make a scene smaller than the frame and its bounds become a
+rectangular mask. With no `backgroundColor` the scene is transparent, so
+only the clipping shows.
+
+A masked type reveal: each line rises into a window just as tall as the
+text, so it appears from an invisible edge.
+
+```ts
+import * as Color from "effect-motion/Color";
+import * as Entity from "effect-motion/Entity";
+import * as Motion from "effect-motion/Motion";
+import * as Scene from "effect-motion/Scene";
+
+const revealLine = (text: string) =>
+	Scene.make(
+		function* () {
+			const line = yield* Scene.instantiate("Text", {
+				position: Entity.vec3({ y: -240 }), // starts below the window
+				text,
+				fontSize: 180,
+				textAnchor: "middle",
+				baseline: "middle",
+				fillColor: Color.hex("#e8e8f0"),
+			});
+			yield* Motion.moveTo(line, { y: 0 }, "600 millis", "easeOutExpo");
+		},
+		{ width: 1600, height: 240 },
+	);
+
+export const title = Scene.make(
+	function* () {
+		const at = (y: number) =>
+			Scene.instantiate("Group", { position: Entity.vec3({ y }) });
+		yield* Scene.play(revealLine("MAKE IT"), { parent: yield* at(130) });
+		yield* Scene.sleep("150 millis");
+		const last = yield* Scene.play(revealLine("MOVE"), {
+			parent: yield* at(-130),
+		});
+		yield* last.finished;
+	},
+	{ width: 1920, height: 1080, backgroundColor: Color.hex("#16161d") },
+);
+```
+
+The `parent` option mounts the precomp under a group, which places the mask.
+Moving `handle.group` moves the mask and its content together.
+
+Only rectangles clip. Masks of other shapes and track mattes are not
+available yet.
+
+## Screen-space labels and wipes with `Hud`
+
+Children of a `Hud` are drawn in screen space: the camera does not move,
+rotate or zoom them, and they paint on top of the world. Coordinates are the
+frame's, with the origin at the center and one unit per pixel of the
+scene's `width` × `height`. Put the `Hud` at the top level of the scene, not
+inside a `Group`.
+
+A label that stays put during an orbit, then a full-frame wipe that covers
+the frame before the next beat:
+
+```ts
+import * as Camera from "effect-motion/Camera";
+import * as Color from "effect-motion/Color";
+import * as Entity from "effect-motion/Entity";
+import * as Motion from "effect-motion/Motion";
+import * as Scene from "effect-motion/Scene";
+
+export const depth = Scene.make(
+	function* () {
+		for (const x of [-600, 0, 600]) {
+			yield* Scene.instantiate("Rect", {
+				position: Entity.vec3({ x }),
+				width: 300,
+				height: 300,
+				fillColor: Color.hex("#e8e8f0"),
+			});
+		}
+		const label = yield* Scene.instantiate("Text", {
+			position: Entity.vec3({ x: -900, y: 460 }),
+			text: "01 — DEPTH",
+			fontSize: 48,
+			textAnchor: "start",
+			fillColor: Color.hex("#ff5a1f"),
+		});
+		const wipe = yield* Scene.instantiate("Rect", {
+			position: Entity.vec3({ x: -1920 }), // parked off the left edge
+			width: 1920,
+			height: 1080,
+			fillColor: Color.hex("#ff5a1f"),
+		});
+		yield* Scene.instantiate("Hud", { children: [label, wipe] });
+
+		const camera = yield* Scene.camera;
+		yield* camera.pipe(
+			Camera.lookAt({ x: 0, y: 0, z: 0 }),
+			Camera.orbitTo(0.6, "1500 millis", "easeInOutCubic"),
+		);
+		yield* Motion.moveTo(wipe, { x: 0 }, "400 millis", "easeInExpo");
+	},
+	{ width: 1920, height: 1080 },
+);
+```
+
+A `Hud` inside a played scene pins to that scene's frame: it stays still
+while the scene's own camera moves, and it is clipped with the rest of the
+scene.
+
+Next: check the result with [`motion frames`](/docs/guides/preview-frames).

@@ -36,15 +36,15 @@ export const scene = Scene.make(function* () {
 		position: Entity.vec3({ x: -660 }), radius: 80, fillColor: Color.hex("#7f5af0"),
 	});
 	yield* Motion.moveTo(dot, { x: 660 }, "1200 millis", "easeInOutCubic");
-	yield* Physics.springTo(dot, { y: 240 }, "bounce");
+	yield* Physics.springTo(dot, { y: 240 }, "smooth");
 });
 ```
 
 - **Animators come in pairs**: `verb(instance, from, to, …)` (explicit origin) and `verbTo(instance, to, …)` (origin read from the instance). Prefer the `To` form unless you need a fixed origin.
 - **Prefer semantic helpers** (`Motion.moveTo`, `Motion.fadeTo`, `Physics.springTo`) over raw `tweenTo` when one exists — they carry per-entity meaning (moving a Line translates both endpoints; moving a Group carries its subtree). Use `tweenTo` for fields without a trait (`radius`, `width`, custom fields).
-- **Springs have no duration** — length emerges from the simulation (presets in `Physics.springs`). Springy motion on raw fields uses elastic/bounce *easings*, not physics.
+- **Springs have no duration** — length emerges from the simulation (presets in `Physics.springs`). Springy motion on raw fields uses elastic/bounce *easings*, not physics. Preset settle times at 60 fps (100 px → 1000 px moves; longer moves take a little longer): `strike` ~0.8 s, `jump` ~1.5 s, `smooth` ~2–2.5 s, `beat` ~2.5–3 s, `swing` ~3.5–4 s, `plop` ~7–8 s, `bounce` ~37–44 s. A spring runs until it settles, so `bounce` or `plop` in a sequence stretches the whole scene; check the length with `motion frames`.
 - **Every animator is a dual**: `Motion.tweenTo(dot, …)` or `dot.pipe(Motion.tweenTo(…))` — both are idiomatic.
-- **Composition**: sequence by yielding one animation after another; `Scene.all([...])` runs them together; `Scene.chain`/`Scene.stagger` sequence with schedules; `Scene.fork` starts a branch you can join later; `Scene.play(otherScene)` mounts a whole scene (await `handle.finished`). `Scene.finish` marks a scene's semantic end — anything after it is a tail that keeps playing without being waited on.
+- **Composition**: sequence by yielding one animation after another; `Scene.all([...])` runs them together; `Scene.chain`/`Scene.stagger` sequence with schedules; `Scene.fork` starts a branch you can join later; `Scene.play(otherScene)` mounts a whole scene (await `handle.finished`). A played scene keeps its own camera: camera moves inside a beat render exactly as they do standalone, so per-beat precomps can each move their camera. `Scene.finish` marks a scene's semantic end — anything after it is a tail that keeps playing without being waited on.
 
 ## Making it look good
 
@@ -62,7 +62,7 @@ Scene space: x right, y up, +z toward the camera, origin at frame center. Angles
 | Effect | How |
 |---|---|
 | Camera push / pull | `camera.pipe(Camera.lookAt(point), Camera.dollyTo(distance, dur, ease))` — distance to the point of interest (default ≈ 2667 at 1920 wide) |
-| Orbit / swing | `Camera.orbitTo(radians, dur, ease)` around the point of interest |
+| Orbit / swing | `Camera.orbitTo(radians, dur, ease)` around the point of interest (set one with `Camera.lookAt` first) |
 | High angle / crane | `Scene.update(camera, …)` its `position` (e.g. `y: 1400`), then `lookAt` |
 | Parallax | layers at different `z` + any camera move |
 | Tilted planes, card flips | `rotation: Entity.vec3({ y: 0.6 })` on any shape, or `Motion.rotateTo(card, { y: Math.PI }, dur, ease)`. At rotation 0 a shape faces the camera; any other rotation makes it a real plane in 3D |
@@ -72,9 +72,11 @@ Scene space: x right, y up, +z toward the camera, origin at frame center. Angles
 | Fade or move a whole section | put it in a `Group` and animate the group: `fadeTo`, `moveTo`, `scaleTo`, `rotateTo` all carry the children |
 | Color field per beat | a huge `Rect` far back (`z: -3000`, 12000×7000) + `Motion.tweenTo(field, { fillColor }, …)` |
 | Type reveals | one `Text` per word or line; stagger `moveTo` + `fadeTo`, or pop `fontSize` |
-| Precomps | build a section as its own scene; mount it with `Scene.play(section)` |
+| Precomps | build a section as its own scene; mount it with `Scene.play(section)`. Each precomp has its own camera (`Scene.camera` inside it) and clips to its own `width`×`height`; move, fade or scale `handle.group` to transform it as one layer |
+| Rectangular masks, masked type reveals | a precomp smaller than the frame is a rectangular mask: content outside its bounds is clipped. Slide text into a text-high precomp (recipe below) |
+| Labels, lower thirds, wipes | children of a `Hud` are in screen space: the camera doesn't move them and they paint on top. A full-frame `Rect` in a `Hud` sliding across is a wipe (recipe below) |
 
-**Not available yet — design around it:** masks, track mattes and wipes; per-letter text (a `Text` is one block); blur of any kind (motion blur, depth of field — the camera's `aperture` does nothing); lit or shaded 3D meshes; curves and holes in `Path` (straight `M`/`L`/`Z` segments — sample a curve into points yourself; each closed subpath fills on its own); images other than PNG/JPEG in `motion frames`/`motion render`. Overlaps: nearer `z` wins; at equal `z` the later-instantiated entity paints on top.
+**Not available yet — design around it:** masks other than rectangles (only a precomp's bounds clip) and track mattes; per-letter text (a `Text` is one block); blur of any kind (motion blur, depth of field — the camera's `aperture` does nothing); lit or shaded 3D meshes; curves and holes in `Path` (straight `M`/`L`/`Z` segments — sample a curve into points yourself; each closed subpath fills on its own); images other than PNG/JPEG in `motion frames`/`motion render`. Overlaps: nearer `z` wins; at equal `z` the later-instantiated entity paints on top.
 
 Recipe — camera push through z-layered cards:
 
@@ -98,6 +100,46 @@ yield* Scene.all([
 	Motion.tweenTo(field, { fillColor: Color.hex("#2b1055") }, "2400 millis"),
 ]);
 ```
+
+Recipe — masked type reveal (a precomp's bounds are the mask):
+
+```ts
+// a 1600×240 window; the text starts below it and rises in, clipped at the edge
+const revealLine = (text: string) =>
+	Scene.make(function* () {
+		const line = yield* Scene.instantiate("Text", {
+			position: Entity.vec3({ y: -240 }), text, fontSize: 180,
+			textAnchor: "middle", baseline: "middle", fillColor: Color.hex("#e8e8f0"),
+		});
+		yield* Motion.moveTo(line, { y: 0 }, "600 millis", "easeOutExpo");
+	}, { width: 1600, height: 240 }); // no backgroundColor: transparent, only the clip shows
+
+export const scene = Scene.make(function* () {
+	const at = (y: number) => Scene.instantiate("Group", { position: Entity.vec3({ y }) });
+	yield* Scene.play(revealLine("MAKE IT"), { parent: yield* at(130) });
+	yield* Scene.sleep("150 millis");
+	const last = yield* Scene.play(revealLine("MOVE"), { parent: yield* at(-130) });
+	yield* last.finished;
+});
+```
+
+Recipe — screen-space label and wipe with `Hud`:
+
+```ts
+const label = yield* Scene.instantiate("Text", {
+	position: Entity.vec3({ x: -900, y: 460 }), text: "01 — DEPTH", fontSize: 48,
+	textAnchor: "start", fillColor: Color.hex("#ff5a1f"),
+});
+const wipe = yield* Scene.instantiate("Rect", { // parked just off the left edge
+	position: Entity.vec3({ x: -1920 }), width: 1920, height: 1080, fillColor: Color.hex("#ff5a1f"),
+});
+yield* Scene.instantiate("Hud", { children: [label, wipe] }); // top level of the scene, not inside a Group
+const camera = yield* Scene.camera;
+yield* camera.pipe(Camera.lookAt({ x: 0, y: 0, z: 0 }), Camera.orbitTo(0.6, "1500 millis", "easeInOutCubic")); // label stays put
+yield* Motion.moveTo(wipe, { x: 0 }, "400 millis", "easeInExpo"); // cover the frame, then cut to the next beat
+```
+
+Hud coordinates are the frame's: origin at the center, 1 unit = 1 px of the scene's `width`×`height`, whatever the camera does. A `Hud` inside a precomp pins to that precomp's frame.
 
 Recipe — staggered dot floor in 3D (`import { Schedule } from "effect"`):
 

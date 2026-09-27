@@ -6,6 +6,7 @@
 		"custom-fonts",
 		"images",
 		"renderer-limits",
+		"precomps",
 		"custom-entities",
 		"cli",
 		"preview-frames"

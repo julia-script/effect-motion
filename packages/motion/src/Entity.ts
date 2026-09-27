@@ -236,6 +236,10 @@ export const Group = Schema.TaggedStruct("Group", {
  * the entity's own coordinate space, world for world content and screen for
  * HUD content. A Hud must be a top-level child of the root (or of another
  * Hud); nesting one inside world content is a loud defect.
+ *
+ * Coordinates are the frame's: origin at the center, one unit per pixel of
+ * the scene's width and height. Inside a scene mounted with `Scene.play`, a
+ * Hud pins to that scene's frame and is clipped with it.
  */
 export const Hud = Schema.TaggedStruct("Hud", {
 	...paintableMixin,

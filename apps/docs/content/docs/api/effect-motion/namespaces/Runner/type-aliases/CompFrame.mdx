@@ -1,0 +1,25 @@
+---
+title: "CompFrame"
+description: "type CompFrame = CompConfig & {"
+---
+# Type Alias: CompFrame
+
+```ts
+type CompFrame = CompConfig & {
+  camera: Projection.CameraView & Projection.PointOfInterest;
+};
+```
+
+Defined in: [packages/motion/src/Runner.ts:101](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Runner.ts#L101)
+
+A mounted scene as a frame carries it: its bounds plus the view of the
+child's OWN active camera, resolved this frame. The renderer draws the
+comp through it, so a child renders exactly as it does standalone.
+
+## Type Declaration
+
+### camera
+
+```ts
+readonly camera: Projection.CameraView & Projection.PointOfInterest;
+```
