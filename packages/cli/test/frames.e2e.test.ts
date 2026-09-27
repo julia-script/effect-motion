@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -24,6 +25,15 @@ const runCli = async (args: ReadonlyArray<string>) => {
 	vi.spyOn(console, "log").mockImplementation((line: unknown) => {
 		lines.push(String(line));
 	});
+	// `--json -` writes straight to stdout
+	vi.spyOn(process.stdout, "write").mockImplementation(
+		(chunk: unknown, ...rest: Array<unknown>) => {
+			lines.push(String(chunk).trimEnd());
+			const done = rest.find((arg) => typeof arg === "function");
+			if (typeof done === "function") done();
+			return true;
+		},
+	);
 	await Effect.runPromise(
 		Command.runWith(rootCommand, { version: CLI_VERSION })([
 			"frames",
@@ -145,6 +155,31 @@ describe("motion frames (e2e)", () => {
 		const [state] = JSON.parse(printed);
 		expect(state).toMatchObject({ frame: 4, width: 120, height: 80 });
 		expect(Object.keys(state.instances).length).toBeGreaterThan(0);
+	});
+
+	it("pipes a JSON payload past 64 KB whole under bun", () => {
+		const bin = join(dirname(studio), "..", "..", "..", "src", "bin.ts");
+		const printed = execFileSync(
+			"bun",
+			[
+				bin,
+				"frames",
+				"many",
+				"--at",
+				"0",
+				"--json",
+				"-",
+				"--studio",
+				join(dirname(studio), "big.studio.ts"),
+			],
+			{
+				encoding: "utf8",
+				maxBuffer: 16 * 1024 * 1024,
+				stdio: ["ignore", "pipe", "ignore"],
+			},
+		);
+		expect(printed.length).toBeGreaterThan(65_536);
+		expect(Object.keys(JSON.parse(printed)[0].instances)).toHaveLength(501);
 	});
 
 	it("writes JSON to a file without rendering stills", async () => {

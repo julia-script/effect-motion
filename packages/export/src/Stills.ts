@@ -137,11 +137,14 @@ export const contactSheet = <Resources = never>(
 						),
 			);
 			const { width: tileWidth, height: tileHeight } = images[0] ?? first;
+			// opaque, like the rendered tiles: a transparent background renders
+			// black, and see-through filler shows as white in image viewers
+			const background = { ...Color.bytes(first.backgroundColor), a: 255 };
 			const grid = tile(
 				images.map((i) => i.rgba),
 				tileWidth,
 				tileHeight,
-				{ ...options, background: Color.bytes(first.backgroundColor) },
+				{ ...options, background },
 			);
 			return {
 				png: NodeRenderer.encodePng(grid.rgba, grid.width, grid.height),

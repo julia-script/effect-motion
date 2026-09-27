@@ -261,7 +261,11 @@ const handler = (input: FramesInput) =>
 		if (Option.isSome(input.json)) {
 			const json = `${JSON.stringify(Frames.toJson(samples), null, 2)}\n`;
 			if (jsonToStdout) {
-				yield* Console.log(json.trimEnd());
+				// resume once the chunk is handed off: under bun a piped
+				// console.log is cut at 64 KB when the process exits after it
+				yield* Effect.callback<void>((resume) => {
+					process.stdout.write(json, () => resume(Effect.void));
+				});
 			} else {
 				const file = path.resolve(cwd, input.json.value);
 				yield* write(file, json);
