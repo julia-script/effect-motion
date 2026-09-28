@@ -21,6 +21,9 @@ import { scene as gridWarp } from "./grid-warp.scene";
 import { scene as helloScene } from "./hello-scene.scene";
 import { scene as images, renderLayers as imagesLayers } from "./images.scene";
 import { scene as instanceTree } from "./instance-tree.scene";
+import { scene as maskInverseCutout } from "./mask-inverse-cutout.scene";
+import { scene as maskPartialAlpha } from "./mask-partial-alpha.scene";
+import { scene as maskTextReveal } from "./mask-text-reveal.scene";
 import { scene as minSeeker } from "./min-seeker.scene";
 import { scene as rackFocus } from "./rack-focus.scene";
 import { scene as riemannRects } from "./riemann-rects.scene";
@@ -71,6 +74,9 @@ export const examples: Record<string, PlayerProps["scene"] | ExampleEntry> = {
 		scene: images,
 		renderLayers: imagesLayers as Layer.Layer<never, unknown, never>,
 	},
+	"mask-text-reveal": maskTextReveal,
+	"mask-inverse-cutout": maskInverseCutout,
+	"mask-partial-alpha": maskPartialAlpha,
 	// examples gallery
 	"sine-from-circle": sineFromCircle,
 	"function-plot": functionPlot,

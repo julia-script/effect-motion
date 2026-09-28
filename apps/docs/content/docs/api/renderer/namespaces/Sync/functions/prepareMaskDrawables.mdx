@@ -1,0 +1,24 @@
+---
+title: "prepareMaskDrawables"
+description: "function prepareMaskDrawables(sync): void;"
+---
+# Function: prepareMaskDrawables()
+
+```ts
+function prepareMaskDrawables(sync): void;
+```
+
+Defined in: [packages/renderer/src/Sync.ts:406](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L406)
+
+Bind the current mask factors at each native drawable. Glyph meshes arrive
+after async layout, so this runs after `whenReady`, just before drawing.
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `sync` | [`Sync`](../interfaces/Sync.mdx) |
+
+## Returns
+
+`void`

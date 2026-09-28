@@ -4,7 +4,7 @@ description: "Handle to a branch of animation (a fork, background, or played sce
 ---
 # Interface: BranchHandle\<A, E\>
 
-Defined in: [packages/motion/src/Scene.ts:833](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L833)
+Defined in: [packages/motion/src/Scene.ts:889](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L889)
 
 Handle to a branch of animation (a fork, background, or played scene).
 `finished` resolves at the branch's SEMANTIC end — `Scene.finish` or
@@ -32,7 +32,7 @@ branch's physical execution — interrupt it to bound a tail.
 readonly fiber: Fiber<A, E>;
 ```
 
-Defined in: [packages/motion/src/Scene.ts:835](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L835)
+Defined in: [packages/motion/src/Scene.ts:891](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L891)
 
 ***
 
@@ -42,4 +42,4 @@ Defined in: [packages/motion/src/Scene.ts:835](https://github.com/julia-script/e
 readonly finished: Effect<void, never, Runner>;
 ```
 
-Defined in: [packages/motion/src/Scene.ts:834](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L834)
+Defined in: [packages/motion/src/Scene.ts:890](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L890)

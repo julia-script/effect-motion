@@ -5,12 +5,12 @@ description: "const all: <Eff>(...args) => Effect<void, Eff extends Effect<any, 
 # Variable: all
 
 ```ts
-const all: <Eff>(...args) => Effect<void, Eff extends Effect<any, E, any> ? E : never, 
+const all: <Eff>(...args) => Effect<void, Eff extends Effect<any, E, any> ? E : never,
   | Runner
 | Exclude<Eff extends Effect<any, any, R> ? R : never, Phaser>>;
 ```
 
-Defined in: [packages/motion/src/Scene.ts:1338](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L1338)
+Defined in: [packages/motion/src/Scene.ts:1394](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L1394)
 
 Run animations simultaneously, and resolve when the last one finishes.
 
@@ -28,7 +28,7 @@ Run animations simultaneously, and resolve when the last one finishes.
 
 ## Returns
 
-`Effect`\<`void`, `Eff` *extends* `Effect`\<`any`, `E`, `any`\> ? `E` : `never`, 
+`Effect`\<`void`, `Eff` *extends* `Effect`\<`any`, `E`, `any`\> ? `E` : `never`,
   \| [`Runner`](../../Runner/classes/Runner.mdx)
   \| `Exclude`\<`Eff` *extends* `Effect`\<`any`, `any`, `R`\> ? `R` : `never`, [`Phaser`](../../Phaser/classes/Phaser.mdx)\>\>
 

@@ -1,5 +1,21 @@
 # @effect-motion/export
 
+## 0.7.0
+
+### Minor Changes
+
+- Headless frame sampling: `Frames` selects frames by index, time, percentage or `end` (or `count N`, optionally over a range) and serializes their state as JSON; `Stills` renders frames to PNG stills or a contact sheet. Both are also available as the `@effect-motion/export/Frames` and `@effect-motion/export/Stills` subpaths, so JSON sampling does not load the GPU renderer.
+
+### Patch Changes
+
+- 67c80ed: `motion frames` now says why a scene failed: the scene list shows `failed to run: <cause>` (e.g. `TypeError: iter.next is not a function` for an `Effect.fn` passed to `Scene.make`), and sampling or rendering errors end with the same one-line cause, including defects that used to escape as a raw trace. `--verbose` adds the full cause chain with stacks. `@effect-motion/export/Video` is now a deep-import subpath next to `/Frames` and `/Stills`, and the API reference gains the `@effect-motion/export` pages.
+- Updated dependencies
+- Updated dependencies [4c28ca6]
+- Updated dependencies
+  - effect-motion@0.7.0
+  - @effect-motion/renderer@0.7.0
+  - @effect-motion/three@0.7.0
+
 ## 0.6.0
 
 ### Patch Changes

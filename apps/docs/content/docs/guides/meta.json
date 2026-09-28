@@ -7,6 +7,7 @@
 		"images",
 		"audio",
 		"camera-depth-of-field",
+		"masks",
 		"renderer-limits",
 		"precomps",
 		"custom-entities",

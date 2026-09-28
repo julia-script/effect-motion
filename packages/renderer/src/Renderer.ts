@@ -65,6 +65,7 @@ export const renderCompTargets = Effect.fnUntraced(function* (
 ): Effect.fn.Return<void, ThreeException> {
 	for (const comp of sync.comps.values()) {
 		yield* renderCompTargets(renderer, comp.sync, pixelRatio);
+		yield* renderMaskTargets(renderer, comp.sync, pixelRatio);
 		const pw = Math.max(1, Math.round(comp.width * pixelRatio));
 		const ph = Math.max(1, Math.round(comp.height * pixelRatio));
 		if (
@@ -112,6 +113,53 @@ export const renderCompTargets = Effect.fnUntraced(function* (
 			),
 		);
 	}
+});
+
+/** Draw every source alpha field before its composition's ordinary pass. */
+export const renderMaskTargets = Effect.fnUntraced(function* (
+	renderer: Gpu.Renderer,
+	sync: Sync.Sync,
+	pixelRatio: number,
+): Effect.fn.Return<void, ThreeException> {
+	Sync.prepareMaskDrawables(sync);
+	const plan = sync.maskPlan;
+	if (plan === null) return;
+	const domainId = sync.domainId || [...plan.nodes.values()][0]?.id;
+	const targets = plan.order.filter(
+		(attachment) => attachment.domainId === domainId,
+	);
+	const draw = Effect.fnUntraced(function* () {
+		for (const attachment of targets) {
+			const target = sync.maskTargets.get(attachment.targetId);
+			if (target === undefined) continue;
+			const width = Math.max(1, Math.round(sync.width * pixelRatio));
+			const height = Math.max(1, Math.round(sync.height * pixelRatio));
+			if (
+				RenderTarget.width(target.rt) !== width ||
+				RenderTarget.height(target.rt) !== height
+			) {
+				RenderTarget.setSize(target.rt, width, height);
+			}
+			const scene = attachment.tier === "hud" ? sync.hudScene : sync.scene;
+			const camera = attachment.tier === "hud" ? sync.hudCamera : sync.camera;
+			const previous = Gpu.getRenderTarget(renderer);
+			const background = ThreeScene.getBackground(scene);
+			Sync.setMaskPass(sync, attachment.sourceId);
+			ThreeScene.setBackground(scene, null);
+			Gpu.setRenderTarget(renderer, target.rt);
+			yield* Gpu.render(renderer, scene, camera).pipe(
+				Effect.ensuring(
+					Effect.sync(() => {
+						Gpu.setRenderTarget(renderer, previous);
+						ThreeScene.setBackground(scene, background);
+					}),
+				),
+			);
+		}
+	});
+	yield* draw().pipe(
+		Effect.ensuring(Effect.sync(() => Sync.setMaskPass(sync, null))),
+	);
 });
 
 /**
@@ -391,6 +439,14 @@ export const render = (
 				renderer.gpu,
 				renderer.sync,
 				Gpu.getPixelRatio(renderer.gpu),
+			).pipe(
+				Effect.andThen(
+					renderMaskTargets(
+						renderer.gpu,
+						renderer.sync,
+						Gpu.getPixelRatio(renderer.gpu),
+					),
+				),
 			),
 		),
 		Effect.flatMap(() => {

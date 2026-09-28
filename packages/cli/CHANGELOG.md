@@ -1,5 +1,21 @@
 # @effect-motion/cli
 
+## 0.7.0
+
+### Minor Changes
+
+- `motion frames`: sample a studio scene headlessly as PNG stills, a contact sheet (`--sheet`) or JSON state (`--json`, `-` for stdout), with `--at`, `--count`, `--range`, `--dpr` and `--tile-width`; with no scene it lists the scenes and their lengths. Also: the studio no longer boots blank (the HarfBuzz font package stays out of Vite pre-bundling), and headless renders release the GPU device so scripts exit.
+
+### Patch Changes
+
+- 67c80ed: `motion frames` now says why a scene failed: the scene list shows `failed to run: <cause>` (e.g. `TypeError: iter.next is not a function` for an `Effect.fn` passed to `Scene.make`), and sampling or rendering errors end with the same one-line cause, including defects that used to escape as a raw trace. `--verbose` adds the full cause chain with stacks. `@effect-motion/export/Video` is now a deep-import subpath next to `/Frames` and `/Stills`, and the API reference gains the `@effect-motion/export` pages.
+- Updated dependencies [67c80ed]
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies [4c28ca6]
+  - @effect-motion/export@0.7.0
+  - effect-motion@0.7.0
+
 ## 0.6.0
 
 ### Patch Changes

@@ -789,15 +789,15 @@ const silent: EntityRenderer<Entity.EntityByTag<"Audio">> = {
  * this map by tag — rather than editing this manifest.
  */
 export const builtinRenderers: EntityRenderers = {
-	Circle: circle,
-	Ellipse: ellipse,
-	Rect: rect,
-	Line: line,
-	Path: path,
-	Text: text,
+	Circle: { ...circle, supportsMaskFragments: true },
+	Ellipse: { ...ellipse, supportsMaskFragments: true },
+	Rect: { ...rect, supportsMaskFragments: true },
+	Line: { ...line, supportsMaskFragments: true },
+	Path: { ...path, supportsMaskFragments: true },
+	Text: { ...text, supportsMaskFragments: true },
 	Group: container("Group"),
 	Hud: container("Hud"),
-	Image: image,
+	Image: { ...image, supportsMaskFragments: true },
 	// sound never paints: an empty object keeps the retained walk uniform;
 	// players and exporters read Audio entries from the frame instead
 	Audio: silent,

@@ -5,7 +5,7 @@ description: "type Target<Tag> ="
 # Type Alias: Target\<Tag\>
 
 ```ts
-type Target<Tag> = 
+type Target<Tag> =
   | Partial<InterpolableOrInterpolator<EntityByTag<Tag>>>
   | ((data) => Partial<InterpolableOrInterpolator<EntityByTag<Tag>>>);
 ```

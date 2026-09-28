@@ -61,7 +61,7 @@ const renderer = yield* NodeRenderer.make({
 readonly build: (leaf, ctx) => Retained;
 ```
 
-Defined in: [packages/renderer/src/EntityRenderer.ts:207](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L207)
+Defined in: [packages/renderer/src/EntityRenderer.ts:209](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L209)
 
 Create the three object for a newly appeared instance.
 
@@ -83,13 +83,25 @@ must be released by the returned [Retained](./Retained.mdx)'s `dispose`.
 
 ***
 
+### supportsMaskFragments?
+
+```ts
+readonly optional supportsMaskFragments?: true;
+```
+
+Defined in: [packages/renderer/src/EntityRenderer.ts:201](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L201)
+
+Fragment-level mask support; absent custom renderers fail when masked.
+
+***
+
 ### update
 
 ```ts
 readonly update: (retained, leaf, ctx) => void;
 ```
 
-Defined in: [packages/renderer/src/EntityRenderer.ts:216](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L216)
+Defined in: [packages/renderer/src/EntityRenderer.ts:218](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L218)
 
 Mutate an existing object because its data or world position changed.
 

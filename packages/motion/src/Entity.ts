@@ -384,6 +384,9 @@ export type Entity = (typeof EntityMap)[keyof typeof EntityMap]["Type"];
  */
 export type EntityTag = Entity["_tag"];
 
+/** Drawable kinds that can be a mask source or target. */
+export type MaskableTag = Exclude<EntityTag, "Camera" | "Audio">;
+
 /** The data type of one entity kind, selected by its tag. */
 export type EntityByTag<Tag extends EntityTag> = Extract<Entity, { _tag: Tag }>;
 

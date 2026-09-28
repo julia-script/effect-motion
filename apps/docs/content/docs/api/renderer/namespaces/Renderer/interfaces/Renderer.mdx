@@ -4,7 +4,7 @@ description: "A live browser renderer."
 ---
 # Interface: Renderer
 
-Defined in: [packages/renderer/src/Renderer.ts:279](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Renderer.ts#L279)
+Defined in: [packages/renderer/src/Renderer.ts:327](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Renderer.ts#L327)
 
 A live browser renderer.
 
@@ -20,7 +20,7 @@ how long the last sync took.
 ### dofChain
 
 ```ts
-dofChain: 
+dofChain:
   | {
   node: DepthAwareDofNode;
   pipeline: RenderPipeline;
@@ -29,7 +29,7 @@ dofChain:
   | null;
 ```
 
-Defined in: [packages/renderer/src/Renderer.ts:292](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Renderer.ts#L292)
+Defined in: [packages/renderer/src/Renderer.ts:340](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Renderer.ts#L340)
 
 internal: the DoF pipeline, built the first time a frame asks for it
 
@@ -77,7 +77,7 @@ the same chain with the HUD composited over the DoF output
 readonly dofQuality: DofQuality;
 ```
 
-Defined in: [packages/renderer/src/Renderer.ts:290](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Renderer.ts#L290)
+Defined in: [packages/renderer/src/Renderer.ts:338](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Renderer.ts#L338)
 
 Depth-of-field sample quality, from [MakeOptions.dofQuality](./MakeOptions.mdx#dofquality).
 
@@ -89,7 +89,7 @@ Depth-of-field sample quality, from [MakeOptions.dofQuality](./MakeOptions.mdx#d
 readonly gpu: Renderer;
 ```
 
-Defined in: [packages/renderer/src/Renderer.ts:281](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Renderer.ts#L281)
+Defined in: [packages/renderer/src/Renderer.ts:329](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Renderer.ts#L329)
 
 ***
 
@@ -99,7 +99,7 @@ Defined in: [packages/renderer/src/Renderer.ts:281](https://github.com/julia-scr
 readonly scope: Scope;
 ```
 
-Defined in: [packages/renderer/src/Renderer.ts:288](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Renderer.ts#L288)
+Defined in: [packages/renderer/src/Renderer.ts:336](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Renderer.ts#L336)
 
 The scope this renderer was acquired in. Image decodes fork into it,
 so they are interrupted with the renderer rather than outliving it —
@@ -114,4 +114,4 @@ their own.
 readonly sync: Sync;
 ```
 
-Defined in: [packages/renderer/src/Renderer.ts:280](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Renderer.ts#L280)
+Defined in: [packages/renderer/src/Renderer.ts:328](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Renderer.ts#L328)
