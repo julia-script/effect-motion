@@ -1,5 +1,7 @@
-import { writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { NodeRuntime, NodeServices } from "@effect/platform-node";
+import * as Effect from "effect/Effect";
+import { FileSystem } from "effect/FileSystem";
 
 // Synthesizes the audio example's five WAVs from oscillators and seeded
 // noise — no sampled or downloaded material. Regenerate from the repo root:
@@ -185,15 +187,21 @@ const wav = (samples: Float32Array, peakDb: number) => {
 	return data;
 };
 
-for (const [name, samples, peakDb] of [
+const tracks = [
 	["groove", groove(), -2],
 	["drift", drift(), -8],
 	["riser", riser(), -6],
 	["hit", hit(), -1.5],
 	["tick", tick(), -9],
-] as const) {
-	writeFileSync(
-		fileURLToPath(new URL(`../public/audio-${name}.wav`, import.meta.url)),
-		wav(samples, peakDb),
-	);
-}
+] as const;
+
+const program = Effect.flatMap(FileSystem, (fs) =>
+	Effect.forEach(tracks, ([name, samples, peakDb]) =>
+		fs.writeFile(
+			fileURLToPath(new URL(`../public/audio-${name}.wav`, import.meta.url)),
+			wav(samples, peakDb),
+		),
+	),
+);
+
+program.pipe(Effect.provide(NodeServices.layer), NodeRuntime.runMain);

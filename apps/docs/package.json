@@ -23,6 +23,7 @@
 		"react-dom": "^19.2.7"
 	},
 	"devDependencies": {
+		"@effect/platform-node": "4.0.0-rc.115",
 		"@tailwindcss/postcss": "^4.3.2",
 		"@types/mdx": "^2.0.14",
 		"@types/node": "^26.1.1",
