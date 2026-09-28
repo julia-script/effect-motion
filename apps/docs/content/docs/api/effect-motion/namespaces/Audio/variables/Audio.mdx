@@ -1,0 +1,36 @@
+---
+title: "Audio"
+description: "Audio: <ID>(id) => AudioResource<ID>;"
+---
+# Variable: Audio
+
+```ts
+Audio: <ID>(id) => AudioResource<ID>;
+```
+
+Defined in: [packages/motion/src/Audio.ts:56](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Audio.ts#L56)
+
+Declare an audio track your scene uses.
+
+## Type Parameters
+
+| Type Parameter |
+| ------ |
+| `ID` *extends* `string` |
+
+## Parameters
+
+| Parameter | Type | Description |
+| ------ | ------ | ------ |
+| `id` | `ID` & `EnsureLiteral`\<`ID`, `"Audio id must be a literal string"`\> | An identifier for this track, as a literal string. |
+
+## Returns
+
+[`AudioResource`](../interfaces/AudioResource.mdx)\<`ID`\>
+
+## Remarks
+
+The `Font.Font` / `Image.Image` contract: `yield*` the constant in a scene
+to get the reference for [play](./play.mdx), and pair it with [layer](../functions/layer.mdx) to
+provide the bytes. Declaring or playing a track never needs its bytes to
+produce frames; only [duration](../functions/duration.mdx) adds a real requirement.

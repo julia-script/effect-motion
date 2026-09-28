@@ -6,16 +6,19 @@ description: "function render<E, LoaderR>("
 
 ```ts
 function render<E, LoaderR>(
-   scene, 
-   outPath, 
-   options?): Effect<void, 
+   scene,
+   outPath,
+   options?): Effect<void,
   | EncodeError
   | ThreeException
   | EffectMotionError
-| E, ChildProcessSpawner | ExtractLoaders<LoaderR>>;
+  | E,
+  | ChildProcessSpawner
+  | FileSystem
+| Exclude<LoaderR, SceneInternalR>>;
 ```
 
-Defined in: [packages/export/src/Video.ts:78](https://github.com/julia-script/effect-motion/blob/main/packages/export/src/Video.ts#L78)
+Defined in: [packages/export/src/Video.ts:98](https://github.com/julia-script/effect-motion/blob/main/packages/export/src/Video.ts#L98)
 
 Render a scene to a video file at `outPath`.
 
@@ -41,8 +44,11 @@ a GPU render failure surfaces as `ThreeException`; a failed resource
 
 ## Returns
 
-`Effect`\<`void`, 
+`Effect`\<`void`,
   \| [`EncodeError`](../../Ffmpeg/classes/EncodeError.mdx)
   \| `ThreeException`
   \| `EffectMotionError`
-  \| `E`, `ChildProcessSpawner` \| `ExtractLoaders`\<`LoaderR`\>\>
+  \| `E`,
+  \| `ChildProcessSpawner`
+  \| `FileSystem`
+  \| `Exclude`\<`LoaderR`, `SceneInternalR`\>\>

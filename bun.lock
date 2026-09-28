@@ -17,6 +17,7 @@
       "name": "docs",
       "version": "0.1.0",
       "dependencies": {
+        "@effect-motion/export": "workspace:*",
         "@effect-motion/react": "workspace:*",
         "cnfast": "^0.0.8",
         "effect": "4.0.0-rc.115",

@@ -25,9 +25,10 @@ The canvas sizes itself from the scene's own resolution. `Player` and
 ## Props
 
 - `scene` — the scene to play. If it declares typed resources (fonts,
-  images), the `renderLayers` prop becomes *required* — the component won't
-  compile without loaders covering every resource. That's the same
-  guarantee the export path gives you, enforced in JSX.
+  images, audio), the `renderLayers` prop becomes *required* — the component
+  won't compile without loaders covering every resource. For a scene that
+  queries audio duration, use [`prepareAudio`](/docs/guides/audio) so the
+  layer supplies playback bytes and prepared metadata.
 - `autoPlay` — start as soon as the first frame is buffered.
 - `fps` — playback frame rate (default 60); `settings.frameRate` wins when
   both are given.

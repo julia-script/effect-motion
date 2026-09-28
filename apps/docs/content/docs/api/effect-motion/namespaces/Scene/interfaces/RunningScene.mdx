@@ -51,6 +51,7 @@ frames delivered so far — mutated by `step` for the maxFrames cap
 
 ```ts
 readonly runner: {
+  anchorAudio: (id, until?) => void;
   appendChild: (parent, child) => void;
   awaitedCount: () => number;
   backgrounds: Set<BranchEntry>;
@@ -66,7 +67,7 @@ readonly runner: {
     | null;
   instantiate: <Tag>(...args) => Effect<Instance<Tag>, never, Runner>;
   instantiateEscape: (...args) => Effect<Instance<
-     | "Camera"
+     | "Audio"
      | "Line"
      | "Path"
      | "Rect"
@@ -75,7 +76,8 @@ readonly runner: {
      | "Text"
      | "Group"
      | "Hud"
-    | "Image">, never, never>;
+     | "Image"
+    | "Camera">, never, never>;
   phaser: {
      arriveAndAwaitAdvance: Effect<void, never, never>;
      awaitAdvance: Effect<number, never, never>;
@@ -109,6 +111,25 @@ readonly runner: {
      height: number;
      instances: Record<string, {
         data:   | {
+           audio: {
+              id: string;
+           };
+           gain: number;
+           loop: boolean;
+           playing: boolean;
+           position: {
+              x: number;
+              y: number;
+              z: number;
+           };
+           rotation: {
+              x: number;
+              y: number;
+              z: number;
+           };
+           time: number;
+         }
+           | {
            end: {
               x: number;
               y: number;
@@ -378,6 +399,23 @@ readonly runner: {
 
 Defined in: [packages/motion/src/Scene.ts:432](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L432)
 
+#### anchorAudio
+
+```ts
+anchorAudio: (id, until?) => void;
+```
+
+##### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `id` | `string` |
+| `until?` | `number` |
+
+##### Returns
+
+`void`
+
 #### appendChild
 
 ```ts
@@ -499,7 +537,7 @@ getDataUnsafe: <Tag>(instance) =>
 
 | Type Parameter |
 | ------ |
-| `Tag` *extends* \| `"Camera"` \| `"Line"` \| `"Path"` \| `"Rect"` \| `"Circle"` \| `"Ellipse"` \| `"Text"` \| `"Group"` \| `"Hud"` \| `"Image"` |
+| `Tag` *extends* \| `"Audio"` \| `"Line"` \| `"Path"` \| `"Rect"` \| `"Circle"` \| `"Ellipse"` \| `"Text"` \| `"Group"` \| `"Hud"` \| `"Image"` \| `"Camera"` |
 
 ##### Parameters
 
@@ -522,7 +560,7 @@ instantiate: <Tag>(...args) => Effect<Instance<Tag>, never, Runner>;
 
 | Type Parameter |
 | ------ |
-| `Tag` *extends* \| `"Camera"` \| `"Line"` \| `"Path"` \| `"Rect"` \| `"Circle"` \| `"Ellipse"` \| `"Text"` \| `"Group"` \| `"Hud"` \| `"Image"` |
+| `Tag` *extends* \| `"Audio"` \| `"Line"` \| `"Path"` \| `"Rect"` \| `"Circle"` \| `"Ellipse"` \| `"Text"` \| `"Group"` \| `"Hud"` \| `"Image"` \| `"Camera"` |
 
 ##### Parameters
 
@@ -538,7 +576,7 @@ instantiate: <Tag>(...args) => Effect<Instance<Tag>, never, Runner>;
 
 ```ts
 instantiateEscape: (...args) => Effect<Instance<
-  | "Camera"
+  | "Audio"
   | "Line"
   | "Path"
   | "Rect"
@@ -547,7 +585,8 @@ instantiateEscape: (...args) => Effect<Instance<
   | "Text"
   | "Group"
   | "Hud"
-| "Image">, never, never>;
+  | "Image"
+| "Camera">, never, never>;
 ```
 
 ponytail: create a tree node for an entity that is NOT in the
@@ -559,12 +598,12 @@ rewrite; see `particlesEscapeInstantiate`.
 
 | Parameter | Type |
 | ------ | ------ |
-| ...`args` | \[ \| \{ `end`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `start`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `strokeColor`: [`Color`](../../Color/classes/Color.mdx); `strokeWidth`: `number`; `visible`: `boolean`; \} \| \{ `commands`: readonly \[ \| \{ \} \| \{ `x`: `number`; `y`: `number`; `z?`: `number`; \} \| \{ `x`: `number`; `y`: `number`; `z?`: `number`; \}, \| \{ \} \| \{ `x`: `number`; `y`: `number`; `z?`: `number`; \} \| \{ `x`: `number`; `y`: `number`; `z?`: `number`; \}\]; `fillColor`: [`Color`](../../Color/classes/Color.mdx); `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `strokeColor?`: [`Color`](../../Color/classes/Color.mdx); `strokeWidth`: `number`; `visible`: `boolean`; \} \| \{ `fillColor`: [`Color`](../../Color/classes/Color.mdx); `height`: `number`; `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `strokeColor?`: [`Color`](../../Color/classes/Color.mdx); `strokeWidth`: `number`; `visible`: `boolean`; `width`: `number`; \} \| \{ `fillColor`: [`Color`](../../Color/classes/Color.mdx); `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `radius`: `number`; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `strokeColor?`: [`Color`](../../Color/classes/Color.mdx); `strokeWidth`: `number`; `visible`: `boolean`; \} \| \{ `fillColor`: [`Color`](../../Color/classes/Color.mdx); `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `radiusX`: `number`; `radiusY`: `number`; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `strokeColor?`: [`Color`](../../Color/classes/Color.mdx); `strokeWidth`: `number`; `visible`: `boolean`; \} \| \{ `baseline?`: `"middle"` \| `"auto"` \| `"hanging"`; `fillColor`: [`Color`](../../Color/classes/Color.mdx); `fontFamily`: \{ `id`: `string`; \}; `fontSize`: `number`; `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `text`: `string`; `textAnchor?`: `"start"` \| `"end"` \| `"middle"`; `visible`: `boolean`; \} \| \{ `children`: readonly `string`[]; `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `visible`: `boolean`; \} \| \{ `children`: readonly `string`[]; `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `visible`: `boolean`; \} \| \{ `height?`: `number`; `image`: \{ `id`: `string`; \}; `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `visible`: `boolean`; `width?`: `number`; \} \| \{ `aperture`: `number`; `focalLength`: `number`; `focusDistance`: `number`; `poi`: \| \{ `x`: `number`; `y`: `number`; `z`: `number`; \} \| `null`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; \}\] |
+| ...`args` | \[ \| \{ `audio`: \{ `id`: `string`; \}; `gain`: `number`; `loop`: `boolean`; `playing`: `boolean`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `time`: `number`; \} \| \{ `end`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `start`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `strokeColor`: [`Color`](../../Color/classes/Color.mdx); `strokeWidth`: `number`; `visible`: `boolean`; \} \| \{ `commands`: readonly \[ \| \{ \} \| \{ `x`: `number`; `y`: `number`; `z?`: `number`; \} \| \{ `x`: `number`; `y`: `number`; `z?`: `number`; \}, \| \{ \} \| \{ `x`: `number`; `y`: `number`; `z?`: `number`; \} \| \{ `x`: `number`; `y`: `number`; `z?`: `number`; \}\]; `fillColor`: [`Color`](../../Color/classes/Color.mdx); `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `strokeColor?`: [`Color`](../../Color/classes/Color.mdx); `strokeWidth`: `number`; `visible`: `boolean`; \} \| \{ `fillColor`: [`Color`](../../Color/classes/Color.mdx); `height`: `number`; `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `strokeColor?`: [`Color`](../../Color/classes/Color.mdx); `strokeWidth`: `number`; `visible`: `boolean`; `width`: `number`; \} \| \{ `fillColor`: [`Color`](../../Color/classes/Color.mdx); `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `radius`: `number`; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `strokeColor?`: [`Color`](../../Color/classes/Color.mdx); `strokeWidth`: `number`; `visible`: `boolean`; \} \| \{ `fillColor`: [`Color`](../../Color/classes/Color.mdx); `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `radiusX`: `number`; `radiusY`: `number`; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `strokeColor?`: [`Color`](../../Color/classes/Color.mdx); `strokeWidth`: `number`; `visible`: `boolean`; \} \| \{ `baseline?`: `"middle"` \| `"auto"` \| `"hanging"`; `fillColor`: [`Color`](../../Color/classes/Color.mdx); `fontFamily`: \{ `id`: `string`; \}; `fontSize`: `number`; `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `text`: `string`; `textAnchor?`: `"start"` \| `"end"` \| `"middle"`; `visible`: `boolean`; \} \| \{ `children`: readonly `string`[]; `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `visible`: `boolean`; \} \| \{ `children`: readonly `string`[]; `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `visible`: `boolean`; \} \| \{ `height?`: `number`; `image`: \{ `id`: `string`; \}; `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `visible`: `boolean`; `width?`: `number`; \} \| \{ `aperture`: `number`; `focalLength`: `number`; `focusDistance`: `number`; `poi`: \| \{ `x`: `number`; `y`: `number`; `z`: `number`; \} \| `null`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; \}\] |
 
 ##### Returns
 
 `Effect`\<[`Instance`](../../Instance/interfaces/Instance.mdx)\<
-  \| `"Camera"`
+  \| `"Audio"`
   \| `"Line"`
   \| `"Path"`
   \| `"Rect"`
@@ -573,7 +612,8 @@ rewrite; see `particlesEscapeInstantiate`.
   \| `"Text"`
   \| `"Group"`
   \| `"Hud"`
-  \| `"Image"`\>, `never`, `never`\>
+  \| `"Image"`
+  \| `"Camera"`\>, `never`, `never`\>
 
 #### phaser
 
@@ -767,7 +807,7 @@ setDataUnsafe: <Tag>(instance, state) => void;
 
 | Type Parameter |
 | ------ |
-| `Tag` *extends* \| `"Camera"` \| `"Line"` \| `"Path"` \| `"Rect"` \| `"Circle"` \| `"Ellipse"` \| `"Text"` \| `"Group"` \| `"Hud"` \| `"Image"` |
+| `Tag` *extends* \| `"Audio"` \| `"Line"` \| `"Path"` \| `"Rect"` \| `"Circle"` \| `"Ellipse"` \| `"Text"` \| `"Group"` \| `"Hud"` \| `"Image"` \| `"Camera"` |
 
 ##### Parameters
 
@@ -821,6 +861,25 @@ state: Effect<{
   height: number;
   instances: Record<string, {
      data:   | {
+        audio: {
+           id: string;
+        };
+        gain: number;
+        loop: boolean;
+        playing: boolean;
+        position: {
+           x: number;
+           y: number;
+           z: number;
+        };
+        rotation: {
+           x: number;
+           y: number;
+           z: number;
+        };
+        time: number;
+      }
+        | {
         end: {
            x: number;
            y: number;

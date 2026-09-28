@@ -1,0 +1,97 @@
+---
+title: Add sound to a scene
+description: Play, fade, and export a scene with a prepared audio track
+---
+
+This guide shows how to add a local sound to a scene and export that same
+scene with audio. It assumes you can already make a scene and use the
+[Player](/docs/guides/react-player). A scene is an Effect: yielding an audio
+resource declares its dependency, and yielding transport or animation effects
+changes its frame data.
+
+## Declare and play a track
+
+Create a resource with a literal id, then yield it inside your scene. `play`
+starts a new Audio instance and returns immediately. It does not keep the
+scene alive, so wait explicitly for the part of the sound you want to show.
+
+```ts
+import * as Audio from "effect-motion/Audio";
+import * as Scene from "effect-motion/Scene";
+
+export const Theme = Audio.Audio("theme");
+
+export const scene = Scene.make(function* () {
+	const theme = yield* Theme;
+	const sourceDuration = yield* Audio.duration(Theme);
+	const playing = yield* Audio.play(theme, { gain: 0 });
+	yield* Audio.fadeIn(playing, "400 millis");
+	yield* Scene.sleep(sourceDuration);
+	yield* Audio.stop(playing);
+});
+```
+
+`duration` is the **whole source length**, even when playback starts at a
+nonzero `from` position. For the remaining time of a nonlooping play, subtract
+that starting offset from the source duration. The query requires prepared
+metadata; declaring or playing a track alone does not read its bytes during
+frame generation.
+
+## Prepare the bytes for each runtime
+
+The Player needs a layer built with `prepareAudio` from
+`@effect-motion/react`. It decodes the bytes before the scene runs and
+provides both playback data and duration metadata. Use a user gesture to
+start audible playback. If the browser blocks autoplay, the Player holds at
+the first audible frame until Play is pressed.
+
+```tsx
+import { Player, prepareAudio } from "@effect-motion/react";
+import * as Resource from "effect-motion/Resource";
+import { scene, Theme } from "./audio.scene";
+
+const audio = prepareAudio(Theme, Resource.fetchBytes("/audio-theme.wav"));
+
+export function Preview() {
+	return <Player scene={scene} renderLayers={audio} />;
+}
+```
+
+In Node, use `Video.prepareAudio` to inspect those same bytes before frame
+generation and provide the resulting layer to `Video.render`. The
+`audio.render.ts` next to the example below is a complete CLI entrypoint:
+
+```bash
+bun packages/cli/src/bin.ts render apps/docs/examples/audio.render.ts
+```
+
+It writes `tmp/audio-preview.mp4` from the exact scene the Player displays.
+Install the export and CLI packages in your own project to use this pattern
+outside the repository. If the audio pass fails, export raises `EncodeError`
+and can leave a video-only file at the output path; that file is an incomplete
+render.
+
+## Control the sound
+
+`gain` is a linear multiplier: 0 is silent and 1 is the source level. Animate
+it with `Motion.tween`/`tweenTo` on `{ gain }`, or use `Audio.fade`/`fadeTo`.
+`fadeIn` starts at 0 and reaches 1; `fadeOut` reaches 0 while the cursor keeps
+running, so pause or stop afterwards if needed. `crossfade` fades one Audio
+instance out while another fades in. `pause`, `resume`, `seek`, and `stop`
+control the returned instance; `stop` also rewinds it. Set `loop: true` in
+`play` to wrap at the source end.
+
+For a timed clip, pass `play(theme, { duration: "1 second" })`. It pauses at
+that scene-time deadline, even if its calling branch has finished. The clip
+holds the scene open like a fork started in that branch; a shorter-lived
+parent branch can end that hold. A later pause, resume, seek, stop, or direct
+transport write cancels the earlier clip deadline. Consult the
+[Audio API reference](/docs/api/effect-motion/namespaces/Audio) for the
+full signatures.
+
+The example uses an original, quiet PCM WAV. WAV works in the verified
+browser and Node export paths here. Browser decoding depends on the browser;
+other formats need testing in both the browser and ffmpeg before you rely on
+them. Audio analysis and editable DAW export are future work.
+
+<Example name="audio" />

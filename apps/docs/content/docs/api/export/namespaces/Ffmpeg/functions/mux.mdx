@@ -1,0 +1,32 @@
+---
+title: "mux"
+description: "function mux("
+---
+# Function: mux()
+
+```ts
+function mux(
+   videoPath,
+   pcmPath,
+   outPath,
+   duration,
+binary?): Effect<void, EncodeError, ChildProcessSpawner>;
+```
+
+Defined in: [packages/export/src/Ffmpeg.ts:182](https://github.com/julia-script/effect-motion/blob/main/packages/export/src/Ffmpeg.ts#L182)
+
+Copy the encoded video and add a frame-length PCM track as AAC.
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `videoPath` | `string` |
+| `pcmPath` | `string` |
+| `outPath` | `string` |
+| `duration` | `number` |
+| `binary?` | `string` |
+
+## Returns
+
+`Effect`\<`void`, [`EncodeError`](../classes/EncodeError.mdx), `ChildProcessSpawner`\>

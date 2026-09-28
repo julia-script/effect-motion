@@ -33,11 +33,13 @@ For a scene that never ends, pass `isInfinite` so memory stays bounded and the s
 <Player scene={ambientScene} isInfinite autoPlay />
 ```
 
-If the scene uses custom fonts or images, pass their loaders as `renderLayers`. It is required — and checked at compile time — whenever the scene declares resources:
+If the scene uses custom fonts, images, or audio, pass their loaders as `renderLayers`. It is required — and checked at compile time — whenever the scene declares resources. A scene that queries audio duration needs `prepareAudio`, which supplies both playback bytes and duration metadata:
 
 ```tsx
 <Player scene={scene} renderLayers={Font.layer(Inter, bytes)} />
 ```
+
+See the [audio guide](https://github.com/julia-script/effect-motion/blob/main/apps/docs/content/docs/guides/audio.mdx) for a runnable Player example.
 
 ## Documentation
 

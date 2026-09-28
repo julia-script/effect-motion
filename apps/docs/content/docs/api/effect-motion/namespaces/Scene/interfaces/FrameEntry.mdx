@@ -17,6 +17,25 @@ renderer narrows on it instead of dispatching on an entity object.
 ```ts
 data: 
   | {
+  audio: {
+     id: string;
+  };
+  gain: number;
+  loop: boolean;
+  playing: boolean;
+  position: {
+     x: number;
+     y: number;
+     z: number;
+  };
+  rotation: {
+     x: number;
+     y: number;
+     z: number;
+  };
+  time: number;
+}
+  | {
   end: {
      x: number;
      y: number;

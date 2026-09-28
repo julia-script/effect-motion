@@ -32,3 +32,9 @@
 ## 6. Verify
 
 - [x] 6.1 `bun run lint && bun run check && bun run --filter=effect-motion test && bun run --filter=@effect-motion/renderer test`
+
+## 7. Documentation
+
+- [x] 7.1 Audio how-to guide and permanent duration-driven docs example
+- [x] 7.2 Browser playback and Node MP4 export of the same docs scene
+- [x] 7.3 Generated API reference, root lint/check/test/build, and strict OpenSpec validation

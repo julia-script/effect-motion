@@ -14,16 +14,14 @@ type PlayerProps<S> = {
   prebufferedFrames?: number;
   scene: S;
   settings?: Partial<Runner.Settings>;
-} & Scene.Resources<S> extends never ? {
+} & RequiredLayers<S> extends never ? {
   renderLayers?: never;
 } : {
-  renderLayers: Layer.Layer<Scene.Resources<S>, unknown, never>;
+  renderLayers: Layer.Layer<RequiredLayers<S>, unknown, never>;
 };
 ```
 
-Defined in: [packages/react/src/Player.tsx:640](https://github.com/julia-script/effect-motion/blob/main/packages/react/src/Player.tsx#L640)
-
-Props for [Player](../functions/Player.mdx).
+Defined in: [packages/react/src/Player.tsx:720](https://github.com/julia-script/effect-motion/blob/main/packages/react/src/Player.tsx#L720)
 
 ## Type Declaration
 
@@ -165,11 +163,6 @@ wins over the `fps` prop.
 
 ## Type Parameters
 
-| Type Parameter | Default type | Description |
-| ------ | ------ | ------ |
-| `S` *extends* `Scene.AnyScene` | `Scene.AnyScene` | The scene's type, which decides whether `renderLayers` is required. |
-
-## Remarks
-
-Only `scene` is required — and `renderLayers`, if the scene declares
-resources. Everything else has a working default.
+| Type Parameter | Default type |
+| ------ | ------ |
+| `S` *extends* `Scene.AnyScene` | `Scene.AnyScene` |
