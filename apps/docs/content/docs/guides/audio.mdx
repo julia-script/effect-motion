@@ -1,6 +1,6 @@
 ---
 title: Add sound to a scene
-description: Play, fade, and export a scene with a prepared audio track
+description: Choreograph sound and motion, then export the same scene with audio
 ---
 
 This guide shows how to add a local sound to a scene and export that same
@@ -47,10 +47,15 @@ the first audible frame until Play is pressed.
 
 ```tsx
 import { Player, prepareAudio } from "@effect-motion/react";
+import * as Layer from "effect/Layer";
 import * as Resource from "effect-motion/Resource";
-import { scene, Theme } from "./audio.scene";
+import { Accent, Cool, scene, Warm } from "./audio.scene";
 
-const audio = prepareAudio(Theme, Resource.fetchBytes("/audio-theme.wav"));
+const audio = Layer.mergeAll(
+	prepareAudio(Warm, Resource.fetchBytes("/audio-warm.wav")),
+	prepareAudio(Cool, Resource.fetchBytes("/audio-cool.wav")),
+	prepareAudio(Accent, Resource.fetchBytes("/audio-accent.wav")),
+);
 
 export function Preview() {
 	return <Player scene={scene} renderLayers={audio} />;
@@ -89,9 +94,17 @@ transport write cancels the earlier clip deadline. Consult the
 [Audio API reference](/docs/api/effect-motion/namespaces/Audio) for the
 full signatures.
 
-The example uses an original, quiet PCM WAV. WAV works in the verified
-browser and Node export paths here. Browser decoding depends on the browser;
-other formats need testing in both the browser and ffmpeg before you rely on
-them. Audio analysis and editable DAW export are future work.
+The example below is an 11.2-second sound study. A warm rhythmic loop and
+short accents drive expanding rings and bouncing bars. At four seconds,
+`Audio.crossfade` moves to a bright chiming loop while the palette and shapes
+dissolve from coral to cyan. The final gain and motion fade settle together.
+The three small PCM WAVs were synthesized specifically for this example;
+they contain no sampled or downloaded material.
+
+The shape changes are **scheduled in scene time** alongside the sound cues.
+They do not inspect the waveform or react to microphone input. WAV works in
+the verified browser and Node export paths here. Browser decoding depends on
+the browser; test other formats in both the browser and ffmpeg before relying
+on them. Audio analysis and editable DAW export are future work.
 
 <Example name="audio" />

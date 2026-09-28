@@ -1,9 +1,9 @@
 import type { PlayerProps } from "@effect-motion/react";
 import { prepareAudio } from "@effect-motion/react";
-import type * as Layer from "effect/Layer";
+import * as Layer from "effect/Layer";
 import * as Resource from "effect-motion/Resource";
 import { scene as animatorPairs } from "./animator-pairs.scene";
-import { scene as audio, Theme } from "./audio.scene";
+import { Accent, scene as audio, Cool, Warm } from "./audio.scene";
 import { scene as bezier3d } from "./bezier-3d.scene";
 import { scene as cameraFollowGraph } from "./camera-follow-graph.scene";
 import { scene as cameraTour } from "./camera-tour.scene";
@@ -54,9 +54,10 @@ export const examples: Record<string, PlayerProps["scene"] | ExampleEntry> = {
 	// guides
 	audio: {
 		scene: audio,
-		renderLayers: prepareAudio(
-			Theme,
-			Resource.fetchBytes("/audio-theme.wav"),
+		renderLayers: Layer.mergeAll(
+			prepareAudio(Warm, Resource.fetchBytes("/audio-warm.wav")),
+			prepareAudio(Cool, Resource.fetchBytes("/audio-cool.wav")),
+			prepareAudio(Accent, Resource.fetchBytes("/audio-accent.wav")),
 		) as Layer.Layer<never, unknown, never>,
 	},
 	crossfade,

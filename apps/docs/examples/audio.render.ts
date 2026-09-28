@@ -2,13 +2,18 @@ import { fileURLToPath } from "node:url";
 import * as Video from "@effect-motion/export/Video";
 import * as Effect from "effect/Effect";
 import { FileSystem } from "effect/FileSystem";
-import { scene, Theme } from "./audio.scene";
+import * as Layer from "effect/Layer";
+import { Accent, Cool, scene, Warm } from "./audio.scene";
 
-const assetPath = fileURLToPath(
-	new URL("../public/audio-theme.wav", import.meta.url),
+const bytes = (name: string) =>
+	Effect.flatMap(FileSystem, (fs) =>
+		fs.readFile(fileURLToPath(new URL(`../public/${name}`, import.meta.url))),
+	);
+const audio = Layer.mergeAll(
+	Video.prepareAudio(Warm, bytes("audio-warm.wav")),
+	Video.prepareAudio(Cool, bytes("audio-cool.wav")),
+	Video.prepareAudio(Accent, bytes("audio-accent.wav")),
 );
-const bytes = Effect.flatMap(FileSystem, (fs) => fs.readFile(assetPath));
-const audio = Video.prepareAudio(Theme, bytes);
 
 // Run from the repository root:
 // bun packages/cli/src/bin.ts render apps/docs/examples/audio.render.ts
