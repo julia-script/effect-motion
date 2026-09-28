@@ -75,6 +75,20 @@ it.runIf(canVerify)(
 		expect(probe).toContain("width=240");
 		expect(probe).toContain("height=120");
 		expect(probe).toContain("nb_read_frames=10");
+		const audio = execFileSync("ffprobe", [
+			"-v",
+			"error",
+			"-select_streams",
+			"a",
+			"-show_entries",
+			"stream=codec_type",
+			"-of",
+			"csv=p=0",
+			out,
+		])
+			.toString()
+			.trim();
+		expect(audio).toBe("");
 	},
 	30_000,
 );

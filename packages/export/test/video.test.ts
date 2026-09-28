@@ -1,3 +1,4 @@
+import { NodeServices } from "@effect/platform-node";
 import { Effect, Layer } from "effect";
 import * as Sink from "effect/Sink";
 import * as Stream from "effect/Stream";
@@ -6,6 +7,7 @@ import {
 	ChildProcessSpawner,
 } from "effect/unstable/process";
 import { Color, Entity as S, Scene } from "effect-motion";
+import * as Audio from "effect-motion/Audio";
 import { expect, it } from "vitest";
 import { Ffmpeg, Video } from "../src";
 
@@ -87,11 +89,36 @@ const oddScene = Scene.make(frameBody, { width: 201, height: 120 });
 
 const evenSettings = { frameRate: 30 } as const;
 
+declare const durationScene: Scene.Scene<
+	never,
+	Audio.AudioLoader<"duration"> | Audio.AudioMetadata<"duration">
+>;
+const _durationTypes = () => {
+	const track = Audio.Audio("duration");
+	const render = Video.render(durationScene, "duration.mp4").pipe(
+		Effect.provide(Audio.layer(track, Effect.succeed(new Uint8Array()))),
+		Effect.provide(NodeServices.layer),
+	);
+	const stillNeedsMetadata: Effect.Effect<
+		void,
+		unknown,
+		Audio.AudioMetadata<"duration">
+	> = render;
+	// @ts-expect-error loader and Node platform provision cannot erase metadata
+	const missingMetadata: Effect.Effect<void, unknown, never> = render;
+	return [stillNeedsMetadata, missingMetadata];
+};
+
+it("keeps prepared metadata in standalone render requirements", () => {
+	expect(typeof _durationTypes).toBe("function");
+});
+
 it("streams a scene to N PNG frames at the scene's framerate", async () => {
 	const record: SpawnRecord[] = [];
 	await Effect.runPromise(
 		Video.render(threeFrameScene, "out.mp4", { settings: evenSettings }).pipe(
 			Effect.provide(mockSpawner(record)),
+			Effect.provide(NodeServices.layer),
 		),
 	);
 
@@ -115,7 +142,10 @@ it("supersamples frames by options.dpr without changing framing", async () => {
 		Video.render(threeFrameScene, "out.mp4", {
 			settings: evenSettings,
 			dpr: 2,
-		}).pipe(Effect.provide(mockSpawner(record, stdin))),
+		}).pipe(
+			Effect.provide(mockSpawner(record, stdin)),
+			Effect.provide(NodeServices.layer),
+		),
 	);
 
 	expect(record[0]?.pngFrames).toBe(EXPECTED_FRAMES);
@@ -128,7 +158,10 @@ it("rejects odd output dimensions before spawning ffmpeg", async () => {
 		Effect.flip(
 			Video.render(oddScene, "out.mp4", {
 				settings: {},
-			}).pipe(Effect.provide(mockSpawner(record))),
+			}).pipe(
+				Effect.provide(mockSpawner(record)),
+				Effect.provide(NodeServices.layer),
+			),
 		),
 	);
 
@@ -157,7 +190,10 @@ it("caps an infinite scene with options.frames", async () => {
 		Video.render(infinite, "out.mp4", {
 			frames: 10,
 			settings: { ...evenSettings, maxFrames: Number.POSITIVE_INFINITY },
-		}).pipe(Effect.provide(mockSpawner(record))),
+		}).pipe(
+			Effect.provide(mockSpawner(record)),
+			Effect.provide(NodeServices.layer),
+		),
 	);
 
 	expect(record[0]?.pngFrames).toBe(10);
