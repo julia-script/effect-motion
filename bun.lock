@@ -17,6 +17,7 @@
       "name": "docs",
       "version": "0.1.0",
       "dependencies": {
+        "@effect-motion/export": "workspace:*",
         "@effect-motion/react": "workspace:*",
         "cnfast": "^0.0.8",
         "effect": "4.0.0-rc.115",
@@ -30,6 +31,7 @@
         "react-dom": "^19.2.7",
       },
       "devDependencies": {
+        "@effect/platform-node": "4.0.0-rc.115",
         "@tailwindcss/postcss": "^4.3.2",
         "@types/mdx": "^2.0.14",
         "@types/node": "^26.1.1",

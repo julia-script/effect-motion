@@ -1,0 +1,52 @@
+---
+title: "play"
+description: "const play: <ID>(...args) => Effect<Instance<\"Audio\">, never, Runner>;"
+---
+# Variable: play
+
+```ts
+const play: <ID>(...args) => Effect<Instance<"Audio">, never, Runner>;
+```
+
+Defined in: [packages/motion/src/Audio.ts:295](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Audio.ts#L295)
+
+Start a track: create a playing `Audio` instance and return it at once.
+
+## Type Parameters
+
+| Type Parameter |
+| ------ |
+| `ID` *extends* `string` |
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| ...`args` | \[[`Audio`](../interfaces/Audio.mdx)\<`ID`\>, [`PlayOptions`](../interfaces/PlayOptions.mdx)\] |
+
+## Returns
+
+`Effect`\<[`Instance`](../../Instance/interfaces/Instance.mdx)\<`"Audio"`\>, `never`, [`Runner`](../../Runner/classes/Runner.mdx)\>
+
+The Audio instance.
+
+## Remarks
+
+The cursor advances exactly one frame period per frame from `from`, and
+playing alone never holds the scene open.
+
+With `duration` the play is a clip: the track pauses exactly on the frame
+`duration` elapses — decided by the Runner, so it holds even when the
+play ran inside a `Scene.all` branch or a fork that has since ended. The
+clip also holds the scene open for `duration` the way a `Scene.fork`
+started here would: from the scene body (or any branch alive that long)
+the scene cannot end first; a fork owned by a shorter-lived branch is cut
+with that branch (Scene.fork ownership), and then the rest of the scene
+decides the length. A zero duration pauses on the same frame.
+
+Any later explicit [pause](../functions/pause.mdx), [resume](../functions/resume.mdx), [seek](./seek.mdx) or
+[stop](../functions/stop.mdx) cancels the clip end: user-directed playback after it is
+never cut by the earlier clip. The hold is scene time and unaffected.
+
+Control the returned instance with those operations and the gain
+animators.

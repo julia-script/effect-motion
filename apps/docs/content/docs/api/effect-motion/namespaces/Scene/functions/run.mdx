@@ -5,12 +5,12 @@ description: "function run<E, R>(scene, settings?): Effect<RunningScene<E, R>, n
 # Function: run()
 
 ```ts
-function run<E, R>(scene, settings?): Effect<RunningScene<E, R>, never, 
+function run<E, R>(scene, settings?): Effect<RunningScene<E, R>, never,
   | Scope
 | Exclude<Exclude<Exclude<Exclude<ExcludeLoaders<R>, Scope>, never>, Phaser>, Runner>>;
 ```
 
-Defined in: [packages/motion/src/Scene.ts:466](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L466)
+Defined in: [packages/motion/src/Scene.ts:474](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L474)
 
 Start a scene and hand back a handle for advancing it manually.
 
@@ -30,7 +30,7 @@ Start a scene and hand back a handle for advancing it manually.
 
 ## Returns
 
-`Effect`\<[`RunningScene`](../interfaces/RunningScene.mdx)\<`E`, `R`\>, `never`, 
+`Effect`\<[`RunningScene`](../interfaces/RunningScene.mdx)\<`E`, `R`\>, `never`,
   \| `Scope`
   \| `Exclude`\<`Exclude`\<`Exclude`\<`Exclude`\<[`ExcludeLoaders`](../../Resource/type-aliases/ExcludeLoaders.mdx)\<`R`\>, `Scope`\>, `never`\>, [`Phaser`](../../Phaser/classes/Phaser.mdx)\>, [`Runner`](../../Runner/classes/Runner.mdx)\>\>
 

@@ -7,15 +7,15 @@ description: "function stagger<Eff, ScheduleE, ScheduleR>(effects, schedule): Ef
 ```ts
 function stagger<Eff, ScheduleE, ScheduleR>(effects, schedule): Effect<{
   released: number;
-}, 
+},
   | ScheduleE
-  | Eff extends Effect<any, E, any> ? E : never, 
+  | Eff extends Effect<any, E, any> ? E : never,
   | Runner
   | ScheduleR
 | Eff extends Effect<any, any, R> ? R : never>;
 ```
 
-Defined in: [packages/motion/src/Scene.ts:1456](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L1456)
+Defined in: [packages/motion/src/Scene.ts:1512](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L1512)
 
 Start animations one after another WITHOUT waiting for each to finish —
 the cascade.
@@ -39,9 +39,9 @@ the cascade.
 
 `Effect`\<\{
   `released`: `number`;
-\}, 
+\},
   \| `ScheduleE`
-  \| `Eff` *extends* `Effect`\<`any`, `E`, `any`\> ? `E` : `never`, 
+  \| `Eff` *extends* `Effect`\<`any`, `E`, `any`\> ? `E` : `never`,
   \| [`Runner`](../../Runner/classes/Runner.mdx)
   \| `ScheduleR`
   \| `Eff` *extends* `Effect`\<`any`, `any`, `R`\> ? `R` : `never`\>

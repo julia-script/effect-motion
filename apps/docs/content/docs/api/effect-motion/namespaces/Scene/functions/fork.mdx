@@ -5,12 +5,12 @@ description: "function fork<A, E, R>(effect): Effect<BranchHandle<A, E>, never,"
 # Function: fork()
 
 ```ts
-function fork<A, E, R>(effect): Effect<BranchHandle<A, E>, never, 
+function fork<A, E, R>(effect): Effect<BranchHandle<A, E>, never,
   | Runner
 | Exclude<Exclude<R, never>, Phaser>>;
 ```
 
-Defined in: [packages/motion/src/Scene.ts:1104](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L1104)
+Defined in: [packages/motion/src/Scene.ts:1160](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L1160)
 
 Start an animation alongside the rest of the scene and continue
 immediately, without waiting for it.
@@ -31,7 +31,7 @@ immediately, without waiting for it.
 
 ## Returns
 
-`Effect`\<[`BranchHandle`](../interfaces/BranchHandle.mdx)\<`A`, `E`\>, `never`, 
+`Effect`\<[`BranchHandle`](../interfaces/BranchHandle.mdx)\<`A`, `E`\>, `never`,
   \| [`Runner`](../../Runner/classes/Runner.mdx)
   \| `Exclude`\<`Exclude`\<`R`, `never`\>, [`Phaser`](../../Phaser/classes/Phaser.mdx)\>\>
 

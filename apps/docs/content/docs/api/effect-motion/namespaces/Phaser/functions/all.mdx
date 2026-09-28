@@ -5,7 +5,7 @@ description: "function all<Eff>(effects): Effect<void, Eff extends Effect<any, E
 # Function: all()
 
 ```ts
-function all<Eff>(effects): Effect<void, Eff extends Effect<any, E, any> ? E : never, 
+function all<Eff>(effects): Effect<void, Eff extends Effect<any, E, any> ? E : never,
   | Phaser
 | Eff extends Effect<any, any, R> ? R : never>;
 ```
@@ -34,6 +34,6 @@ with no deregister/register gap.
 
 ## Returns
 
-`Effect`\<`void`, `Eff` *extends* `Effect`\<`any`, `E`, `any`\> ? `E` : `never`, 
+`Effect`\<`void`, `Eff` *extends* `Effect`\<`any`, `E`, `any`\> ? `E` : `never`,
   \| [`Phaser`](../classes/Phaser.mdx)
   \| `Eff` *extends* `Effect`\<`any`, `any`, `R`\> ? `R` : `never`\>

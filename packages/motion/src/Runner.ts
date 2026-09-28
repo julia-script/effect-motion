@@ -214,6 +214,18 @@ export const identityCamera = (width: number): Entity.EntityByTag<"Camera"> => {
 	});
 };
 
+/**
+ * Where a playing audio cursor was (re)started: frame index and source time,
+ * the value last written by resolution (to detect direct writes), and an
+ * optional clip end — the frame at which the play pauses.
+ */
+interface AudioAnchor {
+	readonly frame: number;
+	readonly time: number;
+	readonly until: number | undefined;
+	last: number;
+}
+
 export class Runner extends Context.Service<Runner>()("Runner", {
 	make: Effect.fnUntraced(function* (
 		settings: Partial<Settings> = {},
@@ -317,6 +329,8 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 					return maskError(targetId, sourceId, "missing or destroyed endpoint");
 				if (target.state._tag === "Camera" || source.state._tag === "Camera")
 					return maskError(targetId, sourceId, "Camera is not paintable");
+				if (target.state._tag === "Audio" || source.state._tag === "Audio")
+					return maskError(targetId, sourceId, "Audio is not paintable");
 				if (mode !== "alpha" && mode !== "inverse")
 					return maskError(targetId, sourceId, `invalid mode "${mode}"`);
 				if (targetId === sourceId)
@@ -405,12 +419,64 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 			entry.state = state;
 		};
 
+		/**
+		 * Playing audio cursors, by instance id (see `Audio.ts`). A cursor is
+		 * DERIVED — `time + (frame - frame₀) / fps` — never simulated by a
+		 * fiber, so every frame (the scene's last included) carries the exact
+		 * value whichever fiber ran first, and a clip ends on its frame no
+		 * matter which branch started it.
+		 *
+		 * Resolution runs on every read of the track and at the frame
+		 * snapshot. `playing`/`time` stay plain data: a track seen playing
+		 * with no anchor (just resumed, or instantiated playing) is anchored
+		 * at its written time on this frame; a `time` differing from the
+		 * last resolved value is a direct write and re-anchors there (a seek);
+		 * a track seen paused drops its anchor. Re-anchoring drops any clip
+		 * end.
+		 */
+		const audioAnchors = new Map<string, AudioAnchor>();
+		const resolveAudio = (id: string, entry: { state: Entity.Entity }) => {
+			const state = entry.state;
+			if (state._tag !== "Audio") {
+				return;
+			}
+			if (!state.playing) {
+				audioAnchors.delete(id);
+				return;
+			}
+			const phase = phaser.snapshotUnsafe().phase;
+			let anchor = audioAnchors.get(id);
+			if (anchor === undefined || state.time !== anchor.last) {
+				anchor = {
+					frame: phase,
+					time: state.time,
+					until: undefined,
+					last: state.time,
+				};
+				audioAnchors.set(id, anchor);
+			}
+			const ended = anchor.until !== undefined && phase >= anchor.until;
+			const frame = ended ? (anchor.until ?? phase) : phase;
+			const time =
+				anchor.time + (frame - anchor.frame) / resolvedSettings.frameRate;
+			anchor.last = time;
+			if (ended) {
+				audioAnchors.delete(id);
+				entry.state = { ...state, time, playing: false };
+			} else if (state.time !== time) {
+				entry.state = { ...state, time };
+			}
+		};
+
 		const getDataUnsafe = <Tag extends Entity.EntityTag>(
 			instance: Instance.Instance<Tag>,
 		): Entity.EntityByTag<Tag> | null => {
 			const entry = tree.getEntry(instance.id);
 			if (entry === null) {
 				return null;
+			}
+			if (instance.kind === "Audio") {
+				resolveAudio(instance.id, entry);
 			}
 			// the instance's tag names the entry's state; the tree stores mixed
 			// tags, so this is the one place the two are reconciled
@@ -616,6 +682,7 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 					if (active.has(id)) {
 						continue;
 					}
+					resolveAudio(id, entry);
 					instances[id] = { data: entry.state };
 				}
 				return {
@@ -691,11 +758,34 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 				activeCameras.set(compId, instance.id);
 			},
 
+			// restart a track's cursor from its current data on this frame,
+			// dropping any clip end; with `until` (a frame index) the play
+			// pauses on that frame. Called by the Audio transport.
+			anchorAudio: (id: string, until?: number): void => {
+				audioAnchors.delete(id);
+				const entry = tree.getEntry(id);
+				if (
+					until === undefined ||
+					entry === null ||
+					entry.state._tag !== "Audio"
+				) {
+					return;
+				}
+				const { time } = entry.state;
+				audioAnchors.set(id, {
+					frame: phaser.snapshotUnsafe().phase,
+					time,
+					until,
+					last: time,
+				});
+				resolveAudio(id, entry);
+			},
 			destroy: (instance: Instance.Instance): void => {
 				// double-destroy is a no-op, like the old map-based delete
 				if (tree.getEntry(instance.id) === null) {
 					return;
 				}
+				audioAnchors.delete(instance.id);
 				clearMasksTouching(subtreeIds(instance.id));
 				tree.remove(instance.id);
 			},

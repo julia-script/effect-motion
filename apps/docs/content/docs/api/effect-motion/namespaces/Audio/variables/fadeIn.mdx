@@ -1,0 +1,14 @@
+---
+title: "fadeIn"
+description: "const fadeIn: (duration, timing?) => <E, R>(instance) => Effect<Instance<\"Audio\">, E, Runner | R> & <E, R>(instance, duration, timing?) => Effect<Inst"
+---
+# Variable: fadeIn
+
+```ts
+const fadeIn: (duration, timing?) => <E, R>(instance) => Effect<Instance<"Audio">, E, Runner | R> & <E, R>(instance, duration, timing?) => Effect<Instance<"Audio">, E, Runner | R>;
+```
+
+Defined in: [packages/motion/src/Audio.ts:440](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Audio.ts#L440)
+
+Fade gain 0 → 1. Names its endpoints, so no base/To pair (recorded
+exception); use [fade](./fade.mdx) for other levels.

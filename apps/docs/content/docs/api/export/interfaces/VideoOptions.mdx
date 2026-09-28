@@ -4,7 +4,7 @@ description: "readonly optional binary?: string;"
 ---
 # Interface: VideoOptions
 
-Defined in: [packages/export/src/Video.ts:46](https://github.com/julia-script/effect-motion/blob/main/packages/export/src/Video.ts#L46)
+Defined in: [packages/export/src/Video.ts:51](https://github.com/julia-script/effect-motion/blob/main/packages/export/src/Video.ts#L51)
 
 Options for [render](../namespaces/Video/functions/render.mdx).
 
@@ -16,7 +16,7 @@ Options for [render](../namespaces/Video/functions/render.mdx).
 readonly optional binary?: string;
 ```
 
-Defined in: [packages/export/src/Video.ts:57](https://github.com/julia-script/effect-motion/blob/main/packages/export/src/Video.ts#L57)
+Defined in: [packages/export/src/Video.ts:62](https://github.com/julia-script/effect-motion/blob/main/packages/export/src/Video.ts#L62)
 
 ffmpeg binary; defaults to the bundled `ffmpeg-static` build (falls
 back to `"ffmpeg"` on PATH). Pass `"ffmpeg"` or a path for a
@@ -30,7 +30,7 @@ system/custom ffmpeg.
 readonly optional dpr?: number;
 ```
 
-Defined in: [packages/export/src/Video.ts:65](https://github.com/julia-script/effect-motion/blob/main/packages/export/src/Video.ts#L65)
+Defined in: [packages/export/src/Video.ts:70](https://github.com/julia-script/effect-motion/blob/main/packages/export/src/Video.ts#L70)
 
 Supersampling factor: frames are rendered at scene dimensions × dpr
 (the video's pixel size) while the scene keeps its authored logical
@@ -44,7 +44,7 @@ coordinates and framing. Defaults to 1.
 readonly optional extraArgs?: readonly string[];
 ```
 
-Defined in: [packages/export/src/Video.ts:59](https://github.com/julia-script/effect-motion/blob/main/packages/export/src/Video.ts#L59)
+Defined in: [packages/export/src/Video.ts:64](https://github.com/julia-script/effect-motion/blob/main/packages/export/src/Video.ts#L64)
 
 Extra ffmpeg arguments, appended before the output path.
 
@@ -56,7 +56,7 @@ Extra ffmpeg arguments, appended before the output path.
 readonly optional frames?: number;
 ```
 
-Defined in: [packages/export/src/Video.ts:51](https://github.com/julia-script/effect-motion/blob/main/packages/export/src/Video.ts#L51)
+Defined in: [packages/export/src/Video.ts:56](https://github.com/julia-script/effect-motion/blob/main/packages/export/src/Video.ts#L56)
 
 Cap the number of frames encoded. WITHOUT it, a scene that never ends
 produces an encode that never ends — an infinite scene must set this.
@@ -69,6 +69,6 @@ produces an encode that never ends — an infinite scene must set this.
 readonly optional settings?: VideoSceneSettings;
 ```
 
-Defined in: [packages/export/src/Video.ts:67](https://github.com/julia-script/effect-motion/blob/main/packages/export/src/Video.ts#L67)
+Defined in: [packages/export/src/Video.ts:72](https://github.com/julia-script/effect-motion/blob/main/packages/export/src/Video.ts#L72)
 
 Scene framerate/dimensions/maxFrames for this export.

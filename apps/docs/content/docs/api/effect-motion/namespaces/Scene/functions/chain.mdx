@@ -7,15 +7,15 @@ description: "function chain<Eff, ScheduleE, ScheduleR>(effects, schedule?): Eff
 ```ts
 function chain<Eff, ScheduleE, ScheduleR>(effects, schedule?): Effect<{
   completed: number;
-}, 
+},
   | ScheduleE
-  | Eff extends Effect<any, E, any> ? E : never, 
+  | Eff extends Effect<any, E, any> ? E : never,
   | Runner
   | ScheduleR
 | Eff extends Effect<any, any, R> ? R : never>;
 ```
 
-Defined in: [packages/motion/src/Scene.ts:1378](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L1378)
+Defined in: [packages/motion/src/Scene.ts:1434](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L1434)
 
 Run animations one at a time, in order, optionally resting between them.
 
@@ -38,9 +38,9 @@ Run animations one at a time, in order, optionally resting between them.
 
 `Effect`\<\{
   `completed`: `number`;
-\}, 
+\},
   \| `ScheduleE`
-  \| `Eff` *extends* `Effect`\<`any`, `E`, `any`\> ? `E` : `never`, 
+  \| `Eff` *extends* `Effect`\<`any`, `E`, `any`\> ? `E` : `never`,
   \| [`Runner`](../../Runner/classes/Runner.mdx)
   \| `ScheduleR`
   \| `Eff` *extends* `Effect`\<`any`, `any`, `R`\> ? `R` : `never`\>

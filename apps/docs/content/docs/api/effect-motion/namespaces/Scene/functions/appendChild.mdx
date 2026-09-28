@@ -1,14 +1,14 @@
 ---
 title: "appendChild"
-description: "function appendChild(parent, child): Effect<void, never, Runner>;"
+description: "function appendChild(parent, child): Effect<undefined, never, Runner>;"
 ---
 # Function: appendChild()
 
 ```ts
-function appendChild(parent, child): Effect<void, never, Runner>;
+function appendChild(parent, child): Effect<undefined, never, Runner>;
 ```
 
-Defined in: [packages/motion/src/Scene.ts:752](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L752)
+Defined in: [packages/motion/src/Scene.ts:760](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L760)
 
 Move `child` under `parent`, detaching it from its current parent first
 (so it is never double-referenced). Instances are born mounted under the
@@ -24,4 +24,4 @@ placing a lazily-created node into an existing group.
 
 ## Returns
 
-`Effect`\<`void`, `never`, [`Runner`](../../Runner/classes/Runner.mdx)\>
+`Effect`\<`undefined`, `never`, [`Runner`](../../Runner/classes/Runner.mdx)\>

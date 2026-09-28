@@ -1,23 +1,27 @@
 ---
 title: "make"
-description: "function make(registry, resources?): Sync;"
+description: "function make("
 ---
 # Function: make()
 
 ```ts
-function make(registry, resources?): Sync;
+function make(
+   registry,
+   resources?,
+   domainId?): Sync;
 ```
 
-Defined in: [packages/renderer/src/Sync.ts:284](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L284)
+Defined in: [packages/renderer/src/Sync.ts:307](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Sync.ts#L307)
 
 ## Parameters
 
-| Parameter | Type | Description |
-| ------ | ------ | ------ |
-| `registry` | `Record`\<`string`, `AnyEntityRenderer`\> | - |
-| `resources` | \{ `images`: [`Images`](../../Images/interfaces/Images.mdx); `text`: [`Text`](../../Text/interfaces/Text.mdx); \} | comps pass the root's actors: `resolveResources` fills only the root, and the frame's instance map already covers every comp subtree |
-| `resources.images` | [`Images`](../../Images/interfaces/Images.mdx) | - |
-| `resources.text` | [`Text`](../../Text/interfaces/Text.mdx) | - |
+| Parameter | Type | Default value | Description |
+| ------ | ------ | ------ | ------ |
+| `registry` | `Record`\<`string`, `AnyEntityRenderer`\> | `undefined` | - |
+| `resources` | \{ `images`: [`Images`](../../Images/interfaces/Images.mdx); `text`: [`Text`](../../Text/interfaces/Text.mdx); \} | `...` | comps pass the root's actors: `resolveResources` fills only the root, and the frame's instance map already covers every comp subtree |
+| `resources.images` | [`Images`](../../Images/interfaces/Images.mdx) | `undefined` | - |
+| `resources.text` | [`Text`](../../Text/interfaces/Text.mdx) | `undefined` | - |
+| `domainId` | `string` | `""` | - |
 
 ## Returns
 

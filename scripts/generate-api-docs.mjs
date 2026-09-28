@@ -252,7 +252,7 @@ for (const pkg of packages) {
 			/\[(node\\_modules\/[^\]]+)\]\(https:\/\/github\.com\/[^)]+\)/g,
 			"$1",
 		);
-		const body = escapeMdx(raw);
+		const body = escapeMdx(raw).replace(/[ \t]+$/gm, "");
 		// The filename is the symbol, except for a README, which indexes the
 		// directory it sits in — title those after that directory (the
 		// namespace), or the package at the root. Otherwise every namespace

@@ -8,9 +8,11 @@ import {
 	Effect,
 	ManagedRuntime,
 	Schedule,
+	type Scope,
 	Semaphore,
 } from "effect";
 import * as Layer from "effect/Layer";
+import type * as Resource from "effect-motion/Resource";
 import type * as Runner from "effect-motion/Runner";
 import * as Scene from "effect-motion/Scene";
 import * as Time from "effect-motion/Time";
@@ -21,6 +23,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import * as BrowserAudio from "./BrowserAudio.js";
 
 /**
  * Anything that went wrong inside the player: acquiring the renderer, a
@@ -180,6 +183,9 @@ const useScene = (
 	// loop is read live from optsRef inside the play loop, not destructured here
 	const { fps, prebufferedFrames, autoPlay, isInfinite, settings } = options;
 	const canvasRef = useRef<HTMLCanvasElement>(null);
+	const audioContextRef = useRef<AudioContext | null>(null);
+	const playAttemptRef = useRef(0);
+	const mountedRef = useRef(true);
 	const [currentFrame, setCurrentFrame] = useState(0);
 	const [bufferedFrames, setBufferedFrames] = useState(0);
 	// null until the scene stream ends (never, for infinite scenes)
@@ -206,6 +212,7 @@ const useScene = (
 		ManagedRuntime.make(
 			Layer.effectContext(
 				Effect.gen(function* () {
+					const browserAudio = yield* BrowserAudio.make(audioContextRef);
 					const runningScene = yield* Scene.run(scene, {
 						...settings,
 						frameRate: fps,
@@ -234,6 +241,8 @@ const useScene = (
 					let prewarmed = false;
 					let currentFrame = 0;
 					let isPlaying = false;
+					let starting = false;
+					let playbackEpoch = 0;
 					// total frame count once the stream ends; null while unknown
 					let totalFramesValue: number | null = null;
 					const setTotal = (n: number) => {
@@ -335,6 +344,16 @@ const useScene = (
 								yield* FrameRenderer.prewarm(sink);
 							}
 							yield* FrameRenderer.render(sink);
+							const blocked = yield* browserAudio.sync(
+								frame,
+								framebuffer.index,
+								isPlaying,
+							);
+							if (blocked) {
+								yield* browserAudio.stop;
+								playbackEpoch++;
+								updateIsPlaying(false);
+							}
 						}).pipe(Effect.mapError(PlayerError.of("Error rendering frame")));
 
 					const render: (
@@ -368,84 +387,114 @@ const useScene = (
 					});
 
 					const play = Effect.suspend(() => {
-						if (isPlaying) return Effect.void;
-
-						// replaying from the end of a finished finite scene: rewind
-						const total = totalFramesValue;
-						if (total !== null && currentFrame >= total - 1) {
-							updateCurrentFrame(0);
-						}
-
-						isPlaying = true;
-						updateIsPlaying(true);
-
-						// Real-time playback clock. Each tick advances by however many
-						// whole frames of wall-clock have elapsed since the last tick
-						// (accumulator), so playback keeps real time even when a render
-						// is slow — intermediate frames are dropped, only the latest is
-						// rendered. The driver ticks a bit faster than the frame period
-						// so we never systematically miss a frame boundary; the
-						// accumulator decides whether a frame is actually due.
-						const frameMs = 1000 / fps;
-						let lastTick: number | null = null;
-						let acc = 0;
-						const tick = Effect.gen(function* () {
-							// wall-clock is intentional here: it drives real playback
-							// speed — not scene time, so the determinism rule that bans
-							// wall-clock in scenes doesn't apply.
-							const now = performance.now();
-							if (lastTick === null) {
-								lastTick = now;
-								return;
-							}
-							const elapsed = now - lastTick;
-							lastTick = now;
-							acc += elapsed;
-							const advance = Math.floor(acc / frameMs);
-							if (advance <= 0) {
-								return;
-							}
-							acc -= advance * frameMs;
-
-							let next = currentFrame + advance;
+						if (isPlaying || starting) return Effect.void;
+						starting = true;
+						return Effect.gen(function* () {
+							// A blocked autoplay leaves the picture paused; a later click can
+							// retry without letting the frame clock outrun silent audio.
+							yield* browserAudio.unlock.pipe(
+								Effect.match({ onFailure: () => false, onSuccess: () => true }),
+							);
+							starting = false;
+							// replaying from the end of a finished finite scene: rewind
 							const total = totalFramesValue;
-							if (total !== null && next > total - 1) {
-								// past the end of a finite scene: wrap when looping,
-								// else clamp to the last frame (a big `advance` from a
-								// slow tick must not overshoot into the unbuffered void,
-								// which would render nothing and wedge the playhead)
-								next =
-									optsRef.current.loop && !optsRef.current.isInfinite
-										? next % total
-										: total - 1;
+							if (total !== null && currentFrame >= total - 1) {
+								updateCurrentFrame(0);
 							}
-							yield* render(next);
-						});
-						// small fixed spacing (quarter-frame) so the accumulator sees
-						// each frame boundary; the tick itself no-ops until a frame is due
-						const loop = Effect.repeat({
-							schedule: Schedule.spaced(Math.max(1, frameMs / 4)),
-							// keep playing until we reach the last buffered frame of a
-							// finished scene — unless looping (then wrap forever). A scene
-							// that is `done` but not yet at its last frame must keep going.
-							while: () => {
-								if (!isPlaying) return false;
-								const total = totalFramesValue;
-								if (total === null) return true; // still buffering
-								if (optsRef.current.loop && !optsRef.current.isInfinite) {
-									return true;
+
+							isPlaying = true;
+							updateIsPlaying(true);
+							const epoch = ++playbackEpoch;
+							// Re-show this frame after the gesture unlock. It starts audio
+							// before the clock advances, including a replay from the end.
+							yield* renderSemaphore.withPermits(1)(renderFrame(currentFrame));
+							if (!isPlaying || epoch !== playbackEpoch) return;
+
+							// Real-time playback clock. Each tick advances by however many
+							// whole frames of wall-clock have elapsed since the last tick
+							// (accumulator), so playback keeps real time even when a render
+							// is slow — intermediate frames are dropped, only the latest is
+							// rendered. The driver ticks a bit faster than the frame period
+							// so we never systematically miss a frame boundary; the
+							// accumulator decides whether a frame is actually due.
+							const frameMs = 1000 / fps;
+							let lastTick: number | null = null;
+							let acc = 0;
+							const tick = Effect.gen(function* () {
+								// wall-clock is intentional here: it drives real playback
+								// speed — not scene time, so the determinism rule that bans
+								// wall-clock in scenes doesn't apply.
+								const now = performance.now();
+								if (lastTick === null) {
+									lastTick = now;
+									return;
 								}
-								return currentFrame < total - 1;
-							},
-						});
-						return loop(tick).pipe(
-							Effect.ensuring(Effect.sync(() => updateIsPlaying(false))),
-						);
+								const elapsed = now - lastTick;
+								lastTick = now;
+								acc += elapsed;
+								const advance = Math.floor(acc / frameMs);
+								if (advance <= 0) {
+									return;
+								}
+								acc -= advance * frameMs;
+
+								let next = currentFrame + advance;
+								const total = totalFramesValue;
+								if (total !== null && next > total - 1) {
+									// past the end of a finite scene: wrap when looping,
+									// else clamp to the last frame (a big `advance` from a
+									// slow tick must not overshoot into the unbuffered void,
+									// which would render nothing and wedge the playhead)
+									next =
+										optsRef.current.loop && !optsRef.current.isInfinite
+											? next % total
+											: total - 1;
+								}
+								yield* render(next);
+							});
+							// small fixed spacing (quarter-frame) so the accumulator sees
+							// each frame boundary; the tick itself no-ops until a frame is due
+							const loop = Effect.repeat({
+								schedule: Schedule.spaced(Math.max(1, frameMs / 4)),
+								// keep playing until we reach the last buffered frame of a
+								// finished scene — unless looping (then wrap forever). A scene
+								// that is `done` but not yet at its last frame must keep going.
+								while: () => {
+									if (!isPlaying || epoch !== playbackEpoch) return false;
+									const total = totalFramesValue;
+									if (total === null) return true; // still buffering
+									if (optsRef.current.loop && !optsRef.current.isInfinite) {
+										return true;
+									}
+									return currentFrame < total - 1;
+								},
+							});
+							return yield* loop(tick).pipe(
+								Effect.ensuring(
+									Effect.suspend(() =>
+										epoch === playbackEpoch
+											? browserAudio.stop.pipe(
+													Effect.orDie,
+													Effect.andThen(
+														Effect.sync(() => updateIsPlaying(false)),
+													),
+												)
+											: Effect.void,
+									),
+								),
+							);
+						}).pipe(Effect.mapError(PlayerError.of("Error playing audio")));
 					});
-					const pause = Effect.sync(() => {
-						isPlaying = false;
-						updateIsPlaying(false);
-					});
+					const pause = browserAudio.stop.pipe(
+						Effect.orDie,
+						Effect.tap(() =>
+							Effect.sync(() => {
+								playbackEpoch++;
+								isPlaying = false;
+								updateIsPlaying(false);
+							}),
+						),
+					);
 					return Context.make(PlayerScene, {
 						play,
 						pause,
@@ -469,16 +518,31 @@ const useScene = (
 		}
 		return runtimeRef.current;
 	};
-	useEffect(
-		() => () => {
+	useEffect(() => {
+		mountedRef.current = true;
+		return () => {
+			mountedRef.current = false;
+			playAttemptRef.current++;
 			// dispose interrupts our own in-flight fibers (play loop, prebuffer);
 			// its promise then rejects with that interruption — expected teardown,
 			// never actionable from a cleanup callback
-			runtimeRef.current?.dispose().catch(() => undefined);
+			const runtime = runtimeRef.current;
+			runtime?.dispose().catch(() => undefined);
 			runtimeRef.current = null;
-		},
-		[],
-	);
+			// If the user gesture created a context before runtime acquisition,
+			// there may be no runtime finalizer to close it.
+			const context = audioContextRef.current;
+			if (runtime === null && context !== null && context.state !== "closed") {
+				void Effect.runPromiseExit(
+					Effect.tryPromise({
+						try: () => context.close(),
+						catch: (cause) => PlayerError.of("Could not close audio")(cause),
+					}),
+				);
+			}
+			audioContextRef.current = null;
+		};
+	}, []);
 
 	// Disposing the runtime on unmount INTERRUPTS in-flight fibers (the play
 	// loop, prebuffering). These handlers are fire-and-forget, so a rejecting
@@ -530,23 +594,32 @@ const useScene = (
 		),
 	);
 
-	const play = useEffectEvent(() =>
-		runReported(
-			Effect.service(PlayerScene).pipe(
-				Effect.flatMap((e) => e.play),
-				Effect.scoped,
-			),
-		),
-	);
+	const play = useEffectEvent(() => {
+		const attempt = ++playAttemptRef.current;
+		// Run this Effect immediately inside the browser gesture. Waiting for
+		// the renderer/runtime to initialize first would lose autoplay access.
+		void Effect.runPromiseExit(
+			BrowserAudio.unlockContext(audioContextRef),
+		).then(() => {
+			if (!mountedRef.current || attempt !== playAttemptRef.current) return;
+			void runReported(
+				Effect.service(PlayerScene).pipe(
+					Effect.flatMap((e) => e.play),
+					Effect.scoped,
+				),
+			);
+		});
+	});
 
-	const pause = useEffectEvent(() =>
-		runReported(
+	const pause = useEffectEvent(() => {
+		playAttemptRef.current++;
+		return runReported(
 			Effect.service(PlayerScene).pipe(
 				Effect.flatMap((e) => e.pause),
 				Effect.scoped,
 			),
-		),
-	);
+		);
+	});
 
 	// prebuffer + autoplay once the runtime exists. For an infinite scene we
 	// can't buffer to the end, so cap at the requested prebuffer count.
@@ -637,6 +710,13 @@ const useScene = (
  * Only `scene` is required — and `renderLayers`, if the scene declares
  * resources. Everything else has a working default.
  */
+type RequiredLayers<S extends Scene.AnyScene> =
+	S extends Scene.Scene<any, infer R>
+		?
+				| Scene.Resources<S>
+				| Exclude<Resource.ExcludeLoaders<R>, Runner.Runner | Scope.Scope>
+		: never;
+
 export type PlayerProps<S extends Scene.AnyScene = Scene.AnyScene> = {
 	/**
 	 * How many frames to buffer ahead before playing.
@@ -727,7 +807,7 @@ export type PlayerProps<S extends Scene.AnyScene = Scene.AnyScene> = {
 
 	/** The scene to play. */
 	scene: S;
-} & (Scene.Resources<S> extends never
+} & (RequiredLayers<S> extends never
 	? {
 			/**
 			 * Not accepted: this scene declares no resources, so passing
@@ -737,7 +817,8 @@ export type PlayerProps<S extends Scene.AnyScene = Scene.AnyScene> = {
 		}
 	: {
 			/**
-			 * Loaders for the fonts and images the scene uses.
+			 * Loaders for fonts, images and audio, plus prepared audio metadata
+			 * when the scene explicitly queries duration.
 			 *
 			 * @remarks
 			 * REQUIRED when the scene declares resources, and it must cover
@@ -749,7 +830,7 @@ export type PlayerProps<S extends Scene.AnyScene = Scene.AnyScene> = {
 			 * Loads run once, eagerly, when the player mounts. A failed load
 			 * shows in the player's error panel.
 			 */
-			renderLayers: Layer.Layer<Scene.Resources<S>, unknown, never>;
+			renderLayers: Layer.Layer<RequiredLayers<S>, unknown, never>;
 		});
 
 /**

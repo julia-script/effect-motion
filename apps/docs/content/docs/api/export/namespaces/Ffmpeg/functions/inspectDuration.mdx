@@ -1,0 +1,24 @@
+---
+title: "inspectDuration"
+description: "function inspectDuration(bytes, binary?): Effect<number, EncodeError, ChildProcessSpawner>;"
+---
+# Function: inspectDuration()
+
+```ts
+function inspectDuration(bytes, binary?): Effect<number, EncodeError, ChildProcessSpawner>;
+```
+
+Defined in: [packages/export/src/Ffmpeg.ts:143](https://github.com/julia-script/effect-motion/blob/main/packages/export/src/Ffmpeg.ts#L143)
+
+Inspect duration from the same bytes that export will decode.
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `bytes` | `Uint8Array` |
+| `binary?` | `string` |
+
+## Returns
+
+`Effect`\<`number`, [`EncodeError`](../classes/EncodeError.mdx), `ChildProcessSpawner`\>

@@ -4,7 +4,7 @@ description: "readonly done: boolean;"
 ---
 # Interface: RunningScene\<E, R\>
 
-Defined in: [packages/motion/src/Scene.ts:431](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L431)
+Defined in: [packages/motion/src/Scene.ts:439](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L439)
 
 ## Type Parameters
 
@@ -21,7 +21,7 @@ Defined in: [packages/motion/src/Scene.ts:431](https://github.com/julia-script/e
 readonly done: boolean;
 ```
 
-Defined in: [packages/motion/src/Scene.ts:437](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L437)
+Defined in: [packages/motion/src/Scene.ts:445](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L445)
 
 ***
 
@@ -31,7 +31,7 @@ Defined in: [packages/motion/src/Scene.ts:437](https://github.com/julia-script/e
 readonly fiber: Fiber<void, E>;
 ```
 
-Defined in: [packages/motion/src/Scene.ts:436](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L436)
+Defined in: [packages/motion/src/Scene.ts:444](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L444)
 
 ***
 
@@ -41,7 +41,7 @@ Defined in: [packages/motion/src/Scene.ts:436](https://github.com/julia-script/e
 framesDelivered: number;
 ```
 
-Defined in: [packages/motion/src/Scene.ts:439](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L439)
+Defined in: [packages/motion/src/Scene.ts:447](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L447)
 
 frames delivered so far — mutated by `step` for the maxFrames cap
 
@@ -51,22 +51,24 @@ frames delivered so far — mutated by `step` for the maxFrames cap
 
 ```ts
 readonly runner: {
-  appendChild: (parent, child) => void;
+  anchorAudio: (id, until?) => void;
+  appendChild: (parent, child) => Error | null;
   awaitedCount: () => number;
   backgrounds: Set<BranchEntry>;
   camera: Instance<"Camera">;
   cameraOf: (compId) => Instance<"Camera">;
+  clearMask: (target) => void;
   comp: CompConfig;
   countAwaited: (n) => void;
   destroy: (instance) => void;
   failureCause: () => Cause<unknown> | undefined;
   forks: Set<BranchEntry>;
-  getDataUnsafe: <Tag>(instance) => 
+  getDataUnsafe: <Tag>(instance) =>
      | EntityByTag<Tag>
     | null;
   instantiate: <Tag>(...args) => Effect<Instance<Tag>, never, Runner>;
   instantiateEscape: (...args) => Effect<Instance<
-     | "Camera"
+     | "Audio"
      | "Line"
      | "Path"
      | "Rect"
@@ -75,7 +77,8 @@ readonly runner: {
      | "Text"
      | "Group"
      | "Hud"
-    | "Image">, never, never>;
+     | "Image"
+    | "Camera">, never, never>;
   phaser: {
      arriveAndAwaitAdvance: Effect<void, never, never>;
      awaitAdvance: Effect<number, never, never>;
@@ -94,6 +97,7 @@ readonly runner: {
   root: GroupInstance;
   setCamera: (instance, compId) => void;
   setDataUnsafe: <Tag>(instance, state) => void;
+  setMask: (target, source, mode) => Error | null;
   settings: {
      frameRate: number;
      maxFrames: number;
@@ -109,6 +113,25 @@ readonly runner: {
      height: number;
      instances: Record<string, {
         data:   | {
+           audio: {
+              id: string;
+           };
+           gain: number;
+           loop: boolean;
+           playing: boolean;
+           position: {
+              x: number;
+              y: number;
+              z: number;
+           };
+           rotation: {
+              x: number;
+              y: number;
+              z: number;
+           };
+           time: number;
+         }
+           | {
            end: {
               x: number;
               y: number;
@@ -152,7 +175,7 @@ readonly runner: {
               x: number;
               y: number;
               z?: ... | ...;
-            }, 
+            },
               | {
             }
               | {
@@ -370,18 +393,38 @@ readonly runner: {
            };
          };
      }>;
+     masks: {
+      [k: string]: MaskAttachment;
+     };
      root: string;
      width: number;
   }, never, never>;
 };
 ```
 
-Defined in: [packages/motion/src/Scene.ts:432](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L432)
+Defined in: [packages/motion/src/Scene.ts:440](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L440)
+
+#### anchorAudio
+
+```ts
+anchorAudio: (id, until?) => void;
+```
+
+##### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `id` | `string` |
+| `until?` | `number` |
+
+##### Returns
+
+`void`
 
 #### appendChild
 
 ```ts
-appendChild: (parent, child) => void;
+appendChild: (parent, child) => Error | null;
 ```
 
 ##### Parameters
@@ -393,7 +436,7 @@ appendChild: (parent, child) => void;
 
 ##### Returns
 
-`void`
+`Error` \| `null`
 
 #### awaitedCount
 
@@ -432,6 +475,22 @@ cameraOf: (compId) => Instance<"Camera">;
 ##### Returns
 
 [`Instance`](../../Instance/interfaces/Instance.mdx)\<`"Camera"`\>
+
+#### clearMask
+
+```ts
+clearMask: (target) => void;
+```
+
+##### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `target` | [`Instance`](../../Instance/interfaces/Instance.mdx)\<[`MaskableTag`](../../Entity/type-aliases/MaskableTag.mdx)\> |
+
+##### Returns
+
+`void`
 
 #### comp
 
@@ -490,7 +549,7 @@ forks: Set<BranchEntry>;
 #### getDataUnsafe
 
 ```ts
-getDataUnsafe: <Tag>(instance) => 
+getDataUnsafe: <Tag>(instance) =>
   | EntityByTag<Tag>
   | null;
 ```
@@ -499,7 +558,7 @@ getDataUnsafe: <Tag>(instance) =>
 
 | Type Parameter |
 | ------ |
-| `Tag` *extends* \| `"Camera"` \| `"Line"` \| `"Path"` \| `"Rect"` \| `"Circle"` \| `"Ellipse"` \| `"Text"` \| `"Group"` \| `"Hud"` \| `"Image"` |
+| `Tag` *extends* \| `"Audio"` \| `"Line"` \| `"Path"` \| `"Rect"` \| `"Circle"` \| `"Ellipse"` \| `"Text"` \| `"Group"` \| `"Hud"` \| `"Image"` \| `"Camera"` |
 
 ##### Parameters
 
@@ -522,7 +581,7 @@ instantiate: <Tag>(...args) => Effect<Instance<Tag>, never, Runner>;
 
 | Type Parameter |
 | ------ |
-| `Tag` *extends* \| `"Camera"` \| `"Line"` \| `"Path"` \| `"Rect"` \| `"Circle"` \| `"Ellipse"` \| `"Text"` \| `"Group"` \| `"Hud"` \| `"Image"` |
+| `Tag` *extends* \| `"Audio"` \| `"Line"` \| `"Path"` \| `"Rect"` \| `"Circle"` \| `"Ellipse"` \| `"Text"` \| `"Group"` \| `"Hud"` \| `"Image"` \| `"Camera"` |
 
 ##### Parameters
 
@@ -538,7 +597,7 @@ instantiate: <Tag>(...args) => Effect<Instance<Tag>, never, Runner>;
 
 ```ts
 instantiateEscape: (...args) => Effect<Instance<
-  | "Camera"
+  | "Audio"
   | "Line"
   | "Path"
   | "Rect"
@@ -547,7 +606,8 @@ instantiateEscape: (...args) => Effect<Instance<
   | "Text"
   | "Group"
   | "Hud"
-| "Image">, never, never>;
+  | "Image"
+| "Camera">, never, never>;
 ```
 
 ponytail: create a tree node for an entity that is NOT in the
@@ -559,12 +619,12 @@ rewrite; see `particlesEscapeInstantiate`.
 
 | Parameter | Type |
 | ------ | ------ |
-| ...`args` | \[ \| \{ `end`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `start`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `strokeColor`: [`Color`](../../Color/classes/Color.mdx); `strokeWidth`: `number`; `visible`: `boolean`; \} \| \{ `commands`: readonly \[ \| \{ \} \| \{ `x`: `number`; `y`: `number`; `z?`: `number`; \} \| \{ `x`: `number`; `y`: `number`; `z?`: `number`; \}, \| \{ \} \| \{ `x`: `number`; `y`: `number`; `z?`: `number`; \} \| \{ `x`: `number`; `y`: `number`; `z?`: `number`; \}\]; `fillColor`: [`Color`](../../Color/classes/Color.mdx); `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `strokeColor?`: [`Color`](../../Color/classes/Color.mdx); `strokeWidth`: `number`; `visible`: `boolean`; \} \| \{ `fillColor`: [`Color`](../../Color/classes/Color.mdx); `height`: `number`; `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `strokeColor?`: [`Color`](../../Color/classes/Color.mdx); `strokeWidth`: `number`; `visible`: `boolean`; `width`: `number`; \} \| \{ `fillColor`: [`Color`](../../Color/classes/Color.mdx); `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `radius`: `number`; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `strokeColor?`: [`Color`](../../Color/classes/Color.mdx); `strokeWidth`: `number`; `visible`: `boolean`; \} \| \{ `fillColor`: [`Color`](../../Color/classes/Color.mdx); `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `radiusX`: `number`; `radiusY`: `number`; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `strokeColor?`: [`Color`](../../Color/classes/Color.mdx); `strokeWidth`: `number`; `visible`: `boolean`; \} \| \{ `baseline?`: `"middle"` \| `"auto"` \| `"hanging"`; `fillColor`: [`Color`](../../Color/classes/Color.mdx); `fontFamily`: \{ `id`: `string`; \}; `fontSize`: `number`; `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `text`: `string`; `textAnchor?`: `"start"` \| `"end"` \| `"middle"`; `visible`: `boolean`; \} \| \{ `children`: readonly `string`[]; `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `visible`: `boolean`; \} \| \{ `children`: readonly `string`[]; `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `visible`: `boolean`; \} \| \{ `height?`: `number`; `image`: \{ `id`: `string`; \}; `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `visible`: `boolean`; `width?`: `number`; \} \| \{ `aperture`: `number`; `focalLength`: `number`; `focusDistance`: `number`; `poi`: \| \{ `x`: `number`; `y`: `number`; `z`: `number`; \} \| `null`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; \}\] |
+| ...`args` | \[ \| \{ `audio`: \{ `id`: `string`; \}; `gain`: `number`; `loop`: `boolean`; `playing`: `boolean`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `time`: `number`; \} \| \{ `end`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `start`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `strokeColor`: [`Color`](../../Color/classes/Color.mdx); `strokeWidth`: `number`; `visible`: `boolean`; \} \| \{ `commands`: readonly \[ \| \{ \} \| \{ `x`: `number`; `y`: `number`; `z?`: `number`; \} \| \{ `x`: `number`; `y`: `number`; `z?`: `number`; \}, \| \{ \} \| \{ `x`: `number`; `y`: `number`; `z?`: `number`; \} \| \{ `x`: `number`; `y`: `number`; `z?`: `number`; \}\]; `fillColor`: [`Color`](../../Color/classes/Color.mdx); `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `strokeColor?`: [`Color`](../../Color/classes/Color.mdx); `strokeWidth`: `number`; `visible`: `boolean`; \} \| \{ `fillColor`: [`Color`](../../Color/classes/Color.mdx); `height`: `number`; `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `strokeColor?`: [`Color`](../../Color/classes/Color.mdx); `strokeWidth`: `number`; `visible`: `boolean`; `width`: `number`; \} \| \{ `fillColor`: [`Color`](../../Color/classes/Color.mdx); `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `radius`: `number`; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `strokeColor?`: [`Color`](../../Color/classes/Color.mdx); `strokeWidth`: `number`; `visible`: `boolean`; \} \| \{ `fillColor`: [`Color`](../../Color/classes/Color.mdx); `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `radiusX`: `number`; `radiusY`: `number`; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `strokeColor?`: [`Color`](../../Color/classes/Color.mdx); `strokeWidth`: `number`; `visible`: `boolean`; \} \| \{ `baseline?`: `"middle"` \| `"auto"` \| `"hanging"`; `fillColor`: [`Color`](../../Color/classes/Color.mdx); `fontFamily`: \{ `id`: `string`; \}; `fontSize`: `number`; `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `text`: `string`; `textAnchor?`: `"start"` \| `"end"` \| `"middle"`; `visible`: `boolean`; \} \| \{ `children`: readonly `string`[]; `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `visible`: `boolean`; \} \| \{ `children`: readonly `string`[]; `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `visible`: `boolean`; \} \| \{ `height?`: `number`; `image`: \{ `id`: `string`; \}; `opacity`: `number`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `scale`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `visible`: `boolean`; `width?`: `number`; \} \| \{ `aperture`: `number`; `focalLength`: `number`; `focusDistance`: `number`; `poi`: \| \{ `x`: `number`; `y`: `number`; `z`: `number`; \} \| `null`; `position`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; `rotation`: \{ `x`: `number`; `y`: `number`; `z`: `number`; \}; \}\] |
 
 ##### Returns
 
 `Effect`\<[`Instance`](../../Instance/interfaces/Instance.mdx)\<
-  \| `"Camera"`
+  \| `"Audio"`
   \| `"Line"`
   \| `"Path"`
   \| `"Rect"`
@@ -573,7 +633,8 @@ rewrite; see `particlesEscapeInstantiate`.
   \| `"Text"`
   \| `"Group"`
   \| `"Hud"`
-  \| `"Image"`\>, `never`, `never`\>
+  \| `"Image"`
+  \| `"Camera"`\>, `never`, `never`\>
 
 #### phaser
 
@@ -767,7 +828,7 @@ setDataUnsafe: <Tag>(instance, state) => void;
 
 | Type Parameter |
 | ------ |
-| `Tag` *extends* \| `"Camera"` \| `"Line"` \| `"Path"` \| `"Rect"` \| `"Circle"` \| `"Ellipse"` \| `"Text"` \| `"Group"` \| `"Hud"` \| `"Image"` |
+| `Tag` *extends* \| `"Audio"` \| `"Line"` \| `"Path"` \| `"Rect"` \| `"Circle"` \| `"Ellipse"` \| `"Text"` \| `"Group"` \| `"Hud"` \| `"Image"` \| `"Camera"` |
 
 ##### Parameters
 
@@ -779,6 +840,24 @@ setDataUnsafe: <Tag>(instance, state) => void;
 ##### Returns
 
 `void`
+
+#### setMask
+
+```ts
+setMask: (target, source, mode) => Error | null;
+```
+
+##### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `target` | [`Instance`](../../Instance/interfaces/Instance.mdx)\<[`MaskableTag`](../../Entity/type-aliases/MaskableTag.mdx)\> |
+| `source` | [`Instance`](../../Instance/interfaces/Instance.mdx)\<[`MaskableTag`](../../Entity/type-aliases/MaskableTag.mdx)\> |
+| `mode` | `"alpha"` \| `"inverse"` |
+
+##### Returns
+
+`Error` \| `null`
 
 #### settings
 
@@ -821,6 +900,25 @@ state: Effect<{
   height: number;
   instances: Record<string, {
      data:   | {
+        audio: {
+           id: string;
+        };
+        gain: number;
+        loop: boolean;
+        playing: boolean;
+        position: {
+           x: number;
+           y: number;
+           z: number;
+        };
+        rotation: {
+           x: number;
+           y: number;
+           z: number;
+        };
+        time: number;
+      }
+        | {
         end: {
            x: number;
            y: number;
@@ -864,7 +962,7 @@ state: Effect<{
            x: number;
            y: number;
            z?: ... | ...;
-         }, 
+         },
            | {
          }
            | {
@@ -1082,6 +1180,9 @@ state: Effect<{
         };
       };
   }>;
+  masks: {
+   [k: string]: MaskAttachment;
+  };
   root: string;
   width: number;
 }, never, never>;
@@ -1095,4 +1196,4 @@ state: Effect<{
 readonly scene: Scene<E, R>;
 ```
 
-Defined in: [packages/motion/src/Scene.ts:434](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L434)
+Defined in: [packages/motion/src/Scene.ts:442](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L442)

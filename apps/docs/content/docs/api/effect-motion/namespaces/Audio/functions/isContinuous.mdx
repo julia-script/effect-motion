@@ -1,0 +1,40 @@
+---
+title: "isContinuous"
+description: "function isContinuous("
+---
+# Function: isContinuous()
+
+```ts
+function isContinuous(
+   previous,
+   next,
+   elapsedFrames,
+   frameRate): boolean;
+```
+
+Defined in: [packages/motion/src/Audio.ts:377](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Audio.ts#L377)
+
+Whether a track's transport continued smoothly between two observed
+frames `elapsedFrames` apart — the adapters' resync test.
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `previous` | [`Transport`](../interfaces/Transport.mdx) |
+| `next` | [`Transport`](../interfaces/Transport.mdx) |
+| `elapsedFrames` | `number` |
+| `frameRate` | `number` |
+
+## Returns
+
+`boolean`
+
+## Remarks
+
+Continuous means the same `playing` state and a `time` within
+[cursorTolerance](../variables/cursorTolerance.mdx) of `previous.time + elapsedFrames / frameRate`
+(paused: unchanged). Anything else — a seek, pause, resume, stop, or a
+direct write — is a discontinuity to resync to. Skipped frames (player
+catch-up, sparse export sampling) stay continuous because the expected
+cursor accounts for every elapsed frame.

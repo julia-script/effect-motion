@@ -1,0 +1,15 @@
+---
+title: "crossfade"
+description: "const crossfade: (to, duration, timing?) => (from) => Effect<Instance<\"Audio\">, never, Runner> & (from, to, duration, timing?) => Effect<Instance<\"Aud"
+---
+# Variable: crossfade
+
+```ts
+const crossfade: (to, duration, timing?) => (from) => Effect<Instance<"Audio">, never, Runner> & (from, to, duration, timing?) => Effect<Instance<"Audio">, never, Runner>;
+```
+
+Defined in: [packages/motion/src/Audio.ts:481](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Audio.ts#L481)
+
+Fade `from` out while `to` fades in (0 → 1), together; resolves with
+`to`. Two instance operands, so the dual dispatches on the SECOND
+argument: `crossfade(a, b, d)` or `a.pipe(crossfade(b, d))`.

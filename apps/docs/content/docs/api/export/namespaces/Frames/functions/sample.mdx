@@ -6,13 +6,13 @@ description: "function sample<E, R>("
 
 ```ts
 function sample<E, R>(
-   scene, 
-   selection, 
+   scene,
+   selection,
    settings?): Effect<{
   data: Frame<ExtractLoaders<R>>;
   frame: number;
   time: number;
-}[], 
+}[],
   | FrameSelectionError
 | Exclude<E, Done<any>>, Exclude<Exclude<Exclude<Exclude<Exclude<Exclude<ExcludeLoaders<R>, Scope>, never>, Phaser>, Runner>, Scope>, Scope>>;
 ```
@@ -59,6 +59,6 @@ enough for a second pass to matter.
   `data`: `Frame`\<`ExtractLoaders`\<`R`\>\>;
   `frame`: `number`;
   `time`: `number`;
-\}[], 
+\}[],
   \| [`FrameSelectionError`](../classes/FrameSelectionError.mdx)
   \| `Exclude`\<`E`, `Done`\<`any`\>\>, `Exclude`\<`Exclude`\<`Exclude`\<`Exclude`\<`Exclude`\<`Exclude`\<`ExcludeLoaders`\<`R`\>, `Scope`\>, `never`\>, `Phaser`\>, `Runner`\>, `Scope`\>, `Scope`\>\>

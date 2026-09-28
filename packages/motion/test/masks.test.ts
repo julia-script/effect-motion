@@ -29,6 +29,7 @@ describe("mask authoring and frame state", () => {
 			const rect = Instance.makeInstance("rect", "Rect");
 			const circle = Instance.makeInstance("circle", "Circle");
 			const camera = Instance.makeInstance("camera", "Camera");
+			const audio = Instance.makeInstance("audio", "Audio");
 			Scene.setMask(rect, circle);
 			Scene.clearMask(rect);
 			// @ts-expect-error Camera is view state, not a mask target
@@ -37,6 +38,10 @@ describe("mask authoring and frame state", () => {
 			Scene.setMask(rect, camera);
 			// @ts-expect-error Camera cannot have a mask cleared
 			Scene.clearMask(camera);
+			// @ts-expect-error Audio has no painted coverage to mask
+			Scene.setMask(rect, audio);
+			// @ts-expect-error Audio does not paint a mask target
+			Scene.setMask(audio, circle);
 		};
 		expect(typecheck).toBeDefined();
 	});

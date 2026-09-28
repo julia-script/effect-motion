@@ -1,5 +1,8 @@
 import type { PlayerProps } from "@effect-motion/react";
 import type * as Layer from "effect/Layer";
+import type * as Scope from "effect/Scope";
+import type * as Resource from "effect-motion/Resource";
+import type * as Runner from "effect-motion/Runner";
 import * as Scene from "effect-motion/Scene";
 import { MotionCliError } from "./MotionCliError.js";
 
@@ -47,8 +50,17 @@ type EntryScene<V> = V extends { readonly scene: infer S } ? S : V;
  * `layers` field covers the whole studio (preload-all-provided,
  * studio-wide: switching scenes never waits on a fetch).
  */
+type EntryRequirements<S extends Scene.AnyScene> =
+	S extends Scene.Scene<any, infer R>
+		?
+				| Scene.Resources<S>
+				| Exclude<Resource.ExcludeLoaders<R>, Runner.Runner | Scope.Scope>
+		: never;
+
 export type EntriesResources<Entries extends Record<string, StudioEntry>> =
-	Scene.Resources<Extract<EntryScene<Entries[keyof Entries]>, Scene.AnyScene>>;
+	EntryRequirements<
+		Extract<EntryScene<Entries[keyof Entries]>, Scene.AnyScene>
+	>;
 
 export interface StudioConfig {
 	readonly [StudioConfigTypeId]: typeof StudioConfigTypeId;

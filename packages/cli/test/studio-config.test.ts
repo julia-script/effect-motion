@@ -1,4 +1,5 @@
 import type * as Layer from "effect/Layer";
+import type * as Audio from "effect-motion/Audio";
 import type * as Font from "effect-motion/Font";
 import * as Scene from "effect-motion/Scene";
 import { describe, expect, it } from "vitest";
@@ -16,6 +17,15 @@ type LoaderScene = Scene.Scene<never, Font.FontLoader<"Pacifico">>;
 declare const loaderScene: LoaderScene;
 declare const pacificoLayer: Layer.Layer<Font.FontLoader<"Pacifico">>;
 declare const wrongLayer: Layer.Layer<Font.FontLoader<"Inter">>;
+type DurationScene = Scene.Scene<
+	never,
+	Audio.AudioLoader<"theme"> | Audio.AudioMetadata<"theme">
+>;
+declare const durationScene: DurationScene;
+declare const audioLoaderOnly: Layer.Layer<Audio.AudioLoader<"theme">>;
+declare const preparedAudio: Layer.Layer<
+	Audio.AudioLoader<"theme"> | Audio.AudioMetadata<"theme">
+>;
 
 // never invoked — compile-time assertions only
 const _typeCases = () => {
@@ -50,6 +60,16 @@ const _typeCases = () => {
 		scenes: { fancy: { scene: loaderScene, fps: 30 } },
 	});
 
+	const durationCovered = studioConfig({
+		scenes: { duration: durationScene },
+		layers: preparedAudio,
+	});
+	const durationUncovered = studioConfig({
+		scenes: { duration: durationScene },
+		// @ts-expect-error loader bytes alone do not provide duration metadata
+		layers: audioLoaderOnly,
+	});
+
 	// (duplicate record keys need no assertion: an object literal with two
 	// identical properties is a TypeScript error by construction)
 
@@ -61,6 +81,8 @@ const _typeCases = () => {
 		wrongCoverage,
 		entryCovered,
 		entryUncovered,
+		durationCovered,
+		durationUncovered,
 	];
 };
 
