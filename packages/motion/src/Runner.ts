@@ -213,6 +213,12 @@ export const identityCamera = (width: number): Entity.EntityByTag<"Camera"> => {
 	});
 };
 
+/** where a playing audio cursor was last set: frame index and source time */
+interface AudioAnchor {
+	readonly frame: number;
+	readonly time: number;
+}
+
 export class Runner extends Context.Service<Runner>()("Runner", {
 	make: Effect.fnUntraced(function* (
 		settings: Partial<Settings> = {},
@@ -256,12 +262,39 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 			entry.state = state;
 		};
 
+		/**
+		 * Playing audio cursors, by instance id (see `Audio.ts`). A cursor is
+		 * DERIVED — `time + (frame - frame₀) / fps` — never simulated by a
+		 * fiber, so every frame (the scene's last included) carries the exact
+		 * value whichever fiber ran first, and nothing needs to tick.
+		 */
+		const audioAnchors = new Map<string, AudioAnchor>();
+		const resolveAudio = (id: string, entry: { state: Entity.Entity }) => {
+			const anchor = audioAnchors.get(id);
+			if (
+				anchor !== undefined &&
+				entry.state._tag === "Audio" &&
+				entry.state.playing
+			) {
+				const time =
+					anchor.time +
+					(phaser.snapshotUnsafe().phase - anchor.frame) /
+						resolvedSettings.frameRate;
+				if (entry.state.time !== time) {
+					entry.state = { ...entry.state, time };
+				}
+			}
+		};
+
 		const getDataUnsafe = <Tag extends Entity.EntityTag>(
 			instance: Instance.Instance<Tag>,
 		): Entity.EntityByTag<Tag> | null => {
 			const entry = tree.getEntry(instance.id);
 			if (entry === null) {
 				return null;
+			}
+			if (instance.kind === "Audio") {
+				resolveAudio(instance.id, entry);
 			}
 			// the instance's tag names the entry's state; the tree stores mixed
 			// tags, so this is the one place the two are reconciled
@@ -427,6 +460,7 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 					if (active.has(id)) {
 						continue;
 					}
+					resolveAudio(id, entry);
 					instances[id] = { data: entry.state };
 				}
 				return {
@@ -494,11 +528,21 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 				activeCameras.set(compId, instance.id);
 			},
 
+			// re-anchor a playing audio cursor at the current frame (null: the
+			// cursor is plain data again); called by the Audio transport only
+			anchorAudio: (id: string, time: number | null): void => {
+				if (time === null) {
+					audioAnchors.delete(id);
+				} else {
+					audioAnchors.set(id, { frame: phaser.snapshotUnsafe().phase, time });
+				}
+			},
 			destroy: (instance: Instance.Instance): void => {
 				// double-destroy is a no-op, like the old map-based delete
 				if (tree.getEntry(instance.id) === null) {
 					return;
 				}
+				audioAnchors.delete(instance.id);
 				tree.remove(instance.id);
 			},
 			phaser,

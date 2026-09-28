@@ -10,7 +10,7 @@
 - **THEN** frames are produced, typed `Frame<AudioLoader<"theme">>`, and carry the Audio entry
 
 ### Requirement: Explicit duration query on prepared metadata
-`Audio.duration(track)` SHALL read `AudioMetadata<ID>` — an immutable `{ id, duration }` service WITHOUT the loader brand — so its requirement SHALL survive `Scene.run`/`Scene.stream`, and running such a scene without a metadata provider SHALL fail to typecheck. `Audio.metadataLayer(track, { duration })` SHALL provide already-prepared metadata, dying at construction on a non-finite or negative duration. `Audio.preparedLayer(track, load, inspect)` SHALL load bytes once and provide both the loader and metadata derived by `inspect` from those same bytes. Declaring or playing a track SHALL NOT add the metadata requirement.
+`Audio.duration(track)` SHALL return the source length as a `Duration`, read from `AudioMetadata<ID>` — an immutable `{ id, duration }` service WITHOUT the loader brand — so its requirement SHALL survive `Scene.run`/`Scene.stream`, and running such a scene without a metadata provider SHALL fail to typecheck. `Audio.metadataLayer(track, { duration })` SHALL provide already-prepared metadata, dying at construction on a non-finite or negative duration. `Audio.preparedLayer(track, load, inspect)` SHALL load bytes once and provide both the loader and metadata derived by `inspect` from those same bytes. Declaring or playing a track SHALL NOT add the metadata requirement.
 
 #### Scenario: Missing provider fails typechecking
 - **WHEN** a scene calls `Audio.duration(theme)` and is passed to `Scene.run` with no `AudioMetadata<"theme">` provided
@@ -32,7 +32,7 @@ The closed entity union SHALL include `Audio` with the transform fields plus `au
 - **THEN** the final frame carries `gain` exactly `0.25`
 
 ### Requirement: Transport
-`Audio.play(track, { from, gain, loop, duration })` SHALL create a playing Audio instance with `time = from` and return it without waiting. While playing, `time` on each frame SHALL be exactly the anchor time plus elapsed frames divided by the frame rate. The advancer SHALL NOT hold the scene open; with `duration`, the play SHALL hold the scene for that scene time and then pause. `pause`, `resume`, `seek` and `stop` SHALL act on the instance and be visible on the frame they run: pause freezes the cursor, resume continues from the current `time`, seek jumps (keeping `playing`), stop sets `playing: false` and `time: 0`.
+`Audio.play(track, { from, gain, loop, duration })` SHALL create a playing Audio instance with `time = from` and return it without waiting. While playing, `time` on each frame — the scene's last included — SHALL be exactly the anchor time plus elapsed frames divided by the frame rate. Playing SHALL NOT hold the scene open; with `duration`, the play SHALL hold the scene for that scene time and then pause. `pause`, `resume`, `seek` and `stop` SHALL act on the instance and be visible on the frame they run: pause freezes the cursor, resume continues from the current `time`, seek jumps (keeping `playing`), stop sets `playing: false` and `time: 0`.
 
 #### Scenario: Cursor advances one frame period per frame
 - **WHEN** `Audio.play(theme, { from: 2 })` runs at 30fps

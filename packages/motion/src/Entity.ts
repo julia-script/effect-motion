@@ -276,6 +276,33 @@ export const Image = Schema.TaggedStruct("Image", {
 });
 
 /**
+ * A sound in the scene. It never paints: transform fields only (every
+ * entity carries them), no opacity/scale/visible — gain is not opacity.
+ *
+ * `audio` is an Audio resource reference; bytes live in the scene's
+ * requirements, never in frame data. `time` is the UNWRAPPED playback
+ * cursor in source seconds (players wrap it by the source length when
+ * `loop`), `gain` is linear amplitude (1 = unity, 0 = silent), and
+ * `playing` is the explicit transport state. Drive them with the `Audio`
+ * module (`play`, `pause`, `seek`, `fadeTo`, …) rather than by hand: while
+ * playing, the cursor is owned by the transport.
+ */
+export const Audio = Schema.TaggedStruct("Audio", {
+	...transformMixin,
+	audio: Schema.TaggedStruct("effect-motion/Resources/Audio", {
+		id: Schema.String,
+	}),
+	time: defaultedNumber(0),
+	gain: defaultedNumber(1),
+	loop: Schema.Boolean.pipe(
+		Schema.withConstructorDefault(Effect.succeed(false)),
+	),
+	playing: Schema.Boolean.pipe(
+		Schema.withConstructorDefault(Effect.succeed(false)),
+	),
+});
+
+/**
  * The viewpoint — the one entity that is never drawn.
  *
  * @remarks
@@ -332,6 +359,7 @@ export const EntityMap = {
 	Group,
 	Hud,
 	Image,
+	Audio,
 	Camera,
 } as const;
 

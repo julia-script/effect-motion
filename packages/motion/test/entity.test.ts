@@ -148,15 +148,18 @@ describe("type-level gating", () => {
 		];
 		// @ts-expect-error Camera has no opacity, so it is not a TagsWith<"opacity">
 		const bad: ReadonlyArray<S.TagsWith<"opacity">> = ["Camera"];
+		// @ts-expect-error Audio has gain, not opacity
+		const silent: ReadonlyArray<S.TagsWith<"opacity">> = ["Audio"];
 		expect(opacityTags).toHaveLength(9);
 		expect(bad).toBeDefined();
+		expect(silent).toBeDefined();
 	});
 
 	it("every entity has a position, camera included", () => {
 		const positionTags: ReadonlyArray<S.TagsWith<"position">> = [
 			...(Object.keys(S.EntityMap) as Array<S.EntityTag>),
 		];
-		expect(positionTags).toHaveLength(10);
+		expect(positionTags).toHaveLength(11);
 	});
 
 	it("an instance narrows to exactly its entity's data", () => {

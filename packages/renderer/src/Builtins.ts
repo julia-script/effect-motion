@@ -767,6 +767,15 @@ const neverRendered = <T>(tag: string): EntityRenderer<T> =>
 		dispose: () => {},
 	}) as unknown as EntityRenderer<T>;
 
+const silent: EntityRenderer<Entity.EntityByTag<"Audio">> = {
+	build: () => ({
+		object: new THREE.Object3D(),
+		billboard: false,
+		dispose: () => {},
+	}),
+	update: () => {},
+};
+
 /**
  * The renderer for every built-in entity kind.
  *
@@ -789,6 +798,9 @@ export const builtinRenderers: EntityRenderers = {
 	Group: container("Group"),
 	Hud: container("Hud"),
 	Image: image,
+	// sound never paints: an empty object keeps the retained walk uniform;
+	// players and exporters read Audio entries from the frame instead
+	Audio: silent,
 	// the camera is view state and never painted; it is omitted from the
 	// frame's instance map, so this entry is unreachable by construction —
 	// it exists only to satisfy exhaustiveness over the tag union
