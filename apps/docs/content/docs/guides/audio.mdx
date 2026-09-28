@@ -49,12 +49,14 @@ the first audible frame until Play is pressed.
 import { Player, prepareAudio } from "@effect-motion/react";
 import * as Layer from "effect/Layer";
 import * as Resource from "effect-motion/Resource";
-import { Accent, Cool, scene, Warm } from "./audio.scene";
+import { Drift, Groove, Hit, Riser, scene, Tick } from "./audio.scene";
 
 const audio = Layer.mergeAll(
-	prepareAudio(Warm, Resource.fetchBytes("/audio-warm.wav")),
-	prepareAudio(Cool, Resource.fetchBytes("/audio-cool.wav")),
-	prepareAudio(Accent, Resource.fetchBytes("/audio-accent.wav")),
+	prepareAudio(Groove, Resource.fetchBytes("/audio-groove.wav")),
+	prepareAudio(Drift, Resource.fetchBytes("/audio-drift.wav")),
+	prepareAudio(Riser, Resource.fetchBytes("/audio-riser.wav")),
+	prepareAudio(Hit, Resource.fetchBytes("/audio-hit.wav")),
+	prepareAudio(Tick, Resource.fetchBytes("/audio-tick.wav")),
 );
 
 export function Preview() {
@@ -94,14 +96,23 @@ transport write cancels the earlier clip deadline. Consult the
 [Audio API reference](/docs/api/effect-motion/namespaces/Audio) for the
 full signatures.
 
-The example below is an 11.2-second sound study. A warm rhythmic loop and
-short accents drive expanding rings and bouncing bars. At four seconds,
-`Audio.crossfade` moves to a bright chiming loop while the palette and shapes
-dissolve from coral to cyan. The final gain and motion fade settle together.
-The three small PCM WAVs were synthesized specifically for this example;
-they contain no sampled or downloaded material.
+The example below is a 15.5-second music ident at 120 BPM, built as a
+sequence of shots. A four-tick count-in collapses into a dot; the groove
+drops and floods the frame with type, then with pulsing columns. A riser
+folds the columns into a blade while `Audio.crossfade` moves from the groove
+to a drifting pad over exactly the riser's length. The camera then flies
+through a tunnel of rings, everything pulls to a point on a held breath, and
+the final hit reveals a lockup that fades out with the hit's chord.
 
-The shape changes are **scheduled in scene time** alongside the sound cues.
+The durations do the timing. The groove loop is exactly one bar, so
+`Audio.duration(Groove)` sets the beat every cue waits on; the riser's
+duration sets the transition and the hit's duration sets the ending. The
+five small PCM WAVs are synthesized from oscillators and seeded noise by
+`audio.synth.ts` next to the example; they contain no sampled or downloaded
+material. Their levels are mixed in that script, so the scene changes gain
+only for the accented last tick and the crossfade.
+
+The picture changes are **scheduled in scene time** alongside the sound cues.
 They do not inspect the waveform or react to microphone input. WAV works in
 the verified browser and Node export paths here. Browser decoding depends on
 the browser; test other formats in both the browser and ffmpeg before relying

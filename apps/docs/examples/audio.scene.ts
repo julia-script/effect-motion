@@ -1,4 +1,4 @@
-import * as Effect from "effect/Effect";
+import { Duration, Effect, Schedule } from "effect";
 import * as Audio from "effect-motion/Audio";
 import * as Color from "effect-motion/Color";
 import * as Entity from "effect-motion/Entity";
@@ -6,280 +6,527 @@ import type * as Instance from "effect-motion/Instance";
 import * as Motion from "effect-motion/Motion";
 import * as Scene from "effect-motion/Scene";
 
-const ink = Color.hex("#101821");
-const coral = Color.hex("#ff7866");
-const amber = Color.hex("#ffc67d");
-const cyan = Color.hex("#76e2f2");
-const ice = Color.hex("#dff8f7");
+// "One beat": a 15.5-second music ident at 120 BPM. A count-in becomes a hot
+// drop, the drop folds into a sweep, the sweep crossfades into a deep drift,
+// and everything collapses into a lockup on the final hit.
+//
+// Every cue is scheduled in scene time. The groove loop is exactly one bar,
+// so its prepared duration sets the grid; nothing reads the waveform.
 
-// Original local WAVs. The same scene runs in the docs Player and Node.
-export const Warm = Audio.Audio("warm");
-export const Cool = Audio.Audio("cool");
-export const Accent = Audio.Audio("accent");
+const ink = Color.hex("#0e0d12");
+const coral = Color.hex("#ff4b36");
+const cream = Color.hex("#f6ecd9");
+const night = Color.hex("#0a1433");
+const cyan = Color.hex("#43e4ff");
+const ice = Color.hex("#d9f7ff");
+const blue = Color.hex("#2448c8");
+const none = Color.rgba(0, 0, 0, 0);
 
-const ripple = Effect.fnUntraced(function* (
-	group: Instance.Instance<"Group">,
-	x: number,
-	color: Color.Color,
-) {
-	const ring = yield* Scene.instantiate("Circle", {
-		position: Entity.vec3({ x, z: -2 }),
-		radius: 22,
-		fillColor: ink,
-		strokeColor: color,
-		strokeWidth: 2,
-		opacity: 0.8,
+// Original synthesized WAVs (see audio.synth.ts). Browser and Node provide
+// the same five tracks to this one scene.
+export const Groove = Audio.Audio("groove");
+export const Drift = Audio.Audio("drift");
+export const Riser = Audio.Audio("riser");
+export const Hit = Audio.Audio("hit");
+export const Tick = Audio.Audio("tick");
+
+const WIDTH = 1280;
+const HEIGHT = 720;
+
+const hide = <Tag extends "Group" | "Hud" | "Circle" | "Rect" | "Text">(
+	instance: Instance.Instance<Tag>,
+) => Scene.update(instance, (data) => ({ ...data, visible: false }));
+const show = <Tag extends "Group" | "Hud" | "Circle" | "Rect" | "Text">(
+	instance: Instance.Instance<Tag>,
+) => Scene.update(instance, (data) => ({ ...data, visible: true }));
+
+const word = (text: string, fontSize: number, fillColor: Color.Color) =>
+	Scene.instantiate("Text", {
+		text,
+		fontSize,
+		fillColor,
+		textAnchor: "middle",
+		baseline: "middle",
 	});
-	yield* Scene.appendChild(group, ring);
-	yield* Scene.fork(
-		Scene.all([
-			Motion.tweenTo(ring, { radius: 112 }, "650 millis", "easeOutCubic"),
-			Motion.fadeTo(ring, 0, "650 millis"),
-		]),
-	);
-});
 
 export const scene = Scene.make(
 	"audio",
 	function* () {
-		const warmTrack = yield* Warm;
-		const coolTrack = yield* Cool;
-		const accentTrack = yield* Accent;
-		const warmDuration = yield* Audio.duration(Warm);
-		const accentDuration = yield* Audio.duration(Accent);
+		const tracks = {
+			groove: yield* Groove,
+			drift: yield* Drift,
+			riser: yield* Riser,
+			hit: yield* Hit,
+			tick: yield* Tick,
+		};
+		// The groove is one bar long: its duration is the scene's clock.
+		const bar = Duration.toMillis(yield* Audio.duration(Groove));
+		const beat = bar / 4;
+		const sweep = yield* Audio.duration(Riser);
+		const ring = yield* Audio.duration(Hit);
 
-		// A quiet frame gives the moving shapes room to breathe.
-		for (const y of [-123, 122]) {
-			yield* Scene.instantiate("Line", {
-				start: Entity.vec3({ x: -265, y }),
-				end: Entity.vec3({ x: 265, y }),
-				strokeColor: Color.hex("#2b3944"),
-				strokeWidth: 1,
-			});
+		// Start the moves together and hold exactly one beat.
+		const onBeat = <R>(
+			...moves: ReadonlyArray<Effect.Effect<unknown, never, R>>
+		) => Scene.all([...moves, Scene.sleep(beat)]);
+
+		// ── Cast. Later shots are built up front and hidden until their cue.
+		const count = yield* Scene.instantiate("Group", {});
+		const numeral = yield* word("1", 460, cream);
+		const marks: Instance.Instance<"Rect">[] = [];
+		for (let i = 0; i < 4; i++) {
+			marks.push(
+				yield* Scene.instantiate("Rect", {
+					position: Entity.vec3({ x: (i - 1.5) * 64, y: -300 }),
+					width: 40,
+					height: 6,
+					fillColor: Color.hex("#34303b"),
+				}),
+			);
+		}
+		for (const child of [numeral, ...marks]) {
+			yield* Scene.appendChild(count, child);
 		}
 
-		const warm = yield* Scene.instantiate("Group", {});
-		const warmOrbit = yield* Scene.instantiate("Circle", {
-			position: Entity.vec3({ x: -75, z: -3 }),
-			radius: 87,
-			fillColor: ink,
-			strokeColor: Color.hex("#7c4547"),
-			strokeWidth: 2,
-		});
-		const heart = yield* Scene.instantiate("Circle", {
-			position: Entity.vec3({ x: -75, z: 2 }),
-			radius: 31,
+		const drop = yield* Scene.instantiate("Group", {});
+		const field = yield* Scene.instantiate("Circle", {
+			radius: 0,
 			fillColor: coral,
 		});
-		const warmWord = yield* Scene.instantiate("Text", {
-			text: "PULSE",
-			position: Entity.vec3({ x: 148, y: 99, z: 2 }),
-			fontSize: 26,
-			fillColor: amber,
-			textAnchor: "middle",
-			baseline: "middle",
-		});
-		for (const shape of [warmOrbit, heart, warmWord]) {
-			yield* Scene.appendChild(warm, shape);
+		const streaks = [
+			yield* Scene.instantiate("Rect", {
+				position: Entity.vec3({ x: -1500, y: 250 }),
+				width: 900,
+				height: 18,
+				fillColor: ink,
+			}),
+			yield* Scene.instantiate("Rect", {
+				position: Entity.vec3({ x: 1500, y: -250 }),
+				width: 900,
+				height: 18,
+				fillColor: ink,
+			}),
+		];
+		const shout = yield* word(" ", 230, ink);
+		for (const child of [field, ...streaks, shout]) {
+			yield* Scene.appendChild(drop, child);
 		}
-		const warmBars: Instance.Instance<"Rect">[] = [];
-		for (let i = 0; i < 5; i++) {
-			const bar = yield* Scene.instantiate("Rect", {
-				position: Entity.vec3({ x: 92 + i * 29, y: -28, z: 1 }),
-				width: 12,
-				height: 16,
-				fillColor: i % 2 === 0 ? coral : amber,
-			});
-			yield* Scene.appendChild(warm, bar);
-			warmBars.push(bar);
-		}
-		for (const [x, y, radius] of [
-			[33, 76, 5],
-			[214, 69, 4],
-			[179, -76, 7],
-		]) {
-			const dot = yield* Scene.instantiate("Circle", {
-				position: Entity.vec3({ x, y, z: 1 }),
-				radius,
-				fillColor: amber,
-			});
-			yield* Scene.appendChild(warm, dot);
-		}
-		const ember = yield* Scene.instantiate("Circle", {
-			position: Entity.vec3({ x: 12, z: 3 }),
-			radius: 6,
-			fillColor: amber,
-		});
-		yield* Scene.appendChild(warm, ember);
 
-		const cool = yield* Scene.instantiate("Group", {
-			position: Entity.vec3({ x: 40 }),
-			opacity: 0,
+		const pulse = yield* Scene.instantiate("Group", { visible: false });
+		const columns: Instance.Instance<"Rect">[] = [];
+		for (let i = 0; i < 8; i++) {
+			const column = yield* Scene.instantiate("Rect", {
+				position: Entity.vec3({ x: (i - 3.5) * (WIDTH / 8) }),
+				scale: Entity.vec3({ x: 1, y: 0, z: 1 }),
+				width: WIDTH / 8,
+				height: HEIGHT,
+				fillColor: i % 2 === 0 ? cream : coral,
+			});
+			yield* Scene.appendChild(pulse, column);
+			columns.push(column);
+		}
+		const pulseWord = yield* word("PULSE", 300, ink);
+		yield* hide(pulseWord);
+		// center-out pairs, so each beat ripples from the middle
+		const pairs = [0, 1, 2, 3].map((d) => [
+			columns[3 - d] ?? columns[0],
+			columns[4 + d] ?? columns[7],
+		]);
+
+		const backdrop = yield* Scene.instantiate("Rect", {
+			position: Entity.vec3({ z: -6000 }),
+			scale: Entity.vec3({ x: 1, y: 0, z: 1 }),
+			width: WIDTH * 5,
+			height: HEIGHT * 5,
+			fillColor: night,
 		});
-		const coolOrbit = yield* Scene.instantiate("Circle", {
-			position: Entity.vec3({ x: 71, z: -3 }),
-			radius: 99,
-			fillColor: ink,
-			strokeColor: Color.hex("#376f80"),
-			strokeWidth: 2,
-		});
-		const crystal = yield* Scene.instantiate("Rect", {
-			position: Entity.vec3({ x: 71, z: 2 }),
+		const tunnel = yield* Scene.instantiate("Group", { opacity: 0 });
+		const rings: Instance.Instance<"Circle">[] = [];
+		for (let i = 0; i < 11; i++) {
+			const r = yield* Scene.instantiate("Circle", {
+				position: Entity.vec3({ z: -400 * i }),
+				radius: 330,
+				fillColor: none,
+				strokeColor: i % 3 === 0 ? cyan : blue,
+				strokeWidth: 5,
+			});
+			yield* Scene.appendChild(tunnel, r);
+			rings.push(r);
+		}
+		const diamond = yield* Scene.instantiate("Rect", {
+			position: Entity.vec3({ z: -4400 }),
 			rotation: Entity.vec3({ z: Math.PI / 4 }),
-			width: 62,
-			height: 62,
+			width: 180,
+			height: 180,
 			fillColor: cyan,
 		});
-		const coolWord = yield* Scene.instantiate("Text", {
-			text: "DRIFT",
-			position: Entity.vec3({ x: -153, y: -99, z: 2 }),
-			fontSize: 26,
-			fillColor: ice,
-			textAnchor: "middle",
-			baseline: "middle",
-		});
-		for (const shape of [coolOrbit, crystal, coolWord]) {
-			yield* Scene.appendChild(cool, shape);
-		}
-		const coolBars: Instance.Instance<"Rect">[] = [];
-		for (let i = 0; i < 5; i++) {
-			const bar = yield* Scene.instantiate("Rect", {
-				position: Entity.vec3({ x: -216 + i * 29, y: -30, z: 1 }),
-				width: 12,
-				height: 16,
-				fillColor: i % 2 === 0 ? cyan : ice,
-			});
-			yield* Scene.appendChild(cool, bar);
-			coolBars.push(bar);
-		}
-		for (const [x, y, radius] of [
-			[-196, 70, 4],
-			[-80, -76, 6],
-			[209, 71, 5],
-		]) {
-			const dot = yield* Scene.instantiate("Circle", {
-				position: Entity.vec3({ x, y, z: 1 }),
-				radius,
+		yield* Scene.appendChild(tunnel, diamond);
+
+		// Flat type over the moving camera.
+		const title = yield* Scene.instantiate("Hud", { visible: false });
+		const letters: Instance.Instance<"Text">[] = [];
+		for (const [i, letter] of [..."DRIFT"].entries()) {
+			const t = yield* Scene.instantiate("Text", {
+				text: letter,
+				position: Entity.vec3({ x: (i - 2) * 170, y: -265 }),
+				fontSize: 180,
 				fillColor: ice,
+				textAnchor: "middle",
+				baseline: "middle",
+				opacity: 0,
 			});
-			yield* Scene.appendChild(cool, dot);
+			yield* Scene.appendChild(title, t);
+			letters.push(t);
 		}
-		const glint = yield* Scene.instantiate("Circle", {
-			position: Entity.vec3({ x: 170, z: 3 }),
-			radius: 5,
-			fillColor: ice,
-		});
-		yield* Scene.appendChild(cool, glint);
-		const closingWord = yield* Scene.instantiate("Text", {
-			text: "breathe",
-			position: Entity.vec3({ x: 0, y: -93, z: 5 }),
-			fontSize: 20,
-			fillColor: ice,
+		const caption = yield* Scene.instantiate("Text", {
+			text: "1 2 0   B P M   ·   A   M I N O R",
+			position: Entity.vec3({ y: 285 }),
+			fontSize: 24,
+			fillColor: cyan,
 			textAnchor: "middle",
 			baseline: "middle",
 			opacity: 0,
 		});
+		yield* Scene.appendChild(title, caption);
 
-		const warmAudio = yield* Audio.play(warmTrack, { gain: 0.55, loop: true });
+		const lockup = yield* Scene.instantiate("Hud", { visible: false });
+		const flood = yield* Scene.instantiate("Circle", {
+			radius: 0,
+			fillColor: cream,
+		});
+		const sun = yield* Scene.instantiate("Circle", {
+			position: Entity.vec3({ x: -430, y: 14 }),
+			scale: Entity.vec3({ x: 0, y: 0, z: 1 }),
+			radius: 54,
+			fillColor: coral,
+		});
+		const gem = yield* Scene.instantiate("Rect", {
+			position: Entity.vec3({ x: -305, y: 14 }),
+			scale: Entity.vec3({ x: 0, y: 0, z: 1 }),
+			width: 78,
+			height: 78,
+			fillColor: blue,
+		});
+		const wordmark = yield* Scene.instantiate("Text", {
+			text: "effect-motion",
+			position: Entity.vec3({ x: -180, y: 24 }),
+			fontSize: 108,
+			fillColor: ink,
+			textAnchor: "start",
+			baseline: "middle",
+			opacity: 0,
+		});
+		const tagline = yield* Scene.instantiate("Text", {
+			text: "sound, in scene time",
+			position: Entity.vec3({ x: -176, y: -62 }),
+			fontSize: 40,
+			fillColor: Color.hex("#5c5249"),
+			textAnchor: "start",
+			baseline: "middle",
+			opacity: 0,
+		});
+		const rule = yield* Scene.instantiate("Line", {
+			start: Entity.vec3({ x: -176, y: -110 }),
+			end: Entity.vec3({ x: -176, y: -110 }),
+			strokeColor: coral,
+			strokeWidth: 6,
+		});
+		for (const child of [flood, sun, gem, wordmark, tagline, rule]) {
+			yield* Scene.appendChild(lockup, child);
+		}
+
+		// ── Bar 1 · count-in. Four ticks; the last one turns hot and
+		// collapses into the dot the drop explodes from.
+		for (const [i, mark] of marks.entries()) {
+			const last = i === 3;
+			yield* Audio.play(tracks.tick, { gain: last ? 1.8 : 1 });
+			yield* Scene.update(numeral, (d) => ({
+				...d,
+				text: `${i + 1}`,
+				fillColor: last ? coral : cream,
+			}));
+			yield* onBeat(
+				Motion.scale(numeral, 1.5, 1, beat * 0.36, "easeOutExpo"),
+				Motion.tweenTo(mark, { fillColor: last ? coral : cream }, beat / 5),
+				last
+					? Effect.gen(function* () {
+							yield* Scene.sleep(beat * 0.4);
+							yield* Scene.all([
+								Motion.scaleTo(numeral, 0, beat * 0.6, "easeInBack"),
+								Motion.tween(
+									field,
+									{ radius: 0 },
+									{ radius: 14 },
+									beat * 0.6,
+									"easeInExpo",
+								),
+							]);
+						})
+					: Effect.void,
+			);
+		}
+
+		// ── Bars 2–3 · the drop. The groove lands on the downbeat.
+		const groove = yield* Audio.play(tracks.groove, { loop: true });
+		yield* hide(count);
 		yield* Scene.fork(
-			Motion.drive(ember, warmDuration, "linear", (t, data) => ({
-				...data,
-				position: Entity.vec3({
-					x: -75 + Math.cos(t * Math.PI * 2) * 87,
-					y: Math.sin(t * Math.PI * 2) * 87,
-					z: 3,
-				}),
-			})),
+			Motion.tweenTo(field, { radius: 760 }, beat * 0.7, "easeOutExpo"),
 		);
-		// A clipped accent marks four warm beats; the music source sets the
-		// whole section's duration through its prepared metadata.
+		for (const [i, text] of ["EVERY", "FRAME", "ON THE", "BEAT"].entries()) {
+			const tilt = [-0.06, 0.05, -0.035, 0][i] ?? 0;
+			yield* Scene.update(shout, (d) => ({
+				...d,
+				text,
+				rotation: Entity.vec3({ z: tilt }),
+			}));
+			const [top, bottom] = streaks;
+			yield* onBeat(
+				Motion.scale(shout, i === 3 ? 1.9 : 1.4, 1, beat * 0.4, "easeOutExpo"),
+				top === undefined
+					? Effect.void
+					: Motion.move(
+							top,
+							{ x: -1500, y: 250 },
+							{ x: 1500, y: 250 },
+							beat,
+							"easeInOutQuart",
+						),
+				bottom === undefined
+					? Effect.void
+					: Motion.move(
+							bottom,
+							{ x: 1500, y: -250 },
+							{ x: -1500, y: -250 },
+							beat,
+							"easeInOutQuart",
+						),
+			);
+		}
+
+		// Hard cut to black: eight columns shoot out of the center line.
+		yield* hide(drop);
+		yield* show(pulse);
+		yield* show(pulseWord);
+		const ripple = (depth: number, rise: number) =>
+			Scene.stagger(
+				pairs.map((pair) =>
+					Scene.all(
+						pair.map((column) =>
+							column === undefined
+								? Effect.void
+								: Motion.scale(
+										column,
+										{ x: 1, y: depth },
+										{ x: 1, y: 1 },
+										rise,
+										"easeOutExpo",
+									),
+						),
+					),
+				),
+				Schedule.spaced(beat * 0.08),
+			);
+		yield* onBeat(
+			ripple(0, beat * 0.6),
+			Motion.scale(pulseWord, 1.8, 1, beat * 0.5, "easeOutExpo"),
+		);
+		for (let i = 0; i < 3; i++) {
+			yield* onBeat(
+				ripple(0.45, beat * 0.6),
+				Motion.scale(pulseWord, 1.14, 1, beat * 0.4, "easeOutCubic"),
+			);
+		}
+
+		// ── Bar 4 · the sweep. The riser's length is the transition's length,
+		// and the groove crossfades into the drift across all of it.
+		const drift = yield* Audio.play(tracks.drift, { gain: 0, loop: true });
+		yield* Audio.play(tracks.riser);
+		const sweepMs = Duration.toMillis(sweep);
+		yield* Scene.all([
+			Audio.crossfade(groove, drift, sweep, "easeInOutSine"),
+			Scene.all([
+				Motion.scaleTo(pulseWord, { x: 2.4, y: 0.6 }, beat, "easeInCubic"),
+				Motion.fadeTo(pulseWord, 0, beat, "easeInCubic"),
+			]),
+			Effect.gen(function* () {
+				// squeeze (with a small anticipatory widen), fold, stretch, open
+				yield* Motion.scaleTo(pulse, { x: 0.06 }, sweepMs * 0.5, "easeInBack");
+				yield* Motion.rotateTo(
+					pulse,
+					Math.PI / 2,
+					sweepMs * 0.25,
+					"easeInOutCubic",
+				);
+				yield* Motion.scaleTo(
+					pulse,
+					{ x: 0.012, y: 2.4 },
+					sweepMs * 0.125,
+					"easeInExpo",
+				);
+				yield* Scene.all([
+					Motion.scale(
+						backdrop,
+						{ x: 1, y: 0.004 },
+						{ x: 1, y: 1 },
+						sweepMs * 0.125,
+						"easeOutExpo",
+					),
+					Motion.fadeTo(pulse, 0, sweepMs * 0.125),
+					Motion.fadeTo(tunnel, 1, sweepMs * 0.125, "easeOutCubic"),
+				]);
+			}),
+		]);
+		yield* Audio.stop(groove);
+		yield* hide(pulse);
+
+		// ── Bars 5–6 · drift. The camera flies through a tunnel of rings while
+		// flat type rises over it; each beat flares the next ring.
+		yield* show(title);
+		const camera = yield* Scene.camera;
+		yield* Scene.fork(
+			Motion.moveTo(camera, { z: -1000 }, beat * 7, "easeInOutSine"),
+		);
+		yield* Scene.fork(
+			Scene.stagger(
+				letters.map((letter) =>
+					Scene.all([
+						Motion.moveTo(letter, { y: -205 }, beat * 1.4, "easeOutCubic"),
+						Motion.fadeTo(letter, 1, beat * 1.4),
+					]),
+				),
+				Schedule.spaced(beat * 0.24),
+			),
+		);
 		yield* Scene.fork(
 			Effect.gen(function* () {
-				for (let beat = 0; beat < 8; beat++) {
-					yield* ripple(warm, -75, coral);
-					if (beat % 2 === 0) {
-						yield* Audio.play(accentTrack, {
-							gain: 0.23,
-							duration: accentDuration,
-						});
-					}
-					const bar = warmBars[beat % warmBars.length];
-					if (bar !== undefined) {
-						yield* Scene.all([
-							Motion.scaleTo(heart, 1.22, "100 millis", "easeOutCubic"),
-							Motion.tweenTo(bar, { height: 61 }, "100 millis"),
-						]);
-						yield* Scene.all([
-							Motion.scaleTo(heart, 1, "200 millis", "easeOutCubic"),
-							Motion.tweenTo(bar, { height: 16 }, "200 millis"),
-						]);
-					}
-					yield* Scene.sleep("200 millis");
-				}
+				yield* Scene.sleep(beat * 2);
+				yield* Motion.fadeTo(caption, 0.8, beat);
 			}),
-		);
-		yield* Scene.sleep(warmDuration);
-
-		const coolAudio = yield* Audio.play(coolTrack, { gain: 0, loop: true });
-		yield* Scene.fork(
-			Motion.drive(glint, "6 seconds", "linear", (t, data) => ({
-				...data,
-				position: Entity.vec3({
-					x: 71 + Math.cos(t * Math.PI * 3) * 99,
-					y: Math.sin(t * Math.PI * 3) * 99,
-					z: 3,
-				}),
-			})),
 		);
 		yield* Scene.fork(
 			Effect.gen(function* () {
-				for (let beat = 0; beat < 12; beat++) {
-					yield* ripple(cool, 71, cyan);
-					if (beat % 3 === 0) {
-						yield* Audio.play(accentTrack, {
-							gain: 0.16,
-							duration: accentDuration,
-						});
-					}
-					const bar = coolBars[beat % coolBars.length];
-					if (bar !== undefined) {
-						yield* Scene.all([
-							Motion.scaleTo(crystal, 1.2, "100 millis", "easeOutCubic"),
-							Motion.rotateTo(
-								crystal,
-								((beat + 1) * Math.PI) / 4,
-								"100 millis",
-							),
-							Motion.tweenTo(bar, { height: 57 }, "100 millis"),
-						]);
-						yield* Scene.all([
-							Motion.scaleTo(crystal, 1, "200 millis", "easeOutCubic"),
-							Motion.tweenTo(bar, { height: 16 }, "200 millis"),
-						]);
-					}
-					yield* Scene.sleep("200 millis");
-				}
+				yield* Scene.sleep(bar);
+				yield* Scene.all(
+					letters.map((letter, i) =>
+						Motion.moveTo(letter, { x: (i - 2) * 196 }, bar * 0.75),
+					),
+				);
 			}),
 		);
-		// The audio crossfade and the visible palette change share a span.
-		yield* Scene.all([
-			Audio.crossfade(warmAudio, coolAudio, "1500 millis"),
-			Motion.fadeTo(warm, 0, "1500 millis"),
-			Motion.fadeTo(cool, 1, "1500 millis"),
-			Motion.moveTo(warm, { x: -40 }, "1500 millis", "easeInOutCubic"),
-			Motion.moveTo(cool, { x: 0 }, "1500 millis", "easeInOutCubic"),
-		]);
-		yield* Audio.stop(warmAudio);
-		yield* Scene.sleep("4500 millis");
+		for (let i = 0; i < 7; i++) {
+			const flare = rings[i + 3];
+			yield* onBeat(
+				flare === undefined
+					? Effect.void
+					: Effect.gen(function* () {
+							yield* Motion.tweenTo(
+								flare,
+								{ strokeWidth: 22, strokeColor: ice },
+								beat * 0.12,
+							);
+							yield* Motion.tweenTo(
+								flare,
+								{ strokeWidth: 5, strokeColor: cyan },
+								beat * 0.7,
+								"easeOutCubic",
+							);
+						}),
+				Motion.rotateTo(
+					diamond,
+					Math.PI / 4 + ((i + 1) * Math.PI) / 2,
+					beat * 0.6,
+					"easeOutBack",
+				),
+			);
+		}
 
-		// Sound and movement recede together into one settled shape.
-		yield* Scene.all([
-			Audio.fadeOut(coolAudio, "1200 millis"),
-			Motion.fadeTo(cool, 0.55, "1200 millis"),
-			Motion.scaleTo(crystal, 0.74, "1200 millis", "easeOutCubic"),
-			Motion.fadeTo(closingWord, 1, "1200 millis"),
-		]);
-		yield* Audio.stop(coolAudio);
+		// ── Bar 7 · collapse. One beat of held breath: sound and picture pull
+		// into a point.
+		yield* onBeat(
+			Audio.fadeOut(drift, beat * 0.9),
+			Motion.moveTo(camera, { z: -1500 }, beat, "easeInCubic"),
+			Motion.fadeTo(tunnel, 0, beat, "easeInCubic"),
+			Motion.fadeTo(caption, 0, beat * 0.5),
+			...letters.map((letter) =>
+				Scene.all([
+					Motion.moveTo(letter, { x: 0, y: 0 }, beat, "easeInBack"),
+					Motion.scaleTo(letter, 0, beat, "easeInBack"),
+				]),
+			),
+		);
+		yield* Audio.stop(drift);
+
+		// ── Bars 7–8 · lockup. The hit floods the frame and the marks from the
+		// earlier shots return as a wordmark. The hit's length is the ending:
+		// the picture fades out with the last beat of its chord.
+		yield* Audio.play(tracks.hit);
+		yield* hide(title);
+		yield* hide(tunnel);
+		yield* hide(backdrop);
+		yield* show(lockup);
+		yield* Scene.fork(
+			Motion.tweenTo(flood, { radius: 760 }, beat * 0.6, "easeOutExpo"),
+		);
+		yield* Scene.fork(Motion.scale(lockup, 1, 1.04, ring));
+		const after = <R>(
+			delay: number,
+			effect: Effect.Effect<unknown, never, R>,
+		) =>
+			Scene.fork(
+				Effect.gen(function* () {
+					yield* Scene.sleep(delay);
+					yield* effect;
+				}),
+			);
+		yield* after(beat * 0.3, Motion.scale(sun, 0, 1, beat, "easeOutBack"));
+		yield* after(
+			beat * 0.5,
+			Scene.all([
+				Motion.scale(gem, 0, 1, beat, "easeOutBack"),
+				Motion.rotate(
+					gem,
+					-Math.PI / 2,
+					Math.PI / 4,
+					beat * 1.4,
+					"easeOutCubic",
+				),
+			]),
+		);
+		yield* after(
+			beat * 0.6,
+			Scene.all([
+				Motion.move(
+					wordmark,
+					{ x: -120, y: 24 },
+					{ x: -180, y: 24 },
+					beat,
+					"easeOutExpo",
+				),
+				Motion.fadeTo(wordmark, 1, beat * 0.6),
+			]),
+		);
+		yield* after(
+			beat * 1.1,
+			Scene.all([
+				Motion.move(
+					tagline,
+					{ x: -176, y: -80 },
+					{ x: -176, y: -62 },
+					beat,
+					"easeOutCubic",
+				),
+				Motion.fadeTo(tagline, 1, beat),
+			]),
+		);
+		yield* after(
+			beat * 1.5,
+			Motion.drive(rule, beat * 1.4, "easeInOutCubic", (t, d) => ({
+				...d,
+				end: Entity.vec3({ x: -176 + t * 506, y: -110 }),
+			})),
+		);
+		yield* Scene.sleep(Duration.toMillis(ring) - beat * 2);
+		yield* Motion.fadeTo(lockup, 0, beat * 2, "easeInOutSine");
 	},
-	{ width: 640, height: 360, backgroundColor: ink },
+	{ width: WIDTH, height: HEIGHT, backgroundColor: ink },
 );

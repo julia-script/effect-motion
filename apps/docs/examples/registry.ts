@@ -3,7 +3,7 @@ import { prepareAudio } from "@effect-motion/react";
 import * as Layer from "effect/Layer";
 import * as Resource from "effect-motion/Resource";
 import { scene as animatorPairs } from "./animator-pairs.scene";
-import { Accent, scene as audio, Cool, Warm } from "./audio.scene";
+import { scene as audio, Drift, Groove, Hit, Riser, Tick } from "./audio.scene";
 import { scene as bezier3d } from "./bezier-3d.scene";
 import { scene as cameraFollowGraph } from "./camera-follow-graph.scene";
 import { scene as cameraTour } from "./camera-tour.scene";
@@ -55,9 +55,11 @@ export const examples: Record<string, PlayerProps["scene"] | ExampleEntry> = {
 	audio: {
 		scene: audio,
 		renderLayers: Layer.mergeAll(
-			prepareAudio(Warm, Resource.fetchBytes("/audio-warm.wav")),
-			prepareAudio(Cool, Resource.fetchBytes("/audio-cool.wav")),
-			prepareAudio(Accent, Resource.fetchBytes("/audio-accent.wav")),
+			prepareAudio(Groove, Resource.fetchBytes("/audio-groove.wav")),
+			prepareAudio(Drift, Resource.fetchBytes("/audio-drift.wav")),
+			prepareAudio(Riser, Resource.fetchBytes("/audio-riser.wav")),
+			prepareAudio(Hit, Resource.fetchBytes("/audio-hit.wav")),
+			prepareAudio(Tick, Resource.fetchBytes("/audio-tick.wav")),
 		) as Layer.Layer<never, unknown, never>,
 	},
 	crossfade,
