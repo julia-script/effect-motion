@@ -1,5 +1,11 @@
 # @effect-motion/three
 
+## 0.8.0
+
+### Minor Changes
+
+- 340724d: Add animatable alpha and inverse masks to scene authoring and shared browser/Node rendering. An existing shape, text, image, or group supplies coverage for a drawable target, including partial transparency and nested masks. Add a guide and runnable reveal, inverse cutout, and partial-alpha examples.
+
 ## 0.7.0
 
 ## 0.6.0
