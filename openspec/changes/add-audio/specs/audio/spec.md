@@ -66,7 +66,7 @@ With `duration`, the track SHALL pause on the frame `duration` elapses (unwrappe
 - **THEN** the track is still playing after the original clip end
 
 ### Requirement: Adapter continuity rule
-`Audio.isContinuous(prev, next, elapsedFrames, frameRate)` SHALL return true iff `playing` is unchanged and `next.time` is within `Audio.cursorTolerance` (1e-6 s) of `prev.time + (playing ? elapsedFrames / frameRate : 0)`. Adapters SHALL resync exactly when it returns false.
+`Audio.isContinuous(prev, next, elapsedFrames, frameRate)` SHALL return true iff `playing` is unchanged and `next.time` is within `Audio.cursorTolerance` (1e-6 s) of `prev.time + (playing ? elapsedFrames / frameRate : 0)`. Adapters SHALL resync when it returns false. The browser adapter SHALL also correct drift between the displayed frame and the Web Audio clock above 50ms.
 
 #### Scenario: Continuous and skipped frames
 - **WHEN** a playing track is sampled at 24, 30 and 60fps on consecutive frames and on frames 1–7 apart
@@ -75,6 +75,19 @@ With `duration`, the track SHALL pause on the frame `duration` elapses (unwrappe
 #### Scenario: Intentional seek and pause
 - **WHEN** the track is sought or paused between two sampled frames
 - **THEN** the pair is not continuous
+
+### Requirement: Browser Player audio
+The React Player SHALL play each reachable, playing Audio instance in its displayed frames through Web Audio. It SHALL start at the unwrapped cursor (modulo source duration for loops), stop when paused, removed, naturally past a non-looping source end, or when the scene ends, and restart on a discontinuity or browser clock drift above 50ms. It SHALL ramp linear gain to each frame's nonnegative gain over one frame. Multiple instances of one asset SHALL have independent sources but share one decoded buffer per Player mount. Audio context creation or resume SHALL begin from the play action; if autoplay is blocked, the picture SHALL pause no later than its first audible frame until a later user action can start both. Silent scenes SHALL still play. Unmount SHALL stop sources and close the context.
+
+`@effect-motion/react` SHALL expose browser preparation for a duration-driven scene: one load and decode of a track SHALL provide its Audio loader, metadata, and the decoded buffer used by the Player. The Player's layer prop SHALL require both loader and metadata when the scene asks for duration. A decode failure SHALL fail preparation before scene frames run.
+
+#### Scenario: Seek, pause and loop
+- **WHEN** a Player shows frames with a playing loop from source time 1.9 through 2.0 on a 2-second asset, then seeks to 2.5 and pauses
+- **THEN** the source wraps through 0, restarts at 0.5 on seek, and stops on pause
+
+#### Scenario: Duration-driven browser scene
+- **WHEN** a scene waits for `Audio.duration(theme)` and the Player receives browser-prepared audio for `theme`
+- **THEN** the scene can start and its duration is derived from the decoded asset; supplying only `Audio.layer(theme, load)` does not typecheck
 
 ### Requirement: Gain animators
 `Audio.fade(from, to, d)`/`Audio.fadeTo(to, d)` SHALL be a base/To pair over `gain`, dual, gated to Audio instances, landing exactly on target on the final frame. `Audio.fadeIn(d)` SHALL fade gain 0→1, `Audio.fadeOut(d)` SHALL fade from the current gain to 0, and `Audio.crossfade(from, to, d)` SHALL run both concurrently and resolve with `to`. These three name their endpoints and have no base/To pairs (recorded exception).
