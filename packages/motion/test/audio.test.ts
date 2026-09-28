@@ -350,3 +350,218 @@ describe("Audio gain", () => {
 		expect(_gated).toBeTypeOf("function");
 	});
 });
+
+// ── clips, precedence, direct writes, continuity ─────────────────────────
+
+const audioFrames = (
+	body: (
+		theme: Audio.Audio<"theme">,
+	) => Effect.Effect<unknown, never, Runner.Runner>,
+	frameRate = fps,
+) =>
+	Effect.runPromise(
+		Scene.stream(
+			Scene.make(function* () {
+				const theme = yield* Theme;
+				yield* body(theme);
+			}),
+			{ frameRate },
+		).pipe(
+			Stream.runCollect,
+			Effect.map((frames) =>
+				tracks([...frames]).map((entries) => entries[0] ?? unreachable()),
+			),
+		),
+	);
+
+describe("Audio clips", () => {
+	const clipEndsAt30 = (frames: ReadonlyArray<AudioData>) => {
+		expect(frames.length).toBeGreaterThan(60);
+		expect(frames[29]).toMatchObject({ playing: true, time: 29 / fps });
+		expect(frames[30]).toMatchObject({ playing: false, time: 1 });
+		expect(frames.at(-1)).toMatchObject({ playing: false, time: 1 });
+	};
+
+	it("a clip inside Scene.all ends on its frame while the scene continues", async () => {
+		clipEndsAt30(
+			await audioFrames((theme) =>
+				Effect.gen(function* () {
+					yield* Scene.all([
+						Audio.play(theme, { duration: "1 second" }),
+						Scene.sleep("100 millis"),
+					]);
+					yield* Scene.sleep("2 seconds");
+				}),
+			),
+		);
+	});
+
+	it("a clip inside a finished fork ends on its frame while the scene continues", async () => {
+		clipEndsAt30(
+			await audioFrames((theme) =>
+				Effect.gen(function* () {
+					yield* Scene.fork(Audio.play(theme, { duration: "1 second" }));
+					yield* Scene.sleep("2 seconds");
+				}),
+			),
+		);
+	});
+
+	it("a zero-duration clip is paused on its first frame", async () => {
+		const frames = await audioFrames((theme) =>
+			Effect.gen(function* () {
+				yield* Audio.play(theme, { from: 3, duration: 0 });
+				yield* Scene.sleep("100 millis");
+			}),
+		);
+		for (const frame of frames) {
+			expect(frame).toMatchObject({ playing: false, time: 3 });
+		}
+	});
+
+	it("a looped clip keeps loop and ends on the unwrapped cursor", async () => {
+		const frames = await audioFrames((theme) =>
+			Effect.gen(function* () {
+				yield* Audio.play(theme, {
+					from: 0.5,
+					loop: true,
+					duration: "2 seconds",
+				});
+				yield* Scene.sleep("3 seconds");
+			}),
+		);
+		expect(frames[59]).toMatchObject({ playing: true, loop: true });
+		expect(frames[60]).toMatchObject({ playing: false, loop: true, time: 2.5 });
+		expect(frames.at(-1)).toMatchObject({ playing: false, time: 2.5 });
+	});
+
+	it("stop then resume cancels the clip end", async () => {
+		const frames = await audioFrames((theme) =>
+			Effect.gen(function* () {
+				const track = yield* Audio.play(theme, { duration: "1 second" });
+				yield* Scene.sleep("500 millis"); // frame 15
+				yield* Audio.stop(track);
+				yield* Scene.sleep("100 millis"); // frame 18
+				yield* Audio.resume(track);
+				yield* Scene.sleep("1 second"); // frame 48
+			}),
+		);
+		expect(frames[15]).toMatchObject({ playing: false, time: 0 });
+		expect(frames[18]).toMatchObject({ playing: true, time: 0 });
+		expect(frames[30]).toMatchObject({ playing: true, time: 12 / fps });
+		expect(frames[48]).toMatchObject({ playing: true, time: 1 });
+	});
+
+	it("a seek while playing cancels the clip end", async () => {
+		const frames = await audioFrames((theme) =>
+			Effect.gen(function* () {
+				const track = yield* Audio.play(theme, { duration: "1 second" });
+				yield* Scene.sleep("500 millis");
+				yield* Audio.seek(track, 10);
+				yield* Scene.sleep("1 second");
+			}),
+		);
+		expect(frames[15]).toMatchObject({ playing: true, time: 10 });
+		expect(frames[45]).toMatchObject({ playing: true, time: 11 });
+	});
+
+	it("the clip still holds the scene when played from the body", async () => {
+		const frames = await audioFrames((theme) =>
+			Audio.play(theme, { duration: "500 millis" }),
+		);
+		expect(frames).toHaveLength(16);
+		expect(frames.at(-1)).toMatchObject({ playing: false, time: 0.5 });
+	});
+});
+
+describe("Audio direct writes", () => {
+	it("writing playing/time acts as pause, resume and seek on that frame", async () => {
+		const frames = await audioFrames((theme) =>
+			Effect.gen(function* () {
+				const track = yield* Scene.instantiate("Audio", {
+					audio: theme,
+					time: 1,
+					playing: true,
+				});
+				yield* Scene.sleep("100 millis"); // frame 3
+				yield* Scene.update(track, (d) => ({ ...d, playing: false }));
+				yield* Scene.sleep("100 millis"); // frame 6
+				yield* Scene.update(track, (d) => ({ ...d, playing: true }));
+				yield* Scene.sleep("100 millis"); // frame 9
+				yield* Scene.update(track, (d) => ({ ...d, time: 7 }));
+				yield* Scene.sleep("100 millis");
+			}),
+		);
+		expect(frames[0]).toMatchObject({ playing: true, time: 1 });
+		expect(frames[3]).toMatchObject({ playing: false, time: 1 + 3 / fps });
+		expect(frames[5]).toMatchObject({ playing: false, time: 1 + 3 / fps });
+		expect(frames[6]).toMatchObject({ playing: true, time: 1 + 3 / fps });
+		expect(frames[8]?.time).toBeCloseTo(1 + 5 / fps, 12);
+		expect(frames[9]).toMatchObject({ playing: true, time: 7 });
+		expect(frames[11]?.time).toBeCloseTo(7 + 2 / fps, 12);
+	});
+});
+
+describe("Audio.isContinuous", () => {
+	const steps = [1, 2, 3, 5, 7] as const;
+	for (const rate of [24, 30, 60]) {
+		it(`continuous and skipped frames stay continuous at ${rate}fps; seeks do not`, async () => {
+			const frames = await audioFrames(
+				(theme) =>
+					Effect.gen(function* () {
+						const track = yield* Audio.play(theme, { from: 0.123 });
+						yield* Scene.sleep("10 seconds");
+						yield* Audio.seek(track, 3);
+						yield* Scene.sleep("100 millis");
+						yield* Audio.pause(track);
+						yield* Scene.sleep("100 millis");
+					}),
+				rate,
+			);
+			const seekFrame = 10 * rate;
+			// every consecutive pair before the seek
+			for (let k = 1; k < seekFrame; k++) {
+				const ok = Audio.isContinuous(
+					frames[k - 1] ?? unreachable(),
+					frames[k] ?? unreachable(),
+					1,
+					rate,
+				);
+				expect(ok).toBe(true);
+			}
+			// sparse sampling: skipped frames account for elapsed time
+			let k = 0;
+			for (let i = 0; k < seekFrame - 8; i++) {
+				const step = steps[i % steps.length] ?? 1;
+				const ok = Audio.isContinuous(
+					frames[k] ?? unreachable(),
+					frames[k + step] ?? unreachable(),
+					step,
+					rate,
+				);
+				expect(ok).toBe(true);
+				k += step;
+			}
+			// the seek, and the pause after it, are discontinuities
+			const before = frames[seekFrame - 1] ?? unreachable();
+			const seeked = frames[seekFrame] ?? unreachable();
+			expect(Audio.isContinuous(before, seeked, 1, rate)).toBe(false);
+			const pauseFrame = seekFrame + Math.round(rate / 10);
+			expect(
+				Audio.isContinuous(
+					frames[pauseFrame - 1] ?? unreachable(),
+					frames[pauseFrame] ?? unreachable(),
+					1,
+					rate,
+				),
+			).toBe(false);
+			// a strict prev + 1/fps equality would have misfired on float noise
+			const strictMisses = frames
+				.slice(1, seekFrame)
+				.filter(
+					(f, i) => f.time !== (frames[i] ?? unreachable()).time + 1 / rate,
+				).length;
+			expect(strictMisses).toBeGreaterThan(0);
+		});
+	}
+});

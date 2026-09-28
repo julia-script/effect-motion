@@ -283,9 +283,14 @@ export const Image = Schema.TaggedStruct("Image", {
  * requirements, never in frame data. `time` is the UNWRAPPED playback
  * cursor in source seconds (players wrap it by the source length when
  * `loop`), `gain` is linear amplitude (1 = unity, 0 = silent), and
- * `playing` is the explicit transport state. Drive them with the `Audio`
- * module (`play`, `pause`, `seek`, `fadeTo`, …) rather than by hand: while
- * playing, the cursor is owned by the transport.
+ * `playing` is the explicit transport state.
+ *
+ * `playing`/`time` are transport-owned: while playing, the runner derives
+ * `time` every frame. Prefer the `Audio` module (`play`, `pause`, `seek`,
+ * `stop`, `resume`); direct writes are supported and mean the same thing on
+ * the frame they land — writing `time` is a seek, `playing: false` a pause,
+ * `playing: true` a resume (an instance created playing starts advancing
+ * at once) — and, like those operations, cancel a pending clip end.
  */
 export const Audio = Schema.TaggedStruct("Audio", {
 	...transformMixin,

@@ -43,6 +43,7 @@ import * as Motion from "./Motion.js";
 import * as Resource from "./Resource.js";
 import * as Runner from "./Runner.js";
 import * as Scene from "./Scene.js";
+import * as Time from "./Time.js";
 import type * as Timing from "./Timing.js";
 import type { EnsureLiteral } from "./types.js";
 
@@ -222,11 +223,17 @@ export const duration = <ID extends string>(
 	Metadata(track.id).useSync((metadata) => Duration.seconds(metadata.duration));
 
 // ── transport ───────────────────────────────────────────────────────────
-// While playing, `time` is derived by the Runner from an anchor (frame,
-// time): exact on every frame, no drift, no fiber. Each op writes and
-// re-anchors on the frame it runs, so fiber order within a frame is moot.
+// `playing` and `time` are transport-owned: while playing, the Runner
+// derives `time` from an anchor (frame, time) — exact on every frame, no
+// drift, no fiber. Each op writes on the frame it runs and restarts the
+// anchor there, dropping any clip end, so fiber order within a frame is
+// moot and a later explicit command always wins over an earlier clip.
 
-type Transport = { readonly playing: boolean; readonly time: number };
+/** The transport part of an Audio entity's data. */
+export interface Transport {
+	readonly playing: boolean;
+	readonly time: number;
+}
 
 const transport = Effect.fnUntraced(function* <E, R>(
 	instanceOrEffect: Instance.InstanceOrEffect<"Audio", E, R>,
@@ -238,7 +245,7 @@ const transport = Effect.fnUntraced(function* <E, R>(
 	const data = yield* Scene.data(instance);
 	const result = next(data);
 	runner.setDataUnsafe(instance, { ...data, ...result });
-	runner.anchorAudio(instance.id, result.playing ? result.time : null);
+	runner.anchorAudio(instance.id);
 	return instance;
 });
 
@@ -251,8 +258,8 @@ export interface PlayOptions {
 	/** wrap at the source end instead of falling silent (default false) */
 	readonly loop?: boolean;
 	/**
-	 * Hold the scene for this long (scene time), then pause — a clip.
-	 * Omitted: the play never holds the scene and runs until paused,
+	 * Play a clip this long (scene time): the track pauses on the frame the
+	 * clip ends, wherever the play ran. Omitted: the play runs until paused,
 	 * stopped, or the scene ends.
 	 */
 	readonly duration?: Duration.Input;
@@ -263,10 +270,23 @@ export interface PlayOptions {
  *
  * @remarks
  * The cursor advances exactly one frame period per frame from `from`, and
- * playing never holds the scene open. Pass `duration` to hold the
- * scene for that long and pause at its end; pausing inside that window does
- * not extend it. Control the returned instance with {@link pause},
- * {@link resume}, {@link seek}, {@link stop}, and the gain animators.
+ * playing alone never holds the scene open.
+ *
+ * With `duration` the play is a clip: the track pauses exactly on the frame
+ * `duration` elapses — decided by the Runner, so it holds even when the
+ * play ran inside a `Scene.all` branch or a fork that has since ended. The
+ * clip also holds the scene open for `duration` the way a `Scene.fork`
+ * started here would: from the scene body (or any branch alive that long)
+ * the scene cannot end first; a fork owned by a shorter-lived branch is cut
+ * with that branch (Scene.fork ownership), and then the rest of the scene
+ * decides the length. A zero duration pauses on the same frame.
+ *
+ * Any later explicit {@link pause}, {@link resume}, {@link seek} or
+ * {@link stop} cancels the clip end: user-directed playback after it is
+ * never cut by the earlier clip. The hold is scene time and unaffected.
+ *
+ * Control the returned instance with those operations and the gain
+ * animators.
  *
  * @param track - A reference from yielding an {@link Audio} constant.
  * @param options - `from`, `gain`, `loop`, `duration`.
@@ -285,7 +305,13 @@ export const play = Effect.fnUntraced(function* <ID extends string>(
 	yield* resume(instance);
 	const clip = options.duration;
 	if (clip !== undefined) {
-		yield* Scene.fork(Scene.sleep(clip).pipe(Effect.andThen(pause(instance))));
+		const runner = yield* Runner.Runner;
+		const frames = Time.toFrames(clip, runner.settings.frameRate);
+		runner.anchorAudio(
+			instance.id,
+			runner.phaser.snapshotUnsafe().phase + frames,
+		);
+		yield* Scene.fork(Scene.sleep(clip));
 	}
 	return instance;
 });
@@ -329,6 +355,36 @@ export const seek = dual<
 	(args) => Instance.isInstance(args[0]),
 	(instance, time) => transport(instance, ({ playing }) => ({ playing, time })),
 );
+
+/**
+ * How far (seconds) a cursor may drift from its expected value and still
+ * count as continuous — far below one sample, far above float noise.
+ */
+export const cursorTolerance = 1e-6;
+
+/**
+ * Whether a track's transport continued smoothly between two observed
+ * frames `elapsedFrames` apart — the adapters' resync test.
+ *
+ * @remarks
+ * Continuous means the same `playing` state and a `time` within
+ * {@link cursorTolerance} of `previous.time + elapsedFrames / frameRate`
+ * (paused: unchanged). Anything else — a seek, pause, resume, stop, or a
+ * direct write — is a discontinuity to resync to. Skipped frames (player
+ * catch-up, sparse export sampling) stay continuous because the expected
+ * cursor accounts for every elapsed frame.
+ */
+export const isContinuous = (
+	previous: Transport,
+	next: Transport,
+	elapsedFrames: number,
+	frameRate: number,
+): boolean =>
+	previous.playing === next.playing &&
+	Math.abs(
+		next.time -
+			(previous.time + (next.playing ? elapsedFrames / frameRate : 0)),
+	) <= cursorTolerance;
 
 // ── gain ────────────────────────────────────────────────────────────────
 
