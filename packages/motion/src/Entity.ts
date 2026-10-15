@@ -233,6 +233,12 @@ export const Path = Schema.TaggedStruct("Path", {
 /**
  * The canonical 2.5D plane. All-zero rotation is a camera-facing billboard;
  * non-zero tilts it as a real plane in 3D.
+ *
+ * `cornerRadius` rounds all four corners in local units. It defaults to 0
+ * and can be animated with Motion.tween/tweenTo. Rendering clamps it to
+ * [0, min(abs(width), abs(height))/2]: negative values stay sharp and
+ * overshoots become pills (circles for equal dimensions). Authored values
+ * remain unchanged; signed dimensions reflect the contour as before.
  */
 export const Rect = Schema.TaggedStruct("Rect", {
 	...paintableMixin,
@@ -240,6 +246,7 @@ export const Rect = Schema.TaggedStruct("Rect", {
 	...outlineMixin,
 	width: defaultedNumber(100),
 	height: defaultedNumber(100),
+	cornerRadius: defaultedFiniteNumber(0),
 });
 
 /** A filled circle of a given `radius`, centered on its `position`. */

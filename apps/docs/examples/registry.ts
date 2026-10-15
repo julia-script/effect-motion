@@ -39,6 +39,7 @@ import { scene as paintOrder } from "./paint-order.scene";
 import { scene as pathStrokes } from "./path-strokes.scene";
 import { scene as rackFocus } from "./rack-focus.scene";
 import { scene as riemannRects } from "./riemann-rects.scene";
+import { scene as roundedRectangles } from "./rounded-rectangles.scene";
 import { scene as seededWalk } from "./seeded-walk.scene";
 import { scene as sineFromCircle } from "./sine-from-circle.scene";
 import { scene as springs } from "./springs.scene";
@@ -105,6 +106,7 @@ export const examples: Record<string, PlayerProps["scene"] | ExampleEntry> = {
 	"sine-from-circle": sineFromCircle,
 	"function-plot": functionPlot,
 	"riemann-rects": riemannRects,
+	"rounded-rectangles": roundedRectangles,
 	"grid-warp": gridWarp,
 	"bezier-3d": bezier3d,
 	"depth-orbit": depthOrbit,

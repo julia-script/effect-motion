@@ -13,6 +13,7 @@ import type {
 } from "./EntityRenderer.js";
 import * as Images from "./Images.js";
 import * as PathGeometry from "./PathGeometry.js";
+import * as RectGeometry from "./RectGeometry.js";
 import * as Stroke from "./Stroke.js";
 import * as StrokeGeometry from "./StrokeGeometry.js";
 import * as Sync from "./Sync.js";
@@ -29,7 +30,7 @@ import * as Text from "./Text.js";
 const CIRCLE_SEGMENTS = 64;
 
 // shared unit geometries — shapes scale them, so there are no per-frame
-// geometry rebuilds for circles/ellipses/rects at all. Both are CENTERED on
+// fill geometry rebuilds for circles/ellipses/sharp rects. Both are CENTERED on
 // their anchor: `position` is the shape's center, like Manim/Motion Canvas.
 const unitCircle = new THREE.CircleGeometry(1, CIRCLE_SEGMENTS);
 const unitPlane = new THREE.PlaneGeometry(1, 1);
@@ -186,18 +187,6 @@ const ellipsePoints = (
 	return points;
 };
 
-// rect outline points, center-anchored local frame (±w/2, ±h/2). Sharp
-// corners only — rounded rects were removed with the entity-model rewrite.
-const rectPoints = (
-	width: number,
-	height: number,
-): Array<readonly [number, number]> => [
-	[-width / 2, height / 2],
-	[width / 2, height / 2],
-	[width / 2, -height / 2],
-	[-width / 2, -height / 2],
-];
-
 const placeFillGroup = (
 	retained: Retained,
 	leaf: Leaf,
@@ -265,6 +254,14 @@ const ellipse: EntityRenderer<Entity.EntityByTag<"Ellipse">> = {
 	},
 };
 
+interface RectContour {
+	readonly width: number;
+	readonly height: number;
+	readonly radius: number;
+	readonly points: ReadonlyArray<RectGeometry.Point>;
+}
+const rectContours = new WeakMap<Retained, RectContour>();
+
 const rect: EntityRenderer<Entity.EntityByTag<"Rect">> = {
 	build: (leaf, ctx) => {
 		const { retained } = buildFillGroup();
@@ -280,16 +277,53 @@ const rect: EntityRenderer<Entity.EntityByTag<"Rect">> = {
 			leaf.data.opacity,
 		);
 		const data = leaf.data;
-		// corner radii are gone with the entity-model rewrite (design D13):
-		// rects render sharp
-		setFillGeometry(parts, unitPlane);
-		parts.mesh.scale.set(data.width, data.height, 1);
+		const radius = RectGeometry.radius(
+			data.width,
+			data.height,
+			data.cornerRadius,
+		);
+		let contour = rectContours.get(retained);
+		if (
+			contour === undefined ||
+			contour.width !== data.width ||
+			contour.height !== data.height ||
+			contour.radius !== radius
+		) {
+			contour = {
+				width: data.width,
+				height: data.height,
+				radius,
+				points: RectGeometry.contour(data.width, data.height, radius),
+			};
+			rectContours.set(retained, contour);
+			if (radius === 0) {
+				setFillGeometry(parts, unitPlane);
+				parts.mesh.scale.set(data.width, data.height, 1);
+			} else {
+				// Restore uniform rounding (add-rounded-rectangles), using the
+				// exact same local contour for triangulation and stroke coverage.
+				const geometry = new THREE.BufferGeometry();
+				geometry.setAttribute(
+					"position",
+					new THREE.Float32BufferAttribute(
+						contour.points.flatMap(([x, y]) => [x, y, 0]),
+						3,
+					),
+				);
+				geometry.setIndex(
+					THREE.ShapeUtils.triangulateShape(
+						contour.points.map(([x, y]) => new THREE.Vector2(x, y)),
+						[],
+					).flat(),
+				);
+				setFillGeometry(parts, geometry);
+				parts.mesh.scale.set(1, 1, 1);
+			}
+		}
 		setOutline(
 			parts,
 			data,
-			data.strokeColor !== undefined
-				? rectPoints(data.width, data.height)
-				: null,
+			data.strokeColor !== undefined ? contour.points : null,
 		);
 	},
 };

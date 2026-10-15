@@ -5,6 +5,7 @@ import * as Color from "../src/Color";
 import * as S from "../src/Entity";
 import * as Motion from "../src/Motion";
 import * as Scene from "../src/Scene";
+import { unreachable } from "./support/raise";
 
 const run = (
 	make: () => Generator<Effect.Effect<any, any, any>, void, never>,
@@ -16,6 +17,64 @@ const run = (
 	);
 
 describe("visible defaults", () => {
+	it("Rect radius defaults sharp, preserves finite authored values, and rejects nonfinite values", () => {
+		expect(S.Rect.make({}).cornerRadius).toBe(0);
+		for (const cornerRadius of [-10, 12, 1000]) {
+			expect(
+				S.Rect.make({ width: 20, height: 10, cornerRadius }).cornerRadius,
+			).toBe(cornerRadius);
+		}
+		for (const cornerRadius of [
+			Number.NaN,
+			Number.POSITIVE_INFINITY,
+			Number.NEGATIVE_INFINITY,
+		]) {
+			expect(() => S.Rect.make({ cornerRadius })).toThrow();
+		}
+	});
+
+	it.each([
+		"tween",
+		"pipe tween",
+		"tweenTo",
+		"pipe tweenTo",
+	])("%s interpolates radius and preserves exact targets beyond the render clamp", async (form) => {
+		const scene = Scene.make(function* () {
+			const rect = yield* Scene.instantiate("Rect", {
+				width: 40,
+				height: 20,
+				cornerRadius: 12,
+			});
+			const from = { cornerRadius: -20 };
+			const to = { cornerRadius: 80 };
+			switch (form) {
+				case "tween":
+					yield* Motion.tween(rect, from, to, "100 millis");
+					break;
+				case "pipe tween":
+					yield* rect.pipe(Motion.tween(from, to, "100 millis"));
+					break;
+				case "tweenTo":
+					yield* Motion.tweenTo(rect, to, "100 millis");
+					break;
+				case "pipe tweenTo":
+					yield* rect.pipe(Motion.tweenTo(to, "100 millis"));
+					break;
+			}
+		});
+		const frames = await Effect.runPromise(
+			Scene.stream(scene).pipe(Stream.runCollect),
+		);
+		const radii = frames.map((frame) => {
+			const data = Object.values(frame.instances).find(
+				(entry) => entry.data._tag === "Rect",
+			)?.data;
+			return data?._tag === "Rect" ? data.cornerRadius : unreachable();
+		});
+		expect(radii[5]).toBe(80);
+		expect(radii[2]).toBeCloseTo(form.endsWith("To") ? 46 : 30);
+		expect(radii.at(-1)).toBe(80);
+	});
 	it("default circle: fill white, opacity 1, no stroke", () => {
 		const data = S.Circle.make({});
 		expect(data).toMatchObject({
