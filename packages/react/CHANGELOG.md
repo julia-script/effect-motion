@@ -1,5 +1,26 @@
 # @effect-motion/react
 
+## 1.0.0
+
+### Patch Changes
+
+- 47b4de0: Preserve thin-stroke coverage with retained supersampled occupancy masks and
+  mip-filtered reduction. Paint surfaces now use the same four-sample policy as the
+  final scene. Target density follows viewport scale, local depth and projected
+  magnification while authored fractional widths and positions stay unchanged.
+
+  The Player now requests native device pixel ratio. CSS may still scale its finished
+  canvas; the border lab includes native-size width/offset/orientation controls.
+
+- Updated dependencies [47b4de0]
+- Updated dependencies [1e8b5bf]
+- Updated dependencies [f895634]
+- Updated dependencies [47b4de0]
+- Updated dependencies [47b4de0]
+- Updated dependencies [ac08e95]
+  - effect-motion@1.0.0
+  - @effect-motion/renderer@1.0.0
+
 ## 0.8.0
 
 ### Patch Changes

@@ -1,5 +1,53 @@
 # effect-motion
 
+## 1.0.0
+
+### Major Changes
+
+- 47b4de0: Scenes now default to paint compositing: later children paint over earlier children,
+  including coplanar fills, borders and text. Set `compositing: "depth"` in Scene.make
+  metadata to preserve physical 3D occlusion. Frames and Scene.play mounts carry the
+  mode explicitly.
+
+  Groups can opt into `compositing: "paint"` to form a flat surface inside a depth
+  scene. Bounds follow the contents, transforms and opacity apply once to the surface,
+  and transparent holes do not occlude the background. Ordinary groups inherit their
+  context. Retained ordering updates when siblings reorder, and removed composition
+  resources are now disposed correctly.
+
+### Minor Changes
+
+- 1e8b5bf: Expand Path commands to include horizontal/vertical lines, cubic and quadratic
+  Bézier curves, smooth continuations, elliptical arcs, and lowercase relative
+  forms, preserving local 3D coordinates and exact authored endpoints.
+
+  Add trimStart, trimEnd, trimOffset, strokeDasharray, and strokeDashoffset to
+  Path, Line, Rect, Circle, and Ellipse. Trim and dashes affect strokes while
+  preserving fills, planar stroke coverage, and per-point depth. Existing inputs
+  default to complete solid strokes with round caps and joins.
+
+- f895634: Add finite, animatable `Rect.cornerRadius` with a sharp default of zero.
+  Rounded fills and outlines share a centered contour and support stroke trim
+  and dashes. Rendering clamps radius to half the smaller absolute dimension
+  without changing authored animation values or signed dimension semantics.
+  Retain geometry on color/opacity updates and release replaced resources.
+- ac08e95: Per-range colored text and syntax highlighting. `Text` gains an optional
+  `spans` field — non-overlapping `{ from, to, fillColor }` ranges that color
+  characters of the string individually while everything else about the entity
+  (font, size, anchoring, opacity, depth behavior) stays whole-Text. The
+  renderer draws spans as per-range styles in a single glyph mesh; changing
+  only span colors between frames never re-shapes the string. Span boundaries
+  bound ligature formation (a `=>` arrow ligature never forms across a span
+  edge).
+
+  New package `@effect-motion/code`: author-side syntax highlighting.
+  `Highlight.highlight(code, parser, theme)` tokenizes with a caller-supplied
+  Lezer parser (language grammars are your own dependency) through a
+  plain-object theme and returns `{ text, spans }` spreadable into a Text.
+  `Selection.dim` derives a selection — kept ranges stay at full color, the
+  rest mixes toward the backdrop — and `Selection.select`/`selectTo` animate
+  between selections frame-exactly.
+
 ## 0.8.0
 
 ### Minor Changes
