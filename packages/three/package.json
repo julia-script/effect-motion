@@ -1,6 +1,6 @@
 {
 	"name": "@effect-motion/three",
-	"version": "0.7.0",
+	"version": "0.8.0",
 	"description": "Bindings-only Effect wrapper over three.js for effect-motion",
 	"type": "module",
 	"license": "MIT",
