@@ -1,7 +1,6 @@
 import { Line2 as FatLine, ThreeRaw as THREE, Tsl } from "@effect-motion/three";
 import { Effect } from "effect";
 import { Color, type Entity, Runner } from "effect-motion";
-import type { PathCommand } from "effect-motion/Entity";
 import { renderOpacity, renderSize } from "effect-motion/particles/overLife";
 import type { OverLife, Particle } from "effect-motion/particles/Particle";
 import type { ParticleField } from "effect-motion/particles/ParticleField";
@@ -13,7 +12,9 @@ import type {
 	Retained,
 } from "./EntityRenderer.js";
 import * as Images from "./Images.js";
+import * as PathGeometry from "./PathGeometry.js";
 import * as Stroke from "./Stroke.js";
+import * as StrokeGeometry from "./StrokeGeometry.js";
 import * as Sync from "./Sync.js";
 import * as Text from "./Text.js";
 
@@ -88,6 +89,7 @@ interface FillParts {
 	readonly group: THREE.Group;
 	readonly mesh: THREE.Mesh;
 	outline: Stroke.Stroke | null;
+	readonly strokePaths: StrokePaths;
 }
 
 const buildFillGroup = (): { retained: Retained; parts: FillParts } => {
@@ -97,7 +99,12 @@ const buildFillGroup = (): { retained: Retained; parts: FillParts } => {
 		new THREE.Mesh(unitPlane as THREE.BufferGeometry, material);
 	const group = new THREE.Group();
 	group.add(mesh);
-	const parts: FillParts = { group, mesh, outline: null };
+	const parts: FillParts = {
+		group,
+		mesh,
+		outline: null,
+		strokePaths: makeStrokePaths(),
+	};
 	const retained: Retained = {
 		object: group,
 		billboard: true,
@@ -135,7 +142,11 @@ const setFillGeometry = (
 /** stroke outline from a closed local-space polyline, or none */
 const setOutline = (
 	parts: FillParts,
-	data: { strokeColor?: Color.Color; strokeWidth?: number; opacity: number },
+	data: StrokeGeometry.Style & {
+		strokeColor?: Color.Color;
+		strokeWidth?: number;
+		opacity: number;
+	},
 	points: ReadonlyArray<readonly [number, number]> | null,
 ): void => {
 	if (data.strokeColor === undefined || points === null) {
@@ -152,7 +163,11 @@ const setOutline = (
 	}
 	Stroke.update(
 		parts.outline,
-		[{ points: points.map(([x, y]) => ({ x, y, z: 0 })), closed: true }],
+		processedStroke(
+			parts.strokePaths,
+			[{ points: points.map(([x, y]) => ({ x, y, z: 0 })), closed: true }],
+			data,
+		),
 		data.strokeWidth ?? 1,
 		data.strokeColor,
 		data.opacity,
@@ -297,27 +312,145 @@ const disposeFatLine = (line: FatLine.Line2): void => {
 	(line.material as THREE.Material).dispose();
 };
 
+/** Retain the interval result independently of paint and transforms. */
+interface StrokePaths {
+	key: string;
+	paths: ReadonlyArray<PathGeometry.Subpath>;
+}
+const makeStrokePaths = (): StrokePaths => ({ key: "", paths: [] });
+const processedStroke = (
+	cache: StrokePaths,
+	paths: ReadonlyArray<PathGeometry.Subpath>,
+	style: StrokeGeometry.Style,
+): ReadonlyArray<PathGeometry.Subpath> => {
+	const key = JSON.stringify([
+		paths,
+		style.trimStart,
+		style.trimEnd,
+		style.trimOffset,
+		style.strokeDasharray,
+		style.strokeDashoffset,
+	]);
+	if (cache.key !== key) {
+		cache.paths = StrokeGeometry.apply(paths, style);
+		cache.key = key;
+	}
+	return cache.paths;
+};
+
+interface SpatialStroke {
+	readonly group: THREE.Group;
+	paths: ReadonlyArray<PathGeometry.Subpath> | undefined;
+}
+const makeSpatialStroke = (): SpatialStroke => ({
+	group: new THREE.Group(),
+	paths: undefined,
+});
+const clearPath = (group: THREE.Group): void => {
+	for (const child of [...group.children]) {
+		group.remove(child);
+		disposePathChild(child);
+	}
+};
+const updateSpatialStroke = (
+	spatial: SpatialStroke,
+	paths: ReadonlyArray<PathGeometry.Subpath>,
+	leaf: Leaf,
+	color: Color.Color,
+	width: number,
+	opacity: number,
+): void => {
+	if (spatial.paths !== paths) {
+		clearPath(spatial.group);
+		spatial.paths = paths;
+		for (const path of paths) {
+			const points = path.points.filter((point, index) => {
+				const previous = path.points[index - 1];
+				return (
+					previous === undefined ||
+					point.x !== previous.x ||
+					point.y !== previous.y ||
+					point.z !== previous.z
+				);
+			});
+			const first = points[0];
+			if (first === undefined) continue;
+			if (points.length === 1) {
+				// Fat lines normalize their endpoint difference, so a zero-length
+				// segment cannot produce a valid cap. A sphere gives the spatial
+				// round dot an explicit silhouette from every viewing direction.
+				const dot = new THREE.Mesh(
+					new THREE.SphereGeometry(0.5, 24, 16),
+					new THREE.MeshBasicNodeMaterial(),
+				);
+				dot.position.set(first.x, first.y, first.z);
+				spatial.group.add(dot);
+			} else {
+				const last = points.at(-1);
+				if (
+					path.closed &&
+					last !== undefined &&
+					(first.x !== last.x || first.y !== last.y || first.z !== last.z)
+				)
+					points.push(first);
+				const line = makeFatLine();
+				line.geometry.setPositions(
+					points.flatMap((point) => [point.x, point.y, point.z]),
+				);
+				line.computeLineDistances();
+				spatial.group.add(line);
+			}
+		}
+	}
+	const scaledWidth = width * strokeScale(leaf);
+	for (const child of spatial.group.children) {
+		if (child instanceof FatLine.Line2) {
+			setColor(child.material, color, opacity);
+			child.material.linewidth = scaledWidth;
+			child.visible = child.material.opacity > 0 && width > 0;
+		} else if (
+			child instanceof THREE.Mesh &&
+			child.material instanceof THREE.MeshBasicNodeMaterial
+		) {
+			setColor(child.material, color, opacity);
+			const scale = leaf.transform.scale;
+			child.scale.set(
+				scale.x === 0 ? 0 : scaledWidth / Math.abs(scale.x),
+				scale.y === 0 ? 0 : scaledWidth / Math.abs(scale.y),
+				scale.z === 0 ? 0 : scaledWidth / Math.abs(scale.z),
+			);
+			child.visible = child.material.opacity > 0 && width > 0;
+		}
+	}
+};
+
 interface LineParts {
 	readonly group: THREE.Group;
 	readonly stroke: Stroke.Stroke;
-	readonly spatial: FatLine.Line2;
+	readonly spatial: SpatialStroke;
+	readonly strokePaths: StrokePaths;
 }
 const lineParts = new WeakMap<Retained, LineParts>();
 const line: EntityRenderer<Entity.EntityByTag<"Line">> = {
 	build: (leaf, ctx) => {
 		const group = new THREE.Group();
 		const stroke = Stroke.make();
-		const spatial = makeFatLine();
-		group.add(stroke.object, spatial);
+		const spatial = makeSpatialStroke();
+		group.add(stroke.object, spatial.group);
 		const retained: Retained = {
 			object: group,
 			billboard: false,
 			dispose: () => {
 				Stroke.dispose(stroke);
-				disposeFatLine(spatial);
+				clearPath(spatial.group);
 			},
 		};
-		lineParts.set(retained, { group, stroke, spatial });
+		lineParts.set(retained, {
+			group,
+			stroke,
+			spatial,
+			strokePaths: makeStrokePaths(),
+		});
 		line.update(retained, leaf, ctx);
 		return retained;
 	},
@@ -327,109 +460,52 @@ const line: EntityRenderer<Entity.EntityByTag<"Line">> = {
 		const { start, end, strokeColor, strokeWidth, opacity } = leaf.data;
 		parts.group.matrixAutoUpdate = false;
 		parts.group.matrix.copy(leaf.transform.matrix);
+		const paths = processedStroke(
+			parts.strokePaths,
+			[{ points: [start, end], closed: false }],
+			leaf.data,
+		);
 		const planar = start.z === end.z;
-		parts.spatial.visible = !planar && opacity > 0 && strokeWidth > 0;
+		parts.spatial.group.visible = !planar;
 		parts.stroke.object.visible = planar;
 		if (planar) {
-			Stroke.update(
-				parts.stroke,
-				[{ points: [start, end], closed: false }],
-				strokeWidth,
+			Stroke.update(parts.stroke, paths, strokeWidth, strokeColor, opacity);
+		} else {
+			updateSpatialStroke(
+				parts.spatial,
+				paths,
+				leaf,
 				strokeColor,
+				strokeWidth,
 				opacity,
 			);
-		} else {
-			const material = parts.spatial.material as THREE.Line2NodeMaterial;
-			setColor(material, strokeColor, opacity);
-			material.linewidth = strokeWidth * strokeScale(leaf);
-			parts.spatial.geometry.setPositions([
-				start.x,
-				start.y,
-				start.z,
-				end.x,
-				end.y,
-				end.z,
-			]);
-			parts.spatial.computeLineDistances();
 		}
 	},
-};
-
-interface Subpath {
-	readonly points: ReadonlyArray<{ x: number; y: number; z: number }>;
-	readonly closed: boolean;
-}
-
-// subpaths in the path's LOCAL space (offsets from position): fills
-// triangulate there, so a tilted or rotated path never degenerates in x/y
-const pathSubpaths = (commands: ReadonlyArray<PathCommand>): Array<Subpath> => {
-	const subpaths: Array<Subpath> = [];
-	let current: Array<{ x: number; y: number; z: number }> = [];
-	let lastMove = { x: 0, y: 0, z: 0 };
-	const world = (p: { x: number; y: number; z?: number }) => ({
-		x: p.x,
-		y: p.y,
-		z: p.z ?? 0,
-	});
-	const flush = (closed: boolean) => {
-		if (current.length >= 2) {
-			subpaths.push({ points: current, closed });
-		}
-		current = [];
-	};
-	for (const command of commands) {
-		switch (command._tag) {
-			case "M": {
-				flush(false);
-				lastMove = world(command);
-				current = [lastMove];
-				break;
-			}
-			case "L": {
-				if (current.length === 0) {
-					current.push(lastMove);
-				}
-				current.push(world(command));
-				break;
-			}
-			case "Z": {
-				flush(true);
-				break;
-			}
-		}
-	}
-	flush(false);
-	return subpaths;
 };
 
 interface PathParts {
 	readonly group: THREE.Group;
 	readonly fills: THREE.Group;
-	readonly spatial: THREE.Group;
+	readonly spatial: SpatialStroke;
 	readonly stroke: Stroke.Stroke;
-	commands: ReadonlyArray<PathCommand> | undefined;
-	paths: ReadonlyArray<Subpath>;
+	readonly strokePaths: StrokePaths;
+	commands: ReadonlyArray<Entity.PathCommand> | undefined;
+	paths: ReadonlyArray<PathGeometry.Subpath>;
 }
 const pathParts = new WeakMap<Retained, PathParts>();
-const clearPath = (group: THREE.Group): void => {
-	for (const child of [...group.children]) {
-		group.remove(child);
-		disposePathChild(child);
-	}
-};
 const path: EntityRenderer<Entity.EntityByTag<"Path">> = {
 	build: (leaf, ctx) => {
 		const group = new THREE.Group(),
-			fills = new THREE.Group(),
-			spatial = new THREE.Group();
+			fills = new THREE.Group();
+		const spatial = makeSpatialStroke();
 		const stroke = Stroke.make();
-		group.add(fills, stroke.object, spatial);
+		group.add(fills, stroke.object, spatial.group);
 		const retained: Retained = {
 			object: group,
 			billboard: false,
 			dispose: () => {
 				clearPath(fills);
-				clearPath(spatial);
+				clearPath(spatial.group);
 				Stroke.dispose(stroke);
 			},
 		};
@@ -438,6 +514,7 @@ const path: EntityRenderer<Entity.EntityByTag<"Path">> = {
 			fills,
 			spatial,
 			stroke,
+			strokePaths: makeStrokePaths(),
 			commands: undefined,
 			paths: [],
 		});
@@ -453,9 +530,8 @@ const path: EntityRenderer<Entity.EntityByTag<"Path">> = {
 		parts.group.matrix.copy(leaf.transform.matrix);
 		if (parts.commands !== commands) {
 			parts.commands = commands;
-			parts.paths = pathSubpaths(commands);
+			parts.paths = PathGeometry.flatten(commands);
 			clearPath(parts.fills);
-			clearPath(parts.spatial);
 			for (const subpath of parts.paths) {
 				if (subpath.closed && subpath.points.length >= 3) {
 					const geometry = new THREE.BufferGeometry();
@@ -479,15 +555,6 @@ const path: EntityRenderer<Entity.EntityByTag<"Path">> = {
 						),
 					);
 				}
-				if (!Stroke.planar(parts.paths)) {
-					const fatLine = makeFatLine();
-					const points = [...subpath.points];
-					const first = points[0];
-					if (subpath.closed && first !== undefined) points.push(first);
-					fatLine.geometry.setPositions(points.flatMap((p) => [p.x, p.y, p.z]));
-					fatLine.computeLineDistances();
-					parts.spatial.add(fatLine);
-				}
 			}
 		}
 		for (const child of parts.fills.children) {
@@ -499,27 +566,25 @@ const path: EntityRenderer<Entity.EntityByTag<"Path">> = {
 				child.visible = child.material.opacity > 0;
 			}
 		}
+		// Eligibility belongs to the complete geometry: trimming out a depth
+		// change must not switch how the remaining stroke is rendered.
 		const planar = Stroke.planar(parts.paths);
 		parts.stroke.object.visible = planar && strokeColor !== undefined;
-		parts.spatial.visible = !planar && strokeColor !== undefined;
+		parts.spatial.group.visible = !planar && strokeColor !== undefined;
 		if (strokeColor === undefined) return;
-		if (planar)
-			Stroke.update(
-				parts.stroke,
-				parts.paths,
-				strokeWidth,
+		const paths = processedStroke(parts.strokePaths, parts.paths, leaf.data);
+		if (planar) {
+			Stroke.update(parts.stroke, paths, strokeWidth, strokeColor, opacity);
+		} else {
+			updateSpatialStroke(
+				parts.spatial,
+				paths,
+				leaf,
 				strokeColor,
+				strokeWidth,
 				opacity,
 			);
-		else
-			for (const child of parts.spatial.children) {
-				if (child instanceof FatLine.Line2) {
-					const material = child.material as THREE.Line2NodeMaterial;
-					setColor(material, strokeColor, opacity);
-					material.linewidth = strokeWidth * strokeScale(leaf);
-					child.visible = material.opacity > 0 && strokeWidth > 0;
-				}
-			}
+		}
 	},
 };
 
@@ -528,9 +593,13 @@ const disposePathChild = (child: THREE.Object3D): void => {
 		disposeFatLine(child);
 		return;
 	}
-	const mesh = child as THREE.Mesh;
-	mesh.geometry.dispose();
-	(mesh.material as THREE.Material).dispose();
+	if (child instanceof THREE.Mesh) {
+		child.geometry.dispose();
+		const materials = Array.isArray(child.material)
+			? child.material
+			: [child.material];
+		for (const material of materials) material.dispose();
+	}
 };
 
 // ── text: SDF glyphs (see Text.ts) ───────────────────────────────────────

@@ -9,6 +9,7 @@
 		"audio",
 		"camera-depth-of-field",
 		"masks",
+		"path-strokes",
 		"renderer-limits",
 		"precomps",
 		"custom-entities",

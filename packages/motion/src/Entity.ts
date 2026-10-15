@@ -85,8 +85,33 @@ const paintableMixin = {
 	...appearanceMixin,
 };
 
+const finiteNumber = Schema.Number.check(
+	Schema.makeFilter((value) =>
+		Number.isFinite(value) ? undefined : "must be finite",
+	),
+);
+
+const defaultedFiniteNumber = (value: number) =>
+	finiteNumber.pipe(Schema.withConstructorDefault(Effect.succeed(value)));
+
+/** Stroke selection uses local contour distance and never changes fills. */
+const strokeSelectionMixin = {
+	trimStart: defaultedFiniteNumber(0),
+	trimEnd: defaultedFiniteNumber(1),
+	trimOffset: defaultedFiniteNumber(0),
+	strokeDasharray: Schema.Array(
+		finiteNumber.check(
+			Schema.makeFilter((value) =>
+				value >= 0 ? undefined : "must be nonnegative",
+			),
+		),
+	).pipe(Schema.withConstructorDefault(Effect.sync(() => []))),
+	strokeDashoffset: defaultedFiniteNumber(0),
+};
+
 /** A Line IS its stroke, so it defaults to a visible black 1-unit one. */
 const strokeMixin = {
+	...strokeSelectionMixin,
 	strokeWidth: defaultedNumber(1),
 	strokeColor: Color.Color.pipe(
 		Schema.withConstructorDefault(Effect.succeed(Color.black)),
@@ -99,6 +124,7 @@ const strokeMixin = {
  * pass an explicit `from`) first.
  */
 const outlineMixin = {
+	...strokeSelectionMixin,
 	strokeWidth: defaultedNumber(1),
 	strokeColor: Schema.optionalKey(Color.Color),
 };
@@ -121,21 +147,53 @@ const childrenMixin = {
 	),
 };
 
-/**
- * A path command point, relative to the Path's own `position` — the same
- * relative rule Line's endpoints follow, so translating a Path is rigid
- * without rewriting the command array.
- */
+/** Endpoints and controls are local offsets (uppercase) or deltas (lowercase). */
 const point = {
-	x: Schema.Number,
-	y: Schema.Number,
-	z: Schema.optionalKey(Schema.Number),
+	x: finiteNumber,
+	y: finiteNumber,
+	z: Schema.optionalKey(finiteNumber),
+};
+const control1 = {
+	x1: finiteNumber,
+	y1: finiteNumber,
+	z1: Schema.optionalKey(finiteNumber),
+};
+const control2 = {
+	x2: finiteNumber,
+	y2: finiteNumber,
+	z2: Schema.optionalKey(finiteNumber),
+};
+const arc = {
+	...point,
+	rx: finiteNumber,
+	ry: finiteNumber,
+	xAxisRotation: finiteNumber,
+	largeArc: Schema.Boolean,
+	sweep: Schema.Boolean,
 };
 
+/** Typed SVG command vocabulary; arc rotation is in degrees, depth is local. */
 export const PathCommand = Schema.TaggedUnion({
 	M: point,
+	m: point,
 	L: point,
+	l: point,
+	H: { x: finiteNumber },
+	h: { x: finiteNumber },
+	V: { y: finiteNumber },
+	v: { y: finiteNumber },
+	C: { ...point, ...control1, ...control2 },
+	c: { ...point, ...control1, ...control2 },
+	S: { ...point, ...control2 },
+	s: { ...point, ...control2 },
+	Q: { ...point, ...control1 },
+	q: { ...point, ...control1 },
+	T: point,
+	t: point,
+	A: arc,
+	a: arc,
 	Z: {},
+	z: {},
 });
 
 export type PathCommand = typeof PathCommand.Type;
@@ -155,9 +213,9 @@ export const Line = Schema.TaggedStruct("Line", {
 });
 
 /**
- * A polyline/polygon. Command points are relative to `position` (see
- * `point`). The first command must be `M` — an open vocabulary of M/L/Z;
- * curves and arcs arrive later via deterministic flattening.
+ * Lines, curves, and elliptical arcs in local 3D space. The first command
+ * must be M or m. Lowercase commands are relative to the current point;
+ * curves are flattened deterministically by the renderer.
  */
 export const Path = Schema.TaggedStruct("Path", {
 	...paintableMixin,
@@ -165,9 +223,9 @@ export const Path = Schema.TaggedStruct("Path", {
 	...outlineMixin,
 	commands: Schema.NonEmptyArray(PathCommand).check(
 		Schema.makeFilter((commands) =>
-			commands[0]._tag === "M"
+			commands[0]._tag === "M" || commands[0]._tag === "m"
 				? undefined
-				: { path: [0], issue: "the first path command must be M" },
+				: { path: [0], issue: "the first path command must be M or m" },
 		),
 	),
 });

@@ -36,6 +36,7 @@ import { scene as maskPartialAlpha } from "./mask-partial-alpha.scene";
 import { scene as maskTextReveal } from "./mask-text-reveal.scene";
 import { scene as minSeeker } from "./min-seeker.scene";
 import { scene as paintOrder } from "./paint-order.scene";
+import { scene as pathStrokes } from "./path-strokes.scene";
 import { scene as rackFocus } from "./rack-focus.scene";
 import { scene as riemannRects } from "./riemann-rects.scene";
 import { scene as seededWalk } from "./seeded-walk.scene";
@@ -92,6 +93,7 @@ export const examples: Record<string, PlayerProps["scene"] | ExampleEntry> = {
 	"mask-text-reveal": maskTextReveal,
 	"mask-inverse-cutout": maskInverseCutout,
 	"mask-partial-alpha": maskPartialAlpha,
+	"path-strokes": pathStrokes,
 	// examples gallery
 	"paint-order": paintOrder,
 	"stroke-union": strokeUnion,

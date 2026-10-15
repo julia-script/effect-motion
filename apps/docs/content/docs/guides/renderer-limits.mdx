@@ -21,7 +21,7 @@ carries its whole subtree.
 | `Ellipse` | `radiusX`, `radiusY`, `fillColor`, `strokeColor`, `strokeWidth` |
 | `Rect` | `width`, `height`, `fillColor`, `strokeColor`, `strokeWidth` |
 | `Line` | `start`, `end`, `strokeColor`, `strokeWidth` |
-| `Path` | `commands` (`M`, `L`, `Z`), `fillColor`, `strokeColor`, `strokeWidth` |
+| `Path` | `commands` (`M/L/H/V/C/S/Q/T/A/Z` and lowercase forms), `fillColor`, `strokeColor`, `strokeWidth` |
 | `Text` | `text`, `fontSize`, `fontFamily`, `fillColor`, `textAnchor`, `baseline` |
 | `Image` | `image`, `width`, `height` (both, or neither for natural size) |
 | `Group` | `children` (paints nothing itself) |
@@ -29,6 +29,11 @@ carries its whole subtree.
 | `Camera` | `position`, `rotation`, `poi`, `focalLength` |
 
 A few details:
+
+- **Stroke controls.** `Line`, `Path`, `Rect`, `Circle`, and `Ellipse` also
+  render `trimStart`, `trimEnd`, `trimOffset`, `strokeDasharray`, and
+  `strokeDashoffset`. These affect strokes and leave fills intact. See
+  [Curves, trim paths, and dashes](/docs/guides/path-strokes).
 
 - **Facing.** A planar shape (`Circle`, `Ellipse`, `Rect`, `Text`, `Image`)
   with rotation 0 faces the camera. Any other rotation, its own or an
@@ -77,8 +82,9 @@ an image format here — trace it into `Path`s instead.
 
 ## Paths
 
-`Path` commands are straight segments only: `M` (move), `L` (line) and `Z`
-(close). There are no curves or arcs; sample a curve into points yourself.
+`Path` supports typed SVG-style commands for lines, quadratic/cubic curves,
+smooth continuations, and elliptical arcs, including relative forms. Curves
+are flattened deterministically with their authored endpoints preserved.
 Each closed subpath fills on its own, so there are no holes: a ring or the
 counter of a letter needs separate shapes layered on top.
 
@@ -90,4 +96,5 @@ Plan around these; none of them render today:
 - per-letter text (a `Text` is one block; use one `Text` per word or line);
 - motion blur, and blur of any kind other than depth of field;
 - lit or shaded 3D meshes;
-- curves, arcs and holes in `Path`.
+- compound holes and configurable fill rules in `Path`;
+- configurable stroke caps and joins (the existing styles are round).

@@ -3,11 +3,9 @@ import * as Color from "effect-motion/Color";
 import * as Entity from "effect-motion/Entity";
 import * as Scene from "effect-motion/Scene";
 
-// A 3D cubic Bézier drawn with Path. Native curve commands are a planned
-// follow-up, and their chosen implementation is flattening — sampling the
-// curve into straight spans. This example does that flattening in scene
-// code today: every sample carries its own z, so the projected curve
-// foreshortens point by point. A wireframe box (12 Line edges) frames the
+// A 3D cubic Bézier drawn with a native C command. The renderer flattens
+// it deterministically, retaining depth along the curve so it foreshortens
+// point by point. A wireframe box (12 Line edges) frames the
 // volume; the camera aims at its center with Camera.lookAt and turntables
 // around it with Camera.orbitTo — the point of interest pins the aim, so
 // there is no orientation math in the scene at all.
@@ -19,28 +17,19 @@ const P1 = { x: 0, y: 100, z: 100 };
 const P2 = { x: 100, y: 200, z: -100 };
 const P3 = { x: 10, y: 300, z: 0 };
 
-const bezier = (t: number) => {
-	const u = 1 - t;
-	const w0 = u * u * u;
-	const w1 = 3 * u * u * t;
-	const w2 = 3 * u * t * t;
-	const w3 = t * t * t;
-	return {
-		x: w0 * P0.x + w1 * P1.x + w2 * P2.x + w3 * P3.x,
-		y: w0 * P0.y + w1 * P1.y + w2 * P2.y + w3 * P3.y,
-		z: w0 * P0.z + w1 * P1.z + w2 * P2.z + w3 * P3.z,
-	};
-};
-
-// 48 spans approximate the curve well below a pixel at this size
-const SAMPLES = 48;
 type Point3 = { x: number; y: number; z: number };
-const curveCommands: [{ _tag: "M" } & Point3, ...({ _tag: "L" } & Point3)[]] = [
-	{ _tag: "M", ...bezier(0) },
-	...Array.from({ length: SAMPLES }, (_, i) => ({
-		_tag: "L" as const,
-		...bezier((i + 1) / SAMPLES),
-	})),
+const curveCommands: [Entity.PathCommand, ...Array<Entity.PathCommand>] = [
+	{ _tag: "M", ...P0 },
+	{
+		_tag: "C",
+		x1: P1.x,
+		y1: P1.y,
+		z1: P1.z,
+		x2: P2.x,
+		y2: P2.y,
+		z2: P2.z,
+		...P3,
+	},
 ];
 
 const ANCHOR = { x: 0, y: 0 };
@@ -117,7 +106,7 @@ export const scene = Scene.make(
 			],
 		});
 
-		// the curve itself — one Path, every sample at its own depth
+		// the curve itself — one Path, with depth in both control points
 		yield* Scene.instantiate("Path", {
 			fillColor: noFill,
 			strokeColor: Color.tw("pink", "500"),

@@ -12,5 +12,7 @@ aim — no orientation math anywhere in the scene.
 
 <Example name="bezier-3d" />
 
-The curve itself is the sampling trick again: 48 straight spans, each
-endpoint at its own z, projected point by point.
+The curve uses one native `C` command with 3D control points. The renderer
+flattens it deterministically and projects the resulting points at their
+own depth. See [Curves, trim paths, and dashes](/docs/guides/path-strokes)
+for the command fields and stroke animation controls.
