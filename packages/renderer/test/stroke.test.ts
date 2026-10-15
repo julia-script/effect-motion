@@ -376,3 +376,209 @@ describe("stroke controls through retained renderers", () => {
 		Effect.runSync(Sync.dispose(sync));
 	});
 });
+
+describe("rounded Rect retained rendering", () => {
+	it("shares a centered rounded boundary between fill and coverage under a transformed parent", () => {
+		const sync = Sync.make(builtinRegistry);
+		const renderer = builtinRenderers.Rect;
+		const data = Entity.Rect.make({
+			width: 100,
+			height: 40,
+			cornerRadius: 10,
+			strokeColor: Color.black,
+			strokeWidth: 2,
+		});
+		const leaf = leafOf(data);
+		leaf.world = { x: 100, y: -30, z: -200 };
+		leaf.transform.scale.set(2, 3, 1);
+		leaf.transform.quaternion.setFromEuler(new THREE.Euler(0.2, 0.4, 0.3));
+		leaf.transform.rotated = true;
+		const retained = renderer.build(leaf, sync.ctx);
+		const fill = retained.object.children[0];
+		if (!(fill instanceof THREE.Mesh)) return unreachable();
+		const stroke = strokeOf(retained.object);
+		expect(retained.billboard).toBe(false);
+		expect(retained.object.position.toArray()).toEqual([100, -30, -200]);
+		expect(retained.object.scale.toArray()).toEqual([2, 3, 1]);
+		expect(retained.object.quaternion.equals(leaf.transform.quaternion)).toBe(
+			true,
+		);
+		expect(fill.scale.toArray()).toEqual([1, 1, 1]);
+		expect(stroke.object.parent).toBe(retained.object);
+		// Raycast the actual local triangles, independently of contour builders.
+		const hits = (mesh: THREE.Mesh, x: number, y: number) =>
+			new THREE.Raycaster(
+				new THREE.Vector3(x, y, 1),
+				new THREE.Vector3(0, 0, -1),
+			).intersectObject(mesh).length > 0;
+		expect(hits(fill, 0, 0)).toBe(true);
+		expect(hits(fill, 49, 19)).toBe(false);
+		expect(hits(stroke.occupancy, 49, 19)).toBe(false);
+		expect(hits(fill, 47, 17)).toBe(true);
+		expect(hits(stroke.occupancy, 47, 17)).toBe(true);
+		expect(hits(stroke.occupancy, 0, 0)).toBe(false);
+		expect(stroke.occupancy.material.blending).toBe(THREE.NoBlending);
+		retained.dispose();
+		Effect.runSync(Sync.dispose(sync));
+	});
+
+	it("composes all trim and dash controls on the rounded perimeter without clipping fill", () => {
+		const sync = Sync.make(builtinRegistry);
+		const renderer = builtinRenderers.Rect;
+		const data = Entity.Rect.make({
+			width: 100,
+			height: 40,
+			cornerRadius: 10,
+			strokeColor: Color.black,
+			strokeWidth: 2,
+			trimStart: 0.05,
+			trimEnd: 0.2,
+			trimOffset: 0.05,
+			strokeDasharray: [10, 10],
+			strokeDashoffset: 5,
+		});
+		const retained = renderer.build(leafOf(data), sync.ctx);
+		const fill = retained.object.children[0];
+		if (!(fill instanceof THREE.Mesh)) return unreachable();
+		const fillGeometry = fill.geometry;
+		const stroke = strokeOf(retained.object);
+		// Perimeter is about 262.8. The trim selects distances 26.3..65.7
+		// along the top edge from (-40,20); dashes paint 35..45 and 55..65.
+		const box = stroke.occupancy.geometry.boundingBox ?? unreachable();
+		expect(box.min.x).toBeCloseTo(-6);
+		expect(box.max.x).toBeCloseTo(26);
+		expect(box.min.y).toBeCloseTo(19);
+		expect(box.max.y).toBeCloseTo(21);
+		const occupancy = stroke.occupancy.geometry;
+		renderer.update(
+			retained,
+			leafOf({
+				...data,
+				fillColor: Color.black,
+				strokeColor: Color.white,
+				opacity: 0.25,
+			}),
+			sync.ctx,
+		);
+		expect(fill.geometry).toBe(fillGeometry);
+		expect(stroke.occupancy.geometry).toBe(occupancy);
+		expect(stroke.object.material.opacity).toBe(0.25);
+		renderer.update(retained, leafOf({ ...data, trimEnd: 0 }), sync.ctx);
+		expect(stroke.object.visible).toBe(false);
+		expect(fill.visible).toBe(true);
+		expect(fill.geometry).toBe(fillGeometry);
+		// Circle limit: the shifted quarter-window is the bottom-right arc.
+		// Paint at distance ~44, a dash gap at ~54, and an unselected point
+		// above the axis distinguish actual coverage from matching bounds.
+		renderer.update(
+			retained,
+			leafOf({
+				...data,
+				width: 40,
+				height: 40,
+				cornerRadius: 100,
+				trimStart: 0.1,
+				trimEnd: 0.35,
+				trimOffset: 0.15,
+				strokeDashoffset: 0,
+			}),
+			sync.ctx,
+		);
+		const covered = (x: number, y: number) =>
+			new THREE.Raycaster(
+				new THREE.Vector3(x, y, 1),
+				new THREE.Vector3(0, 0, -1),
+			).intersectObject(stroke.occupancy).length > 0;
+		expect(covered(16, -12)).toBe(true);
+		expect(covered(8, -18)).toBe(false);
+		expect(covered(16, 12)).toBe(false);
+		retained.dispose();
+		Effect.runSync(Sync.dispose(sync));
+	});
+
+	it("rebuilds dimensions and effective radius, releases owned geometry, and protects the shared plane", () => {
+		const sync = Sync.make(builtinRegistry);
+		const renderer = builtinRenderers.Rect;
+		const data = Entity.Rect.make({
+			width: 100,
+			height: 40,
+			strokeColor: Color.black,
+		});
+		const retained = renderer.build(leafOf(data), sync.ctx);
+		const fill = retained.object.children[0];
+		if (!(fill instanceof THREE.Mesh)) return unreachable();
+		const shared = fill.geometry;
+		let sharedDisposals = 0;
+		const onSharedDispose = () => {
+			sharedDisposals++;
+		};
+		shared.addEventListener("dispose", onSharedDispose);
+		const stroke = strokeOf(retained.object);
+		for (const dimensions of [
+			{ width: 100, height: 40, cornerRadius: 10 },
+			{ width: 100, height: 40, cornerRadius: 1000 },
+			{ width: -80, height: 60, cornerRadius: 1000 },
+			{ width: -80, height: -80, cornerRadius: 1000 },
+			{ width: 100, height: 40, cornerRadius: 0 },
+		]) {
+			const previous = fill.geometry;
+			const oldStroke = stroke.occupancy.geometry;
+			let fillDisposed = false,
+				strokeDisposed = false;
+			previous.addEventListener("dispose", () => {
+				fillDisposed = true;
+			});
+			oldStroke.addEventListener("dispose", () => {
+				strokeDisposed = true;
+			});
+			renderer.update(retained, leafOf({ ...data, ...dimensions }), sync.ctx);
+			expect(fill.geometry).not.toBe(previous);
+			expect(fillDisposed).toBe(previous !== shared);
+			expect(strokeDisposed).toBe(true);
+			fill.geometry.computeBoundingBox();
+			const bounds = fill.geometry.boundingBox ?? unreachable();
+			expect((bounds.max.x - bounds.min.x) * Math.abs(fill.scale.x)).toBe(
+				Math.abs(dimensions.width),
+			);
+			expect((bounds.max.y - bounds.min.y) * Math.abs(fill.scale.y)).toBe(
+				Math.abs(dimensions.height),
+			);
+			if (dimensions.cornerRadius === 1000) {
+				const geometry = fill.geometry;
+				renderer.update(
+					retained,
+					leafOf({ ...data, ...dimensions, cornerRadius: 2000 }),
+					sync.ctx,
+				);
+				expect(fill.geometry).toBe(geometry);
+			}
+		}
+		expect(fill.geometry).toBe(shared);
+		renderer.update(retained, leafOf({ ...data, cornerRadius: 15 }), sync.ctx);
+		let finalFillDisposed = false,
+			finalStrokeDisposed = false,
+			materialDisposed = false;
+		fill.geometry.addEventListener("dispose", () => {
+			finalFillDisposed = true;
+		});
+		stroke.occupancy.geometry.addEventListener("dispose", () => {
+			finalStrokeDisposed = true;
+		});
+		stroke.object.material.addEventListener("dispose", () => {
+			materialDisposed = true;
+		});
+		const { strokeColor: _color, ...withoutOutline } = {
+			...data,
+			cornerRadius: 15,
+		};
+		renderer.update(retained, leafOf(withoutOutline), sync.ctx);
+		expect(finalStrokeDisposed).toBe(true);
+		expect(materialDisposed).toBe(true);
+		expect(stroke.object.parent).toBeNull();
+		retained.dispose();
+		expect(finalFillDisposed).toBe(true);
+		expect(sharedDisposals).toBe(0);
+		shared.removeEventListener("dispose", onSharedDispose);
+		Effect.runSync(Sync.dispose(sync));
+	});
+});

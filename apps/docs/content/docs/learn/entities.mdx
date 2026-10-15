@@ -30,6 +30,15 @@ Every paintable entity carries the same built-ins alongside its own fields:
 `Path`'s commands are offsets from the entity's position, so animating
 `position` translates the whole shape rigidly — no per-shape bookkeeping.
 
+## Rounded rectangles
+
+Set `cornerRadius` on a `Rect` to round all four corners, then animate it
+with `Motion.tweenTo(rect, { cornerRadius: 30 }, "1 second")`. The default
+is `0`. Rendering clamps the radius between zero and half the smaller
+absolute dimension; stored values and tween targets stay unchanged.
+The fill and outline follow the same contour, including stroke trim and dashes.
+See [From box to pill](/docs/examples/rounded-rectangles) for an animated example.
+
 ## Structure: one tree, defined by children
 
 Instances form a single tree. A `Group`'s `children` list is polymorphic:

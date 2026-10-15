@@ -1,0 +1,33 @@
+---
+title: From box to pill
+description: Animate a rectangle's dimensions and corner radius while its outline follows the same contour
+---
+
+`Rect.cornerRadius` rounds all four corners in local scene units. It defaults
+to `0`, so existing rectangles keep their sharp corners. Use `Motion.tween`
+or `Motion.tweenTo` to animate it alongside `width` and `height`.
+
+<Example name="rounded-rectangles" />
+
+The filled box becomes a pill between 1 and 4 seconds. Below it, a dashed
+outline rounds while its trim window and dash offset move around the contour.
+The translucent mint border keeps one opacity application across its joins.
+
+The rendered radius is clamped to
+`[0, min(abs(width), abs(height)) / 2]`. A negative radius draws sharp
+corners. An oversized radius draws a pill, or a circle when both dimensions
+have equal magnitude. The stored radius is unchanged: tweens still finish
+on the exact authored target, including overshoots.
+
+Dimensions keep their existing meaning. Negative widths or heights reflect
+the local contour, and zero dimensions collapse it. Rounding happens before
+`scale`, so a nonuniform scale stretches the corners along with the shape.
+Position, rotation, and depth move the fill and outline together about the
+rectangle's center.
+
+For positive dimensions, the outline starts at the top-left corner's tangent
+on the top edge and travels clockwise. At radius zero it starts at the
+top-left corner. Trim and dash distances follow that local contour;
+reflected dimensions reflect the traversal too. The fill always stays complete.
+See [Path and stroke controls](/docs/guides/path-strokes) for the shared trim
+and dash rules.
