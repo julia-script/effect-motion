@@ -1,0 +1,51 @@
+---
+title: "AudioResource"
+description: "One audio constant, two faces — author side (`yield*` for the reference"
+---
+# Interface: AudioResource\<ID\>
+
+Defined in: [packages/motion/src/Audio.ts:111](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Audio.ts#L111)
+
+One audio constant, two faces — author side (`yield*` for the reference
+and the phantom `AudioLoader<ID>`) and provider side (`.Loader`,
+`.Metadata`, plus [layer](../functions/layer.mdx) / [metadataLayer](../functions/metadataLayer.mdx)).
+
+## Extends
+
+- `Effect`\<[`Audio`](./Audio.mdx)\<`ID`\>, `never`, [`AudioLoader`](./AudioLoader.mdx)\<`ID`\>\>
+
+## Type Parameters
+
+| Type Parameter | Default type |
+| ------ | ------ |
+| `ID` *extends* `string` | `string` |
+
+## Properties
+
+### id
+
+```ts
+readonly id: ID;
+```
+
+Defined in: [packages/motion/src/Audio.ts:113](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Audio.ts#L113)
+
+***
+
+### Loader
+
+```ts
+readonly Loader: Service<AudioLoader<ID>, AudioLoader<ID>>;
+```
+
+Defined in: [packages/motion/src/Audio.ts:114](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Audio.ts#L114)
+
+***
+
+### Metadata
+
+```ts
+readonly Metadata: Service<AudioMetadata<ID>, AudioMetadata<ID>>;
+```
+
+Defined in: [packages/motion/src/Audio.ts:115](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Audio.ts#L115)

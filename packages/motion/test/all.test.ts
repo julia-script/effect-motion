@@ -191,3 +191,50 @@ describe("Scene.stagger", () => {
 		expect(frames).toHaveLength(17);
 	});
 });
+
+describe("list combinators reject a bare Effect", () => {
+	// an Effect is iterable (it yields itself), so without the guard these
+	// would silently run just the one effect
+	// cast past the types, as an untyped caller would
+	const lone = Effect.void as unknown as Scene.Effects<Effect.Effect<void>>;
+
+	it("is a compile error", () => {
+		// @ts-expect-error — a single Effect is not a list
+		expect(() => Scene.all(Effect.void)).toBeTypeOf("function");
+		// @ts-expect-error — a single Effect is not a list
+		expect(() => Scene.chain(Effect.void)).toBeTypeOf("function");
+		expect(() =>
+			// @ts-expect-error — a single Effect is not a list
+			Scene.stagger(Effect.void, Schedule.spaced("1 second")),
+		).toBeTypeOf("function");
+		// @ts-expect-error — spread arguments, not a list
+		expect(() => Scene.all(Effect.void, Effect.void)).toBeTypeOf("function");
+	});
+
+	it.each([
+		["all", () => Scene.all(lone)],
+		["chain", () => Scene.chain(lone)],
+		["stagger", () => Scene.stagger(lone, Schedule.spaced("1 second"))],
+	] as const)("Scene.%s dies naming the misuse", async (name, misuse) => {
+		await expect(
+			collectFrames(function* () {
+				yield* misuse();
+			}),
+		).rejects.toThrow(`Scene.${name} expects a list of effects`);
+	});
+
+	it("array and generator lists still run", async () => {
+		const frames = await collectFrames(function* () {
+			const a = yield* Scene.instantiate("Circle", {
+				position: S.vec3({ x: 0 }),
+			});
+			yield* Scene.all(
+				(function* () {
+					yield Motion.move(a, { x: 0 }, { x: 10 }, "0.1 seconds");
+				})(),
+			);
+			yield* Scene.chain([Motion.move(a, { x: 10 }, { x: 20 }, "0.1 seconds")]);
+		});
+		expect(frames.at(-1)?.[0]?.position.x).toBe(20);
+	});
+});

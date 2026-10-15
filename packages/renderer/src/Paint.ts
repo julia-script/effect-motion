@@ -45,7 +45,11 @@ export const order = (
 			if (material.transparent !== transparent) material.needsUpdate = true;
 			material.transparent = transparent;
 			material.depthTest = mode === "depth" && original.depthTest;
-			material.depthWrite = mode === "depth" && original.depthWrite;
+			material.depthWrite =
+				mode === "depth" &&
+				(typeof material.userData.seeThrough === "boolean"
+					? !material.userData.seeThrough
+					: original.depthWrite);
 		}
 	});
 	return rank;

@@ -1,0 +1,74 @@
+---
+title: "ContactSheetOptions"
+description: "readonly optional columns?: number;"
+---
+# Interface: ContactSheetOptions
+
+Defined in: [packages/export/src/Stills.ts:32](https://github.com/julia-script/effect-motion/blob/main/packages/export/src/Stills.ts#L32)
+
+Options for [contactSheet](../functions/contactSheet.mdx).
+
+## Extends
+
+- [`StillsOptions`](./StillsOptions.mdx).[`TileOptions`](./TileOptions.mdx)
+
+## Properties
+
+### columns?
+
+```ts
+readonly optional columns?: number;
+```
+
+Defined in: [packages/export/src/Stills.ts:43](https://github.com/julia-script/effect-motion/blob/main/packages/export/src/Stills.ts#L43)
+
+Grid columns. Defaults to `ceil(sqrt(n))`.
+
+#### Inherited from
+
+[`TileOptions`](./TileOptions.mdx).[`columns`](./TileOptions.mdx#columns)
+
+***
+
+### dpr?
+
+```ts
+readonly optional dpr?: number;
+```
+
+Defined in: [packages/export/src/Stills.ts:28](https://github.com/julia-script/effect-motion/blob/main/packages/export/src/Stills.ts#L28)
+
+Supersampling factor; output is scene size × dpr. Defaults to 1.
+
+#### Inherited from
+
+[`StillsOptions`](./StillsOptions.mdx).[`dpr`](./StillsOptions.mdx#dpr)
+
+***
+
+### gap?
+
+```ts
+readonly optional gap?: number;
+```
+
+Defined in: [packages/export/src/Stills.ts:45](https://github.com/julia-script/effect-motion/blob/main/packages/export/src/Stills.ts#L45)
+
+Pixels between tiles (and none around the edge). Defaults to 4.
+
+#### Inherited from
+
+[`TileOptions`](./TileOptions.mdx).[`gap`](./TileOptions.mdx#gap)
+
+***
+
+### maxTileWidth?
+
+```ts
+readonly optional maxTileWidth?: number;
+```
+
+Defined in: [packages/export/src/Stills.ts:37](https://github.com/julia-script/effect-motion/blob/main/packages/export/src/Stills.ts#L37)
+
+Downscale each tile to at most this many pixels wide (box sampling,
+aspect kept) so the sheet stays small. Omit to tile at full size.

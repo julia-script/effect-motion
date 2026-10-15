@@ -1,4 +1,4 @@
-import { Context, Effect, Latch, Layer } from "effect";
+import { Context, Effect, type Exit, Latch, Layer } from "effect";
 
 /**
  * An externally paced phaser (cf. java.util.concurrent.Phaser).
@@ -128,18 +128,25 @@ export class Phaser extends Context.Service<Phaser>()("motion/Phaser", {
  * the scene is registered-but-running and `awaitAdvance` can never resolve
  * during a sequential handoff or before the scene starts. The slot is
  * released by a finalizer on success, failure, and interrupt alike.
+ *
+ * `onExit` runs before the slot is released. Both finalizers are installed
+ * while the fiber is still uninterruptible: a fiber interrupted before its
+ * first step (its parent ended in the same tick) would otherwise skip them
+ * and leak the slot, deadlocking every later phase.
  */
 export const run = <A, E = never, R = never>(
 	phaser: Phaser["Service"],
 	scene: Effect.Effect<A, E, R>,
+	onExit: (exit: Exit.Exit<A, E>) => Effect.Effect<void> = () => Effect.void,
 ) =>
 	Effect.uninterruptibleMask(() =>
 		Effect.suspend(() => {
 			phaser.register(1);
 			return Effect.interruptible(scene).pipe(
+				Effect.onExit(onExit),
 				Effect.ensuring(Effect.sync(() => phaser.deregister(1))),
 				Effect.provide(Layer.succeed(Phaser, phaser)),
-				Effect.forkChild,
+				Effect.forkChild({ uninterruptible: true }),
 			);
 		}),
 	);

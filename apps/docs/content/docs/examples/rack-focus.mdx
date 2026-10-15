@@ -1,0 +1,17 @@
+---
+title: Rack focus
+description: The sharp plane slides from foreground to background while the camera holds still
+---
+
+**The idea:** a rack focus is a tween. Three layers of flat shapes sit at
+three depths and the camera never moves; the only thing animating is the
+camera's `focusDistance`. As it travels, the sharp plane slides from the
+shapes crowding the lens, to the subject, to the wall far behind — the same
+pull a camera operator makes by turning the focus ring.
+
+`focusDistance` is a *view* distance (how far in front of the lens the sharp
+plane sits), so each layer's focus is the camera's resting `z` minus the
+layer's `z`. `aperture` is the lens radius in world units: bigger means a
+shallower depth of field.
+
+<Example name="rack-focus" />

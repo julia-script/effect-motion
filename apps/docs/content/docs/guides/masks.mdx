@@ -1,0 +1,91 @@
+---
+title: Alpha masks
+description: Reveal or hide shapes, text, images, and groups with an independently animated source
+---
+
+An alpha mask uses one existing instance to control where another is visible.
+Create both instances, then attach the source with `Scene.setMask(target, source)`.
+The source keeps its place in the instance tree and can animate independently,
+but it supplies coverage instead of drawing its own color while attached.
+
+## Reveal text with a moving shape
+
+This rectangle sweeps across a stationary `Text`. The title fades at the same
+time, so its final opacity and the mask's position are independent.
+
+<Example name="mask-text-reveal" />
+
+The call defaults to `{ mode: "alpha" }`: target alpha is multiplied by the
+source's alpha at each projected pixel. The source's color does not affect the
+result. Move a source with `Motion.moveTo`, fade it with `Motion.fadeTo`, or
+animate the target with the same helpers. Both retain their usual exact
+animation endpoints.
+
+## Cut a hole from a group
+
+Pass `{ mode: "inverse" }` to use one minus the source alpha. Here a Circle
+cuts a moving hole through a `Group` containing a colored card and text.
+The Group stays an ordinary container: each child keeps its own depth and
+paint order among surrounding content.
+
+<Example name="mask-inverse-cutout" />
+
+A target can have one mask at a time. Calling `setMask` again replaces its
+attachment; the former source resumes ordinary drawing unless it is still
+suppressed by another active source subtree. `Scene.clearMask(target)` removes
+the attachment on the current frame. The former source then draws normally if
+it is mounted and visible. Hide or remove it yourself if it should remain off
+screen. `clearMask` on an unmasked target has no effect.
+
+## Use partial coverage
+
+Source opacity, transparent image pixels, glyph edges, and shape edges all
+produce partial coverage. The example's Circle has opacity `0.45`, while the
+target Rect has opacity `0.8`. Where they overlap, normal-mode target alpha is
+`0.8 × 0.45 = 0.36`; the green card remains visible through it.
+
+<Example name="mask-partial-alpha" />
+
+In inverse mode the same overlap would have alpha `0.8 × (1 − 0.45) = 0.44`.
+An invisible source supplies zero coverage. A source outside the view also
+supplies zero coverage. There is no luminance mask or dedicated feather
+control; source alpha and edges define the coverage.
+
+## Choose a source and target
+
+Any paintable `Line`, `Path`, `Rect`, `Circle`, `Ellipse`, `Text`, `Image`,
+`Group`, or `Hud` can be a source or target. A Group source combines its
+eligible children into one coverage field. Text uses its glyph coverage, and
+an Image uses its decoded image alpha. `Camera` cannot be masked or used as a
+source. A mask source may itself have a mask, and masks on a Group and its
+descendant multiply their factors once per drawable child.
+
+The source and target must be mounted in the same scene composition and the
+same render tier. World content uses that composition's camera and each
+instance's tree transform; a `Hud` subtree uses screen coordinates and stays
+sharp over the world. Their coverage meets in projected composition pixels,
+even when they have different parents or depths. Source depth affects overlap
+*within* the source, but it does not have to match the target's depth. A
+`Scene.play` mount is a composition boundary: mask its group in the parent,
+or attach a separate source and target inside the played scene. A source
+inside the child cannot mask a target in the parent. Child content remains
+sharp internally; the parent's depth of field treats its plane as one layer.
+
+Each source can mask only one target. The source and target cannot be the
+same instance, contain one another, form a mask cycle, or cross a world/HUD
+or composition boundary. Invalid relationships fail with diagnostics naming
+the instances and rule. Detaching or destroying an endpoint, or an ancestor
+that unmounts it, clears the attachment. Moving an endpoint to another parent
+in the same domain retains it; a move that would break a mask relationship
+fails. The source returns to ordinary rendering when its attachment clears.
+
+Masks preserve each target fragment's depth: a fully hidden pixel reveals
+objects behind it; fully opaque covered pixels still occlude; partial pixels
+follow the renderer's translucent depth behavior. World depth of field uses
+the *target's* depth, with the existing approximation for translucent
+content. HUD masks stay sharp. Masking does not add Boolean mask operations,
+physical transparency blur, or a visual mask editor.
+
+For a fixed rectangular crop, a smaller transparent scene mounted with
+`Scene.play` still clips to its bounds; see
+[Precomps, masks and HUD](/docs/guides/precomps).

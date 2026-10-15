@@ -90,6 +90,16 @@ export const makeUnsafe = (
 	} = {},
 ): RenderTarget => brand(new THREE.RenderTarget(width, height, options));
 
+/** A retained target with float reversed-Z depth for source coverage. */
+export const makeFloatDepthUnsafe = (
+	width: number,
+	height: number,
+): RenderTarget => {
+	const depthTexture = new THREE.DepthTexture(width, height);
+	depthTexture.type = THREE.FloatType;
+	return brand(new THREE.RenderTarget(width, height, { depthTexture }));
+};
+
 /**
  * Wrap an existing three render target, without registering teardown.
  *

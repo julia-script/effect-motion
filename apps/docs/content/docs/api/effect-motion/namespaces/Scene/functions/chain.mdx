@@ -7,15 +7,15 @@ description: "function chain<Eff, ScheduleE, ScheduleR>(effects, schedule?): Eff
 ```ts
 function chain<Eff, ScheduleE, ScheduleR>(effects, schedule?): Effect<{
   completed: number;
-}, 
+},
   | ScheduleE
-  | Eff extends Effect<any, E, any> ? E : never, 
+  | Eff extends Effect<any, E, any> ? E : never,
   | Runner
   | ScheduleR
 | Eff extends Effect<any, any, R> ? R : never>;
 ```
 
-Defined in: [packages/motion/src/Scene.ts:1254](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L1254)
+Defined in: [packages/motion/src/Scene.ts:1434](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L1434)
 
 Run animations one at a time, in order, optionally resting between them.
 
@@ -31,16 +31,16 @@ Run animations one at a time, in order, optionally resting between them.
 
 | Parameter | Type | Description |
 | ------ | ------ | ------ |
-| `effects` | `Iterable`\<`Eff`\> | The animations, in order. |
+| `effects` | [`Effects`](../type-aliases/Effects.mdx)\<`Eff`\> | The animations, in order. |
 | `schedule?` | `Schedule`\<`unknown`, `Eff` *extends* `Effect`\<`A`, `any`, `any`\> ? `A` : `never`, `ScheduleE`, `ScheduleR`\> | Optional pacing for the gaps between them. |
 
 ## Returns
 
 `Effect`\<\{
   `completed`: `number`;
-\}, 
+\},
   \| `ScheduleE`
-  \| `Eff` *extends* `Effect`\<`any`, `E`, `any`\> ? `E` : `never`, 
+  \| `Eff` *extends* `Effect`\<`any`, `E`, `any`\> ? `E` : `never`,
   \| [`Runner`](../../Runner/classes/Runner.mdx)
   \| `ScheduleR`
   \| `Eff` *extends* `Effect`\<`any`, `any`, `R`\> ? `R` : `never`\>

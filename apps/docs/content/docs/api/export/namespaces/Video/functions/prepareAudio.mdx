@@ -1,0 +1,38 @@
+---
+title: "prepareAudio"
+description: "function prepareAudio<ID, E, R>("
+---
+# Function: prepareAudio()
+
+```ts
+function prepareAudio<ID, E, R>(
+   track,
+   load,
+options?): Layer<AudioLoader<ID> | AudioMetadata<ID>, EncodeError | E, ChildProcessSpawner | R>;
+```
+
+Defined in: [packages/export/src/Video.ts:79](https://github.com/julia-script/effect-motion/blob/main/packages/export/src/Video.ts#L79)
+
+Prepare one Node audio source before scene execution. Duration is measured
+by decoding exactly the bytes retained for export to 48 kHz stereo PCM.
+
+## Type Parameters
+
+| Type Parameter |
+| ------ |
+| `ID` *extends* `string` |
+| `E` |
+| `R` |
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `track` | `AudioResource`\<`ID`\> |
+| `load` | `Effect`\<`Uint8Array`\<`ArrayBufferLike`\>, `E`, `R`\> |
+| `options` | \{ `binary?`: `string`; \} |
+| `options.binary?` | `string` |
+
+## Returns
+
+`Layer`\<`AudioLoader`\<`ID`\> \| `AudioMetadata`\<`ID`\>, [`EncodeError`](../../Ffmpeg/classes/EncodeError.mdx) \| `E`, `ChildProcessSpawner` \| `R`\>

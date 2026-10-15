@@ -1,0 +1,49 @@
+---
+title: "EncodeOptions"
+description: "readonly optional binary?: string;"
+---
+# Interface: EncodeOptions
+
+Defined in: [packages/export/src/Ffmpeg.ts:29](https://github.com/julia-script/effect-motion/blob/main/packages/export/src/Ffmpeg.ts#L29)
+
+Options for [encode](../functions/encode.mdx).
+
+## Properties
+
+### binary?
+
+```ts
+readonly optional binary?: string;
+```
+
+Defined in: [packages/export/src/Ffmpeg.ts:37](https://github.com/julia-script/effect-motion/blob/main/packages/export/src/Ffmpeg.ts#L37)
+
+ffmpeg binary; defaults to the bundled `ffmpeg-static` build (falling
+back to `"ffmpeg"` on PATH). Set to `"ffmpeg"` or a path to use a
+system/custom ffmpeg instead.
+
+***
+
+### extraArgs?
+
+```ts
+readonly optional extraArgs?: readonly string[];
+```
+
+Defined in: [packages/export/src/Ffmpeg.ts:43](https://github.com/julia-script/effect-motion/blob/main/packages/export/src/Ffmpeg.ts#L43)
+
+Extra ffmpeg arguments appended before the output path — e.g.
+`["-crf", "18"]` or a `-vf` scale filter. Escape hatch for the codec
+surface this wrapper does not model.
+
+***
+
+### frameRate
+
+```ts
+readonly frameRate: number;
+```
+
+Defined in: [packages/export/src/Ffmpeg.ts:31](https://github.com/julia-script/effect-motion/blob/main/packages/export/src/Ffmpeg.ts#L31)
+
+Input framerate handed to ffmpeg (`-framerate`).

@@ -47,6 +47,7 @@
  * @packageDocumentation
  */
 
+export * as Audio from "./Audio.js";
 export * as Camera from "./Camera.js";
 export * as Color from "./Color.js";
 export { EffectMotionError } from "./EffectMotionError.js";

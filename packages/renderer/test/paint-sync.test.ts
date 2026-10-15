@@ -95,7 +95,11 @@ describe("paint contexts", () => {
 						scale: Entity.vec3({ x: 2, y: 2, z: 1 }),
 					}),
 				},
-				a: rect({ position: Entity.vec3({ x: -40.25 }), strokeWidth: 20 }),
+				a: rect({
+					position: Entity.vec3({ x: -40.25 }),
+					strokeWidth: 20,
+					strokeColor: Color.white,
+				}),
 			},
 			["g"],
 			"depth",

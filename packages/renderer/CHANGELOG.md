@@ -1,5 +1,53 @@
 # @effect-motion/renderer
 
+## 0.8.0
+
+### Minor Changes
+
+- 340724d: Add animatable alpha and inverse masks to scene authoring and shared browser/Node rendering. An existing shape, text, image, or group supplies coverage for a drawable target, including partial transparency and nested masks. Add a guide and runnable reveal, inverse cutout, and partial-alpha examples.
+
+### Patch Changes
+
+- Updated dependencies [340724d]
+  - effect-motion@0.8.0
+  - @effect-motion/three@0.8.0
+
+## 0.7.0
+
+### Minor Changes
+
+- Honor entity transforms, render precomps through their own camera, and resolve equal-depth overlaps in tree order.
+
+  - Scale, rotation and Group opacity are drawn; a rotated shape is a real plane in 3D. Strokes scale with the shape.
+  - Content at the same depth paints in tree order, later over earlier, with no z-fighting at any camera distance (reversed-Z float depth plus a per-layer nudge). See-through layers (opacity < 1) write no depth, so a fading card no longer punches holes in what is drawn after it — except under depth of field, where they write depth for the DoF render so a fade on the focus plane stays sharp.
+  - `Scene.play` comps render through the child's own camera, draw their `Hud`, keep the inline orientation (they were upside-down), and share the root's font and image actors (images in comps no longer die as unregistered). Comps render sharp inside — the child camera's `aperture` is ignored — and blur as one layer by the parent's depth of field.
+
+### Patch Changes
+
+- Updated dependencies
+- Updated dependencies [4c28ca6]
+  - effect-motion@0.7.0
+  - @effect-motion/three@0.7.0
+
+## 0.6.0
+
+### Minor Changes
+
+- e42463d: Replace the hand-rolled text pipeline (troika typesetting + webgl-sdf-generator
+  - a fixed 256-glyph atlas and hand-built two-pass material) with
+    `@text-rendering-toolkit`: real HarfBuzz shaping, a growable glyph atlas, and
+    the toolkit's depth-ink glyph mesh. Rendering semantics are preserved — SDF
+    crispness, anchor/baseline behavior, exactly-once ink blending at partial
+    opacity, z-buffer occlusion, and the loud missing-font defect. The fixed atlas
+    capacity (and its overflow error) is gone. Note: the font engine ships ~390 KB
+    of HarfBuzz WASM resolved via `import.meta.url`; bundlers must handle a `.wasm`
+    asset reference (Node and Vite/Next work out of the box).
+
+### Patch Changes
+
+- effect-motion@0.6.0
+- @effect-motion/three@0.6.0
+
 ## 0.5.0
 
 ### Minor Changes

@@ -47,12 +47,16 @@ file contains — both consume the same frames through the same renderer.
 `Video.render` checks before spawning ffmpeg and fails with an `EncodeError`
 rather than silently resizing.
 
-## Fonts and images
+## Fonts, images, and audio
 
 Typed resources work the same here as in the player: provide the loader
 layers with `Effect.provide`. In Node the load effects can read bytes from
 disk — no URLs needed. Forgetting a loader is a compile error in this file,
-not a runtime surprise. See [Custom fonts](/docs/guides/custom-fonts).
+not a runtime surprise. For a duration-driven sound scene, use
+`Video.prepareAudio` to prepare bytes and metadata together; see
+[Add sound to a scene](/docs/guides/audio). An audio-pass failure raises
+`EncodeError` and may leave a video-only file at the requested path. Treat
+that file as an incomplete render.
 
 ## ffmpeg is bundled
 

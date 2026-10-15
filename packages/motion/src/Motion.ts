@@ -7,8 +7,9 @@
  * - **raw** — {@link tween} / {@link tweenTo} interpolate numeric fields BY
  *   NAME (`radius`, `width`, `fontSize`), whatever the entity's schema
  *   declares.
- * - **semantic** — {@link move} / {@link moveTo} and {@link fade} /
- *   {@link fadeTo} speak in concepts rather than field names, and are what
+ * - **semantic** — {@link move} / {@link moveTo}, {@link fade} /
+ *   {@link fadeTo}, {@link scale} / {@link scaleTo} and {@link rotate} /
+ *   {@link rotateTo} speak in concepts rather than field names, and are what
  *   you should reach for when one exists: geometry is relative to
  *   `position`, so moving a Line translates both endpoints and moving a
  *   Group carries its whole subtree, with no per-entity handling.
@@ -75,9 +76,10 @@ type InterpolableOrInterpolator<T> = {
 			: never;
 };
 
-// extrapolating on purpose: eased t goes outside [0, 1] for back/elastic
+// extrapolating on purpose: eased t goes outside [0, 1] for back/elastic.
+// t = 1 returns `to` itself: from + (to - from) can miss it by an ulp
 const lerpNumber = (from: number, to: number, t: number) =>
-	from + (to - from) * t;
+	t === 1 ? to : from + (to - from) * t;
 
 const lerpColor = (
 	from: Color.Color,
@@ -427,9 +429,13 @@ export type Position = {
 type Positionable = Entity.TagsWith<"position">;
 /** tags whose entity carries opacity: every paintable one (not Camera) */
 type Fadeable = Entity.TagsWith<"opacity">;
+/** tags whose entity carries scale: every paintable one (not Camera) */
+type Scalable = Entity.TagsWith<"scale">;
+/** tags whose entity carries rotation: every one of them */
+type Rotatable = Entity.TagsWith<"rotation">;
 
-const readPosition = (data: { position: Entity.Vec3 }): Position =>
-	data.position;
+/** the Vec3 transform fields the semantic animators drive */
+type Vec3Field = "position" | "rotation" | "scale";
 
 /**
  * Structural parameter, not `EntityByTag<Tag>`: `Tag extends Fadeable`
@@ -440,28 +446,36 @@ const readPosition = (data: { position: Entity.Vec3 }): Position =>
 const readOpacity = (data: { opacity: number }): number => data.opacity;
 
 /**
- * Write a position, holding unnamed channels at their current value — the
+ * Write a Vec3 field, holding unnamed channels at their current value — the
  * channel-level sparseness rule (design D8) that has to survive `position`
  * becoming a nested Vec3. A partial Vec3 must never reach `interpolate`:
  * lerping an absent channel yields NaN frames.
  */
-const writePosition = <T extends { position: Entity.Vec3 }>(
+const writeVec3 = <T extends Record<F, Entity.Vec3>, F extends Vec3Field>(
 	data: T,
+	field: F,
 	value: Partial<Position>,
 ): T => ({
 	...data,
-	position: Entity.vec3({
-		x: value.x ?? data.position.x,
-		y: value.y ?? data.position.y,
-		z: value.z ?? data.position.z,
+	[field]: Entity.vec3({
+		x: value.x ?? data[field].x,
+		y: value.y ?? data[field].y,
+		z: value.z ?? data[field].z,
 	}),
 });
 
-const animatePosition = Effect.fnUntraced(function* <
-	Tag extends Positionable,
+/**
+ * Animate one Vec3 field (`position`, `rotation`, `scale`) with partial
+ * targets/origins. Structural `data` type for the same reason as
+ * {@link readOpacity}: the tag constraint guarantees the field, but TS will
+ * not distribute it over the union.
+ */
+const animateVec3 = Effect.fnUntraced(function* <
+	Tag extends Entity.EntityTag,
 	E = never,
 	R = never,
 >(
+	field: Vec3Field,
 	instanceOrEffect: Instance.InstanceOrEffect<Tag, E, R>,
 	from: Partial<Position> | undefined,
 	to: Partial<Position>,
@@ -469,7 +483,11 @@ const animatePosition = Effect.fnUntraced(function* <
 	timing?: Timing.TimingInput,
 ) {
 	const instance = yield* Instance.flattenInstance(instanceOrEffect);
-	const current = readPosition(yield* Scene.data(instance));
+	const data = (yield* Scene.data(instance)) as unknown as Record<
+		Vec3Field,
+		Entity.Vec3
+	>;
+	const current: Position = data[field];
 	// partial targets/origins hold the missing axis at its current value
 	const target = { ...current, ...to };
 	const start = { ...current, ...(from ?? {}) };
@@ -477,11 +495,28 @@ const animatePosition = Effect.fnUntraced(function* <
 		start,
 		target,
 		duration,
-		(value) => Scene.update(instance, (data) => writePosition(data, value)),
+		(value) =>
+			Scene.update(
+				instance,
+				(data) =>
+					writeVec3(
+						data as unknown as Record<Vec3Field, Entity.Vec3>,
+						field,
+						value,
+					) as unknown as Entity.EntityByTag<Tag>,
+			),
 		timing,
 	);
 	return instance;
 });
+
+const animatePosition = <Tag extends Positionable, E = never, R = never>(
+	instanceOrEffect: Instance.InstanceOrEffect<Tag, E, R>,
+	from: Partial<Position> | undefined,
+	to: Partial<Position>,
+	duration: Duration.Input,
+	timing?: Timing.TimingInput,
+) => animateVec3("position", instanceOrEffect, from, to, duration, timing);
 
 const animateOpacity = Effect.fnUntraced(function* <
 	Tag extends Fadeable,
@@ -691,6 +726,221 @@ export const fade = dual<
 	) => Effect.Effect<Instance.Instance<Tag>, E, R | Runner.Runner>
 >(firstArgIsInstance, (instance, from, to, duration, timing) =>
 	animateOpacity(instance, from, to, duration, timing),
+);
+
+/**
+ * What {@link scale} / {@link scaleTo} accept: a number scales all three
+ * axes uniformly; a partial vector names individual axes (omitted axes hold
+ * their current value).
+ */
+export type ScaleInput = number | Partial<Position>;
+
+/**
+ * What {@link rotate} / {@link rotateTo} accept, in RADIANS: a number is an
+ * in-plane spin (`z`, counter-clockwise with y up); a partial vector names
+ * Euler channels (applied X→Y→Z, the same orientation `rotation` always
+ * meant). Omitted channels hold their current value.
+ */
+export type RotationInput = number | Partial<Position>;
+
+const uniformScale = (value: ScaleInput): Partial<Position> =>
+	typeof value === "number" ? { x: value, y: value, z: value } : value;
+
+const spinRotation = (value: RotationInput): Partial<Position> =>
+	typeof value === "number" ? { z: value } : value;
+
+/**
+ * Scale an instance to `to` over `duration`, starting from its current
+ * scale.
+ *
+ * @remarks
+ * Scale multiplies the entity's size about its `position` (its anchor — the
+ * center for centered shapes) without touching its size fields, so it
+ * composes: scaling a Group scales its whole subtree, children's own scales
+ * included. `1` is natural size and `0` collapses it — the usual "pop in"
+ * starts from `0`.
+ *
+ * @param to - A uniform factor, or per-axis factors (omitted axes hold).
+ * @param duration - How long, in scene time.
+ * @param timing - An easing name or function.
+ * @defaultValue `timing` — `"linear"`
+ * @returns The instance, so animators chain.
+ * @see {@link scale} to start from an explicit scale.
+ *
+ * @example
+ * A scale punch: overshoot, then settle back to natural size.
+ * ```typescript
+ * yield* logo.pipe(
+ * 	Motion.scaleTo(1.2, "150 millis", "easeOutQuad"),
+ * 	Motion.scaleTo(1, "250 millis", "easeInOutQuad"),
+ * );
+ * ```
+ */
+export const scaleTo = dual<
+	<Tag extends Scalable>(
+		to: ScaleInput,
+		duration: Duration.Input,
+		timing?: Timing.TimingInput,
+	) => <E = never, R = never>(
+		instance: Instance.InstanceOrEffect<Tag, E, R>,
+	) => Effect.Effect<Instance.Instance<Tag>, E, R | Runner.Runner>,
+	<Tag extends Scalable, E = never, R = never>(
+		instance: Instance.InstanceOrEffect<Tag, E, R>,
+		to: ScaleInput,
+		duration: Duration.Input,
+		timing?: Timing.TimingInput,
+	) => Effect.Effect<Instance.Instance<Tag>, E, R | Runner.Runner>
+>(firstArgIsInstance, (instance, to, duration, timing) =>
+	animateVec3("scale", instance, undefined, uniformScale(to), duration, timing),
+);
+
+/**
+ * Like {@link scaleTo}, but starting from an explicit scale.
+ *
+ * @remarks
+ * The entrance idiom: an entity is born at scale 1, so popping it in means
+ * stating the origin — `scale(0, 1, …)` — rather than first writing
+ * `scale: 0` at instantiate time.
+ *
+ * @param from - Starting scale: uniform, or per-axis (omitted axes start at
+ *   the current value).
+ * @param to - Target scale: uniform, or per-axis (omitted axes hold).
+ * @param duration - How long, in scene time.
+ * @param timing - An easing name or function.
+ * @defaultValue `timing` — `"linear"`
+ * @returns The instance, so animators chain.
+ *
+ * @example
+ * Pop a badge in from nothing with a little overshoot.
+ * ```typescript
+ * yield* badge.pipe(Motion.scale(0, 1, "400 millis", "easeOutBack"));
+ * ```
+ */
+export const scale = dual<
+	<Tag extends Scalable>(
+		from: ScaleInput,
+		to: ScaleInput,
+		duration: Duration.Input,
+		timing?: Timing.TimingInput,
+	) => <E = never, R = never>(
+		instance: Instance.InstanceOrEffect<Tag, E, R>,
+	) => Effect.Effect<Instance.Instance<Tag>, E, R | Runner.Runner>,
+	<Tag extends Scalable, E = never, R = never>(
+		instance: Instance.InstanceOrEffect<Tag, E, R>,
+		from: ScaleInput,
+		to: ScaleInput,
+		duration: Duration.Input,
+		timing?: Timing.TimingInput,
+	) => Effect.Effect<Instance.Instance<Tag>, E, R | Runner.Runner>
+>(firstArgIsInstance, (instance, from, to, duration, timing) =>
+	animateVec3(
+		"scale",
+		instance,
+		uniformScale(from),
+		uniformScale(to),
+		duration,
+		timing,
+	),
+);
+
+/**
+ * Rotate an instance to `to` (radians) over `duration`, starting from its
+ * current rotation.
+ *
+ * @remarks
+ * Rotation turns the entity about its `position` (its anchor — the center
+ * for centered shapes) and composes down the tree: rotating a Group swings
+ * its children around the group's position and turns each with it. A number
+ * spins in the picture plane; a vector tilts in 3D (`x` pitches, `y` yaws),
+ * which is how a card flips or a floor lies down.
+ *
+ * Interpolation is per Euler channel, so the value lands exactly on `to` —
+ * `rotateTo(2 * Math.PI)` makes a full turn rather than standing still.
+ *
+ * @param to - Target angle in radians: an in-plane spin, or Euler channels
+ *   (omitted channels hold).
+ * @param duration - How long, in scene time.
+ * @param timing - An easing name or function.
+ * @defaultValue `timing` — `"linear"`
+ * @returns The instance, so animators chain.
+ * @see {@link rotate} to start from an explicit angle.
+ *
+ * @example
+ * One full clockwise-looking turn (negative z is clockwise with y up).
+ * ```typescript
+ * yield* gear.pipe(Motion.rotateTo(-2 * Math.PI, "2 seconds", "easeInOutCubic"));
+ * ```
+ */
+export const rotateTo = dual<
+	<Tag extends Rotatable>(
+		to: RotationInput,
+		duration: Duration.Input,
+		timing?: Timing.TimingInput,
+	) => <E = never, R = never>(
+		instance: Instance.InstanceOrEffect<Tag, E, R>,
+	) => Effect.Effect<Instance.Instance<Tag>, E, R | Runner.Runner>,
+	<Tag extends Rotatable, E = never, R = never>(
+		instance: Instance.InstanceOrEffect<Tag, E, R>,
+		to: RotationInput,
+		duration: Duration.Input,
+		timing?: Timing.TimingInput,
+	) => Effect.Effect<Instance.Instance<Tag>, E, R | Runner.Runner>
+>(firstArgIsInstance, (instance, to, duration, timing) =>
+	animateVec3(
+		"rotation",
+		instance,
+		undefined,
+		spinRotation(to),
+		duration,
+		timing,
+	),
+);
+
+/**
+ * Like {@link rotateTo}, but starting from an explicit rotation (radians).
+ *
+ * @param from - Starting angle: an in-plane spin, or Euler channels
+ *   (omitted channels start at the current value).
+ * @param to - Target angle: an in-plane spin, or Euler channels (omitted
+ *   channels hold).
+ * @param duration - How long, in scene time.
+ * @param timing - An easing name or function.
+ * @defaultValue `timing` — `"linear"`
+ * @returns The instance, so animators chain.
+ *
+ * @example
+ * Flip a card in: from edge-on to facing the viewer.
+ * ```typescript
+ * yield* card.pipe(
+ * 	Motion.rotate({ y: Math.PI / 2 }, { y: 0 }, "500 millis", "easeOutCubic"),
+ * );
+ * ```
+ */
+export const rotate = dual<
+	<Tag extends Rotatable>(
+		from: RotationInput,
+		to: RotationInput,
+		duration: Duration.Input,
+		timing?: Timing.TimingInput,
+	) => <E = never, R = never>(
+		instance: Instance.InstanceOrEffect<Tag, E, R>,
+	) => Effect.Effect<Instance.Instance<Tag>, E, R | Runner.Runner>,
+	<Tag extends Rotatable, E = never, R = never>(
+		instance: Instance.InstanceOrEffect<Tag, E, R>,
+		from: RotationInput,
+		to: RotationInput,
+		duration: Duration.Input,
+		timing?: Timing.TimingInput,
+	) => Effect.Effect<Instance.Instance<Tag>, E, R | Runner.Runner>
+>(firstArgIsInstance, (instance, from, to, duration, timing) =>
+	animateVec3(
+		"rotation",
+		instance,
+		spinRotation(from),
+		spinRotation(to),
+		duration,
+		timing,
+	),
 );
 
 /**

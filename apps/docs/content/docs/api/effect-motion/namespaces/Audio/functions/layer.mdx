@@ -1,0 +1,33 @@
+---
+title: "layer"
+description: "function layer<ID, E, R>(track, load): Layer<AudioLoader<ID>, E, R>;"
+---
+# Function: layer()
+
+```ts
+function layer<ID, E, R>(track, load): Layer<AudioLoader<ID>, E, R>;
+```
+
+Defined in: [packages/motion/src/Audio.ts:153](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Audio.ts#L153)
+
+Provide a track's encoded bytes. The load effect runs ONCE, at layer
+construction — never at frame time.
+
+## Type Parameters
+
+| Type Parameter |
+| ------ |
+| `ID` *extends* `string` |
+| `E` |
+| `R` |
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `track` | [`AudioResource`](../interfaces/AudioResource.mdx)\<`ID`\> |
+| `load` | `Effect`\<`Uint8Array`\<`ArrayBufferLike`\>, `E`, `R`\> |
+
+## Returns
+
+`Layer`\<[`AudioLoader`](../interfaces/AudioLoader.mdx)\<`ID`\>, `E`, `R`\>

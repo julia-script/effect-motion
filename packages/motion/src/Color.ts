@@ -284,7 +284,7 @@ export type ChannelMap = {
  * perceptual evenness, while `"rgb"` can pass through muddy midpoints.
  *
  * @param color - The color to blend toward.
- * @param amount - 0 keeps `self`, 1 gives `color`.
+ * @param amount - 0 returns `self`, 1 returns `color` — both exactly.
  * @param mode - Interpolation space.
  */
 export const mix = Function.dual<
@@ -300,6 +300,10 @@ export const mix = Function.dual<
 		mode?: chroma.InterpolationMode,
 	) => Color
 >(secondIsColor, (self, color, amount, mode) => {
+	// exact endpoints: the color-space round-trip drifts (255 → 254.99999),
+	// and animations must land exactly on their target
+	if (amount === 0) return self;
+	if (amount === 1) return color;
 	const colorMix = chroma.mix(toChroma(self), toChroma(color), amount, mode);
 
 	return fromChroma(colorMix);

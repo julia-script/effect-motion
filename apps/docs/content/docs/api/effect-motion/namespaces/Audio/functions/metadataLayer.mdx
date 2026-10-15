@@ -1,0 +1,31 @@
+---
+title: "metadataLayer"
+description: "function metadataLayer<ID>(track, metadata): Layer<AudioMetadata<ID>>;"
+---
+# Function: metadataLayer()
+
+```ts
+function metadataLayer<ID>(track, metadata): Layer<AudioMetadata<ID>>;
+```
+
+Defined in: [packages/motion/src/Audio.ts:179](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Audio.ts#L179)
+
+Provide already-prepared metadata for a track. An invalid duration dies
+at layer construction, naming the track.
+
+## Type Parameters
+
+| Type Parameter |
+| ------ |
+| `ID` *extends* `string` |
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `track` | [`AudioResource`](../interfaces/AudioResource.mdx)\<`ID`\> |
+| `metadata` | [`MetadataInput`](../interfaces/MetadataInput.mdx) |
+
+## Returns
+
+`Layer`\<[`AudioMetadata`](../interfaces/AudioMetadata.mdx)\<`ID`\>\>

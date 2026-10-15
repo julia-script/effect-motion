@@ -17,6 +17,7 @@
       "name": "docs",
       "version": "0.1.0",
       "dependencies": {
+        "@effect-motion/export": "workspace:*",
         "@effect-motion/react": "workspace:*",
         "cnfast": "^0.0.8",
         "effect": "4.0.0-rc.115",
@@ -30,6 +31,7 @@
         "react-dom": "^19.2.7",
       },
       "devDependencies": {
+        "@effect/platform-node": "4.0.0-rc.115",
         "@tailwindcss/postcss": "^4.3.2",
         "@types/mdx": "^2.0.14",
         "@types/node": "^26.1.1",
@@ -42,7 +44,7 @@
     },
     "packages/cli": {
       "name": "@effect-motion/cli",
-      "version": "0.5.0",
+      "version": "0.6.0",
       "bin": {
         "motion": "./dist/bin.js",
       },
@@ -66,7 +68,7 @@
     },
     "packages/create-effect-motion": {
       "name": "create-effect-motion",
-      "version": "0.5.0",
+      "version": "0.6.0",
       "bin": {
         "create-effect-motion": "./dist/bin.js",
       },
@@ -83,7 +85,7 @@
     },
     "packages/export": {
       "name": "@effect-motion/export",
-      "version": "0.5.0",
+      "version": "0.6.0",
       "dependencies": {
         "@effect-motion/renderer": "workspace:^",
         "@effect-motion/three": "workspace:^",
@@ -103,7 +105,7 @@
     },
     "packages/motion": {
       "name": "effect-motion",
-      "version": "0.5.0",
+      "version": "0.6.0",
       "dependencies": {
         "chroma-js": "^3.2.0",
       },
@@ -122,7 +124,7 @@
     },
     "packages/react": {
       "name": "@effect-motion/react",
-      "version": "0.5.0",
+      "version": "0.6.0",
       "dependencies": {
         "@effect-motion/renderer": "workspace:^",
         "effect-motion": "workspace:^",
@@ -146,7 +148,7 @@
     },
     "packages/renderer": {
       "name": "@effect-motion/renderer",
-      "version": "0.5.0",
+      "version": "0.6.0",
       "dependencies": {
         "@effect-motion/three": "workspace:^",
         "@effect/platform-node": "4.0.0-rc.115",
@@ -172,7 +174,7 @@
     },
     "packages/three": {
       "name": "@effect-motion/three",
-      "version": "0.5.0",
+      "version": "0.6.0",
       "dependencies": {
         "@types/three": "^0.185.1",
         "three": "^0.185.1",

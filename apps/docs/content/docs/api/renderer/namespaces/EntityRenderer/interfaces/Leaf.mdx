@@ -4,10 +4,16 @@ description: "One instance as it is handed to a renderer: its id, its entity dat
 ---
 # Interface: Leaf\<Ent\>
 
-Defined in: [EntityRenderer.ts:90](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L90)
+Defined in: [packages/renderer/src/EntityRenderer.ts:121](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L121)
 
 One instance as it is handed to a renderer: its id, its entity data for
-this frame, and its composed world position.
+this frame, its composed world position, and its full composed transform.
+
+## Remarks
+
+`data.opacity` already carries every ancestor Group's opacity multiplied
+in, so a renderer that honors its own opacity honors a fading parent for
+free.
 
 ## Type Parameters
 
@@ -23,7 +29,7 @@ this frame, and its composed world position.
 readonly data: Ent;
 ```
 
-Defined in: [EntityRenderer.ts:92](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L92)
+Defined in: [packages/renderer/src/EntityRenderer.ts:123](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L123)
 
 ***
 
@@ -33,7 +39,17 @@ Defined in: [EntityRenderer.ts:92](https://github.com/julia-script/effect-motion
 readonly id: string;
 ```
 
-Defined in: [EntityRenderer.ts:91](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L91)
+Defined in: [packages/renderer/src/EntityRenderer.ts:122](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L122)
+
+***
+
+### transform
+
+```ts
+readonly transform: Transform;
+```
+
+Defined in: [packages/renderer/src/EntityRenderer.ts:125](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L125)
 
 ***
 
@@ -43,4 +59,4 @@ Defined in: [EntityRenderer.ts:91](https://github.com/julia-script/effect-motion
 readonly world: World;
 ```
 
-Defined in: [EntityRenderer.ts:93](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L93)
+Defined in: [packages/renderer/src/EntityRenderer.ts:124](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L124)

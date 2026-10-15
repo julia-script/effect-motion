@@ -112,6 +112,29 @@ describe("spring physics", () => {
 		expect(sloppy.length).toBeLessThan(precise.length);
 	});
 
+	it("axes left out of the target stay exactly unchanged, even with initialVelocity", async () => {
+		const track = await runScene(
+			function* () {
+				const circle = yield* Scene.instantiate("Circle", {
+					position: S.vec3({ x: 12.5, y: 0, z: 3 }),
+				});
+				// "jump" launches with initialVelocity: it must only move y
+				yield* circle.pipe(Physics.springTo({ y: 80 }, "jump"));
+			},
+			(data) => ({
+				x: data.position.x as number,
+				y: data.position.y as number,
+				z: data.position.z as number,
+			}),
+		);
+		expect(track.length).toBeGreaterThan(2);
+		for (const { x, z } of track) {
+			expect(x).toBe(12.5);
+			expect(z).toBe(3);
+		}
+		expect(track.at(-1)?.y).toBe(80);
+	});
+
 	it("record keys settle together", async () => {
 		const track = await runScene(
 			function* () {

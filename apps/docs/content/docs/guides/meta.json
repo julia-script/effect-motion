@@ -5,7 +5,13 @@
 		"react-player",
 		"custom-fonts",
 		"images",
+		"audio",
+		"camera-depth-of-field",
+		"masks",
+		"renderer-limits",
+		"precomps",
 		"custom-entities",
-		"cli"
+		"cli",
+		"preview-frames"
 	]
 }

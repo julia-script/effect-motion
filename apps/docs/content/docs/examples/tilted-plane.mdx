@@ -1,0 +1,17 @@
+---
+title: Tilted plane
+description: Blur that follows depth continuously across a floor receding to the horizon
+---
+
+**The idea:** depth of field is worked out per pixel, not per shape. The
+floor here is a checkerboard of flat tiles tipped back a quarter turn, so a
+single tile spans a whole range of depths — and the blur follows that depth
+smoothly, with no steps between tiles. One band across the floor is sharp;
+in front of it and behind it the tiles soften gradually.
+
+The scene sweeps that band down the floor and back with a `focusDistance`
+tween, then pushes in with `Camera.dollyTo` while tweening `focusDistance`
+to the same distance with the same easing — a focus pull that keeps the
+subject sharp as the camera moves.
+
+<Example name="tilted-plane" />

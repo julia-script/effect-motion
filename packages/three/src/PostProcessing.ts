@@ -157,4 +157,12 @@ export const render = (
 ): Effect.Effect<void, ThreeException> =>
 	wrap("RenderPipeline.render", () => self["~three.renderPipeline"].render());
 
+export {
+	cocRadiusPx,
+	type DepthAwareDofNode,
+	type DepthAwareDofOptions,
+	depthAwareDof,
+	type FloatParam,
+	pxPerUnitAtFocus,
+} from "./DepthAwareDof.js";
 export { uniform };

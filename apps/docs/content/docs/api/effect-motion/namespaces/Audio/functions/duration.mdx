@@ -1,0 +1,37 @@
+---
+title: "duration"
+description: "function duration<ID>(track): Effect<Duration, never, AudioMetadata<ID>>;"
+---
+# Function: duration()
+
+```ts
+function duration<ID>(track): Effect<Duration, never, AudioMetadata<ID>>;
+```
+
+Defined in: [packages/motion/src/Audio.ts:220](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Audio.ts#L220)
+
+The track's full source length — an explicit inspection.
+
+## Type Parameters
+
+| Type Parameter |
+| ------ |
+| `ID` *extends* `string` |
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `track` | \| [`Audio`](../interfaces/Audio.mdx)\<`ID`\> \| [`AudioResource`](../interfaces/AudioResource.mdx)\<`ID`\> |
+
+## Returns
+
+`Effect`\<`Duration`, `never`, [`AudioMetadata`](../interfaces/AudioMetadata.mdx)\<`ID`\>\>
+
+## Remarks
+
+Requires `AudioMetadata<ID>`, which survives `Scene.run`/`stream`: run the
+scene with [metadataLayer](./metadataLayer.mdx) or [preparedLayer](./preparedLayer.mdx) provided. The
+result is a `Duration`, so it feeds `Scene.sleep` and the `duration`
+option of [play](../variables/play.mdx) directly. For the remaining length of a play
+started at `from` seconds, subtract `Duration.seconds(from)`.

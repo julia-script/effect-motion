@@ -1,0 +1,16 @@
+---
+title: Focus orbit
+description: A shallow lens swings around a sharp subject while the scatter around it melts
+---
+
+**The idea:** a wide-open lens orbiting a subject. Flat shapes are scattered
+through depth around a sun at the origin; with a large `aperture`, anything
+off the focus plane melts into soft shapes, and the sun stays crisp.
+
+The camera starts at its resting distance, which is where `focusDistance`
+defaults to, so the subject is sharp without setting anything. `Camera.orbitTo`
+swings around the point of interest at a fixed distance, so the focus holds on
+its own. `Camera.dollyTo` changes that distance, so the push-in tweens
+`focusDistance` alongside it with the same duration and easing.
+
+<Example name="focus-orbit" />

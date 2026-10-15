@@ -1,0 +1,32 @@
+---
+title: "clearMask"
+description: "const clearMask: (...args) => Effect<Instance<MaskableTag>, never, Runner>;"
+---
+# Variable: clearMask
+
+```ts
+const clearMask: (...args) => Effect<Instance<MaskableTag>, never, Runner>;
+```
+
+Defined in: [packages/motion/src/Scene.ts:819](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L819)
+
+Removes a target's mask at the current scene frame and returns the target.
+
+**Details**
+
+The former source resumes ordinary rendering if it is mounted and visible.
+Calling this on an unmasked target leaves it unchanged.
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| ...`args` | \[[`Instance`](../../Instance/interfaces/Instance.mdx)\<[`MaskableTag`](../../Entity/type-aliases/MaskableTag.mdx)\>\] |
+
+## Returns
+
+`Effect`\<[`Instance`](../../Instance/interfaces/Instance.mdx)\<[`MaskableTag`](../../Entity/type-aliases/MaskableTag.mdx)\>, `never`, [`Runner`](../../Runner/classes/Runner.mdx)\>
+
+## See
+
+[setMask](./setMask.mdx) to attach or replace a mask.

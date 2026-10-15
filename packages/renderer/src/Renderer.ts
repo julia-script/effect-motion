@@ -1,6 +1,8 @@
 import {
 	Renderer as Gpu,
+	PostProcessing,
 	RenderTarget,
+	ThreeRaw as THREE,
 	ThreeException,
 	Scene as ThreeScene,
 } from "@effect-motion/three";
@@ -51,6 +53,13 @@ type AnyEntityRenderer = EntityRenderer<never>;
  * so a comp nested inside another is drawn before its parent samples it, and
  * the previously bound target is always restored — including when a render
  * fails.
+ *
+ * Comps render sharp: the child camera's `aperture` is not applied, and the
+ * comp's plane takes the parent's depth of field at its own depth.
+ * ponytail: the DoF chain sizes its passes to the drawing buffer and ends in
+ * the sRGB output transform, so it can't draw into a comp target; a per-comp
+ * chain sized to the target, output transform off, if a precomp needs its
+ * own focus.
  */
 export const renderCompTargets = Effect.fnUntraced(function* (
 	renderer: Gpu.Renderer,
@@ -86,6 +95,7 @@ export const renderCompTargets = Effect.fnUntraced(function* (
 			comp.plane.position,
 		);
 		yield* renderCompTargets(renderer, comp.sync, density);
+		yield* renderMaskTargets(renderer, comp.sync, density);
 		const pw = Sampling.extent(comp.width, density);
 		const ph = Sampling.extent(comp.height, density);
 		if (
@@ -108,21 +118,200 @@ export const renderCompTargets = Effect.fnUntraced(function* (
 			if (comp.rt !== null) {
 				RenderTarget.dispose(comp.rt);
 			}
-			comp.rt = RenderTarget.makeUnsafe(pw, ph, { samples: Sampling.samples });
+			// float depth: the reversed-Z precision paint order relies on
+			// (Sync's syncLayers) — a default target gets depth24plus
+			const depthTexture = new THREE.DepthTexture(pw, ph);
+			depthTexture.type = THREE.FloatType;
+			comp.rt = RenderTarget.fromRaw(
+				new THREE.RenderTarget(pw, ph, {
+					depthTexture,
+					samples: Sampling.samples,
+				}),
+			);
 			RenderTarget.bindMaterial(comp.rt, comp.material);
 			comp.material.needsUpdate = true;
 		}
 		const previous = Gpu.getRenderTarget(renderer);
 		Gpu.setRenderTarget(renderer, comp.rt);
+		// the comp's HUD tier composites over its world inside the target,
+		// through the comp's identity camera — pinned while the child's own
+		// camera moves, exactly as at the root
+		const hud = ThreeScene.isEmpty(comp.sync.hudScene)
+			? Effect.void
+			: Effect.sync(() => {
+					Gpu.setAutoClear(renderer, false);
+					Gpu.clearDepth(renderer);
+				}).pipe(
+					Effect.flatMap(() =>
+						Gpu.render(renderer, comp.sync.hudScene, comp.sync.hudCamera),
+					),
+					Effect.ensuring(Effect.sync(() => Gpu.setAutoClear(renderer, true))),
+				);
 		// ensuring: the previous target comes back even when the render
 		// fails — the sync version silently skipped the restore on a throw
 		yield* Gpu.render(renderer, comp.sync.scene, comp.sync.camera).pipe(
+			Effect.andThen(hud),
 			Effect.ensuring(
 				Effect.sync(() => Gpu.setRenderTarget(renderer, previous)),
 			),
 		);
 	}
 });
+
+/** Draw every source alpha field before its composition's ordinary pass. */
+export const renderMaskTargets = Effect.fnUntraced(function* (
+	renderer: Gpu.Renderer,
+	sync: Sync.Sync,
+	pixelRatio: number,
+): Effect.fn.Return<void, ThreeException> {
+	Sync.prepareMaskDrawables(sync);
+	const plan = sync.maskPlan;
+	if (plan === null) return;
+	const domainId = sync.domainId || [...plan.nodes.values()][0]?.id;
+	const targets = plan.order.filter(
+		(attachment) => attachment.domainId === domainId,
+	);
+	const draw = Effect.fnUntraced(function* () {
+		for (const attachment of targets) {
+			const target = sync.maskTargets.get(attachment.targetId);
+			if (target === undefined) continue;
+			const width = Math.max(1, Math.round(sync.width * pixelRatio));
+			const height = Math.max(1, Math.round(sync.height * pixelRatio));
+			if (
+				RenderTarget.width(target.rt) !== width ||
+				RenderTarget.height(target.rt) !== height
+			) {
+				RenderTarget.setSize(target.rt, width, height);
+			}
+			const scene = attachment.tier === "hud" ? sync.hudScene : sync.scene;
+			const camera = attachment.tier === "hud" ? sync.hudCamera : sync.camera;
+			const previous = Gpu.getRenderTarget(renderer);
+			const background = ThreeScene.getBackground(scene);
+			Sync.setMaskPass(sync, attachment.sourceId);
+			ThreeScene.setBackground(scene, null);
+			Gpu.setRenderTarget(renderer, target.rt);
+			yield* Gpu.render(renderer, scene, camera).pipe(
+				Effect.ensuring(
+					Effect.sync(() => {
+						Gpu.setRenderTarget(renderer, previous);
+						ThreeScene.setBackground(scene, background);
+					}),
+				),
+			);
+		}
+	});
+	yield* draw().pipe(
+		Effect.ensuring(Effect.sync(() => Sync.setMaskPass(sync, null))),
+	);
+});
+
+/**
+ * Depth-of-field sample quality: `"full"` is the node's default tap count
+ * (export quality); `"realtime"` halves it — about half the GPU cost, a
+ * little more sample noise, same blur shape and edges.
+ */
+export type DofQuality = "realtime" | "full";
+
+/**
+ * The depth-aware DoF node over a sync's world scene.
+ *
+ * @remarks
+ * Internal, shared by both render paths. Built once per renderer, the first
+ * time a frame asks for DoF; {@link setDofUniforms} feeds it each frame.
+ *
+ * `maxBlurPx` is the node default (30 render px) here; the browser path
+ * rescales it per frame with the pixel ratio (see {@link renderWorldWithDof}).
+ * Node export keeps 30 render px.
+ */
+export const makeDofNode = (
+	sync: Sync.Sync,
+	quality: DofQuality = "full",
+): PostProcessing.DepthAwareDofNode =>
+	PostProcessing.depthAwareDof(PostProcessing.pass(sync.scene, sync.camera), {
+		focusDistance: sync.dof.focusDistance,
+		aperture: sync.dof.aperture,
+		// ponytail: a fixed half tap count, about half the blur's GPU time.
+		// Scale taps by pixel count or measured frame time if a bigger canvas
+		// or slower GPU still drops frames.
+		...(quality === "realtime" ? { taps: { near: 32, far: 24 } } : {}),
+	});
+
+/** Copy this frame's focus and lens radius into the DoF node's uniforms. */
+export const setDofUniforms = (
+	node: PostProcessing.DepthAwareDofNode,
+	dof: Sync.DofState,
+): void => {
+	node.focusDistance.value = dof.focusDistance;
+	node.aperture.value = dof.aperture;
+};
+
+/**
+ * A compositor that blends a sync's HUD pass over a world color node.
+ *
+ * @remarks
+ * Internal, shared by both render paths. The HUD pass (identity camera,
+ * transparent background) is blended INSIDE the pipeline, so the sRGB output
+ * transform applies exactly once. ponytail: TSL typing quarantined as in
+ * Text.ts.
+ */
+export const makeHudOver = (sync: Sync.Sync): ((world: unknown) => unknown) => {
+	interface Node {
+		readonly rgb: Node;
+		readonly a: Node;
+		mul(v: unknown): Node;
+		add(v: unknown): Node;
+		oneMinus(): Node;
+	}
+	const hudTex = PostProcessing.pass(
+		sync.hudScene,
+		sync.hudCamera,
+	).getTextureNode() as Node;
+	return (world) =>
+		(world as Node).mul(hudTex.a.oneMinus()).add(hudTex.rgb.mul(hudTex.a));
+};
+
+/**
+ * Draw the world through the DoF pipeline, building it on first use.
+ *
+ * @remarks
+ * The chain's render targets dedupe per three frame, so the frame counter is
+ * advanced here — a player can render several frames within one rAF tick.
+ *
+ * HUD content is composited inside the pipeline: the pipeline writes the
+ * canvas directly, so a second plain canvas render would present three's
+ * internal framebuffer — which never saw the DoF output — over it.
+ */
+const renderWorldWithDof = (
+	renderer: Renderer,
+	hud: boolean,
+): Effect.Effect<void, ThreeException> => {
+	if (renderer.dofChain === null) {
+		const node = makeDofNode(renderer.sync, renderer.dofQuality);
+		renderer.dofChain = {
+			node,
+			pipeline: PostProcessing.makePipeline(renderer.gpu, node),
+			pipelineWithHud: PostProcessing.makePipeline(
+				renderer.gpu,
+				makeHudOver(renderer.sync)(node),
+			),
+		};
+	}
+	setDofUniforms(renderer.dofChain.node, renderer.sync.dof);
+	// the blur cap is in render px; the Player's pixel ratio follows the
+	// displayed size, so scale the cap with it (30 logical px) to keep the
+	// look stable, clamped to the node's 48 px dilation reach
+	renderer.dofChain.node.maxBlurPx.value = Math.min(
+		48,
+		30 * Gpu.getPixelRatio(renderer.gpu),
+	);
+	Gpu.advanceFrame(renderer.gpu);
+	return Sync.withSeeThroughDepth(
+		renderer.sync,
+		PostProcessing.render(
+			hud ? renderer.dofChain.pipelineWithHud : renderer.dofChain.pipeline,
+		),
+	);
+};
 
 export interface MakeOptions {
 	/** Canvas to draw into; one is created if omitted. */
@@ -143,6 +332,15 @@ export interface MakeOptions {
 	 * Merged over the built-in manifest by entity tag.
 	 */
 	readonly renderers?: Record<string, AnyEntityRenderer>;
+	/**
+	 * Depth-of-field sample quality. `"realtime"` halves the blur's gather
+	 * taps, about half the blur's GPU time, for a little more sample noise;
+	 * pass `"full"` for export-quality blur (what the Node renderer always
+	 * uses) when frame rate does not matter, e.g. recording the canvas.
+	 *
+	 * @defaultValue `"realtime"`
+	 */
+	readonly dofQuality?: DofQuality;
 }
 
 /**
@@ -179,6 +377,15 @@ export interface Renderer {
 	 * their own.
 	 */
 	readonly scope: Scope.Scope;
+	/** Depth-of-field sample quality, from {@link MakeOptions.dofQuality}. */
+	readonly dofQuality: DofQuality;
+	/** internal: the DoF pipeline, built the first time a frame asks for it */
+	dofChain: {
+		readonly node: PostProcessing.DepthAwareDofNode;
+		readonly pipeline: PostProcessing.RenderPipeline;
+		/** the same chain with the HUD composited over the DoF output */
+		readonly pipelineWithHud: PostProcessing.RenderPipeline;
+	} | null;
 }
 
 /**
@@ -262,8 +469,9 @@ export const resolveResources = (
  * the world, then any HUD content composited on top through an identity
  * camera so it ignores camera movement.
  *
- * Depth of field is not applied: every frame renders sharp, regardless of a
- * camera's `aperture`.
+ * With a camera `aperture > 0` the world draws through the depth-aware
+ * depth-of-field chain (built on first use); at aperture 0 it is never
+ * touched. HUD content is drawn after it and stays sharp.
  */
 export const render = (
 	renderer: Renderer,
@@ -273,38 +481,54 @@ export const render = (
 			renderCompTargets(
 				renderer.gpu,
 				renderer.sync,
-				Gpu.getDrawingBufferSize(renderer.gpu).width / renderer.sync.width,
-			),
-		),
-		Effect.flatMap(() =>
-			// ponytail: no depth of field — every frame renders sharp, and
-			// Sync still derives the camera's DoF state for a future rebuild.
-			Gpu.render(renderer.gpu, renderer.sync.scene, renderer.sync.camera),
-		),
-		Effect.flatMap(() => {
-			// HUD overlay: identity camera, above everything, DoF-exempt
-			if (ThreeScene.isEmpty(renderer.sync.hudScene)) {
-				return Effect.void;
-			}
-			return Effect.sync(() => {
-				Gpu.setAutoClear(renderer.gpu, false);
-				Gpu.clearDepth(renderer.gpu);
-			}).pipe(
-				Effect.flatMap(() =>
-					Gpu.render(
+				Gpu.getPixelRatio(renderer.gpu),
+			).pipe(
+				Effect.andThen(
+					renderMaskTargets(
 						renderer.gpu,
-						renderer.sync.hudScene,
-						renderer.sync.hudCamera,
+						renderer.sync,
+						Gpu.getPixelRatio(renderer.gpu),
 					),
 				),
-				// autoClear must come back on even when the hud render fails
-				Effect.ensuring(
-					Effect.sync(() => {
-						Gpu.setAutoClear(renderer.gpu, true);
-					}),
-				),
+			),
+		),
+		Effect.flatMap(() => {
+			const hud = !ThreeScene.isEmpty(renderer.sync.hudScene);
+			if (renderer.sync.dof.on) {
+				// HUD composited inside the DoF pipeline — see renderWorldWithDof
+				return renderWorldWithDof(renderer, hud);
+			}
+			const world = Gpu.render(
+				renderer.gpu,
+				renderer.sync.scene,
+				renderer.sync.camera,
 			);
+			if (!hud) {
+				return world;
+			}
+			// HUD overlay: identity camera, above everything. Both passes go
+			// through three's internal framebuffer, so the overlay loads the
+			// world it sits on.
+			return world.pipe(Effect.andThen(renderHudOverlay(renderer)));
 		}),
+	);
+
+const renderHudOverlay = (
+	renderer: Renderer,
+): Effect.Effect<void, ThreeException> =>
+	Effect.sync(() => {
+		Gpu.setAutoClear(renderer.gpu, false);
+		Gpu.clearDepth(renderer.gpu);
+	}).pipe(
+		Effect.flatMap(() =>
+			Gpu.render(renderer.gpu, renderer.sync.hudScene, renderer.sync.hudCamera),
+		),
+		// autoClear must come back on even when the hud render fails
+		Effect.ensuring(
+			Effect.sync(() => {
+				Gpu.setAutoClear(renderer.gpu, true);
+			}),
+		),
 	);
 
 /**
@@ -356,6 +580,9 @@ export const make = Effect.fn("Renderer.make")(function* (
 		...(options.canvas !== undefined ? { canvas: options.canvas } : {}),
 		antialias: true,
 		samples: Sampling.samples,
+		// reversed-Z float depth: uniform relative precision at any
+		// distance, which Sync's paint-order nudge relies on
+		reversedDepthBuffer: true,
 		width: options.width,
 		height: options.height,
 		...(options.pixelRatio !== undefined
@@ -364,5 +591,11 @@ export const make = Effect.fn("Renderer.make")(function* (
 	});
 	yield* Effect.addFinalizer(() => Sync.dispose(sync));
 	const scope = yield* Effect.scope;
-	return { sync, gpu, scope };
+	return {
+		sync,
+		gpu,
+		scope,
+		dofQuality: options.dofQuality ?? "realtime",
+		dofChain: null,
+	};
 });

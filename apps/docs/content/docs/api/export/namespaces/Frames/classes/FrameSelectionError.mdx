@@ -1,0 +1,63 @@
+---
+title: "FrameSelectionError"
+description: "An invalid selection, an out-of-range frame, or an unanswerable one."
+---
+# Class: FrameSelectionError
+
+Defined in: [packages/export/src/Frames.ts:35](https://github.com/julia-script/effect-motion/blob/main/packages/export/src/Frames.ts#L35)
+
+An invalid selection, an out-of-range frame, or an unanswerable one.
+
+## Extends
+
+- `YieldableError`\<`this`\> & \{
+\} & `Readonly`\<\{
+  `message`: `string`;
+\}\>
+
+## Constructors
+
+### Constructor
+
+```ts
+new FrameSelectionError(args): FrameSelectionError;
+```
+
+Defined in: node\_modules/.bun/effect@4.0.0-rc.115/node\_modules/effect/dist/Data.d.ts:966
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `args` | \{ `message`: `string`; \} |
+| `args.message` | `string` |
+
+#### Returns
+
+`FrameSelectionError`
+
+#### Inherited from
+
+```ts
+Data.TaggedError(
+	"FrameSelectionError",
+)<{ readonly message: string }>.constructor
+```
+
+## Properties
+
+### message
+
+```ts
+message: string;
+```
+
+Defined in: node\_modules/.bun/typescript@5.9.3/node\_modules/typescript/lib/lib.es5.d.ts:1077
+
+#### Inherited from
+
+```ts
+Data.TaggedError(
+	"FrameSelectionError",
+).message
+```

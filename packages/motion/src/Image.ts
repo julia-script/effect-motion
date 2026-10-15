@@ -25,8 +25,8 @@ export const schema = Schema.TaggedStruct(tag, {
 const loaderKeyPrefix = "effect-motion/Resources/ImageLoader/" as const;
 
 /**
- * A loaded image (encoded bytes — png/jpg/webp per the render session's
- * decoder), provided as a context service: bytes are already in memory by
+ * A loaded image (encoded bytes — PNG or JPEG everywhere; the browser also
+ * decodes whatever `createImageBitmap` supports, e.g. WebP), provided as a context service: bytes are already in memory by
  * the time any consumer reads this (loads run eagerly at layer
  * construction — see {@link layer}). A separate shape from FontLoader on
  * purpose (kind-specific metadata will diverge); only the loader brand is

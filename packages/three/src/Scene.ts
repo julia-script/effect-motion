@@ -167,3 +167,8 @@ export const setBackground: {
 		return self;
 	},
 );
+
+/** Read the current background so a temporary coverage pass can restore it. */
+export const getBackground = (
+	self: Scene,
+): THREE.Color | THREE.Texture | null => self["~three.scene"].background;

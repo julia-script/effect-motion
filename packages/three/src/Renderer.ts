@@ -93,14 +93,18 @@ const acquire = Effect.fnUntraced(function* (options: MakeOptions) {
 	if (width !== undefined && height !== undefined) {
 		renderer.setSize(width, height, false);
 	}
+	// Three reverses the entire sorted list for reversed-Z. Compensate
+	// non-depth keys so authored paint order and stable ties stay ascending.
+	const orderDirection = parameters.reversedDepthBuffer === true ? -1 : 1;
 	renderer.setTransparentSort((a, b) => {
 		const nameA = a.object?.name ?? "";
 		const nameB = b.object?.name ?? "";
 		return (
-			(a.groupOrder ?? 0) - (b.groupOrder ?? 0) ||
-			(a.renderOrder ?? 0) - (b.renderOrder ?? 0) ||
+			orderDirection * ((a.groupOrder ?? 0) - (b.groupOrder ?? 0)) ||
+			orderDirection * ((a.renderOrder ?? 0) - (b.renderOrder ?? 0)) ||
 			(b.z ?? 0) - (a.z ?? 0) ||
-			(nameA < nameB ? -1 : nameA > nameB ? 1 : (a.id ?? 0) - (b.id ?? 0))
+			orderDirection *
+				(nameA < nameB ? -1 : nameA > nameB ? 1 : (a.id ?? 0) - (b.id ?? 0))
 		);
 	});
 	yield* wrapPromise("WebGPURenderer.init", () => renderer.init());

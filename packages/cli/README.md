@@ -6,6 +6,7 @@ Command line for [effect-motion](https://github.com/julia-script/effect-motion):
 bun create effect-motion      # scaffold a project (npm/pnpm/yarn create work too)
 motion studio                  # preview scenes with hot reload
 motion render                  # render every target to MP4
+motion frames <scene> --sheet  # sample frames headlessly: PNG stills, a contact sheet or JSON
 ```
 
 Scaffolding lives in the [`create-effect-motion`](https://www.npmjs.com/package/create-effect-motion) package — this CLI is installed as a devDependency of the projects it creates.
@@ -50,3 +51,14 @@ motion render --fps 30 --dpr 2 --out-dir ./out   # flags beat config beat defaul
 Flags: `--width --height --fps --dpr --seed --max-frames --frames --out-dir --format --config`. Targets render sequentially; a failing target doesn't stop the rest (non-zero exit + per-target summary at the end). Errors print a single message naming the offender — add `--verbose` for the full cause chain.
 
 Encoding uses the ffmpeg build bundled via `ffmpeg-static` (H.264/yuv420p MP4, no system ffmpeg needed). That binary is GPL-licensed; it is invoked over a process boundary and this package remains MIT.
+
+## frames
+
+```sh
+motion frames                              # list scene keys from ./studio.ts
+motion frames intro --at 0,1s,50%,end      # PNG stills in .motion/frames/intro/
+motion frames intro --count 9 --sheet      # one contact sheet, prints tile → frame/time
+motion frames intro --at end --json -      # frame state as JSON on stdout (no GPU)
+```
+
+Samples a scene registered in `studio.ts` without a browser or video. Flags: `--at`, `--count` (default 6), `--sheet`, `--json <path|->`, `--out`, `--dpr`, `--studio`.

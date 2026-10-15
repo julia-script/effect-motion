@@ -134,6 +134,10 @@ const handler = (input: StudioInput) =>
 						// fallback is the classic transform, which crashes with
 						// "React is not defined" before anything mounts
 						esbuild: { jsx: "automatic" },
+						// the HarfBuzz WASM is resolved via import.meta.url; pre-bundling
+						// moves the module into .vite/deps where the .wasm isn't, so the
+						// SPA fallback HTML is served instead and the studio stays blank
+						optimizeDeps: { exclude: ["@text-rendering-toolkit/font"] },
 					});
 					await server.listen();
 					// the project lives OUTSIDE the vite root (.motion/studio);

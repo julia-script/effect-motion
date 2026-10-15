@@ -51,20 +51,20 @@ const ParticleField: Entity<"particles/ParticleField", {
   ~opacity: TraitLens<{
      ~visible: boolean;
      angle: readonly [number, number];
-     buffer: readonly ReadonlySide<{
-        age: Number;
-        alive: Boolean;
-        color: typeof Color;
-        life: Number;
-        opacity: Number;
-        rng: Number;
-        size: Number;
-        vx: Number;
-        vy: Number;
-        wrap: Boolean;
-        x: Number;
-        y: Number;
-     }, "Type">[];
+     buffer: readonly {
+        age: number;
+        alive: boolean;
+        color: Color;
+        life: number;
+        opacity: number;
+        rng: number;
+        size: number;
+        vx: number;
+        vy: number;
+        wrap: boolean;
+        x: number;
+        y: number;
+     }[];
      capacity: number;
      drift?: readonly [number, number];
      gravity: number;
@@ -77,10 +77,10 @@ const ParticleField: Entity<"particles/ParticleField", {
      };
      opacityRange: readonly [number, number];
      palette: readonly Color[];
-     region?: ReadonlySide<{
-        h: Number;
-        w: Number;
-     }, "Type">;
+     region?: {
+        h: number;
+        w: number;
+     };
      size: readonly [number, number];
      sizeOverLife?: {
         ease?: string;
@@ -95,20 +95,20 @@ const ParticleField: Entity<"particles/ParticleField", {
   ~position: TraitLens<{
      ~visible: boolean;
      angle: readonly [number, number];
-     buffer: readonly ReadonlySide<{
-        age: Number;
-        alive: Boolean;
-        color: typeof Color;
-        life: Number;
-        opacity: Number;
-        rng: Number;
-        size: Number;
-        vx: Number;
-        vy: Number;
-        wrap: Boolean;
-        x: Number;
-        y: Number;
-     }, "Type">[];
+     buffer: readonly {
+        age: number;
+        alive: boolean;
+        color: Color;
+        life: number;
+        opacity: number;
+        rng: number;
+        size: number;
+        vx: number;
+        vy: number;
+        wrap: boolean;
+        x: number;
+        y: number;
+     }[];
      capacity: number;
      drift?: readonly [number, number];
      gravity: number;
@@ -121,10 +121,10 @@ const ParticleField: Entity<"particles/ParticleField", {
      };
      opacityRange: readonly [number, number];
      palette: readonly Color[];
-     region?: ReadonlySide<{
-        h: Number;
-        w: Number;
-     }, "Type">;
+     region?: {
+        h: number;
+        w: number;
+     };
      size: readonly [number, number];
      sizeOverLife?: {
         ease?: string;

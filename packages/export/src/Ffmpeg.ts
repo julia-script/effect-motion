@@ -66,6 +66,164 @@ const outputArgs = [
 ];
 
 const decoder = new TextDecoder();
+const sampleRate = 48_000;
+const channels = 2;
+const bytesPerSampleFrame = channels * Float32Array.BYTES_PER_ELEMENT;
+
+/** PCM format shared by preparation, mixing, and muxing. */
+export const pcm = { sampleRate, channels, bytesPerSampleFrame } as const;
+
+const stderrTail = (current: string, chunk: Uint8Array): string =>
+	(current + decoder.decode(chunk)).slice(-64 * 1024);
+
+const run = Effect.fnUntraced(function* (
+	command: ChildProcess.Command,
+	binary: string,
+	countOutput = false,
+): Effect.fn.Return<number, EncodeError, Spawner> {
+	const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
+	return yield* Effect.scoped(
+		Effect.gen(function* () {
+			const handle = yield* spawner.spawn(command);
+			const stderrFiber = yield* Effect.forkChild(
+				Stream.runFold(handle.stderr, () => "", stderrTail),
+			);
+			const outputFiber = countOutput
+				? yield* Effect.forkChild(
+						Stream.runFold(
+							handle.stdout,
+							() => 0,
+							(count, chunk) => count + chunk.byteLength,
+						),
+					)
+				: undefined;
+			const code = yield* handle.exitCode;
+			const stderr = yield* Fiber.join(stderrFiber);
+			const outputBytes = outputFiber ? yield* Fiber.join(outputFiber) : 0;
+			if (code !== 0) {
+				return yield* new EncodeError({
+					message: `ffmpeg exited with code ${code}`,
+					stderr,
+					cause: code,
+				});
+			}
+			return outputBytes;
+		}),
+	).pipe(
+		Effect.catchTag("PlatformError", (cause) =>
+			Effect.fail(
+				new EncodeError({
+					message: `Could not run "${binary}". Install ffmpeg and ensure it is on your PATH (or pass options.binary).`,
+					stderr: "",
+					cause,
+				}),
+			),
+		),
+	);
+});
+
+const inputBytes = (bytes: Uint8Array) =>
+	Stream.make(bytes) as Stream.Stream<Uint8Array, PlatformError.PlatformError>;
+
+const decodeArgs = [
+	"-hide_banner",
+	"-loglevel",
+	"error",
+	"-i",
+	"pipe:0",
+	"-f",
+	"f32le",
+	"-ar",
+	String(sampleRate),
+	"-ac",
+	String(channels),
+];
+
+/** Inspect duration from the same bytes that export will decode. */
+export const inspectDuration = (
+	bytes: Uint8Array,
+	binary?: string,
+): Effect.Effect<number, EncodeError, Spawner> => {
+	const ffmpeg = binary ?? bundledFfmpeg ?? "ffmpeg";
+	return Effect.map(
+		run(
+			ChildProcess.make(ffmpeg, [...decodeArgs, "pipe:1"], {
+				stdin: inputBytes(bytes),
+				stdout: "pipe",
+				stderr: "pipe",
+			}),
+			ffmpeg,
+			true,
+		),
+		(size) => size / bytesPerSampleFrame / sampleRate,
+	);
+};
+
+/** Decode an encoded asset to a scoped raw PCM file. */
+export const decode = (
+	bytes: Uint8Array,
+	outPath: string,
+	binary?: string,
+): Effect.Effect<void, EncodeError, Spawner> => {
+	const ffmpeg = binary ?? bundledFfmpeg ?? "ffmpeg";
+	return Effect.asVoid(
+		run(
+			ChildProcess.make(ffmpeg, [...decodeArgs, "-y", outPath], {
+				stdin: inputBytes(bytes),
+				stdout: "ignore",
+				stderr: "pipe",
+			}),
+			ffmpeg,
+		),
+	);
+};
+
+/** Copy the encoded video and add a frame-length PCM track as AAC. */
+export const mux = (
+	videoPath: string,
+	pcmPath: string,
+	outPath: string,
+	duration: number,
+	binary?: string,
+): Effect.Effect<void, EncodeError, Spawner> => {
+	const ffmpeg = binary ?? bundledFfmpeg ?? "ffmpeg";
+	return Effect.asVoid(
+		run(
+			ChildProcess.make(
+				ffmpeg,
+				[
+					"-hide_banner",
+					"-loglevel",
+					"error",
+					"-i",
+					videoPath,
+					"-f",
+					"f32le",
+					"-ar",
+					String(sampleRate),
+					"-ac",
+					String(channels),
+					"-i",
+					pcmPath,
+					"-map",
+					"0:v:0",
+					"-map",
+					"1:a:0",
+					"-c:v",
+					"copy",
+					"-c:a",
+					"aac",
+					"-t",
+					String(duration),
+					"-y",
+					outPath,
+				],
+				{ stdout: "ignore", stderr: "pipe" },
+			),
+			ffmpeg,
+		),
+	);
+};
 
 /**
  * Encode a stream of PNG frames into a video file at `outPath`.
@@ -107,39 +265,5 @@ export const encode = (
 			stderr: "pipe",
 		});
 
-		const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
-
-		yield* Effect.scoped(
-			Effect.gen(function* () {
-				const handle = yield* spawner.spawn(command);
-				// collect stderr concurrently: an unconsumed stderr pipe can
-				// fill and deadlock ffmpeg, and it is the error diagnostic
-				const stderrFiber = yield* Effect.forkChild(
-					Stream.runFold(
-						handle.stderr,
-						() => "",
-						(acc, chunk) => acc + decoder.decode(chunk),
-					),
-				);
-				const code = yield* handle.exitCode;
-				const stderr = yield* Fiber.join(stderrFiber);
-				if (code !== 0) {
-					return yield* new EncodeError({
-						message: `ffmpeg exited with code ${code}`,
-						stderr,
-						cause: code,
-					});
-				}
-			}),
-		).pipe(
-			Effect.catchTag("PlatformError", (cause) =>
-				Effect.fail(
-					new EncodeError({
-						message: `Could not run "${binary}". Install ffmpeg and ensure it is on your PATH (or pass options.binary).`,
-						stderr: "",
-						cause,
-					}),
-				),
-			),
-		);
+		yield* run(command, binary);
 	});

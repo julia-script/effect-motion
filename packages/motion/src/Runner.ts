@@ -8,6 +8,7 @@ import * as Entity from "./Entity.js";
 import * as Instance from "./Instance.js";
 import * as Phaser from "./Phaser.js";
 import * as Projection from "./Projection.js";
+import type * as Scene from "./Scene.js";
 import { ROOT_ID, Tree } from "./Tree.js";
 
 export const TypeId = "~motion/SceneRunner" as const;
@@ -96,6 +97,15 @@ export type CompConfig = {
 	backgroundColor: Color.Color;
 };
 
+/**
+ * A mounted scene as a frame carries it: its bounds plus the view of the
+ * child's OWN active camera, resolved this frame. The renderer draws the
+ * comp through it, so a child renders exactly as it does standalone.
+ */
+export type CompFrame = CompConfig & {
+	readonly camera: Projection.CameraView & Projection.PointOfInterest;
+};
+
 export const defaultComp: CompConfig = {
 	compositing: "paint",
 	width: 1920,
@@ -137,6 +147,16 @@ export type InstantiateProps<Tag extends Entity.EntityTag> = Omit<
  */
 export const CurrentParent = Context.Reference<GroupInstance | null>(
 	"motion/Runner/CurrentParent",
+	{ defaultValue: () => null },
+);
+
+/**
+ * The mounted scene a piece of scene code runs in — the id of its
+ * `Scene.play` mount group, provided per evaluation; `null` means the root
+ * scene. Scopes the camera: each scene owns its own active camera.
+ */
+export const CurrentComp = Context.Reference<string | null>(
+	"motion/Runner/CurrentComp",
 	{ defaultValue: () => null },
 );
 
@@ -198,6 +218,18 @@ export const identityCamera = (width: number): Entity.EntityByTag<"Camera"> => {
 	});
 };
 
+/**
+ * Where a playing audio cursor was (re)started: frame index and source time,
+ * the value last written by resolution (to detect direct writes), and an
+ * optional clip end — the frame at which the play pauses.
+ */
+interface AudioAnchor {
+	readonly frame: number;
+	readonly time: number;
+	readonly until: number | undefined;
+	last: number;
+}
+
 export class Runner extends Context.Service<Runner>()("Runner", {
 	make: Effect.fnUntraced(function* (
 		settings: Partial<Settings> = {},
@@ -224,12 +256,164 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 		 * Mounted scenes, by the id of the group they mount under.
 		 *
 		 * A comp is a render-to-texture boundary — its own scene, render
-		 * target, and identity camera — created ONLY by `Scene.play`. It used
+		 * target, and camera — created ONLY by `Scene.play`. It used
 		 * to be inferred from a Group carrying width/height, which duplicated
 		 * what the child Scene already owned and made "is this a comp" a
 		 * question about field presence. It is now declared here explicitly.
 		 */
 		const comps = new Map<string, CompConfig>();
+		const masks = new Map<string, Scene.MaskAttachment>();
+		const maskError = (
+			targetId: string,
+			sourceId: string,
+			reason: string,
+		): Error =>
+			new Error(
+				`Scene.setMask: target "${targetId}", source "${sourceId}": ${reason}`,
+			);
+		const parentOf = (
+			id: string,
+			moved?: { id: string; parentId: string },
+		): string | null =>
+			moved?.id === id ? moved.parentId : (tree.getEntry(id)?.parentId ?? null);
+		const subtreeIds = (
+			id: string,
+			moved?: { id: string; parentId: string },
+		): Set<string> => {
+			const found = new Set<string>();
+			const visit = (current: string): void => {
+				if (found.has(current)) return;
+				found.add(current);
+				const entry = tree.getEntry(current);
+				if (entry === null || !Entity.isContainer(entry.state)) return;
+				for (const child of entry.state.children) {
+					if (moved?.id !== child || moved.parentId === current) visit(child);
+				}
+				if (moved?.parentId === current) visit(moved.id);
+			};
+			visit(id);
+			return found;
+		};
+		const domainOf = (
+			id: string,
+			moved?: { id: string; parentId: string },
+		): {
+			compId: string | null;
+			tier: "world" | "hud";
+			ancestors: Set<string>;
+		} | null => {
+			const ancestors = new Set<string>();
+			let current: string | null = id;
+			let compId: string | null = null;
+			let tier: "world" | "hud" = "world";
+			while (current !== null) {
+				if (ancestors.has(current)) return null;
+				const entry = tree.getEntry(current);
+				if (entry === null) return null;
+				ancestors.add(current);
+				if (current === ROOT_ID) return { compId, tier, ancestors };
+				if (compId === null && entry.state._tag === "Hud") tier = "hud";
+				const parentId = parentOf(current, moved);
+				if (compId === null && parentId !== null && comps.has(parentId)) {
+					compId = parentId;
+				}
+				current = parentId;
+			}
+			return null;
+		};
+		const validateMasks = (
+			relations: ReadonlyMap<string, Scene.MaskAttachment>,
+			moved?: { id: string; parentId: string },
+		): Error | null => {
+			const owners = new Map<string, string>();
+			for (const [targetId, { sourceId, mode }] of relations) {
+				const target = tree.getEntry(targetId);
+				const source = tree.getEntry(sourceId);
+				if (target === null || source === null)
+					return maskError(targetId, sourceId, "missing or destroyed endpoint");
+				if (target.state._tag === "Camera" || source.state._tag === "Camera")
+					return maskError(targetId, sourceId, "Camera is not paintable");
+				if (target.state._tag === "Audio" || source.state._tag === "Audio")
+					return maskError(targetId, sourceId, "Audio is not paintable");
+				if (mode !== "alpha" && mode !== "inverse")
+					return maskError(targetId, sourceId, `invalid mode "${mode}"`);
+				if (targetId === sourceId)
+					return maskError(
+						targetId,
+						sourceId,
+						"source and target are identical",
+					);
+				const priorOwner = owners.get(sourceId);
+				if (priorOwner !== undefined && priorOwner !== targetId)
+					return maskError(
+						targetId,
+						sourceId,
+						`source already masks target "${priorOwner}"`,
+					);
+				owners.set(sourceId, targetId);
+				const targetDomain = domainOf(targetId, moved);
+				const sourceDomain = domainOf(sourceId, moved);
+				if (targetDomain === null || sourceDomain === null)
+					return maskError(targetId, sourceId, "endpoint is unmounted");
+				if (
+					targetDomain.ancestors.has(sourceId) ||
+					sourceDomain.ancestors.has(targetId)
+				)
+					return maskError(
+						targetId,
+						sourceId,
+						"source and target subtrees overlap",
+					);
+				if (targetDomain.compId !== sourceDomain.compId)
+					return maskError(targetId, sourceId, "cross-composition boundary");
+				if (targetDomain.tier !== sourceDomain.tier)
+					return maskError(targetId, sourceId, "cross-tier world/Hud boundary");
+			}
+			const visiting = new Set<string>();
+			const visited = new Set<string>();
+			const dependsOn = (targetId: string): Set<string> => {
+				const sourceId = relations.get(targetId)?.sourceId;
+				if (sourceId === undefined) return new Set();
+				const dependencies = new Set<string>();
+				const seen = new Set<string>();
+				const visit = (id: string): void => {
+					if (seen.has(id) || (id !== sourceId && owners.has(id))) return;
+					seen.add(id);
+					if (relations.has(id)) dependencies.add(id);
+					const entry = tree.getEntry(id);
+					if (entry === null || !Entity.isContainer(entry.state)) return;
+					for (const child of entry.state.children) {
+						if (moved?.id !== child || moved.parentId === id) visit(child);
+					}
+					if (moved?.parentId === id) visit(moved.id);
+				};
+				visit(sourceId);
+				return dependencies;
+			};
+			const hasCycle = (id: string): boolean => {
+				if (visiting.has(id)) return true;
+				if (visited.has(id)) return false;
+				visiting.add(id);
+				for (const dependency of dependsOn(id)) {
+					if (hasCycle(dependency)) return true;
+				}
+				visiting.delete(id);
+				visited.add(id);
+				return false;
+			};
+			for (const [targetId, { sourceId }] of relations) {
+				if (hasCycle(targetId))
+					return maskError(targetId, sourceId, "mask reference cycle");
+			}
+			return null;
+		};
+		const clearMasksTouching = (ids: ReadonlySet<string>): void => {
+			for (const [targetId, { sourceId }] of masks) {
+				if (ids.has(targetId) || ids.has(sourceId)) masks.delete(targetId);
+			}
+		};
+		const compWidth = (compId: string | null): number =>
+			(compId === null ? undefined : comps.get(compId)?.width) ?? comp.width;
 
 		const setDataUnsafe = <Tag extends Entity.EntityTag>(
 			instance: Instance.Instance<Tag>,
@@ -239,12 +423,64 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 			entry.state = state;
 		};
 
+		/**
+		 * Playing audio cursors, by instance id (see `Audio.ts`). A cursor is
+		 * DERIVED — `time + (frame - frame₀) / fps` — never simulated by a
+		 * fiber, so every frame (the scene's last included) carries the exact
+		 * value whichever fiber ran first, and a clip ends on its frame no
+		 * matter which branch started it.
+		 *
+		 * Resolution runs on every read of the track and at the frame
+		 * snapshot. `playing`/`time` stay plain data: a track seen playing
+		 * with no anchor (just resumed, or instantiated playing) is anchored
+		 * at its written time on this frame; a `time` differing from the
+		 * last resolved value is a direct write and re-anchors there (a seek);
+		 * a track seen paused drops its anchor. Re-anchoring drops any clip
+		 * end.
+		 */
+		const audioAnchors = new Map<string, AudioAnchor>();
+		const resolveAudio = (id: string, entry: { state: Entity.Entity }) => {
+			const state = entry.state;
+			if (state._tag !== "Audio") {
+				return;
+			}
+			if (!state.playing) {
+				audioAnchors.delete(id);
+				return;
+			}
+			const phase = phaser.snapshotUnsafe().phase;
+			let anchor = audioAnchors.get(id);
+			if (anchor === undefined || state.time !== anchor.last) {
+				anchor = {
+					frame: phase,
+					time: state.time,
+					until: undefined,
+					last: state.time,
+				};
+				audioAnchors.set(id, anchor);
+			}
+			const ended = anchor.until !== undefined && phase >= anchor.until;
+			const frame = ended ? (anchor.until ?? phase) : phase;
+			const time =
+				anchor.time + (frame - anchor.frame) / resolvedSettings.frameRate;
+			anchor.last = time;
+			if (ended) {
+				audioAnchors.delete(id);
+				entry.state = { ...state, time, playing: false };
+			} else if (state.time !== time) {
+				entry.state = { ...state, time };
+			}
+		};
+
 		const getDataUnsafe = <Tag extends Entity.EntityTag>(
 			instance: Instance.Instance<Tag>,
 		): Entity.EntityByTag<Tag> | null => {
 			const entry = tree.getEntry(instance.id);
 			if (entry === null) {
 				return null;
+			}
+			if (instance.kind === "Audio") {
+				resolveAudio(instance.id, entry);
 			}
 			// the instance's tag names the entry's state; the tree stores mixed
 			// tags, so this is the one place the two are reconciled
@@ -271,14 +507,19 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 			"camera",
 			"Camera",
 		);
-		let activeCameraId = camera.id;
-		const cameraState = (): Projection.CameraView &
-			Projection.PointOfInterest => {
-			const entry = tree.getEntry(activeCameraId);
+		// every scene owns its cameras: the root's above, and one resting
+		// camera per mounted scene (created at registerComp), keyed by the
+		// comp's mount-group id — so a child moving "the" camera moves its own
+		const defaultCameras = new Map<string, Instance.Instance<"Camera">>();
+		const activeCameras = new Map<string | null, string>([[null, camera.id]]);
+		const cameraState = (
+			compId: string | null,
+		): Projection.CameraView & Projection.PointOfInterest => {
+			const entry = tree.getEntry(activeCameras.get(compId) ?? "");
 			// a destroyed (or swapped-to-non-camera) active camera falls back to
 			// the resting view rather than dying: the view is not scene-critical
 			if (entry === null || entry.state._tag !== "Camera") {
-				return toCameraView(identityCamera(comp.width));
+				return toCameraView(identityCamera(compWidth(compId)));
 			}
 			return toCameraView(entry.state);
 		};
@@ -288,12 +529,29 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 		const appendChild = (
 			parent: GroupInstance,
 			child: Instance.Instance,
-		): void => {
+		): Error | null => {
 			const childEntry = tree.getEntry(child.id);
 			if (childEntry === null) {
-				throw new Error(`Runner: child "${child.id}" was destroyed`);
+				return new Error(`Runner: child "${child.id}" was destroyed`);
+			}
+			const parentEntry = tree.getEntry(parent.id);
+			if (parentEntry === null)
+				return new Error(`Runner: parent "${parent.id}" was destroyed`);
+			if (!Entity.isContainer(parentEntry.state))
+				return new Error(`Runner: parent "${parent.id}" cannot have children`);
+			if (subtreeIds(child.id).has(parent.id))
+				return new Error(
+					`Runner: moving "${child.id}" under descendant "${parent.id}" would create a tree cycle`,
+				);
+			if (masks.size > 0) {
+				const error = validateMasks(masks, {
+					id: child.id,
+					parentId: parent.id,
+				});
+				if (error !== null) return error;
 			}
 			tree.appendChild(parent.id, childEntry);
+			return null;
 		};
 
 		const removeChild = (
@@ -302,6 +560,7 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 		): void => {
 			const entry = tree.getEntry(child.id);
 			if (entry !== null && entry.parentId === parent.id) {
+				clearMasksTouching(subtreeIds(child.id));
 				tree.removeFromParent(entry);
 			}
 		};
@@ -345,8 +604,12 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 				// (AE's 50mm equivalent): the schema cannot default them because
 				// only the Runner knows the comp width. Filled for EVERY Camera,
 				// not just the built-in one, so a setCamera swap never jumps zoom.
+				// The width is the enclosing scene's, so a camera inside a
+				// mounted scene frames that scene as it would standalone.
 				const defaults =
-					kind === "Camera" ? cameraDefaults(raw, comp.width) : undefined;
+					kind === "Camera"
+						? cameraDefaults(raw, compWidth(yield* CurrentComp))
+						: undefined;
 
 				// raw children never reach stored data: normalized ids are
 				// appended through the tree below, in list order
@@ -371,6 +634,13 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 				// at birth; appendChild moves each under this instance in order
 				if (childIds !== undefined) {
 					for (const childId of childIds) {
+						if (masks.size > 0) {
+							const error = validateMasks(masks, {
+								id: childId,
+								parentId: entry.id,
+							});
+							if (error !== null) return yield* Effect.die(error);
+						}
 						tree.appendChild(entry, childId);
 					}
 				}
@@ -381,6 +651,21 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 			// first, so it is never double-referenced). Instances are born
 			// attached to the ambient parent; this reparents them.
 			appendChild,
+			setMask: (
+				target: Instance.Instance<Entity.MaskableTag>,
+				source: Instance.Instance<Entity.MaskableTag>,
+				mode: Scene.MaskAttachment["mode"],
+			): Error | null => {
+				const candidate = new Map(masks);
+				candidate.set(target.id, { sourceId: source.id, mode });
+				const error = validateMasks(candidate);
+				if (error !== null) return error;
+				masks.set(target.id, { sourceId: source.id, mode });
+				return null;
+			},
+			clearMask: (target: Instance.Instance<Entity.MaskableTag>): void => {
+				masks.delete(target.id);
+			},
 			// detach `child` from `parent` (no-op unless currently its child),
 			// leaving it detached from the tree (still alive, just unmounted)
 			removeChild,
@@ -396,10 +681,12 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 				// but it is view state, not a renderable instance — omit it from
 				// the frame's instance map (its data is surfaced as `camera`)
 				const instances: Record<string, { data: Entity.Entity }> = {};
+				const active = new Set(activeCameras.values());
 				for (const [id, entry] of Object.entries(tree.map)) {
-					if (id === activeCameraId) {
+					if (active.has(id)) {
 						continue;
 					}
+					resolveAudio(id, entry);
 					instances[id] = { data: entry.state };
 				}
 				return {
@@ -410,11 +697,25 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 					height: comp.height,
 					backgroundColor: comp.backgroundColor,
 					compositing: comp.compositing,
-					camera: cameraState(),
+					camera: cameraState(null),
 					// mounted scenes, by mount-group id: the renderer reads this
 					// to know a subtree is a render-to-texture boundary, instead
-					// of inferring it from a group carrying a size
-					comps: Object.fromEntries(comps),
+					// of inferring it from a group carrying a size — each with
+					// its own camera's view
+					comps: Object.fromEntries(
+						[...comps].map(([id, config]): [string, CompFrame] => [
+							id,
+							{ ...config, camera: cameraState(id) },
+						]),
+					),
+					masks: Object.fromEntries(
+						[...masks].map(
+							([id, attachment]): [string, Scene.MaskAttachment] => [
+								id,
+								{ ...attachment },
+							],
+						),
+					),
 				};
 			}),
 
@@ -432,24 +733,65 @@ export class Runner extends Context.Service<Runner>()("Runner", {
 			}),
 
 			// declare the group at `id` to be a mounted scene with these bounds
-			// (see `comps`); called by Scene.play, never by authors
+			// (see `comps`); called by Scene.play, never by authors. The comp
+			// gets its own resting camera, as a standalone scene would — at a
+			// fixed id, so it never shifts the ids of instances created after
 			registerComp: (id: string, config: CompConfig): void => {
 				comps.set(id, config);
+				const entry = tree.createNode(
+					identityCamera(config.width),
+					`${id}/camera`,
+				);
+				defaultCameras.set(id, Instance.makeInstance(entry.id, "Camera"));
+				activeCameras.set(id, entry.id);
 			},
 
-			// the default resting camera (animate it, or swap via setCamera)
+			// the root scene's default resting camera (animate it, or swap via
+			// setCamera)
 			camera,
-			// swap the active camera to another instance; its live data becomes
-			// the view on every subsequent frame
-			setCamera: (instance: Instance.Instance<"Camera">): void => {
-				activeCameraId = instance.id;
+			// the default resting camera of the scene `compId` names (`null`:
+			// the root) — what `Scene.camera` returns inside that scene
+			cameraOf: (compId: string | null): Instance.Instance<"Camera"> =>
+				(compId === null ? undefined : defaultCameras.get(compId)) ?? camera,
+			// swap the active camera of scene `compId` (default: the root) to
+			// another instance; its live data becomes that scene's view on
+			// every subsequent frame
+			setCamera: (
+				instance: Instance.Instance<"Camera">,
+				compId: string | null = null,
+			): void => {
+				activeCameras.set(compId, instance.id);
 			},
 
+			// restart a track's cursor from its current data on this frame,
+			// dropping any clip end; with `until` (a frame index) the play
+			// pauses on that frame. Called by the Audio transport.
+			anchorAudio: (id: string, until?: number): void => {
+				audioAnchors.delete(id);
+				const entry = tree.getEntry(id);
+				if (
+					until === undefined ||
+					entry === null ||
+					entry.state._tag !== "Audio"
+				) {
+					return;
+				}
+				const { time } = entry.state;
+				audioAnchors.set(id, {
+					frame: phaser.snapshotUnsafe().phase,
+					time,
+					until,
+					last: time,
+				});
+				resolveAudio(id, entry);
+			},
 			destroy: (instance: Instance.Instance): void => {
 				// double-destroy is a no-op, like the old map-based delete
 				if (tree.getEntry(instance.id) === null) {
 					return;
 				}
+				audioAnchors.delete(instance.id);
+				clearMasksTouching(subtreeIds(instance.id));
 				tree.remove(instance.id);
 			},
 			phaser,

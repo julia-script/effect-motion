@@ -1,0 +1,36 @@
+---
+title: "setMask"
+description: "const setMask: (...args) => Effect<Instance<MaskableTag>, never, Runner>;"
+---
+# Variable: setMask
+
+```ts
+const setMask: (...args) => Effect<Instance<MaskableTag>, never, Runner>;
+```
+
+Defined in: [packages/motion/src/Scene.ts:795](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Scene.ts#L795)
+
+Attaches an existing paintable instance as a target's alpha mask at the current scene frame.
+
+**Details**
+
+The source remains in the instance tree and can animate independently. While attached,
+its subtree supplies alpha coverage instead of painting into the scene. Normal mode
+(the default) multiplies target alpha by source coverage; `inverse` uses the
+complement. Attaching another source replaces the target's previous mask.
+Both handles must be mounted in the same composition and render tier, and one
+source can serve only one target. Invalid relationships fail with a named defect.
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| ...`args` | \[[`Instance`](../../Instance/interfaces/Instance.mdx)\<[`MaskableTag`](../../Entity/type-aliases/MaskableTag.mdx)\>, [`Instance`](../../Instance/interfaces/Instance.mdx)\<[`MaskableTag`](../../Entity/type-aliases/MaskableTag.mdx)\>, \{ `mode?`: `"alpha"` \| `"inverse"`; \}\] |
+
+## Returns
+
+`Effect`\<[`Instance`](../../Instance/interfaces/Instance.mdx)\<[`MaskableTag`](../../Entity/type-aliases/MaskableTag.mdx)\>, `never`, [`Runner`](../../Runner/classes/Runner.mdx)\>
+
+## See
+
+[clearMask](./clearMask.mdx) to restore ordinary rendering of the source.

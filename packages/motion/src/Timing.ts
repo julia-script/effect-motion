@@ -80,8 +80,9 @@ export const cos: TimingFunction = (t) => (1 + Math.cos(2 * Math.PI * t)) / 2;
  *
  * @see {@link TimingFunction} for choosing among the families.
  */
+// sin of the complement, not 1 - cos: cos(π/2) is 6e-17, so f(1) missed 1
 export const easeInSine: TimingFunction = (t) =>
-	1 - Math.cos((t * Math.PI) / 2);
+	1 - Math.sin(((1 - t) * Math.PI) / 2);
 export const easeOutSine: TimingFunction = (t) => Math.sin((t * Math.PI) / 2);
 export const easeInOutSine: TimingFunction = (t) =>
 	-(Math.cos(Math.PI * t) - 1) / 2;
@@ -171,13 +172,15 @@ export const easeInOutCirc: TimingFunction = (t) =>
  */
 export const createEaseInBack =
 	(s = 1.70158): TimingFunction =>
+	// factored so f(1) = 1 exactly ((s + 1) - s drifts by an ulp)
 	(t) =>
-		(s + 1) * t ** 3 - s * t ** 2;
+		t ** 2 * (t + s * (t - 1));
 
 export const createEaseOutBack =
 	(s = 1.70158): TimingFunction =>
+	// the mirrored in-curve, so f(0) = 0 and f(1) = 1 exactly
 	(t) =>
-		1 + (s + 1) * (t - 1) ** 3 + s * (t - 1) ** 2;
+		1 - (1 - t) ** 2 * (1 - t - s * t);
 
 export const createEaseInOutBack = (s = 1.70158, v = 1.525): TimingFunction => {
 	const c = s * v;

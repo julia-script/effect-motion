@@ -1,0 +1,34 @@
+---
+title: "prepareAudio"
+description: "function prepareAudio<ID, E, R>(track, load): Layer<AudioLoader<ID> | AudioMetadata<ID> | AudioBuffer, E | EffectMotionError, R>;"
+---
+# Function: prepareAudio()
+
+```ts
+function prepareAudio<ID, E, R>(track, load): Layer<AudioLoader<ID> | AudioMetadata<ID> | AudioBuffer, E | EffectMotionError, R>;
+```
+
+Defined in: [packages/react/src/BrowserAudio.ts:60](https://github.com/julia-script/effect-motion/blob/main/packages/react/src/BrowserAudio.ts#L60)
+
+Prepare a browser track before a duration-driven scene starts. The same
+decoded buffer is used by the Player, and the duration describes those
+exact bytes. Each Player mount builds this layer in its own scope.
+
+## Type Parameters
+
+| Type Parameter |
+| ------ |
+| `ID` *extends* `string` |
+| `E` |
+| `R` |
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `track` | `AudioResource`\<`ID`\> |
+| `load` | `Effect`\<`Uint8Array`\<`ArrayBufferLike`\>, `E`, `R`\> |
+
+## Returns
+
+`Layer`\<`AudioLoader`\<`ID`\> \| `AudioMetadata`\<`ID`\> \| `AudioBuffer`, `E` \| `EffectMotionError`, `R`\>

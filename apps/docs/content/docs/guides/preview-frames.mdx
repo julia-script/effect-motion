@@ -1,0 +1,69 @@
+---
+title: Preview frames without a browser
+description: Check a scene from the terminal with PNG stills, a contact sheet, or exact JSON state
+---
+
+`motion frames` turns a scene into a few images or a JSON dump, so you (or a
+coding agent) can check an edit without opening the studio or rendering a
+video. It samples scenes registered in `studio.ts`, by key.
+
+## Look at the whole scene
+
+```bash
+motion frames hello-world --count 9 --sheet
+```
+
+```
+.motion/frames/hello-world/sheet.png 3x3 tile=480x270
+tile=0 frame=0 time=0s
+tile=1 frame=15 time=0.25s
+…
+```
+
+Open `sheet.png`: the tiles read left to right, top to bottom, and each
+printed line says which frame and time a tile shows. This is the quickest
+way to see whether motion starts, travels and ends where you meant.
+
+To look closer at one stretch, spread the tiles over a range instead of the
+whole scene:
+
+```bash
+motion frames hello-world --count 6 --range 1.5s..2.5s --sheet
+```
+
+Tiles are downscaled to 480 px wide; pass `--tile-width 960` when you need
+more detail. `motion frames` with no scene lists every scene with its
+length, which tells you what times are in range.
+
+## Look at specific moments
+
+```bash
+motion frames hello-world --at 0,1s,end
+```
+
+Each frame becomes its own full-size PNG (`0000.png`, `0060.png`, …) in
+`.motion/frames/hello-world/`. Selectors mix freely: frame indices, times
+(`1.5s`, `500ms`), percentages (`50%`) and `end`.
+
+## Check exact values
+
+Images show roughly where things are; JSON says exactly:
+
+```bash
+motion frames hello-world --at end --json -
+```
+
+This prints each sampled frame's index, time (in seconds, as in the
+`time=` lines above), size, frame rate, camera and every instance's data (positions, colors, opacity…) to stdout. It needs no
+GPU, so it works anywhere Node runs. Write it to a file instead with
+`--json state.json`.
+
+## The loop
+
+1. Edit the scene.
+2. `motion frames <scene> --sheet` and read the sheet.
+3. When a position or value matters, confirm it with `--json -`.
+
+Output is deterministic at the frame level: the same scene and settings
+produce the same JSON every run. All flags are listed in the
+[CLI guide](/docs/guides/cli#sample-frames--motion-frames).

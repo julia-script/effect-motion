@@ -1,12 +1,17 @@
+import { dirname, join } from "node:path";
 import * as NodeRenderer from "@effect-motion/renderer/node";
 import type { ThreeException } from "@effect-motion/three";
+import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
+import { FileSystem } from "effect/FileSystem";
 import type * as Scope from "effect/Scope";
 import * as Sink from "effect/Sink";
 import * as Stream from "effect/Stream";
 import type { ChildProcessSpawner } from "effect/unstable/process";
 import type { EffectMotionError } from "effect-motion";
-import { type Resource, Scene } from "effect-motion";
+import * as Audio from "effect-motion/Audio";
+import * as Scene from "effect-motion/Scene";
+import * as AudioMix from "./AudioMix.js";
 import * as Ffmpeg from "./Ffmpeg.js";
 
 // Scene.instantiate/tick leak the runner requirement into a scene's static R,
@@ -68,6 +73,21 @@ export interface VideoOptions {
 }
 
 /**
+ * Prepare one Node audio source before scene execution. Duration is measured
+ * by decoding exactly the bytes retained for export to 48 kHz stereo PCM.
+ */
+export const prepareAudio = <ID extends string, E, R>(
+	track: Audio.AudioResource<ID>,
+	load: Effect.Effect<Uint8Array, E, R>,
+	options: { readonly binary?: string } = {},
+) =>
+	Audio.preparedLayer(track, load, (bytes) =>
+		Effect.map(Ffmpeg.inspectDuration(bytes, options.binary), (duration) => ({
+			duration,
+		})),
+	);
+
+/**
  * Render a scene to a video file at `outPath`.
  *
  * Fails with {@link Ffmpeg.EncodeError} on odd output dimensions (invalid for
@@ -86,10 +106,15 @@ export const render = <E = never, LoaderR = never>(
 	// here; the GPU renderer is provided internally too. The scene's
 	// resource loaders stay the CALLER's requirement — provide them via
 	// Font.layer/Image.layer (Node fs loaders work here: no URLs needed)
-	ChildProcessSpawner.ChildProcessSpawner | Resource.ExtractLoaders<LoaderR>
+	| ChildProcessSpawner.ChildProcessSpawner
+	| FileSystem
+	| Exclude<LoaderR, SceneInternalR>
 > =>
 	Effect.scoped(
 		Effect.gen(function* () {
+			const fs = yield* FileSystem;
+			const context =
+				(yield* Effect.context<LoaderR>()) as Context.Context<unknown>;
 			let frames = Scene.stream(scene, options.settings ?? {});
 			if (options.frames !== undefined) {
 				frames = Stream.take(frames, options.frames);
@@ -131,24 +156,106 @@ export const render = <E = never, LoaderR = never>(
 			const allFrames = Stream.concat(Stream.make(meta), rest);
 			// serial by construction: syncFrame mutates one retained scene, so
 			// concurrent renders would clobber each other's state
+			const timeline: AudioMix.TimelineFrame[] = [];
 			const pngStream = Stream.mapEffect(allFrames, (frame) =>
-				NodeRenderer.renderToPng(renderer, frame),
+				Effect.gen(function* () {
+					timeline.push(AudioMix.collect(frame, timeline.length));
+					return yield* NodeRenderer.renderToPng(renderer, frame);
+				}),
 			);
 
 			// writing a file implies its directory: create the output's parent
 			// so render programs carry no mkdir boilerplate (Node-only module,
 			// no new requirement)
-			yield* Effect.promise(async () => {
-				const { mkdir } = await import("node:fs/promises");
-				const { dirname } = await import("node:path");
-				await mkdir(dirname(outPath), { recursive: true });
-			});
+			yield* fs.makeDirectory(dirname(outPath), { recursive: true }).pipe(
+				Effect.mapError(
+					(cause) =>
+						new Ffmpeg.EncodeError({
+							message: `Could not create output directory for ${outPath}`,
+							stderr: "",
+							cause,
+						}),
+				),
+			);
 
 			yield* Ffmpeg.encode(pngStream as Stream.Stream<Uint8Array>, outPath, {
 				frameRate: meta.frameRate,
 				binary: options.binary,
 				extraArgs: options.extraArgs,
 			});
+
+			const assets = new Set<string>();
+			for (const frame of timeline) {
+				for (const track of frame.tracks) {
+					if (track.playing) assets.add(track.assetId);
+				}
+			}
+			if (assets.size === 0) return;
+
+			const tempDir = yield* fs
+				.makeTempDirectoryScoped({
+					prefix: "effect-motion-audio-",
+				})
+				.pipe(
+					Effect.mapError(
+						(cause) =>
+							new Ffmpeg.EncodeError({
+								message: "Could not create an audio working directory",
+								stderr: "",
+								cause,
+							}),
+					),
+				);
+			const sourcePaths = new Map<string, string>();
+			let sourceIndex = 0;
+			for (const id of assets) {
+				const loader = Context.getOption(context, Audio.Loader(id));
+				if (loader._tag === "None") {
+					return yield* new Ffmpeg.EncodeError({
+						message: `No audio loader provided for "${id}"`,
+						stderr: "",
+						cause: id,
+					});
+				}
+				const path = join(tempDir, `${sourceIndex++}.f32le`);
+				yield* Ffmpeg.decode(loader.value.bytes, path, options.binary);
+				sourcePaths.set(id, path);
+			}
+			const mixedPath = join(tempDir, "mixed.f32le");
+			yield* AudioMix.write(timeline, meta.frameRate, sourcePaths, mixedPath);
+			const muxPath = yield* fs
+				.makeTempFileScoped({
+					directory: dirname(outPath),
+					prefix: ".effect-motion-",
+					suffix: ".mp4",
+				})
+				.pipe(
+					Effect.mapError(
+						(cause) =>
+							new Ffmpeg.EncodeError({
+								message: "Could not create a temporary MP4",
+								stderr: "",
+								cause,
+							}),
+					),
+				);
+			yield* Ffmpeg.mux(
+				outPath,
+				mixedPath,
+				muxPath,
+				timeline.length / meta.frameRate,
+				options.binary,
+			);
+			yield* fs.rename(muxPath, outPath).pipe(
+				Effect.mapError(
+					(cause) =>
+						new Ffmpeg.EncodeError({
+							message: `Could not finish audio MP4 at ${outPath}`,
+							stderr: "",
+							cause,
+						}),
+				),
+			);
 		}),
 		// the Exclude-chain the pipeline infers over the unresolved LoaderR
 		// can't be proven equal to the declared surface; the runtime shape is
@@ -156,5 +263,7 @@ export const render = <E = never, LoaderR = never>(
 	) as Effect.Effect<
 		void,
 		E | Ffmpeg.EncodeError | ThreeException | EffectMotionError,
-		ChildProcessSpawner.ChildProcessSpawner | Resource.ExtractLoaders<LoaderR>
+		| ChildProcessSpawner.ChildProcessSpawner
+		| FileSystem
+		| Exclude<LoaderR, SceneInternalR>
 	>;

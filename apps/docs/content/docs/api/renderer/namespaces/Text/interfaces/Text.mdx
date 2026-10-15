@@ -1,98 +1,39 @@
 ---
 title: "Text"
-description: "The per-renderer text state: registered fonts, the shared SDF atlas, and"
+description: "The per-renderer text state: loaded fonts and the shared glyph resources."
 ---
 # Interface: Text
 
-Defined in: [Text.ts:110](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Text.ts#L110)
+Defined in: [packages/renderer/src/Text.ts:45](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Text.ts#L45)
 
-The per-renderer text state: registered fonts, the shared SDF atlas, and
-the glyph cache.
+The per-renderer text state: loaded fonts and the shared glyph resources.
 
 ## Remarks
 
-Owned by a `Sync` and disposed with it. Mostly data — the API is the
-sibling functions ([registerFont](../functions/registerFont.mdx), [layout](../variables/layout.mdx),
-[makeMesh](../functions/makeMesh.mdx)).
+Owned by a `Sync` and disposed with it, after every mesh borrowing the
+resources (borrowers before owner). Mostly data — the API is the sibling
+functions ([registerFont](../functions/registerFont.mdx), [layout](../variables/layout.mdx), [makeMesh](../functions/makeMesh.mdx)).
 
 ## Properties
-
-### atlas
-
-```ts
-readonly atlas: DataTexture;
-```
-
-Defined in: [Text.ts:111](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Text.ts#L111)
-
-***
-
-### atlasData
-
-```ts
-readonly atlasData: Uint8Array;
-```
-
-Defined in: [Text.ts:113](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Text.ts#L113)
-
-internal: raw atlas bytes the texture samples
-
-***
 
 ### fonts
 
 ```ts
-readonly fonts: Map<string, string>;
+readonly fonts: Map<string, FontHandle>;
 ```
 
-Defined in: [Text.ts:115](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Text.ts#L115)
+Defined in: [packages/renderer/src/Text.ts:49](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Text.ts#L49)
 
-internal: font id → data URI
+internal: font id → loaded caller-owned handle
 
 ***
 
-### glyphCount
+### resources
 
 ```ts
-glyphCount: number;
+readonly resources: TextResources;
 ```
 
-Defined in: [Text.ts:119](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Text.ts#L119)
+Defined in: [packages/renderer/src/Text.ts:47](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Text.ts#L47)
 
-internal: next free atlas cell
-
-***
-
-### glyphs
-
-```ts
-readonly glyphs: Map<string, GlyphSlot>;
-```
-
-Defined in: [Text.ts:117](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Text.ts#L117)
-
-internal: `${fontSrc}#${glyphId}` → atlas slot
-
-***
-
-### sdf
-
-```ts
-readonly sdf: SdfGenerator;
-```
-
-Defined in: [Text.ts:121](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Text.ts#L121)
-
-internal: the pure-JS SDF generator instance
-
-***
-
-### typesetter
-
-```ts
-typesetter: Promise<Typesetter> | undefined;
-```
-
-Defined in: [Text.ts:123](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Text.ts#L123)
-
-internal: memoized typesetter init
+internal: shared glyph SDF cache + atlas for every mesh of this renderer

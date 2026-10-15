@@ -15,7 +15,13 @@ import type { Frame } from "effect-motion/Scene";
 import { builtinRegistry } from "./Builtins.js";
 import type { EntityRenderer } from "./EntityRenderer.js";
 import type { RenderException } from "./RenderException.js";
-import { renderCompTargets } from "./Renderer.js";
+import {
+	makeDofNode,
+	makeHudOver,
+	renderCompTargets,
+	renderMaskTargets,
+	setDofUniforms,
+} from "./Renderer.js";
 import * as Sampling from "./Sampling.js";
 import * as Sync from "./Sync.js";
 
@@ -201,6 +207,17 @@ export interface NodeRenderer {
 	readonly post: PostProcessing.RenderPipeline;
 	/** internal: pipeline with the HUD pass composited over the world */
 	readonly postWithHud: PostProcessing.RenderPipeline;
+	/**
+	 * internal: DoF variants of `post` / `postWithHud` (HUD composited over
+	 * the DoF output, so it stays sharp), built the first time a frame asks
+	 */
+	dofChain: {
+		readonly node: PostProcessing.DepthAwareDofNode;
+		readonly post: PostProcessing.RenderPipeline;
+		readonly postWithHud: PostProcessing.RenderPipeline;
+	} | null;
+	/** internal: blends the HUD pass over a world color node */
+	readonly overHud: (world: unknown) => unknown;
 	/** internal: the readback render target */
 	readonly target: RenderTarget.RenderTarget;
 	readonly width: number;
@@ -211,27 +228,18 @@ export interface NodeRenderer {
 }
 
 /**
- * Render one frame and return it as PNG bytes.
+ * Render one frame and return its raw RGBA pixels.
  *
  * @remarks
- * The whole export path in one call: resolve the frame's fonts and images,
- * sync the retained scene, wait for glyph layouts and decodes, render, read
- * the pixels back off the GPU, and encode.
- *
- * Call it once per frame on the SAME renderer; state is retained between
- * calls, so consecutive frames only pay for what changed.
- *
- * The frame's dimensions must match the renderer's. A mismatch is a defect
- * naming both sizes, not a silent rescale.
- *
- * Output is `pixelWidth × pixelHeight` — larger than the logical size when
- * a `pixelRatio` was given.
+ * {@link renderToPng} without the encode: `pixelWidth * pixelHeight * 4`
+ * bytes, row-major, 8 bits per channel. Use it when the pixels are going
+ * somewhere other than a PNG file — compositing a contact sheet, say.
  *
  * @param renderer - A renderer from {@link make}.
  * @param frame - The frame to draw.
- * @returns PNG file bytes.
+ * @returns RGBA bytes, `pixelWidth × pixelHeight`.
  */
-export const renderToPng = Effect.fnUntraced(function* (
+export const renderToRgba = Effect.fnUntraced(function* (
 	renderer: NodeRenderer,
 	frame: AnyFrame,
 ): Effect.fn.Return<
@@ -266,16 +274,65 @@ export const renderToPng = Effect.fnUntraced(function* (
 	// ensuring, addFinalizer.
 	Gpu.advanceFrame(renderer.gpu);
 	yield* renderCompTargets(renderer.gpu, renderer.sync, renderer.pixelRatio);
-	const pipeline = ThreeScene.isEmpty(renderer.sync.hudScene)
-		? renderer.post
-		: renderer.postWithHud;
-	yield* PostProcessing.render(pipeline);
-	const rgba = yield* Gpu.readRenderTarget(
+	yield* renderMaskTargets(renderer.gpu, renderer.sync, renderer.pixelRatio);
+	const hud = !ThreeScene.isEmpty(renderer.sync.hudScene);
+	let pipeline = hud ? renderer.postWithHud : renderer.post;
+	if (renderer.sync.dof.on) {
+		if (renderer.dofChain === null) {
+			const node = makeDofNode(renderer.sync);
+			renderer.dofChain = {
+				node,
+				post: PostProcessing.makePipeline(renderer.gpu, node),
+				postWithHud: PostProcessing.makePipeline(
+					renderer.gpu,
+					renderer.overHud(node),
+				),
+			};
+		}
+		setDofUniforms(renderer.dofChain.node, renderer.sync.dof);
+		pipeline = hud ? renderer.dofChain.postWithHud : renderer.dofChain.post;
+	}
+	const draw = PostProcessing.render(pipeline);
+	yield* renderer.sync.dof.on
+		? Sync.withSeeThroughDepth(renderer.sync, draw)
+		: draw;
+	return yield* Gpu.readRenderTarget(
 		renderer.gpu,
 		renderer.target,
 		renderer.pixelWidth,
 		renderer.pixelHeight,
 	);
+});
+
+/**
+ * Render one frame and return it as PNG bytes.
+ *
+ * @remarks
+ * The whole export path in one call: resolve the frame's fonts and images,
+ * sync the retained scene, wait for glyph layouts and decodes, render, read
+ * the pixels back off the GPU, and encode.
+ *
+ * Call it once per frame on the SAME renderer; state is retained between
+ * calls, so consecutive frames only pay for what changed.
+ *
+ * The frame's dimensions must match the renderer's. A mismatch is a defect
+ * naming both sizes, not a silent rescale.
+ *
+ * Output is `pixelWidth × pixelHeight` — larger than the logical size when
+ * a `pixelRatio` was given.
+ *
+ * @param renderer - A renderer from {@link make}.
+ * @param frame - The frame to draw.
+ * @returns PNG file bytes.
+ */
+export const renderToPng = Effect.fnUntraced(function* (
+	renderer: NodeRenderer,
+	frame: AnyFrame,
+): Effect.fn.Return<
+	Uint8Array,
+	ThreeException | EffectMotionError | RenderException
+> {
+	const rgba = yield* renderToRgba(renderer, frame);
 	return encodePng(rgba, renderer.pixelWidth, renderer.pixelHeight);
 });
 
@@ -295,7 +352,9 @@ export const renderToPng = Effect.fnUntraced(function* (
  * resolution (four times the pixels), which is the usual way to get cleaner
  * edges in an export.
  *
- * Depth of field is not applied — every frame renders sharp.
+ * A camera with `aperture > 0` renders through the depth-aware
+ * depth-of-field chain, built on the first frame that asks for it; HUD
+ * content is composited over the result and stays sharp.
  *
  * @param options - Dimensions, supersampling, and any custom entity
  *   renderers.
@@ -313,12 +372,18 @@ export const make = Effect.fn("NodeRenderer.make")(function* (
 	};
 	const sync = Sync.make(registry);
 	const device = yield* NodeGpu.makeDevice();
+	// registered before the renderer, so it runs after the renderer's own
+	// release (finalizers run in reverse): a live Dawn device keeps Node's
+	// event loop polling, so scripts would never exit on their own
+	yield* Effect.addFinalizer(() => Effect.sync(() => device.destroy()));
 	const { canvas, context } = NodeGpu.stubCanvas(pixelWidth, pixelHeight);
 	const gpu = yield* Gpu.make({
 		canvas: canvas as unknown as HTMLCanvasElement,
 		context: context as never,
 		antialias: true,
 		samples: Sampling.samples,
+		// reversed-Z float depth — see Renderer.make
+		reversedDepthBuffer: true,
 		device,
 		width: options.width,
 		height: options.height,
@@ -326,28 +391,12 @@ export const make = Effect.fn("NodeRenderer.make")(function* (
 	});
 	yield* Effect.addFinalizer(() => Sync.dispose(sync));
 	const scenePass = PostProcessing.pass(sync.scene, sync.camera);
-	// ponytail: no depth of field — the pipeline draws the scene pass
-	// straight through.
 	const sceneColor = scenePass.getTextureNode();
 	const post = PostProcessing.makePipeline(gpu, sceneColor);
-	// HUD composite variant: the HUD pass (identity camera, transparent
-	// background) blended over the world INSIDE the pipeline, so the sRGB
-	// output transform applies exactly once. Chosen per frame only when
-	// HUD content exists — the plain pipeline never pays for the pass.
-	// ponytail: TSL typing quarantined as in Text.ts.
-	interface Node {
-		readonly rgb: Node;
-		readonly a: Node;
-		mul(v: unknown): Node;
-		add(v: unknown): Node;
-		oneMinus(): Node;
-	}
-	const hudScenePass = PostProcessing.pass(sync.hudScene, sync.hudCamera);
-	const hudTex = hudScenePass.getTextureNode() as Node;
-	const postWithHud = PostProcessing.makePipeline(
-		gpu,
-		(sceneColor as Node).mul(hudTex.a.oneMinus()).add(hudTex.rgb.mul(hudTex.a)),
-	);
+	// HUD composite variant, chosen per frame only when HUD content exists —
+	// the plain pipeline never pays for the pass
+	const overHud = makeHudOver(sync);
+	const postWithHud = PostProcessing.makePipeline(gpu, overHud(sceneColor));
 	const target = yield* RenderTarget.make(pixelWidth, pixelHeight);
 	Gpu.setRenderTarget(gpu, target);
 	const scope = yield* Effect.scope;
@@ -357,6 +406,8 @@ export const make = Effect.fn("NodeRenderer.make")(function* (
 		scope,
 		post,
 		postWithHud,
+		dofChain: null,
+		overHud,
 		target,
 		width: options.width,
 		height: options.height,

@@ -1,4 +1,5 @@
 import type * as Layer from "effect/Layer";
+import type * as Audio from "effect-motion/Audio";
 import type * as Font from "effect-motion/Font";
 import type * as Runner from "effect-motion/Runner";
 import type * as Scene from "effect-motion/Scene";
@@ -17,10 +18,19 @@ type LoaderScene = Scene.Scene<
 	never,
 	Font.FontLoader<"Roboto"> | Runner.Runner
 >;
+type DurationScene = Scene.Scene<
+	never,
+	Audio.AudioLoader<"theme"> | Audio.AudioMetadata<"theme"> | Runner.Runner
+>;
 
 declare const plainScene: PlainScene;
 declare const loaderScene: LoaderScene;
 declare const robotoLayer: Layer.Layer<Font.FontLoader<"Roboto">>;
+declare const durationScene: DurationScene;
+declare const audioLoader: Layer.Layer<Audio.AudioLoader<"theme">>;
+declare const preparedAudio: Layer.Layer<
+	Audio.AudioLoader<"theme"> | Audio.AudioMetadata<"theme">
+>;
 
 // never invoked — compile-time assertions only
 const _cases = () => {
@@ -41,8 +51,24 @@ const _cases = () => {
 
 	// @ts-expect-error a resource-carrying scene without renderLayers is an error
 	const loaderRejects: PlayerProps<LoaderScene> = { scene: loaderScene };
+	const durationOk: PlayerProps<DurationScene> = {
+		scene: durationScene,
+		renderLayers: preparedAudio,
+	};
+	const durationRejects: PlayerProps<DurationScene> = {
+		scene: durationScene,
+		// @ts-expect-error encoded bytes alone cannot answer Audio.duration
+		renderLayers: audioLoader,
+	};
 
-	return [plainOk, plainRejects, loaderOk, loaderRejects];
+	return [
+		plainOk,
+		plainRejects,
+		loaderOk,
+		loaderRejects,
+		durationOk,
+		durationRejects,
+	];
 };
 
 describe("PlayerProps", () => {

@@ -192,8 +192,8 @@ export interface TextMesh {
  * {@link TextMesh.commit} runs; the entity renderer registers commits with
  * `ctx.waitFor`, so a frame is never drawn with half-built text.
  *
- * The mesh carries a tiny z-lift so text sits above coplanar backdrops
- * (invisible at ordinary scales, deterministic).
+ * No z-lift: text over a coplanar backdrop wins by paint order (Sync's
+ * `syncLayers`), like any other layer.
  */
 export const makeMesh = (text: Text): TextMesh => {
 	const group = new THREE.Group();
@@ -216,9 +216,6 @@ export const makeMesh = (text: Text): TextMesh => {
 					resources: text.resources,
 					depthInk: true,
 				});
-				// z-lift: keep text above coplanar backdrops so the depth-ink
-				// core never loses to a shape at the same depth
-				glyphs.position.z = 0.05;
 				group.add(glyphs);
 			} else {
 				glyphs.layout = layoutResult;

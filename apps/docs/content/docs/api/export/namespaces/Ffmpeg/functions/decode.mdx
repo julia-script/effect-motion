@@ -1,0 +1,28 @@
+---
+title: "decode"
+description: "function decode("
+---
+# Function: decode()
+
+```ts
+function decode(
+   bytes,
+   outPath,
+binary?): Effect<void, EncodeError, ChildProcessSpawner>;
+```
+
+Defined in: [packages/export/src/Ffmpeg.ts:163](https://github.com/julia-script/effect-motion/blob/main/packages/export/src/Ffmpeg.ts#L163)
+
+Decode an encoded asset to a scoped raw PCM file.
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `bytes` | `Uint8Array` |
+| `outPath` | `string` |
+| `binary?` | `string` |
+
+## Returns
+
+`Effect`\<`void`, [`EncodeError`](../classes/EncodeError.mdx), `ChildProcessSpawner`\>

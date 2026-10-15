@@ -8,9 +8,9 @@ description: "function makeMesh(text): TextMesh;"
 function makeMesh(text): TextMesh;
 ```
 
-Defined in: [Text.ts:383](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Text.ts#L383)
+Defined in: [packages/renderer/src/Text.ts:198](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/Text.ts#L198)
 
-Build a mesh that draws glyphs from the shared atlas.
+Build a mesh that draws glyphs from the shared resources.
 
 ## Parameters
 
@@ -24,16 +24,11 @@ Build a mesh that draws glyphs from the shared atlas.
 
 ## Remarks
 
-Rendered in two passes so overlapping glyph ink — connected scripts, tight
-kerning — blends exactly ONCE per pixel at any opacity. A single-pass
-approach would double-blend the joins and show them as darker seams on
-semi-transparent text.
+The toolkit mesh is created lazily on the first [TextMesh.setLayout](../interfaces/TextMesh.mdx#setlayout)
+— its constructor requires a layout, and a text entity has none until its
+first layout resolves. Appearance setters are inert until
+[TextMesh.commit](../interfaces/TextMesh.mdx#commit) runs; the entity renderer registers commits with
+`ctx.waitFor`, so a frame is never drawn with half-built text.
 
-- core pass: fragments with SDF coverage ≥ 0.5 draw flat at the string
-  opacity, write depth with `LessDepth` — a second glyph's core at the
-  same depth fails the test, deduplicating the join.
-- edge pass: the antialiasing ring (coverage \< 0.5) blends without depth
-  writes; core-covered pixels reject it via the depth buffer.
-
-The mesh carries a tiny z-lift so text sits above coplanar backdrops
-(invisible at ordinary scales, deterministic).
+No z-lift: text over a coplanar backdrop wins by paint order (Sync's
+`syncLayers`), like any other layer.

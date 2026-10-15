@@ -21,6 +21,27 @@ await Effect.runPromise(
 
 `Ffmpeg.encode` and `Resvg.rasterize` are the lower-level stages if you want to drive the pipeline yourself.
 
+For scenes that query an audio asset's duration, prepare its bytes and metadata together before rendering:
+
+```ts
+import { NodeServices } from "@effect/platform-node";
+import { Video } from "@effect-motion/export";
+import * as Audio from "effect-motion/Audio";
+import * as Effect from "effect/Effect";
+
+const theme = Audio.Audio("theme");
+const source = Effect.succeed(encodedAudioBytes);
+
+await Effect.runPromise(
+  Video.render(scene, "out.mp4").pipe(
+    Effect.provide(Video.prepareAudio(theme, source)),
+    Effect.provide(NodeServices.layer),
+  ),
+);
+```
+
+`Video.prepareAudio` measures duration from the same bytes used for export. It uses the bundled ffmpeg binary by default; pass `{ binary: "ffmpeg" }` as its third argument when using a system build. A playing track is mixed into the MP4 as AAC. Scenes without playing audio keep the video-only output.
+
 ## Bundled ffmpeg
 
 Video encoding uses the [`ffmpeg-static`](https://www.npmjs.com/package/ffmpeg-static) binary by default — a full build that includes **libx264**, so H.264 output works out of the box with no system ffmpeg required. Installing this package downloads that binary (~45&nbsp;MB) for your platform.

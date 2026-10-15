@@ -71,6 +71,12 @@ describe("one planar stroke", () => {
 		const leaf = {
 			id: "line",
 			world: { x: 100, y: 50, z: 10 },
+			transform: {
+				matrix: new THREE.Matrix4().makeTranslation(100, 50, 10),
+				quaternion: new THREE.Quaternion(),
+				scale: new THREE.Vector3(1, 1, 1),
+				rotated: false,
+			},
 			data: Entity.Line.make({
 				start: Entity.vec3({ x: 10, z: -20 }),
 				end: Entity.vec3({ x: 40, z: 30 }),
@@ -84,7 +90,9 @@ describe("one planar stroke", () => {
 		const end = spatial.geometry.getAttribute("instanceEnd");
 		expect(start.getZ(0)).toBe(-20);
 		expect(end.getZ(0)).toBe(30);
-		expect(retained.object.position.z).toBe(10);
+		expect(
+			new THREE.Vector3().setFromMatrixPosition(retained.object.matrix).z,
+		).toBe(10);
 		renderer.update(
 			retained,
 			{

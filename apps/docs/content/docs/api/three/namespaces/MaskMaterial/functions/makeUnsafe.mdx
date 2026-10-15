@@ -1,0 +1,25 @@
+---
+title: "makeUnsafe"
+description: "function makeUnsafe(original, factors): Variants;"
+---
+# Function: makeUnsafe()
+
+```ts
+function makeUnsafe(original, factors): Variants;
+```
+
+Defined in: [packages/three/src/MaskMaterial.ts:86](https://github.com/julia-script/effect-motion/blob/main/packages/three/src/MaskMaterial.ts#L86)
+
+Create two material variants that share a drawable's geometry and native
+fragment depth. Exactly one variant survives its fragment predicate.
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `original` | `DrawableMaterial` |
+| `factors` | readonly [`Factor`](../interfaces/Factor.mdx)[] |
+
+## Returns
+
+[`Variants`](../interfaces/Variants.mdx)

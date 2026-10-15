@@ -4,16 +4,16 @@ description: "A leaf's final position in scene space, with every ancestor group'
 ---
 # Interface: World
 
-Defined in: [EntityRenderer.ts:41](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L41)
+Defined in: [packages/renderer/src/EntityRenderer.ts:41](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L41)
 
 A leaf's final position in scene space, with every ancestor group's
-translation already folded in.
+transform (translate, rotate, scale) already folded in.
 
 ## Remarks
 
-Absolute, not relative: a renderer never has to walk parents itself. Still
-in SCENE coordinates (y down, origin top-left) — use
-[RenderContext.toThree](./RenderContext.mdx#tothree) to convert.
+Absolute, not relative: a renderer never has to walk parents itself. In
+SCENE coordinates (x right, y up, origin at the viewport center) — pass
+through [RenderContext.toThree](./RenderContext.mdx#tothree) to keep the boundary explicit.
 
 ## Properties
 
@@ -23,7 +23,7 @@ in SCENE coordinates (y down, origin top-left) — use
 readonly x: number;
 ```
 
-Defined in: [EntityRenderer.ts:42](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L42)
+Defined in: [packages/renderer/src/EntityRenderer.ts:42](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L42)
 
 ***
 
@@ -33,7 +33,7 @@ Defined in: [EntityRenderer.ts:42](https://github.com/julia-script/effect-motion
 readonly y: number;
 ```
 
-Defined in: [EntityRenderer.ts:43](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L43)
+Defined in: [packages/renderer/src/EntityRenderer.ts:43](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L43)
 
 ***
 
@@ -43,4 +43,4 @@ Defined in: [EntityRenderer.ts:43](https://github.com/julia-script/effect-motion
 readonly z: number;
 ```
 
-Defined in: [EntityRenderer.ts:44](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L44)
+Defined in: [packages/renderer/src/EntityRenderer.ts:44](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L44)

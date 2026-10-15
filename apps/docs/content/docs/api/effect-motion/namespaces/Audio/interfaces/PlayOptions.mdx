@@ -1,0 +1,59 @@
+---
+title: "PlayOptions"
+description: "readonly optional duration?: Input;"
+---
+# Interface: PlayOptions
+
+Defined in: [packages/motion/src/Audio.ts:253](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Audio.ts#L253)
+
+Options for [play](../variables/play.mdx).
+
+## Properties
+
+### duration?
+
+```ts
+readonly optional duration?: Input;
+```
+
+Defined in: [packages/motion/src/Audio.ts:265](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Audio.ts#L265)
+
+Play a clip this long (scene time): the track pauses on the frame the
+clip ends, wherever the play ran. Omitted: the play runs until paused,
+stopped, or the scene ends.
+
+***
+
+### from?
+
+```ts
+readonly optional from?: number;
+```
+
+Defined in: [packages/motion/src/Audio.ts:255](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Audio.ts#L255)
+
+source position to start at, in seconds (default 0)
+
+***
+
+### gain?
+
+```ts
+readonly optional gain?: number;
+```
+
+Defined in: [packages/motion/src/Audio.ts:257](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Audio.ts#L257)
+
+linear gain (default 1)
+
+***
+
+### loop?
+
+```ts
+readonly optional loop?: boolean;
+```
+
+Defined in: [packages/motion/src/Audio.ts:259](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Audio.ts#L259)
+
+wrap at the source end instead of falling silent (default false)

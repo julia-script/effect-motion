@@ -101,6 +101,16 @@ describe("Scene.fork", () => {
 		await expect(attempt).rejects.toThrow("fork boom");
 	});
 
+	it("a fork whose spawner ends in the same step never deadlocks", async () => {
+		// the inner fork is cut (Effect-style, with its spawner) before its
+		// fiber ever runs; its phaser slot and awaited count must still go
+		const frames = await collectFrames(function* () {
+			yield* Scene.fork(Scene.fork(Scene.sleep("1 second")));
+			yield* Scene.sleep("100 millis");
+		});
+		expect(frames).toHaveLength(7);
+	});
+
 	it("a manually interrupted fork releases its slot; the scene ends without it", async () => {
 		const frames = await collectFrames(function* () {
 			const circle = yield* Scene.instantiate("Circle", {
@@ -177,8 +187,10 @@ describe("Scene.background", () => {
 				Motion.move(b, { x: 0 }, { x: 100 }, "10 seconds"),
 			);
 		});
-		// nothing holds the scene open, so it ends before producing a frame
-		expect(frames).toHaveLength(0);
+		// nothing holds the scene open: it ends exactly like the body without
+		// the background — one resting frame; the background never ran
+		expect(frames).toHaveLength(1);
+		expect(frames[0]?.[0]?.position.x).toBe(0);
 	});
 
 	it("an endless background alone does not keep the scene alive", {
@@ -195,8 +207,10 @@ describe("Scene.background", () => {
 				) as never,
 			);
 		});
-		// ends immediately rather than running to the maxFrames cap
-		expect(frames).toHaveLength(0);
+		// ends immediately (one resting frame) rather than running to the
+		// maxFrames cap
+		expect(frames).toHaveLength(1);
+		expect(frames[0]?.[0]?.position.y).toBe(0);
 	});
 
 	it("backgrounds live through the fork drain, then stop", async () => {

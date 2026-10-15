@@ -1,0 +1,69 @@
+---
+title: "Transform"
+description: "A leaf's full composed transform: every ancestor's translate/rotate/scale"
+---
+# Interface: Transform
+
+Defined in: [packages/renderer/src/EntityRenderer.ts:59](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L59)
+
+A leaf's full composed transform: every ancestor's translate/rotate/scale
+applied over its own, in scene space.
+
+## Remarks
+
+Planar renderers place their object from `quaternion` and `scale` (plus
+[Leaf.world](./Leaf.mdx#world) for the position); skeletal renderers (Line, Path) map
+each local point through `matrix`. The matrix is exact; `scale` is the
+per-axis product down the tree, so a non-uniformly scaled parent over a
+rotated child drops the shear — shear is not expressible (see the
+`entity-transform` spec).
+
+## Properties
+
+### matrix
+
+```ts
+readonly matrix: Matrix4;
+```
+
+Defined in: [packages/renderer/src/EntityRenderer.ts:61](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L61)
+
+maps entity-local points (offsets from `position`) to scene space
+
+***
+
+### quaternion
+
+```ts
+readonly quaternion: Quaternion;
+```
+
+Defined in: [packages/renderer/src/EntityRenderer.ts:63](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L63)
+
+composed orientation: ancestors' rotations, then the entity's own
+
+***
+
+### rotated
+
+```ts
+readonly rotated: boolean;
+```
+
+Defined in: [packages/renderer/src/EntityRenderer.ts:71](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L71)
+
+Whether any rotation applies, the entity's own or an ancestor's. An
+unrotated planar shape billboards; a rotated one is a real oriented
+plane in the world.
+
+***
+
+### scale
+
+```ts
+readonly scale: Vector3;
+```
+
+Defined in: [packages/renderer/src/EntityRenderer.ts:65](https://github.com/julia-script/effect-motion/blob/main/packages/renderer/src/EntityRenderer.ts#L65)
+
+composed per-axis scale: the product of every ancestor's and its own

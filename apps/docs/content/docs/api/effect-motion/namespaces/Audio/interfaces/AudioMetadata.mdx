@@ -1,0 +1,39 @@
+---
+title: "AudioMetadata"
+description: "Prepared, immutable facts about a track that a scene may explicitly"
+---
+# Interface: AudioMetadata\<ID\>
+
+Defined in: [packages/motion/src/Audio.ts:83](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Audio.ts#L83)
+
+Prepared, immutable facts about a track that a scene may explicitly
+inspect. NOT loader-branded: `Scene.run`/`stream` keep it as a real
+requirement, so a scene that reads it cannot run without it.
+
+## Type Parameters
+
+| Type Parameter | Default type |
+| ------ | ------ |
+| `ID` *extends* `string` | `string` |
+
+## Properties
+
+### duration
+
+```ts
+readonly duration: number;
+```
+
+Defined in: [packages/motion/src/Audio.ts:86](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Audio.ts#L86)
+
+source length in seconds (finite, ≥ 0)
+
+***
+
+### id
+
+```ts
+readonly id: ID;
+```
+
+Defined in: [packages/motion/src/Audio.ts:84](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Audio.ts#L84)

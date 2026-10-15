@@ -2,9 +2,9 @@
  * `@effect-motion/react` — play effect-motion scenes in the browser.
  *
  * @remarks
- * One component: {@link Player}, a self-contained video-style player with
- * play/pause, a scrubber, a time readout, and a repeat toggle. Point it at
- * a scene and it renders.
+ * {@link Player} is a self-contained video-style player with play/pause,
+ * a scrubber, a time readout, and a repeat toggle. {@link prepareAudio}
+ * prepares browser audio bytes and duration before a scene runs.
  *
  * ```tsx
  * <Player scene={scene} />
@@ -15,9 +15,9 @@
  * being computed to the end first, and an endless one plays without
  * accumulating forever.
  *
- * Everything is per-mount: each `Player` owns its own GPU renderer and
- * scene run, disposed on unmount. Several on a page do not interfere, and
- * navigating away releases the GPU resources.
+ * Everything is per-mount: each `Player` owns its own GPU renderer, audio
+ * sources, and scene run, disposed on unmount. Several on a page do not
+ * interfere, and navigating away releases these resources.
  *
  * The component needs a browser — it renders through WebGPU to a canvas.
  * Under a framework that server-renders, it is already marked
@@ -42,4 +42,6 @@
  *
  * @packageDocumentation
  */
+
+export { prepare as prepareAudio } from "./BrowserAudio.js";
 export { Player, type PlayerProps } from "./Player.js";

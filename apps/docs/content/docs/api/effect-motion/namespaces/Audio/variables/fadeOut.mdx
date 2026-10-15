@@ -1,0 +1,14 @@
+---
+title: "fadeOut"
+description: "const fadeOut: (duration, timing?) => <E, R>(instance) => Effect<Instance<\"Audio\">, E, Runner | R> & <E, R>(instance, duration, timing?) => Effect<Ins"
+---
+# Variable: fadeOut
+
+```ts
+const fadeOut: (duration, timing?) => <E, R>(instance) => Effect<Instance<"Audio">, E, Runner | R> & <E, R>(instance, duration, timing?) => Effect<Instance<"Audio">, E, Runner | R>;
+```
+
+Defined in: [packages/motion/src/Audio.ts:460](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Audio.ts#L460)
+
+Fade gain from its current value to 0. Gain only — the track keeps
+playing (pause or stop it afterwards if needed).

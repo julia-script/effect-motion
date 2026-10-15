@@ -37,19 +37,18 @@ export interface CameraView {
 	readonly rotZ: number;
 	readonly focalLength: number;
 	/**
-	 * View-space distance to the intended sharp plane. Runner-filled to the
-	 * resting camera distance.
-	 *
-	 * @remarks
-	 * Currently inert: depth-of-field rendering is not implemented, so every
-	 * frame renders sharp regardless of this value.
+	 * View-space distance to the sharp plane, world units. Runner-filled to
+	 * the resting camera distance.
 	 */
 	readonly focusDistance: number;
 	/**
-	 * Intended depth-of-field blur strength; 0 is a pinhole.
+	 * Lens radius in world units; 0 is a pinhole and bypasses depth of field.
 	 *
 	 * @remarks
-	 * Currently inert — see {@link CameraView.focusDistance}.
+	 * Thin-lens circle of confusion: a point at view distance d blurs to
+	 * radius `aperture · |d − focusDistance| / d` world units on the focus
+	 * plane. Opaque shapes only (semi-transparent ones blur at their own
+	 * depth); perspective only; roughly doubles the scene's draw cost.
 	 */
 	readonly aperture: number;
 }

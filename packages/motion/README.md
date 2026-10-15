@@ -38,3 +38,5 @@ Render it to SVG, play it in React with [`@effect-motion/react`](https://www.npm
 ## Documentation
 
 Full docs, concepts, and live examples: **https://github.com/julia-script/effect-motion**
+
+The [audio guide](https://github.com/julia-script/effect-motion/blob/main/apps/docs/content/docs/guides/audio.mdx) shows duration-driven playback, gain fades, and export from the same scene.

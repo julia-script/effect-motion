@@ -1,0 +1,14 @@
+---
+title: "seek"
+description: "const seek: (time) => <E, R>(instance) => Effect<Instance<\"Audio\">, E, Runner | R> & <E, R>(instance, time) => Effect<Instance<\"Audio\">, E, Runner | R"
+---
+# Variable: seek
+
+```ts
+const seek: (time) => <E, R>(instance) => Effect<Instance<"Audio">, E, Runner | R> & <E, R>(instance, time) => Effect<Instance<"Audio">, E, Runner | R>;
+```
+
+Defined in: [packages/motion/src/Audio.ts:344](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Audio.ts#L344)
+
+Jump the cursor to `time` (source seconds), keeping the play/pause state;
+visible on this frame.

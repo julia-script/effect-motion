@@ -11,6 +11,9 @@
 		"min-seeker",
 		"text-write-on",
 		"streamlines",
-		"camera-follow-graph"
+		"camera-follow-graph",
+		"rack-focus",
+		"tilted-plane",
+		"focus-orbit"
 	]
 }

@@ -1,0 +1,30 @@
+---
+title: "stop"
+description: "function stop<E, R>(instance): Effect<Instance<\"Audio\">, E, Runner | R>;"
+---
+# Function: stop()
+
+```ts
+function stop<E, R>(instance): Effect<Instance<"Audio">, E, Runner | R>;
+```
+
+Defined in: [packages/motion/src/Audio.ts:335](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Audio.ts#L335)
+
+Pause and rewind to the source start (`time: 0`).
+
+## Type Parameters
+
+| Type Parameter | Default type |
+| ------ | ------ |
+| `E` | `never` |
+| `R` | `never` |
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `instance` | [`InstanceOrEffect`](../../Instance/type-aliases/InstanceOrEffect.mdx)\<`"Audio"`, `E`, `R`\> |
+
+## Returns
+
+`Effect`\<[`Instance`](../../Instance/interfaces/Instance.mdx)\<`"Audio"`\>, `E`, [`Runner`](../../Runner/classes/Runner.mdx) \| `R`\>

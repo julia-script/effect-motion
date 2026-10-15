@@ -1,0 +1,33 @@
+---
+title: "render"
+description: "function render<Resources>(frames, options?): Effect<Uint8Array<ArrayBufferLike>, ThreeException | EffectMotionError | RenderException, Resources>;"
+---
+# Function: render()
+
+```ts
+function render<Resources>(frames, options?): Effect<Uint8Array<ArrayBufferLike>[], ThreeException | EffectMotionError | RenderException, Resources>;
+```
+
+Defined in: [packages/export/src/Stills.ts:92](https://github.com/julia-script/effect-motion/blob/main/packages/export/src/Stills.ts#L92)
+
+Render each frame to PNG bytes, in order. An empty list renders nothing.
+
+Requires the frames' font/image loaders (`Font.layer` / `Image.layer`) —
+the same layers the scene is previewed and exported with.
+
+## Type Parameters
+
+| Type Parameter | Default type |
+| ------ | ------ |
+| `Resources` | `never` |
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `frames` | readonly `Frame`\<`Resources`\>[] |
+| `options` | [`StillsOptions`](../interfaces/StillsOptions.mdx) |
+
+## Returns
+
+`Effect`\<`Uint8Array`\<`ArrayBufferLike`\>[], `ThreeException` \| `EffectMotionError` \| `RenderException`, `Resources`\>

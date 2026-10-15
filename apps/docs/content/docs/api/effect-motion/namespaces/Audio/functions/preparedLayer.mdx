@@ -1,0 +1,48 @@
+---
+title: "preparedLayer"
+description: "function preparedLayer<ID, E, R, E2, R2>("
+---
+# Function: preparedLayer()
+
+```ts
+function preparedLayer<ID, E, R, E2, R2>(
+   track,
+   load,
+   inspect): Layer<
+  | AudioLoader<ID>
+| AudioMetadata<ID>, E | E2, R | R2>;
+```
+
+Defined in: [packages/motion/src/Audio.ts:193](https://github.com/julia-script/effect-motion/blob/main/packages/motion/src/Audio.ts#L193)
+
+Provide a track's bytes AND metadata derived from those same bytes.
+
+## Type Parameters
+
+| Type Parameter |
+| ------ |
+| `ID` *extends* `string` |
+| `E` |
+| `R` |
+| `E2` |
+| `R2` |
+
+## Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `track` | [`AudioResource`](../interfaces/AudioResource.mdx)\<`ID`\> |
+| `load` | `Effect`\<`Uint8Array`\<`ArrayBufferLike`\>, `E`, `R`\> |
+| `inspect` | (`bytes`) => `Effect`\<[`MetadataInput`](../interfaces/MetadataInput.mdx), `E2`, `R2`\> |
+
+## Returns
+
+`Layer`\<
+  \| [`AudioLoader`](../interfaces/AudioLoader.mdx)\<`ID`\>
+  \| [`AudioMetadata`](../interfaces/AudioMetadata.mdx)\<`ID`\>, `E` \| `E2`, `R` \| `R2`\>
+
+## Remarks
+
+`load` runs once; `inspect` (the adapter's decoder or probe) receives
+exactly the bytes the loader provides, so duration can never describe a
+different file than the one that plays.

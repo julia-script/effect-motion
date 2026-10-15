@@ -85,11 +85,22 @@ const paintableMixin = {
 	...appearanceMixin,
 };
 
+/** A Line IS its stroke, so it defaults to a visible black 1-unit one. */
 const strokeMixin = {
 	strokeWidth: defaultedNumber(1),
 	strokeColor: Color.Color.pipe(
 		Schema.withConstructorDefault(Effect.succeed(Color.black)),
 	),
+};
+
+/**
+ * Filled shapes draw no outline unless `strokeColor` is set. Tweening
+ * `strokeColor` from unset dies naming the field — set a start color (or
+ * pass an explicit `from`) first.
+ */
+const outlineMixin = {
+	strokeWidth: defaultedNumber(1),
+	strokeColor: Schema.optionalKey(Color.Color),
 };
 
 const fillMixin = {
@@ -151,7 +162,7 @@ export const Line = Schema.TaggedStruct("Line", {
 export const Path = Schema.TaggedStruct("Path", {
 	...paintableMixin,
 	...fillMixin,
-	...strokeMixin,
+	...outlineMixin,
 	commands: Schema.NonEmptyArray(PathCommand).check(
 		Schema.makeFilter((commands) =>
 			commands[0]._tag === "M"
@@ -168,7 +179,7 @@ export const Path = Schema.TaggedStruct("Path", {
 export const Rect = Schema.TaggedStruct("Rect", {
 	...paintableMixin,
 	...fillMixin,
-	...strokeMixin,
+	...outlineMixin,
 	width: defaultedNumber(100),
 	height: defaultedNumber(100),
 });
@@ -177,7 +188,7 @@ export const Rect = Schema.TaggedStruct("Rect", {
 export const Circle = Schema.TaggedStruct("Circle", {
 	...paintableMixin,
 	...fillMixin,
-	...strokeMixin,
+	...outlineMixin,
 	radius: defaultedNumber(10),
 });
 
@@ -185,7 +196,7 @@ export const Circle = Schema.TaggedStruct("Circle", {
 export const Ellipse = Schema.TaggedStruct("Ellipse", {
 	...paintableMixin,
 	...fillMixin,
-	...strokeMixin,
+	...outlineMixin,
 	radiusX: defaultedNumber(20),
 	radiusY: defaultedNumber(10),
 });
@@ -239,6 +250,10 @@ export const Group = Schema.TaggedStruct("Group", {
  * the entity's own coordinate space, world for world content and screen for
  * HUD content. A Hud must be a top-level child of the root (or of another
  * Hud); nesting one inside world content is a loud defect.
+ *
+ * Coordinates are the frame's: origin at the center, one unit per pixel of
+ * the scene's width and height. Inside a scene mounted with `Scene.play`, a
+ * Hud pins to that scene's frame and is clipped with it.
  */
 export const Hud = Schema.TaggedStruct("Hud", {
 	...paintableMixin,
@@ -246,8 +261,10 @@ export const Hud = Schema.TaggedStruct("Hud", {
 });
 
 /**
- * A raster/vector image leaf. `image` is an Image resource reference; the
- * bytes live in the scene's requirements, never in frame data.
+ * A bitmap image leaf. `image` is an Image resource reference; the bytes
+ * live in the scene's requirements, never in frame data. Use PNG or JPEG:
+ * the Node renderer decodes only those (the browser decodes whatever
+ * `createImageBitmap` supports). SVG is not supported — trace it into Paths.
  *
  * `width`/`height` are optional and undefaulted: set BOTH to draw at that
  * size (numeric, so they tween), leave both absent for the source's natural
@@ -259,6 +276,38 @@ export const Image = Schema.TaggedStruct("Image", {
 	image: ImageResource.schema,
 	width: Schema.optionalKey(Schema.Number),
 	height: Schema.optionalKey(Schema.Number),
+});
+
+/**
+ * A sound in the scene. It never paints: transform fields only (every
+ * entity carries them), no opacity/scale/visible — gain is not opacity.
+ *
+ * `audio` is an Audio resource reference; bytes live in the scene's
+ * requirements, never in frame data. `time` is the UNWRAPPED playback
+ * cursor in source seconds (players wrap it by the source length when
+ * `loop`), `gain` is linear amplitude (1 = unity, 0 = silent), and
+ * `playing` is the explicit transport state.
+ *
+ * `playing`/`time` are transport-owned: while playing, the runner derives
+ * `time` every frame. Prefer the `Audio` module (`play`, `pause`, `seek`,
+ * `stop`, `resume`); direct writes are supported and mean the same thing on
+ * the frame they land — writing `time` is a seek, `playing: false` a pause,
+ * `playing: true` a resume (an instance created playing starts advancing
+ * at once) — and, like those operations, cancel a pending clip end.
+ */
+export const Audio = Schema.TaggedStruct("Audio", {
+	...transformMixin,
+	audio: Schema.TaggedStruct("effect-motion/Resources/Audio", {
+		id: Schema.String,
+	}),
+	time: defaultedNumber(0),
+	gain: defaultedNumber(1),
+	loop: Schema.Boolean.pipe(
+		Schema.withConstructorDefault(Effect.succeed(false)),
+	),
+	playing: Schema.Boolean.pipe(
+		Schema.withConstructorDefault(Effect.succeed(false)),
+	),
 });
 
 /**
@@ -281,9 +330,19 @@ export const Image = Schema.TaggedStruct("Image", {
  * that world point and any explicit `rotation` composes on top of the aim.
  * The `Camera` module's helpers are the ergonomic way to drive it.
  *
- * `aperture` and `focusDistance` describe depth of field. They are carried
- * on the frame but currently have NO visual effect — depth-of-field
- * rendering is not implemented, and every frame renders sharp.
+ * `aperture` and `focusDistance` drive depth of field. `focusDistance` is
+ * the view-space distance to the sharp plane (the runner defaults it to the
+ * resting distance, so `z = 0` is in focus). `aperture` is the lens radius in
+ * world units; 0 (the default) is a pinhole and bypasses DoF entirely. A
+ * point at view distance d blurs to a disc of radius
+ * `aperture · |d − focusDistance| / d` world units on the focus plane — at
+ * rest, where one world unit is one pixel on that plane, that is its blur
+ * radius in pixels. Rack focus is a plain tween of `focusDistance`.
+ *
+ * Limits: blur is computed from the depth buffer, so it is correct for
+ * opaque shapes only — a semi-transparent shape blurs at its own depth, not
+ * what shows through it. Perspective cameras only. DoF roughly doubles the
+ * scene's draw cost (the scene renders twice per frame).
  */
 export const Camera = Schema.TaggedStruct("Camera", {
 	...transformMixin,
@@ -308,6 +367,7 @@ export const EntityMap = {
 	Group,
 	Hud,
 	Image,
+	Audio,
 	Camera,
 } as const;
 
@@ -326,6 +386,9 @@ export type Entity = (typeof EntityMap)[keyof typeof EntityMap]["Type"];
  * This is what you pass to `Scene.instantiate`.
  */
 export type EntityTag = Entity["_tag"];
+
+/** Drawable kinds that can be a mask source or target. */
+export type MaskableTag = Exclude<EntityTag, "Camera" | "Audio">;
 
 /** The data type of one entity kind, selected by its tag. */
 export type EntityByTag<Tag extends EntityTag> = Extract<Entity, { _tag: Tag }>;
