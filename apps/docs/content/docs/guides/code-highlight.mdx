@@ -1,0 +1,131 @@
+---
+title: Highlight code
+description: Syntax-colored code on a single Text, with animated selection dimming
+---
+
+Code explainers need two things: syntax coloring, and a way to say *look
+here* — keep one range bright while the rest fades back. Both are span
+data on an ordinary `Text`, produced at authoring time by
+`@effect-motion/code`. The engine never parses; frames carry only plain
+`{ from, to, fillColor }` ranges.
+
+## Install
+
+```bash
+bun add @effect-motion/code @lezer/javascript
+```
+
+The language grammar is your own dependency — pass any Lezer parser
+(`@lezer/javascript`, `@lezer/python`, `@lezer/rust`, …).
+
+## Highlight
+
+```ts
+import * as Highlight from "@effect-motion/code/Highlight";
+import { parser } from "@lezer/javascript";
+
+const snippet = Highlight.highlight(CODE, parser, Highlight.defaultTheme);
+```
+
+`highlight` runs the parse once, outside the scene body, and returns
+`{ text, spans }` — spread it straight into a Text:
+
+```ts
+yield* Scene.instantiate("Text", {
+	text: snippet.text,
+	spans: snippet.spans,
+	fontFamily: mono,
+	fillColor: ink, // what unthemed tokens (identifiers, whitespace) paint in
+});
+```
+
+A theme is a plain object mapping [highlight tag
+names](https://lezer.codemirror.net/docs/ref/#highlight.tags) to Colors —
+write your own as a literal, or start from `Highlight.defaultTheme`:
+
+```ts
+const theme: Highlight.Theme = {
+	keyword: Color.hex("#c678dd"),
+	string: Color.hex("#98c379"),
+	comment: Color.hex("#7f848e"),
+};
+```
+
+Tokens without a theme entry stay uncovered and render in the Text's own
+`fillColor`. A monospace face reads best for code, but nothing requires
+one — spans ride the real shaping pipeline, so proportional fonts work
+too. One shaping note: a span boundary splits ligatures, so a font's
+`=>`-arrow ligature forms inside a token but never across two
+differently-colored ones.
+
+## Select and dim
+
+`Selection.dim` derives a new span set: characters in the given ranges
+keep their colors, everything else mixes toward your backdrop color.
+`Selection.selectTo` animates there from whatever the Text currently
+shows:
+
+```ts
+import * as Selection from "@effect-motion/code/Selection";
+
+yield* Selection.selectTo(code, snippet, [{ from: 6, to: 11 }], {
+	duration: "600 millis",
+	background: BACKGROUND, // the color dimmed code fades toward
+	baseColor: INK, // the Text's fillColor, so plain code dims too
+});
+```
+
+Pass the same un-dimmed `snippet` to every selection — each sweep
+re-derives from full color, so dims never compound. Selecting
+`[{ from: 0, to: CODE.length }]` restores the full highlight; `[]` dims
+everything. Colors interpolate frame-exactly and the final frame lands
+exactly on the derived selection, like every animator.
+
+<Example name="code-highlight" />
+
+## Evolve code with a block
+
+For code that *changes* — a parameter appears, an expression gets
+extracted — use a **code block**: highlighted lines on a monospace grid
+that transition between source versions. Unchanged tokens slide (across
+lines too), removals fade out, insertions fade in.
+
+```ts
+import * as Code from "@effect-motion/code/Code";
+
+const block = yield* Code.block({
+	code: V1,
+	parser,
+	theme: Highlight.defaultTheme,
+	fontSize: 44,
+	grid: { charWidth: 0.6, lineHeight: 1.32 },
+	fontFamily: mono,
+	fillColor: INK,
+});
+
+yield* Code.editTo(block, V2, { duration: "900 millis" });
+```
+
+`editTo` takes the complete new source — a deterministic diff plans the
+transition, so there is no edit-marker DSL to learn. The same before and
+after always animate identically.
+
+A block is an ordinary `Group` of per-line `Text`s, so standard animators
+move and fade it as one unit (`Motion.moveTo(block.group, …)`), and
+`Code.selectTo(block, ranges, …)` runs the selection dim across all lines
+in whole-source coordinates.
+
+Three rules keep the grid honest:
+
+- **Lines never wrap.** Every position is `(line, column)` arithmetic;
+  size the composition to the code.
+- **Monospace fonts only, spaces only** — tabs are a loud defect. Derive
+  exact `charWidth`/`lineHeight` from your font's real metrics with
+  `Metrics.gridFromFont(bytes)` (imported from
+  `@effect-motion/code/Metrics` — a separate entry so its font-parsing
+  WASM never loads when you declare the grid manually).
+- **Edits diff from the block's current code.** An `editTo` replayed by
+  `Scene.repeat` is a no-op on the second pass — rebuild the block per
+  iteration to loop an edit.
+
+<Example name="code-edit" />

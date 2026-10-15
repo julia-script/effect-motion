@@ -1,0 +1,16 @@
+{
+ "version": "0.0.1",
+ "configurations": [
+  {
+   "name": "docs",
+   "runtimeExecutable": "bun",
+   "runtimeArgs": [
+    "run",
+    "--filter=docs",
+    "dev"
+   ],
+   "port": 3000,
+   "autoPort": true
+  }
+ ]
+}

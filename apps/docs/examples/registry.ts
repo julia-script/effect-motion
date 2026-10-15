@@ -9,6 +9,14 @@ import { scene as borderQuality } from "./border-quality.scene";
 import { scene as borderStress } from "./border-stress.scene";
 import { scene as cameraFollowGraph } from "./camera-follow-graph.scene";
 import { scene as cameraTour } from "./camera-tour.scene";
+import {
+	scene as codeEdit,
+	renderLayers as codeEditLayers,
+} from "./code-edit.scene";
+import {
+	scene as codeHighlight,
+	renderLayers as codeHighlightLayers,
+} from "./code-highlight.scene";
 import { scene as composition } from "./composition.scene";
 import { scene as crossfade } from "./crossfade.scene";
 import {
@@ -100,6 +108,14 @@ export const examples: Record<string, PlayerProps["scene"] | ExampleEntry> = {
 	"depth-orbit": depthOrbit,
 	"min-seeker": minSeeker,
 	"text-write-on": textWriteOn,
+	"code-highlight": {
+		scene: codeHighlight,
+		renderLayers: codeHighlightLayers as Layer.Layer<never, unknown, never>,
+	},
+	"code-edit": {
+		scene: codeEdit,
+		renderLayers: codeEditLayers as Layer.Layer<never, unknown, never>,
+	},
 	streamlines,
 	"camera-follow-graph": cameraFollowGraph,
 	"rack-focus": rackFocus,

@@ -107,7 +107,22 @@ export interface LayoutRequest {
 	 * @defaultValue `"auto"` — the text's own baseline
 	 */
 	readonly baseline?: "auto" | "middle" | "hanging" | undefined;
+	/**
+	 * Per-range color override boundaries (entity `Span`s work as-is).
+	 *
+	 * @remarks
+	 * Each range becomes a style range keyed by its INDEX (`s0`, `s1`, …) —
+	 * index keys keep the layout stable when only colors change, so an
+	 * animated recolor never re-shapes. Colors themselves are appearance,
+	 * set via {@link TextMesh.setSpanColors} under the same keys.
+	 */
+	readonly spans?:
+		| ReadonlyArray<{ readonly from: number; readonly to: number }>
+		| undefined;
 }
+
+/** The style key for span index `i` — shared by layout and span colors. */
+const spanKey = (index: number): string => `s${index}`;
 
 // entity anchor semantics → layout anchors; the defaults preserve
 // baseline-left at local (0, 0)
@@ -143,17 +158,23 @@ export const layout = Effect.fnUntraced(function* (
 			),
 		);
 	}
+	const style = {
+		key: "fill",
+		fontKeys: [request.fontId],
+		fontSize: request.fontSize,
+		language: "und",
+	};
 	return yield* Effect.try({
 		try: () =>
 			layoutText(
 				{
 					text: request.text,
-					style: {
-						key: "fill",
-						fontKeys: [request.fontId],
-						fontSize: request.fontSize,
-						language: "und",
-					},
+					style,
+					styleRanges: (request.spans ?? []).map((span, index) => ({
+						start: span.from,
+						end: span.to,
+						style: { ...style, key: spanKey(index) },
+					})),
 					layout: {
 						anchorX: anchorXOf(request.textAnchor),
 						anchorY: anchorYOf(request.baseline),
@@ -163,7 +184,9 @@ export const layout = Effect.fnUntraced(function* (
 			),
 		catch: (cause) =>
 			EffectMotionError.of(
-				`Text: layout failed for font "${request.fontId}"`,
+				request.spans === undefined || request.spans.length === 0
+					? `Text: layout failed for font "${request.fontId}"`
+					: `Text: layout failed for font "${request.fontId}" — if this names a grapheme boundary, a span's from/to splits a grapheme`,
 				cause,
 			),
 	});
@@ -176,6 +199,18 @@ export interface TextMesh {
 	readonly setLayout: (layout: LayoutResult) => void;
 	/** Set the fill color; `r`, `g`, `b` are 0–255, `a` is 0–1 opacity. */
 	readonly setColor: (r: number, g: number, b: number, a: number) => void;
+	/**
+	 * Set per-span colors (0–255 channels), positional — index `i` colors the
+	 * layout's `s<i>` style range. Alpha is uniform per mesh, so spans carry
+	 * no per-range alpha. Pair with {@link TextMesh.commit}.
+	 */
+	readonly setSpanColors: (
+		colors: ReadonlyArray<{
+			readonly r: number;
+			readonly g: number;
+			readonly b: number;
+		}>,
+	) => void;
 	/** Flush pending layout/appearance changes into the GPU state. */
 	readonly commit: () => Effect.Effect<void, EffectMotionError>;
 	/** Release the mesh's geometry and materials (shared resources stay). */
@@ -199,11 +234,13 @@ export const makeMesh = (text: Text): TextMesh => {
 	const group = new THREE.Group();
 	const color = new THREE.Color(1, 1, 1);
 	let opacity = 1;
+	let styleColors: Record<string, THREE.Color> = {};
 	let glyphs: GlyphText | null = null;
 
 	const applyAppearance = (mesh: GlyphText): void => {
 		mesh.color = color;
 		mesh.opacity = opacity;
+		mesh.styleColors = styleColors;
 	};
 
 	return {
@@ -226,6 +263,22 @@ export const makeMesh = (text: Text): TextMesh => {
 			color.setRGB(r / 255, g / 255, b / 255, THREE.SRGBColorSpace);
 			opacity = a;
 			group.visible = a > 0;
+			if (glyphs !== null) {
+				applyAppearance(glyphs);
+			}
+		},
+		setSpanColors: (colors) => {
+			styleColors = {};
+			for (const [index, value] of colors.entries()) {
+				const spanColor = new THREE.Color();
+				spanColor.setRGB(
+					value.r / 255,
+					value.g / 255,
+					value.b / 255,
+					THREE.SRGBColorSpace,
+				);
+				styleColors[spanKey(index)] = spanColor;
+			}
 			if (glyphs !== null) {
 				applyAppearance(glyphs);
 			}

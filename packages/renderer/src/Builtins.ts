@@ -554,12 +554,17 @@ const text: EntityRenderer<Entity.EntityByTag<"Text">> = {
 	update: (retained, leaf, ctx) => {
 		const textMesh = retained.object.userData.textMesh as Text.TextMesh;
 		const data = leaf.data;
+		const spans = data.spans ?? [];
+		// span BOUNDARIES shape the layout (they split style ranges); span
+		// COLORS are appearance — keyed apart so an animated recolor never
+		// re-shapes the string
 		const key = [
 			data.text,
 			data.fontSize,
 			data.fontFamily.id,
 			data.textAnchor,
 			data.baseline,
+			...spans.map((span) => `${span.from}:${span.to}`),
 		].join("|");
 		const keyChanged = retained.object.userData.textKey !== key;
 		if (keyChanged) {
@@ -571,6 +576,7 @@ const text: EntityRenderer<Entity.EntityByTag<"Text">> = {
 					fontSize: data.fontSize,
 					textAnchor: data.textAnchor,
 					baseline: data.baseline,
+					spans,
 				}).pipe(
 					Effect.flatMap((result) => {
 						textMesh.setLayout(result);
@@ -581,10 +587,15 @@ const text: EntityRenderer<Entity.EntityByTag<"Text">> = {
 		}
 		const { r, g, b, a } = Color.bytes(data.fillColor);
 		const alpha = (a / 255) * data.opacity;
-		const colorKey = `${r}|${g}|${b}|${alpha}`;
+		const spanBytes = spans.map((span) => Color.bytes(span.fillColor));
+		const colorKey = [
+			`${r}|${g}|${b}|${alpha}`,
+			...spanBytes.map((value) => `${value.r}|${value.g}|${value.b}`),
+		].join("|");
 		if (retained.object.userData.textColorKey !== colorKey) {
 			retained.object.userData.textColorKey = colorKey;
 			textMesh.setColor(r, g, b, alpha);
+			textMesh.setSpanColors(spanBytes);
 			// a layout commit is already queued on key change; only a pure
 			// color/opacity change needs its own
 			if (!keyChanged) {

@@ -202,9 +202,24 @@ export const Ellipse = Schema.TaggedStruct("Ellipse", {
 });
 
 /**
+ * A per-range color override on a Text's string: characters in
+ * `[from, to)` (UTF-16 indices) paint in `fillColor` instead of the
+ * entity's. Plain data — a syntax highlighter or any rich-text builder
+ * produces these in userland; the engine never parses.
+ */
+export const Span = Schema.TaggedStruct("Span", {
+	from: Schema.Number,
+	to: Schema.Number,
+	fillColor: Color.Color,
+});
+
+export type Span = typeof Span.Type;
+
+/**
  * A plain-string text leaf. The engine cannot measure text, so `text` has
- * no dimensional fields — layout is the renderer's business. Inline
- * formatting is expressed by composing several Texts, not by a rich tree.
+ * no dimensional fields — layout is the renderer's business. Inline color
+ * is expressed by the optional `spans` overlay ({@link Span}); Text stays
+ * a leaf, never a subtree of formatting nodes.
  */
 export const Text = Schema.TaggedStruct("Text", {
 	...paintableMixin,
@@ -222,7 +237,33 @@ export const Text = Schema.TaggedStruct("Text", {
 	),
 	textAnchor: Schema.optionalKey(Schema.Literals(["start", "middle", "end"])),
 	baseline: Schema.optionalKey(Schema.Literals(["auto", "middle", "hanging"])),
-});
+	// per-range color overrides; validated against `text` by the struct check
+	spans: Schema.optionalKey(Schema.Array(Span)),
+}).check(
+	Schema.makeFilter((text) => {
+		if (!("spans" in text)) {
+			return undefined;
+		}
+		let previousEnd = 0;
+		for (const [index, span] of text.spans.entries()) {
+			const issue =
+				!Number.isInteger(span.from) || !Number.isInteger(span.to)
+					? "span indices must be integers"
+					: span.from >= span.to
+						? "span must be non-empty (from < to)"
+						: span.from < previousEnd
+							? "spans must be ascending and non-overlapping"
+							: span.to > text.text.length
+								? "span extends past the end of the text"
+								: undefined;
+			if (issue !== undefined) {
+				return { path: ["spans", index], issue };
+			}
+			previousEnd = span.to;
+		}
+		return undefined;
+	}),
+);
 
 /**
  * A container: positions and structures its children, paints nothing
