@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { builtinRegistry } from "../src/Builtins.js";
 import type { Leaf, Retained } from "../src/EntityRenderer.js";
 import type { RenderException } from "../src/RenderException.js";
+import * as Stroke from "../src/Stroke.js";
 import * as Sync from "../src/Sync.js";
 import { unreachable } from "./support/raise.js";
 
@@ -234,18 +235,17 @@ describe("line endpoints", () => {
 		});
 		const sync = Sync.make(registry());
 		Effect.runSync(Sync.syncFrame(sync, frames.at(-1) ?? unreachable()));
-		const fatLine = objectsOf(sync.scene)[0] ?? unreachable();
-		const positions = (
-			fatLine as unknown as {
-				geometry: { attributes: { instanceStart: { array: Float32Array } } };
-			}
-		).geometry.attributes.instanceStart.array;
-		// start endpoint: position + start = (110, 55), passed through
-		expect(positions[0]).toBeCloseTo(110, 4);
-		expect(positions[1]).toBeCloseTo(55, 4);
-		// end endpoint: position + end = (140, 70)
-		expect(positions[3]).toBeCloseTo(140, 4);
-		expect(positions[4]).toBeCloseTo(70, 4);
+		const group = objectsOf(sync.scene)[0] ?? unreachable();
+		const stroke =
+			Stroke.fromObject(group.children[0] ?? unreachable()) ?? unreachable();
+		const box = (stroke.occupancy.geometry.boundingBox ?? unreachable())
+			.clone()
+			.applyMatrix4(group.matrix);
+		// Width defaults to one; silhouette bounds include a half-unit cap.
+		expect(group.position.x + box.min.x + 0.5).toBeCloseTo(110, 4);
+		expect(group.position.y + box.min.y + 0.5).toBeCloseTo(55, 4);
+		expect(group.position.x + box.max.x - 0.5).toBeCloseTo(140, 4);
+		expect(group.position.y + box.max.y - 0.5).toBeCloseTo(70, 4);
 	});
 });
 
@@ -334,15 +334,17 @@ describe("entity and group transforms", () => {
 		// the child turns with its parent instead of billboarding
 		expect(dot?.rotation.z).toBeCloseTo(Math.PI / 2, 12);
 		// skeletal: each endpoint maps through the composed transform
-		const positions = (
-			line as unknown as {
-				geometry: { attributes: { instanceStart: { array: Float32Array } } };
-			}
-		).geometry.attributes.instanceStart.array;
-		expect(positions[0]).toBeCloseTo(100, 4);
-		expect(positions[1]).toBeCloseTo(50, 4);
-		expect(positions[3]).toBeCloseTo(100, 4);
-		expect(positions[4]).toBeCloseTo(80, 4);
+		const skeletal = line ?? unreachable();
+		const stroke =
+			Stroke.fromObject(skeletal.children[0] ?? unreachable()) ?? unreachable();
+		const box = (stroke.occupancy.geometry.boundingBox ?? unreachable())
+			.clone()
+			.applyMatrix4(skeletal.matrix);
+		// A one-unit stroke scales to three units, including its round caps.
+		expect(box.min.x + 1.5).toBeCloseTo(100, 4);
+		expect(box.min.y + 1.5).toBeCloseTo(50, 4);
+		expect(box.max.x - 1.5).toBeCloseTo(100, 4);
+		expect(box.max.y - 1.5).toBeCloseTo(80, 4);
 	});
 
 	it("nested group transforms compose", async () => {
@@ -495,7 +497,12 @@ describe("paint order at equal depth", () => {
 			yield* Scene.tick;
 		});
 		const sync = Sync.make(registry());
-		Effect.runSync(Sync.syncFrame(sync, frames.at(-1) ?? unreachable()));
+		Effect.runSync(
+			Sync.syncFrame(sync, {
+				...(frames.at(-1) ?? unreachable()),
+				compositing: "depth",
+			}),
+		);
 		const [first, second] = ThreeScene.children(sync.scene);
 		const [circle = unreachable(), rect = unreachable()] = objectsOf(
 			sync.scene,
@@ -592,6 +599,7 @@ describe("traversal defects (hand-built frames)", () => {
 				root: { data: S.Group.make({ children: rootChildren }) },
 			},
 			root: "root",
+			compositing: "paint",
 			frameRate: 60,
 			width: 500,
 			height: 300,

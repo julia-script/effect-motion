@@ -38,12 +38,31 @@ Semi-transparent text SHALL blend overlapping glyph ink — connected scripts, t
 - **THEN** the overlap region renders at the same opacity as non-overlapping ink, with no visible seam
 
 ### Requirement: Text ink participates in depth occlusion
-Text ink SHALL occlude world content behind it through the depth buffer, consistent with the renderer's z-buffer occlusion model, and SHALL sit above coplanar backdrops deterministically. Non-ink regions of a text's quads SHALL NOT occlude anything.
+In depth contexts, Text ink SHALL occlude world content behind it through the depth buffer, consistent with depth-render-order. In paint contexts, Text SHALL follow the current children paint order and SHALL appear above earlier coplanar backdrops. Non-ink regions of a text's quads SHALL NOT occlude anything in either context. Text inside an explicit paint group SHALL participate in external occlusion through the group's composite surface.
 
 #### Scenario: Text in front of a shape
-- **WHEN** a text instance renders nearer to the camera than an overlapping shape
+- **WHEN** a text instance in a depth context renders nearer to the camera than an overlapping shape
 - **THEN** the shape is hidden behind the text's ink and visible through the text's non-ink regions
 
 #### Scenario: Text on a coplanar backdrop
-- **WHEN** a text instance and a filled shape render at the same depth with the text in front by scene order
+- **WHEN** a text instance and a filled shape render at the same depth in a paint context with the text later in scene order
 - **THEN** the text's ink renders fully visible above the shape on every frame
+
+#### Scenario: Text moves with its paint surface
+- **WHEN** text inside a paint group is embedded in a depth scene
+- **THEN** its internal position in paint order remains fixed while external depth occludes the group surface as a unit
+
+### Requirement: Spans render as per-range colored glyphs
+A Text with `spans` SHALL render as a single glyph mesh in which each span's characters paint in the span's `fillColor` and uncovered characters paint in the entity `fillColor`. Spanned text SHALL share the entity's font, size, anchoring, baseline, opacity, depth-occlusion, and once-per-pixel blending behavior — a span changes glyph color and nothing else. Entity `opacity` SHALL apply uniformly across all spans. Changing only span colors between frames SHALL NOT re-shape the string.
+
+#### Scenario: Highlighted code renders in one mesh
+- **WHEN** a frame contains a Text whose spans color keyword and string tokens differently
+- **THEN** the rendered output shows each range in its span color, positioned identically to the same string rendered without spans
+
+#### Scenario: Span colors animate without re-layout
+- **WHEN** consecutive frames differ only in a span's `fillColor` (e.g. an animated dim)
+- **THEN** the rendered colors follow frame-exactly and glyph positions are unchanged
+
+#### Scenario: Ligatures do not form across span boundaries
+- **WHEN** a font with ligatures renders adjacent characters that a ligature would join, split by a span boundary
+- **THEN** the characters render as separate glyphs; the same characters inside a single span still form the ligature

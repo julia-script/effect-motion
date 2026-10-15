@@ -5,8 +5,18 @@ import * as Resource from "effect-motion/Resource";
 import { scene as animatorPairs } from "./animator-pairs.scene";
 import { scene as audio, Drift, Groove, Hit, Riser, Tick } from "./audio.scene";
 import { scene as bezier3d } from "./bezier-3d.scene";
+import { scene as borderQuality } from "./border-quality.scene";
+import { scene as borderStress } from "./border-stress.scene";
 import { scene as cameraFollowGraph } from "./camera-follow-graph.scene";
 import { scene as cameraTour } from "./camera-tour.scene";
+import {
+	scene as codeEdit,
+	renderLayers as codeEditLayers,
+} from "./code-edit.scene";
+import {
+	scene as codeHighlight,
+	renderLayers as codeHighlightLayers,
+} from "./code-highlight.scene";
 import { scene as composition } from "./composition.scene";
 import { scene as crossfade } from "./crossfade.scene";
 import {
@@ -25,12 +35,17 @@ import { scene as maskInverseCutout } from "./mask-inverse-cutout.scene";
 import { scene as maskPartialAlpha } from "./mask-partial-alpha.scene";
 import { scene as maskTextReveal } from "./mask-text-reveal.scene";
 import { scene as minSeeker } from "./min-seeker.scene";
+import { scene as paintOrder } from "./paint-order.scene";
 import { scene as rackFocus } from "./rack-focus.scene";
 import { scene as riemannRects } from "./riemann-rects.scene";
 import { scene as seededWalk } from "./seeded-walk.scene";
 import { scene as sineFromCircle } from "./sine-from-circle.scene";
 import { scene as springs } from "./springs.scene";
 import { scene as streamlines } from "./streamlines.scene";
+import { scene as strokeUnion } from "./stroke-union.scene";
+import { scene as subpixelDepth } from "./subpixel-depth.scene";
+import { scene as subpixelGrouped } from "./subpixel-grouped.scene";
+import { scene as subpixelStrokes } from "./subpixel-strokes.scene";
 import { scene as textWriteOn } from "./text-write-on.scene";
 import { scene as tiltedPlane } from "./tilted-plane.scene";
 
@@ -78,6 +93,13 @@ export const examples: Record<string, PlayerProps["scene"] | ExampleEntry> = {
 	"mask-inverse-cutout": maskInverseCutout,
 	"mask-partial-alpha": maskPartialAlpha,
 	// examples gallery
+	"paint-order": paintOrder,
+	"stroke-union": strokeUnion,
+	"subpixel-strokes": subpixelStrokes,
+	"subpixel-grouped": subpixelGrouped,
+	"subpixel-depth": subpixelDepth,
+	"border-quality": borderQuality,
+	"border-stress": borderStress,
 	"sine-from-circle": sineFromCircle,
 	"function-plot": functionPlot,
 	"riemann-rects": riemannRects,
@@ -86,6 +108,14 @@ export const examples: Record<string, PlayerProps["scene"] | ExampleEntry> = {
 	"depth-orbit": depthOrbit,
 	"min-seeker": minSeeker,
 	"text-write-on": textWriteOn,
+	"code-highlight": {
+		scene: codeHighlight,
+		renderLayers: codeHighlightLayers as Layer.Layer<never, unknown, never>,
+	},
+	"code-edit": {
+		scene: codeEdit,
+		renderLayers: codeEditLayers as Layer.Layer<never, unknown, never>,
+	},
 	streamlines,
 	"camera-follow-graph": cameraFollowGraph,
 	"rack-focus": rackFocus,

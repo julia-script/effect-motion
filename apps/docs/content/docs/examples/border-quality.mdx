@@ -1,0 +1,116 @@
+---
+title: Border quality lab
+description: Compare stroke widths, shape outlines, joins, transparency and motion
+---
+
+A reproducible scene collection for investigating border quality. Each sample
+uses the current renderer. Pause and scrub the players to compare specific frames;
+the code below each player exposes all dimensions and paint settings.
+
+## Widths and shapes
+
+Thirty stationary samples: six stroke widths (**0.5, 1, 2, 4, 8 and 16** scene
+units) across rectangles, circles, ellipses, closed paths and diagonal lines.
+Every sample has a transparent fill and the same opaque stroke color.
+
+<Example name="border-quality" />
+
+- Compare **Rect** with **Closed Path**: both describe the same 110 × 74 outline.
+- Inspect corners for gaps or bulges, and curves for visible straight segments.
+- The closed path starts at its **top-left corner**: inspect that closure seam.
+- Compare thin horizontal, vertical and diagonal edges for uneven coverage.
+
+## Joins, transparency and motion
+
+Six cases isolate conditions that can make artifacts easier to see. The top row
+stays still; each animated sample in the bottom row has a stationary reference.
+
+<Example name="border-stress" />
+
+| Case | What to inspect |
+| --- | --- |
+| Alpha and fill | A 24-unit border over an opaque fill, at stroke alpha 1 and 0.5. Look for darker or brighter joins and fill/stroke seams. |
+| Acute joins and closure | Closed triangles on a light background, with a 20-unit stroke at alpha 1 and 0.5. The closure is at the top tip. |
+| Small radii | Circles of radius 4, 12 and 40 with the same 8-unit stroke. Inspect the hole, silhouette and curved edges. |
+| Subpixel motion | A 1-unit border translates by exactly 1 scene unit on both axes over four seconds. Look for shimmer and sudden coverage changes. |
+| Rotation | A 4-unit rectangle border rotates from 0° to 45°. Compare edge thickness and corners with the fixed reference. |
+| Perspective tilt | An 8-unit rectangle border tilts from 0° to 60° around Y. Compare near/far edges and joins. |
+
+**Timeline:** hold for 0–2 seconds, animate during 2–6 seconds, then hold until
+8 seconds. Scrub to 2, 4 and 6 seconds for the initial, midpoint and final states.
+
+## Comparing observations
+
+The embedded players scale to the page. A scene unit is not necessarily a screen
+pixel: browser zoom, device pixel ratio and player size all affect apparent
+sharpness. Compare at the same player size and zoom. For closer inspection,
+increase browser zoom or render the scene at its declared resolution. Judge visual
+quality rather than byte-for-byte pixel equality.
+
+When recording a finding, include the case, width, timestamp, browser, zoom and
+display scale. This separates stable join/geometry defects from changes caused by
+display scaling and antialiasing.
+
+## Paint order and embedded surfaces
+
+The width and stress scenes use the default paint mode: all backgrounds and
+outlines share z=0, and later children paint on top. No background depth offsets
+are needed.
+
+<Example name="paint-order" />
+
+This depth scene contains explicit paint groups. At 2 seconds the left panel
+swaps its overlapping circles without recreating them. The center panel applies
+opacity once to the completed group. The right panel tilts the whole surface.
+Below, an outlined group preserves its transparent hole, and two depth controls
+keep the nearer orange object in front despite reversed authoring order.
+
+Use `Scene.make(generator, { compositing: "depth" })` for physical world
+occlusion. Use `Scene.instantiate("Group", { compositing: "paint", children })`
+for a flat panel inside it. Plain groups inherit the enclosing mode; paint groups
+use content bounds and apply their position, rotation, scale and opacity once.
+Nested `Scene.play` compositions retain the child scene's declared mode and bounds.
+
+## One opacity application per stroke
+
+<Example name="stroke-union" />
+
+Each column uses one stroke alpha. Joins, closure, self-crossings, retracing and
+multiple subpaths of the same Path contribute to a single painted region. The
+last row deliberately uses two separate Line entities, so its crossing blends
+twice. The rectangle's inner and outer border blend over different backgrounds.
+
+This applies to Rect, Circle, Ellipse and constant-local-z Line/Path strokes,
+including planar content tilted in a depth scene. Nonplanar 3D lines retain their
+per-point depth behavior. Color and opacity fades reuse the retained coverage.
+
+## Fractional coverage and output scale
+
+<Example name="subpixel-strokes" />
+
+Widths **0, 0.25, 0.5, 0.75, 1, 1.5 and 2** cross offsets **0, 0.25, 0.5 and
+0.75** on both axes. Each cell contains horizontal/vertical rectangle edges, a
+diagonal and a circle. Width zero is intentionally empty. After one second, the
+matrix moves by exactly (1, 1) over four seconds while the lower rectangle's width
+changes from 0.25 to 1.5. Inspect 1, 2, 3, 4 and 5 seconds.
+
+At native 1920×1080 output and DPR 1, scene units equal device pixels. At DPR 2,
+each scene unit spans two device pixels. The Player uses native display DPR, but
+its CSS size still scales the finished image to fit this page. A faint subpixel
+line may become much fainter when a 1920-wide image is reduced to a narrow player;
+compare exported native images before diagnosing coordinate rounding.
+
+The same fixture is available as `subpixel-grouped` (paint groups in a depth
+scene) and `subpixel-depth` (direct planar depth strokes). Their authored geometry
+and projected size match the root paint case. Edge softness may change with pixel
+phase; complete edges should remain continuous. Coverage masks are supersampled
+and filtered before compositing, with the same multisampling policy on paint
+surfaces and the final scene render.
+
+### Paint groups in a depth scene
+
+<Example name="subpixel-grouped" />
+
+### Direct planar depth strokes
+
+<Example name="subpixel-depth" />

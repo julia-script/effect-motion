@@ -1,0 +1,959 @@
+{
+  "output": {
+    "width": 1920,
+    "height": 1080,
+    "pixelRatio": 1,
+    "samples": 4
+  },
+  "targets": [
+    {
+      "id": "Group_28",
+      "width": 187,
+      "height": 57,
+      "samples": 4
+    },
+    {
+      "id": "Group_32",
+      "width": 187,
+      "height": 57,
+      "samples": 4
+    },
+    {
+      "id": "Group_36",
+      "width": 187,
+      "height": 57,
+      "samples": 4
+    },
+    {
+      "id": "Group_40",
+      "width": 187,
+      "height": 57,
+      "samples": 4
+    },
+    {
+      "id": "Group_45",
+      "width": 187,
+      "height": 57,
+      "samples": 4
+    },
+    {
+      "id": "Group_49",
+      "width": 187,
+      "height": 57,
+      "samples": 4
+    },
+    {
+      "id": "Group_53",
+      "width": 187,
+      "height": 57,
+      "samples": 4
+    },
+    {
+      "id": "Group_57",
+      "width": 187,
+      "height": 57,
+      "samples": 4
+    },
+    {
+      "id": "Group_62",
+      "width": 187,
+      "height": 57,
+      "samples": 4
+    },
+    {
+      "id": "Group_66",
+      "width": 187,
+      "height": 57,
+      "samples": 4
+    },
+    {
+      "id": "Group_70",
+      "width": 187,
+      "height": 57,
+      "samples": 4
+    },
+    {
+      "id": "Group_74",
+      "width": 187,
+      "height": 57,
+      "samples": 4
+    },
+    {
+      "id": "Group_79",
+      "width": 187,
+      "height": 57,
+      "samples": 4
+    },
+    {
+      "id": "Group_83",
+      "width": 187,
+      "height": 57,
+      "samples": 4
+    },
+    {
+      "id": "Group_87",
+      "width": 187,
+      "height": 57,
+      "samples": 4
+    },
+    {
+      "id": "Group_91",
+      "width": 187,
+      "height": 57,
+      "samples": 4
+    },
+    {
+      "id": "Group_96",
+      "width": 188,
+      "height": 58,
+      "samples": 4
+    },
+    {
+      "id": "Group_100",
+      "width": 188,
+      "height": 58,
+      "samples": 4
+    },
+    {
+      "id": "Group_104",
+      "width": 188,
+      "height": 58,
+      "samples": 4
+    },
+    {
+      "id": "Group_108",
+      "width": 188,
+      "height": 58,
+      "samples": 4
+    },
+    {
+      "id": "Group_113",
+      "width": 188,
+      "height": 58,
+      "samples": 4
+    },
+    {
+      "id": "Group_117",
+      "width": 188,
+      "height": 58,
+      "samples": 4
+    },
+    {
+      "id": "Group_121",
+      "width": 188,
+      "height": 58,
+      "samples": 4
+    },
+    {
+      "id": "Group_125",
+      "width": 188,
+      "height": 58,
+      "samples": 4
+    }
+  ],
+  "masks": [
+    {
+      "bounds": {
+        "x": -82.125,
+        "y": -44.625,
+        "width": 164.25,
+        "height": 89.25
+      },
+      "width": 329,
+      "height": 179,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.125,
+        "y": -26.125,
+        "width": 52.25,
+        "height": 52.25
+      },
+      "width": 105,
+      "height": 105,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -24.125,
+        "y": -26.125,
+        "width": 48.25,
+        "height": 52.25
+      },
+      "width": 97,
+      "height": 105,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.125,
+        "y": -26.125,
+        "width": 52.25,
+        "height": 52.25
+      },
+      "width": 105,
+      "height": 105,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.125,
+        "y": -26.125,
+        "width": 52.25,
+        "height": 52.25
+      },
+      "width": 105,
+      "height": 105,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -24.125,
+        "y": -26.125,
+        "width": 48.25,
+        "height": 52.25
+      },
+      "width": 97,
+      "height": 105,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.125,
+        "y": -26.125,
+        "width": 52.25,
+        "height": 52.25
+      },
+      "width": 105,
+      "height": 105,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.125,
+        "y": -26.125,
+        "width": 52.25,
+        "height": 52.25
+      },
+      "width": 105,
+      "height": 105,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -24.125,
+        "y": -26.125,
+        "width": 48.25,
+        "height": 52.25
+      },
+      "width": 97,
+      "height": 105,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.125,
+        "y": -26.125,
+        "width": 52.25,
+        "height": 52.25
+      },
+      "width": 105,
+      "height": 105,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.125,
+        "y": -26.125,
+        "width": 52.25,
+        "height": 52.25
+      },
+      "width": 105,
+      "height": 105,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -24.125,
+        "y": -26.125,
+        "width": 48.25,
+        "height": 52.25
+      },
+      "width": 97,
+      "height": 105,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.125,
+        "y": -26.125,
+        "width": 52.25,
+        "height": 52.25
+      },
+      "width": 105,
+      "height": 105,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.25,
+        "y": -26.25,
+        "width": 52.5,
+        "height": 52.5
+      },
+      "width": 105,
+      "height": 105,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -24.25,
+        "y": -26.25,
+        "width": 48.5,
+        "height": 52.5
+      },
+      "width": 97,
+      "height": 105,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.25,
+        "y": -26.25,
+        "width": 52.5,
+        "height": 52.5
+      },
+      "width": 105,
+      "height": 105,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.25,
+        "y": -26.25,
+        "width": 52.5,
+        "height": 52.5
+      },
+      "width": 105,
+      "height": 105,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -24.25,
+        "y": -26.25,
+        "width": 48.5,
+        "height": 52.5
+      },
+      "width": 97,
+      "height": 105,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.25,
+        "y": -26.25,
+        "width": 52.5,
+        "height": 52.5
+      },
+      "width": 105,
+      "height": 105,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.25,
+        "y": -26.25,
+        "width": 52.5,
+        "height": 52.5
+      },
+      "width": 105,
+      "height": 105,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -24.25,
+        "y": -26.25,
+        "width": 48.5,
+        "height": 52.5
+      },
+      "width": 97,
+      "height": 105,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.25,
+        "y": -26.25,
+        "width": 52.5,
+        "height": 52.5
+      },
+      "width": 105,
+      "height": 105,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.25,
+        "y": -26.25,
+        "width": 52.5,
+        "height": 52.5
+      },
+      "width": 105,
+      "height": 105,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -24.25,
+        "y": -26.25,
+        "width": 48.5,
+        "height": 52.5
+      },
+      "width": 97,
+      "height": 105,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.25,
+        "y": -26.25,
+        "width": 52.5,
+        "height": 52.5
+      },
+      "width": 105,
+      "height": 105,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.375,
+        "y": -26.375,
+        "width": 52.75,
+        "height": 52.75
+      },
+      "width": 106,
+      "height": 106,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -24.375,
+        "y": -26.375,
+        "width": 48.75,
+        "height": 52.75
+      },
+      "width": 98,
+      "height": 106,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.375,
+        "y": -26.375,
+        "width": 52.75,
+        "height": 52.75
+      },
+      "width": 106,
+      "height": 106,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.375,
+        "y": -26.375,
+        "width": 52.75,
+        "height": 52.75
+      },
+      "width": 106,
+      "height": 106,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -24.375,
+        "y": -26.375,
+        "width": 48.75,
+        "height": 52.75
+      },
+      "width": 98,
+      "height": 106,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.375,
+        "y": -26.375,
+        "width": 52.75,
+        "height": 52.75
+      },
+      "width": 106,
+      "height": 106,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.375,
+        "y": -26.375,
+        "width": 52.75,
+        "height": 52.75
+      },
+      "width": 106,
+      "height": 106,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -24.375,
+        "y": -26.375,
+        "width": 48.75,
+        "height": 52.75
+      },
+      "width": 98,
+      "height": 106,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.375,
+        "y": -26.375,
+        "width": 52.75,
+        "height": 52.75
+      },
+      "width": 106,
+      "height": 106,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.375,
+        "y": -26.375,
+        "width": 52.75,
+        "height": 52.75
+      },
+      "width": 106,
+      "height": 106,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -24.375,
+        "y": -26.375,
+        "width": 48.75,
+        "height": 52.75
+      },
+      "width": 98,
+      "height": 106,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.375,
+        "y": -26.375,
+        "width": 52.75,
+        "height": 52.75
+      },
+      "width": 106,
+      "height": 106,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.5,
+        "y": -26.5,
+        "width": 53,
+        "height": 53
+      },
+      "width": 106,
+      "height": 106,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -24.5,
+        "y": -26.5,
+        "width": 49,
+        "height": 53
+      },
+      "width": 98,
+      "height": 106,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.5,
+        "y": -26.5,
+        "width": 53,
+        "height": 53
+      },
+      "width": 106,
+      "height": 106,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.5,
+        "y": -26.5,
+        "width": 53,
+        "height": 53
+      },
+      "width": 106,
+      "height": 106,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -24.5,
+        "y": -26.5,
+        "width": 49,
+        "height": 53
+      },
+      "width": 98,
+      "height": 106,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.5,
+        "y": -26.5,
+        "width": 53,
+        "height": 53
+      },
+      "width": 106,
+      "height": 106,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.5,
+        "y": -26.5,
+        "width": 53,
+        "height": 53
+      },
+      "width": 106,
+      "height": 106,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -24.5,
+        "y": -26.5,
+        "width": 49,
+        "height": 53
+      },
+      "width": 98,
+      "height": 106,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.5,
+        "y": -26.5,
+        "width": 53,
+        "height": 53
+      },
+      "width": 106,
+      "height": 106,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.5,
+        "y": -26.5,
+        "width": 53,
+        "height": 53
+      },
+      "width": 106,
+      "height": 106,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -24.5,
+        "y": -26.5,
+        "width": 49,
+        "height": 53
+      },
+      "width": 98,
+      "height": 106,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.5,
+        "y": -26.5,
+        "width": 53,
+        "height": 53
+      },
+      "width": 106,
+      "height": 106,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.75,
+        "y": -26.75,
+        "width": 53.5,
+        "height": 53.5
+      },
+      "width": 107,
+      "height": 107,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -24.75,
+        "y": -26.75,
+        "width": 49.5,
+        "height": 53.5
+      },
+      "width": 99,
+      "height": 107,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.75,
+        "y": -26.75,
+        "width": 53.5,
+        "height": 53.5
+      },
+      "width": 107,
+      "height": 107,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.75,
+        "y": -26.75,
+        "width": 53.5,
+        "height": 53.5
+      },
+      "width": 107,
+      "height": 107,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -24.75,
+        "y": -26.75,
+        "width": 49.5,
+        "height": 53.5
+      },
+      "width": 99,
+      "height": 107,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.75,
+        "y": -26.75,
+        "width": 53.5,
+        "height": 53.5
+      },
+      "width": 107,
+      "height": 107,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.75,
+        "y": -26.75,
+        "width": 53.5,
+        "height": 53.5
+      },
+      "width": 107,
+      "height": 107,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -24.75,
+        "y": -26.75,
+        "width": 49.5,
+        "height": 53.5
+      },
+      "width": 99,
+      "height": 107,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.75,
+        "y": -26.75,
+        "width": 53.5,
+        "height": 53.5
+      },
+      "width": 107,
+      "height": 107,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.75,
+        "y": -26.75,
+        "width": 53.5,
+        "height": 53.5
+      },
+      "width": 107,
+      "height": 107,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -24.75,
+        "y": -26.75,
+        "width": 49.5,
+        "height": 53.5
+      },
+      "width": 99,
+      "height": 107,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -26.75,
+        "y": -26.75,
+        "width": 53.5,
+        "height": 53.5
+      },
+      "width": 107,
+      "height": 107,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -27,
+        "y": -27,
+        "width": 54,
+        "height": 54
+      },
+      "width": 108,
+      "height": 108,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -25,
+        "y": -27,
+        "width": 50,
+        "height": 54
+      },
+      "width": 100,
+      "height": 108,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -27,
+        "y": -27,
+        "width": 54,
+        "height": 54
+      },
+      "width": 108,
+      "height": 108,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -27,
+        "y": -27,
+        "width": 54,
+        "height": 54
+      },
+      "width": 108,
+      "height": 108,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -25,
+        "y": -27,
+        "width": 50,
+        "height": 54
+      },
+      "width": 100,
+      "height": 108,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -27,
+        "y": -27,
+        "width": 54,
+        "height": 54
+      },
+      "width": 108,
+      "height": 108,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -27,
+        "y": -27,
+        "width": 54,
+        "height": 54
+      },
+      "width": 108,
+      "height": 108,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -25,
+        "y": -27,
+        "width": 50,
+        "height": 54
+      },
+      "width": 100,
+      "height": 108,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -27,
+        "y": -27,
+        "width": 54,
+        "height": 54
+      },
+      "width": 108,
+      "height": 108,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -27,
+        "y": -27,
+        "width": 54,
+        "height": 54
+      },
+      "width": 108,
+      "height": 108,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -25,
+        "y": -27,
+        "width": 50,
+        "height": 54
+      },
+      "width": 100,
+      "height": 108,
+      "samples": 4
+    },
+    {
+      "bounds": {
+        "x": -27,
+        "y": -27,
+        "width": 54,
+        "height": 54
+      },
+      "width": 108,
+      "height": 108,
+      "samples": 4
+    }
+  ]
+}

@@ -2,6 +2,7 @@ import type { Scope } from "effect";
 import { Effect, Predicate } from "effect";
 import { dual } from "effect/Function";
 import * as Pipeable from "effect/Pipeable";
+import * as Tsl from "three/tsl";
 import * as THREE from "three/webgpu";
 
 /**
@@ -79,8 +80,15 @@ export const make = Effect.fnUntraced(function* (
  * every resize, for instance, where a longer-lived owner tracks it and
  * calls {@link dispose}. Prefer {@link make} whenever a scope will do.
  */
-export const makeUnsafe = (width: number, height: number): RenderTarget =>
-	brand(new THREE.RenderTarget(width, height));
+export const makeUnsafe = (
+	width: number,
+	height: number,
+	options: {
+		samples?: number;
+		generateMipmaps?: boolean;
+		minFilter?: THREE.MinificationTextureFilter;
+	} = {},
+): RenderTarget => brand(new THREE.RenderTarget(width, height, options));
 
 /** A retained target with float reversed-Z depth for source coverage. */
 export const makeFloatDepthUnsafe = (
@@ -146,3 +154,54 @@ export const setSize: {
 		return self;
 	},
 );
+
+/** Sample a WebGPU target upright, unassociating RGB for normal alpha blending. */
+export const bindMaterial = (
+	self: RenderTarget,
+	material: THREE.MeshBasicNodeMaterial,
+): void => {
+	// Quarantine TSL's recursive overload unions, as PostProcessing does.
+	// Only the operations used here cross this typed shader-assembly seam.
+	interface Sample {
+		readonly rgb: { div: (value: unknown) => unknown };
+		readonly a: { max: (value: number) => unknown };
+	}
+	const shader = Tsl as unknown as {
+		uv: () => { flipY: () => unknown };
+		texture: (value: THREE.Texture, uv: unknown) => Sample;
+		vec4: (
+			rgb: unknown,
+			alpha: unknown,
+		) => THREE.MeshBasicNodeMaterial["colorNode"];
+	};
+	material.map = texture(self);
+	const sample = shader.texture(material.map, shader.uv().flipY());
+	material.colorNode = shader.vec4(
+		sample.rgb.div(sample.a.max(0.00001)),
+		sample.a,
+	);
+	material.needsUpdate = true;
+};
+
+/** Coverage is occupancy, separate from the final material's color and opacity. */
+export const bindCoverage = (
+	self: RenderTarget,
+	material: THREE.MeshBasicNodeMaterial,
+): void => {
+	const shader = Tsl as unknown as {
+		uv: () => { flipY: () => unknown };
+		texture: (
+			value: THREE.Texture,
+			uv: unknown,
+		) => {
+			a: {
+				mul: (value: unknown) => THREE.MeshBasicNodeMaterial["opacityNode"];
+			};
+		};
+		materialOpacity: unknown;
+	};
+	material.opacityNode = shader
+		.texture(texture(self), shader.uv().flipY())
+		.a.mul(shader.materialOpacity);
+	material.needsUpdate = true;
+};

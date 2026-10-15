@@ -42,7 +42,12 @@ const rectAt = (z: number, hud = false, opacity = 1): Promise<AnyFrame> => {
 			}
 			yield* Scene.tick;
 		},
-		{ width: W, height: H, backgroundColor: Color.rgba(0, 0, 0) },
+		{
+			compositing: "depth",
+			width: W,
+			height: H,
+			backgroundColor: Color.rgba(0, 0, 0),
+		},
 	);
 	return Effect.runPromise(Scene.stream(scene).pipe(Stream.runCollect)).then(
 		(chunk) => [...chunk].at(-1) ?? unreachable(),
@@ -69,7 +74,12 @@ const cardOverWall = (z: number): Promise<AnyFrame> => {
 			});
 			yield* Scene.tick;
 		},
-		{ width: W, height: H, backgroundColor: Color.rgba(0, 0, 0) },
+		{
+			compositing: "depth",
+			width: W,
+			height: H,
+			backgroundColor: Color.rgba(0, 0, 0),
+		},
 	);
 	return Effect.runPromise(Scene.stream(scene).pipe(Stream.runCollect)).then(
 		(chunk) => [...chunk].at(-1) ?? unreachable(),
@@ -236,14 +246,24 @@ const compWithChildAperture = (aperture: number): Promise<AnyFrame> => {
 			yield* Scene.update(camera, (props) => ({ ...props, aperture }));
 			yield* Scene.tick;
 		},
-		{ width: W, height: H, backgroundColor: Color.rgba(0, 0, 0) },
+		{
+			compositing: "depth",
+			width: W,
+			height: H,
+			backgroundColor: Color.rgba(0, 0, 0),
+		},
 	);
 	const parent = Scene.make(
 		function* () {
 			const handle = yield* Scene.play(child);
 			yield* handle.finished;
 		},
-		{ width: W, height: H, backgroundColor: Color.rgba(0, 0, 0) },
+		{
+			compositing: "depth",
+			width: W,
+			height: H,
+			backgroundColor: Color.rgba(0, 0, 0),
+		},
 	);
 	return Effect.runPromise(Scene.stream(parent).pipe(Stream.runCollect)).then(
 		(chunk) => [...chunk].at(-1) ?? unreachable(),

@@ -82,5 +82,10 @@ export const scene = Scene.make(
 		}
 		yield* Motion.wait("600 millis");
 	},
-	{ width: 1920, height: 1080, backgroundColor: Color.hex("#f4ecd8") },
+	{
+		compositing: "depth",
+		width: 1920,
+		height: 1080,
+		backgroundColor: Color.hex("#f4ecd8"),
+	},
 );

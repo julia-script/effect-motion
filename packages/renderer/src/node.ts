@@ -22,6 +22,7 @@ import {
 	renderMaskTargets,
 	setDofUniforms,
 } from "./Renderer.js";
+import * as Sampling from "./Sampling.js";
 import * as Sync from "./Sync.js";
 
 /**
@@ -380,6 +381,7 @@ export const make = Effect.fn("NodeRenderer.make")(function* (
 		canvas: canvas as unknown as HTMLCanvasElement,
 		context: context as never,
 		antialias: true,
+		samples: Sampling.samples,
 		// reversed-Z float depth — see Renderer.make
 		reversedDepthBuffer: true,
 		device,

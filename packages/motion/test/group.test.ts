@@ -28,6 +28,7 @@ const _frameOf = (
 		root: { data: S.Group.make({ children: rootChildren }) },
 	},
 	root: "root",
+	compositing: "paint",
 	frameRate: 60,
 	width: 500,
 	height: 300,

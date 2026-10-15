@@ -19,10 +19,12 @@ type Frame = Parameters<typeof NodeRenderer.renderToRgba>[1];
 
 const frameOf = async (
 	make: () => Generator<Effect.Effect<any, any, any>, void, never>,
+	compositing: "paint" | "depth" = "depth",
 ): Promise<Frame> => {
 	const frames = await Effect.runPromise(
 		Scene.stream(
 			Scene.make(make as never, {
+				compositing,
 				width: 64,
 				height: 64,
 				backgroundColor: Color.rgba(0, 0, 0),
@@ -42,6 +44,7 @@ const framesOf = async (
 	const frames = await Effect.runPromise(
 		Scene.stream(
 			Scene.make(make as never, {
+				compositing: "depth",
 				width: 64,
 				height: 64,
 				backgroundColor: Color.rgba(0, 0, 0),
@@ -102,7 +105,10 @@ describe("headless alpha masks", () => {
 		expect(outside[2]).toBeLessThan(30);
 	}, 30_000);
 
-	it("keeps 254/255 mask coverage fractional over a translucent layer", async () => {
+	it.each([
+		"paint",
+		"depth",
+	] as const)("keeps 254/255 mask coverage fractional over a translucent layer in %s mode", async (compositing) => {
 		const makeFrame = (alpha: number) =>
 			frameOf(function* () {
 				yield* Scene.instantiate("Rect", {
@@ -122,7 +128,7 @@ describe("headless alpha masks", () => {
 				});
 				yield* Scene.setMask(target, source);
 				yield* Scene.tick;
-			});
+			}, compositing);
 		const opaque = pixel(await pixelsOf(await makeFrame(1)), 0, 0);
 		const fractional = pixel(await pixelsOf(await makeFrame(254 / 255)), 0, 0);
 		expect(opaque[0]).toBeLessThan(3);
@@ -531,7 +537,12 @@ describe("headless alpha masks", () => {
 			yield* Scene.tick;
 			yield* Scene.update(target, (data) => ({
 				...data,
-				position: Entity.vec3({ x: 3 }),
+				commands: [
+					{ _tag: "M", x: -5, y: -8 },
+					{ _tag: "L", x: 11, y: -8 },
+					{ _tag: "L", x: 3, y: 8 },
+					{ _tag: "Z" },
+				],
 			}));
 			yield* Scene.tick;
 		});

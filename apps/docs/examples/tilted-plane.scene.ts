@@ -104,5 +104,10 @@ export const scene = Scene.make(
 		yield* Camera.orbitTo(camera, 0.5, "2500 millis", "easeInOutSine");
 		yield* Motion.wait("500 millis");
 	},
-	{ width: 1920, height: 1080, backgroundColor: Color.hex("#1b1b3a") },
+	{
+		compositing: "depth",
+		width: 1920,
+		height: 1080,
+		backgroundColor: Color.hex("#1b1b3a"),
+	},
 );

@@ -1,0 +1,59 @@
+{
+	"name": "@effect-motion/code",
+	"version": "0.1.0",
+	"description": "Syntax highlighting for effect-motion Text: Lezer tokenization to spans, plain-object themes, selection dimming",
+	"type": "module",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/julia-script/effect-motion.git",
+		"directory": "packages/code"
+	},
+	"homepage": "https://github.com/julia-script/effect-motion#readme",
+	"bugs": "https://github.com/julia-script/effect-motion/issues",
+	"keywords": [
+		"effect",
+		"motion",
+		"syntax-highlighting",
+		"lezer",
+		"motion-graphics"
+	],
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		},
+		"./*": {
+			"types": "./dist/*.d.ts",
+			"default": "./dist/*.js"
+		}
+	},
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "tsc -p tsconfig.build.json",
+		"dev": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
+		"test": "vitest run --passWithNoTests",
+		"check": "tsc --noEmit"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"dependencies": {
+		"@lezer/common": "^1.2.3",
+		"@lezer/highlight": "^1.2.1",
+		"@text-rendering-toolkit/font": "^0.3.0",
+		"effect-motion": "workspace:^"
+	},
+	"peerDependencies": {
+		"effect": ">=4.0.0-rc.115"
+	},
+	"devDependencies": {
+		"@lezer/javascript": "^1.5.4",
+		"@types/node": "^26.1.1",
+		"effect": "4.0.0-rc.115",
+		"typescript": "^7.0.2",
+		"vitest": "^4.1.10"
+	}
+}

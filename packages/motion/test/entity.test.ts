@@ -114,7 +114,9 @@ describe("closed entity union", () => {
 
 	it("Hud carries the full paintable set, Group's shape", () => {
 		expect(Object.keys(S.Hud.fields).sort()).toEqual(
-			Object.keys(S.Group.fields).sort(),
+			Object.keys(S.Group.fields)
+				.filter((key) => key !== "compositing")
+				.sort(),
 		);
 	});
 

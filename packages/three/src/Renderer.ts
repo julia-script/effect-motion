@@ -93,6 +93,20 @@ const acquire = Effect.fnUntraced(function* (options: MakeOptions) {
 	if (width !== undefined && height !== undefined) {
 		renderer.setSize(width, height, false);
 	}
+	// Three reverses the entire sorted list for reversed-Z. Compensate
+	// non-depth keys so authored paint order and stable ties stay ascending.
+	const orderDirection = parameters.reversedDepthBuffer === true ? -1 : 1;
+	renderer.setTransparentSort((a, b) => {
+		const nameA = a.object?.name ?? "";
+		const nameB = b.object?.name ?? "";
+		return (
+			orderDirection * ((a.groupOrder ?? 0) - (b.groupOrder ?? 0)) ||
+			orderDirection * ((a.renderOrder ?? 0) - (b.renderOrder ?? 0)) ||
+			(b.z ?? 0) - (a.z ?? 0) ||
+			orderDirection *
+				(nameA < nameB ? -1 : nameA > nameB ? 1 : (a.id ?? 0) - (b.id ?? 0))
+		);
+	});
 	yield* wrapPromise("WebGPURenderer.init", () => renderer.init());
 	return brand(renderer);
 });
@@ -386,4 +400,12 @@ export const getDrawingBufferSize = (
 		new THREE.Vector2(),
 	);
 	return { width: size.x, height: size.y };
+};
+
+/** Maximum supported square texture extent, after device initialization. */
+export const maxTextureSize = (self: Renderer): number => {
+	// three's public Backend type omits its WebGPU device; this boundary
+	// is also used by queue-drain teardown above.
+	const backend = self["~three.renderer"].backend as { device?: GPUDevice };
+	return backend.device?.limits.maxTextureDimension2D ?? 8192;
 };

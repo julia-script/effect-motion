@@ -9,8 +9,10 @@
 		"check": "fumadocs-mdx && next typegen && tsc --noEmit"
 	},
 	"dependencies": {
+		"@effect-motion/code": "workspace:*",
 		"@effect-motion/export": "workspace:*",
 		"@effect-motion/react": "workspace:*",
+		"@lezer/javascript": "^1.5.4",
 		"cnfast": "^0.0.8",
 		"effect": "4.0.0-rc.115",
 		"effect-motion": "workspace:*",

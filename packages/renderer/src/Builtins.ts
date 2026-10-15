@@ -13,15 +13,16 @@ import type {
 	Retained,
 } from "./EntityRenderer.js";
 import * as Images from "./Images.js";
+import * as Stroke from "./Stroke.js";
 import * as Sync from "./Sync.js";
 import * as Text from "./Text.js";
 
 /**
  * Built-in entity renderers: the retained (`build`/`update`/`dispose`) port
  * of the ThorVG paint manifest. Flat unlit look — MeshBasicNodeMaterial for
- * fills, Line2NodeMaterial with world-unit widths for strokes (stroke width
- * is a world-space dimension foreshortened per-pixel by perspective; this
- * intentionally replaces ThorVG's one-scale-per-segment approximation).
+ * fills, retained occupancy masks for planar strokes, and world-unit fat
+ * lines for nonplanar strokes. Width remains an authored world dimension;
+ * planar coverage is painted once after all segments and subpaths resolve.
  */
 
 const CIRCLE_SEGMENTS = 64;
@@ -78,13 +79,6 @@ const placePlanar = (
 const strokeScale = (leaf: Leaf<unknown>): number =>
 	Math.min(Math.abs(leaf.transform.scale.x), Math.abs(leaf.transform.scale.y));
 
-/** an entity-local point (offset from `position`) mapped to scene space */
-const toWorld = (
-	leaf: Leaf<unknown>,
-	p: { readonly x: number; readonly y: number; readonly z?: number },
-): THREE.Vector3 =>
-	new THREE.Vector3(p.x, p.y, p.z ?? 0).applyMatrix4(leaf.transform.matrix);
-
 // ── billboard fills (circle / ellipse / square / rect) ───────────────────
 // Each fill is a Group: the fill mesh plus an optional stroke outline
 // (world-unit fat line). Outline geometry is built at actual size in local
@@ -93,7 +87,7 @@ const toWorld = (
 interface FillParts {
 	readonly group: THREE.Group;
 	readonly mesh: THREE.Mesh;
-	outline: FatLine.Line2 | null;
+	outline: Stroke.Stroke | null;
 }
 
 const buildFillGroup = (): { retained: Retained; parts: FillParts } => {
@@ -113,7 +107,7 @@ const buildFillGroup = (): { retained: Retained; parts: FillParts } => {
 				mesh.geometry.dispose();
 			}
 			if (parts.outline !== null) {
-				disposeFatLine(parts.outline);
+				Stroke.dispose(parts.outline);
 			}
 		},
 	};
@@ -143,36 +137,26 @@ const setOutline = (
 	parts: FillParts,
 	data: { strokeColor?: Color.Color; strokeWidth?: number; opacity: number },
 	points: ReadonlyArray<readonly [number, number]> | null,
-	widthScale: number,
 ): void => {
 	if (data.strokeColor === undefined || points === null) {
 		if (parts.outline !== null) {
-			parts.group.remove(parts.outline);
-			disposeFatLine(parts.outline);
+			parts.group.remove(parts.outline.object);
+			Stroke.dispose(parts.outline);
 			parts.outline = null;
 		}
 		return;
 	}
 	if (parts.outline === null) {
-		parts.outline = makeFatLine();
-		parts.group.add(parts.outline);
+		parts.outline = Stroke.make();
+		parts.group.add(parts.outline.object);
 	}
-	const material = parts.outline.material as THREE.Line2NodeMaterial;
-	setColor(material, data.strokeColor, data.opacity);
-	material.linewidth = (data.strokeWidth ?? 1) * widthScale;
-	const positions: Array<number> = [];
-	for (const [x, y] of points) {
-		positions.push(x, y, 0);
-	}
-	const first = points[0];
-	if (first !== undefined) {
-		positions.push(first[0], first[1], 0);
-	}
-	parts.outline.geometry.dispose();
-	parts.outline.geometry = new FatLine.LineGeometry();
-	parts.outline.geometry.setPositions(positions);
-	parts.outline.computeLineDistances();
-	parts.outline.visible = material.opacity > 0 && material.linewidth > 0;
+	Stroke.update(
+		parts.outline,
+		[{ points: points.map(([x, y]) => ({ x, y, z: 0 })), closed: true }],
+		data.strokeWidth ?? 1,
+		data.strokeColor,
+		data.opacity,
+	);
 };
 
 const ellipsePoints = (
@@ -236,7 +220,6 @@ const circle: EntityRenderer<Entity.EntityByTag<"Circle">> = {
 			leaf.data.strokeColor !== undefined
 				? ellipsePoints(leaf.data.radius, leaf.data.radius)
 				: null,
-			strokeScale(leaf),
 		);
 	},
 };
@@ -263,7 +246,6 @@ const ellipse: EntityRenderer<Entity.EntityByTag<"Ellipse">> = {
 			leaf.data.strokeColor !== undefined
 				? ellipsePoints(leaf.data.radiusX, leaf.data.radiusY)
 				: null,
-			strokeScale(leaf),
 		);
 	},
 };
@@ -293,7 +275,6 @@ const rect: EntityRenderer<Entity.EntityByTag<"Rect">> = {
 			data.strokeColor !== undefined
 				? rectPoints(data.width, data.height)
 				: null,
-			strokeScale(leaf),
 		);
 	},
 };
@@ -316,32 +297,61 @@ const disposeFatLine = (line: FatLine.Line2): void => {
 	(line.material as THREE.Material).dispose();
 };
 
+interface LineParts {
+	readonly group: THREE.Group;
+	readonly stroke: Stroke.Stroke;
+	readonly spatial: FatLine.Line2;
+}
+const lineParts = new WeakMap<Retained, LineParts>();
 const line: EntityRenderer<Entity.EntityByTag<"Line">> = {
 	build: (leaf, ctx) => {
-		const fatLine = makeFatLine();
+		const group = new THREE.Group();
+		const stroke = Stroke.make();
+		const spatial = makeFatLine();
+		group.add(stroke.object, spatial);
 		const retained: Retained = {
-			object: fatLine,
+			object: group,
 			billboard: false,
-			dispose: () => disposeFatLine(fatLine),
+			dispose: () => {
+				Stroke.dispose(stroke);
+				disposeFatLine(spatial);
+			},
 		};
+		lineParts.set(retained, { group, stroke, spatial });
 		line.update(retained, leaf, ctx);
 		return retained;
 	},
-	update: (retained, leaf, ctx) => {
-		const fatLine = retained.object as FatLine.Line2;
-		const material = fatLine.material as THREE.Line2NodeMaterial;
-		setColor(material, leaf.data.strokeColor, leaf.data.opacity);
-		material.linewidth = leaf.data.strokeWidth * strokeScale(leaf);
-		fatLine.visible = material.opacity > 0 && material.linewidth > 0;
-		// `start` and `end` are offsets FROM position, so each endpoint is
-		// mapped through the composed transform (ancestors + own position,
-		// rotation, scale) — a zero/zero line is a point at position.
-		const sa = toWorld(leaf, leaf.data.start);
-		const sb = toWorld(leaf, leaf.data.end);
-		const a = ctx.toThree(sa.x, sa.y, sa.z);
-		const b = ctx.toThree(sb.x, sb.y, sb.z);
-		fatLine.geometry.setPositions([a.x, a.y, a.z, b.x, b.y, b.z]);
-		fatLine.computeLineDistances();
+	update: (retained, leaf) => {
+		const parts = lineParts.get(retained);
+		if (parts === undefined) return;
+		const { start, end, strokeColor, strokeWidth, opacity } = leaf.data;
+		parts.group.matrixAutoUpdate = false;
+		parts.group.matrix.copy(leaf.transform.matrix);
+		const planar = start.z === end.z;
+		parts.spatial.visible = !planar && opacity > 0 && strokeWidth > 0;
+		parts.stroke.object.visible = planar;
+		if (planar) {
+			Stroke.update(
+				parts.stroke,
+				[{ points: [start, end], closed: false }],
+				strokeWidth,
+				strokeColor,
+				opacity,
+			);
+		} else {
+			const material = parts.spatial.material as THREE.Line2NodeMaterial;
+			setColor(material, strokeColor, opacity);
+			material.linewidth = strokeWidth * strokeScale(leaf);
+			parts.spatial.geometry.setPositions([
+				start.x,
+				start.y,
+				start.z,
+				end.x,
+				end.y,
+				end.z,
+			]);
+			parts.spatial.computeLineDistances();
+		}
 	},
 };
 
@@ -392,91 +402,124 @@ const pathSubpaths = (commands: ReadonlyArray<PathCommand>): Array<Subpath> => {
 	return subpaths;
 };
 
-// ponytail: rebuilt wholesale whenever the path changes (geometry churn
-// accepted — acceptance paths are static). Closed subpaths fill with the
-// path's fill color, triangulated in x/y with per-vertex z applied after
-// (earcut only uses the input vertices, so mildly non-planar subpaths keep
-// their depths). Holes are not supported — each closed subpath fills
-// independently (winding analysis is a later concern).
+interface PathParts {
+	readonly group: THREE.Group;
+	readonly fills: THREE.Group;
+	readonly spatial: THREE.Group;
+	readonly stroke: Stroke.Stroke;
+	commands: ReadonlyArray<PathCommand> | undefined;
+	paths: ReadonlyArray<Subpath>;
+}
+const pathParts = new WeakMap<Retained, PathParts>();
+const clearPath = (group: THREE.Group): void => {
+	for (const child of [...group.children]) {
+		group.remove(child);
+		disposePathChild(child);
+	}
+};
 const path: EntityRenderer<Entity.EntityByTag<"Path">> = {
 	build: (leaf, ctx) => {
-		const group = new THREE.Group();
+		const group = new THREE.Group(),
+			fills = new THREE.Group(),
+			spatial = new THREE.Group();
+		const stroke = Stroke.make();
+		group.add(fills, stroke.object, spatial);
 		const retained: Retained = {
 			object: group,
 			billboard: false,
 			dispose: () => {
-				for (const child of [...group.children]) {
-					disposePathChild(child);
-				}
+				clearPath(fills);
+				clearPath(spatial);
+				Stroke.dispose(stroke);
 			},
 		};
+		pathParts.set(retained, {
+			group,
+			fills,
+			spatial,
+			stroke,
+			commands: undefined,
+			paths: [],
+		});
 		path.update(retained, leaf, ctx);
 		return retained;
 	},
-	update: (retained, leaf, ctx) => {
-		const group = retained.object as THREE.Group;
-		for (const child of [...group.children]) {
-			group.remove(child);
-			disposePathChild(child);
-		}
-		const { strokeColor: stroke, fillColor: fill, opacity } = leaf.data;
-		const strokeWidth = (leaf.data.strokeWidth ?? 1) * strokeScale(leaf);
-		const subpaths = pathSubpaths(leaf.data.commands);
-		for (const subpath of subpaths) {
-			// fill: closed subpaths only, triangulated in x/y
-			if (subpath.closed && subpath.points.length >= 3) {
-				const contour = subpath.points.map((p) => new THREE.Vector2(p.x, p.y));
-				const triangles = THREE.ShapeUtils.triangulateShape(contour, []);
-				const positions = new Float32Array(subpath.points.length * 3);
-				for (const [i, p] of subpath.points.entries()) {
-					const w = toWorld(leaf, p);
-					const v = ctx.toThree(w.x, w.y, w.z);
-					positions[i * 3] = v.x;
-					positions[i * 3 + 1] = v.y;
-					positions[i * 3 + 2] = v.z;
+	update: (retained, leaf) => {
+		const parts = pathParts.get(retained);
+		if (parts === undefined) return;
+		const { commands, fillColor, strokeColor, strokeWidth, opacity } =
+			leaf.data;
+		parts.group.matrixAutoUpdate = false;
+		parts.group.matrix.copy(leaf.transform.matrix);
+		if (parts.commands !== commands) {
+			parts.commands = commands;
+			parts.paths = pathSubpaths(commands);
+			clearPath(parts.fills);
+			clearPath(parts.spatial);
+			for (const subpath of parts.paths) {
+				if (subpath.closed && subpath.points.length >= 3) {
+					const geometry = new THREE.BufferGeometry();
+					geometry.setAttribute(
+						"position",
+						new THREE.Float32BufferAttribute(
+							subpath.points.flatMap((p) => [p.x, p.y, p.z]),
+							3,
+						),
+					);
+					geometry.setIndex(
+						THREE.ShapeUtils.triangulateShape(
+							subpath.points.map((p) => new THREE.Vector2(p.x, p.y)),
+							[],
+						).flat(),
+					);
+					parts.fills.add(
+						new THREE.Mesh(
+							geometry,
+							new THREE.MeshBasicNodeMaterial({ side: THREE.DoubleSide }),
+						),
+					);
 				}
-				const geometry = new THREE.BufferGeometry();
-				geometry.setAttribute(
-					"position",
-					new THREE.Float32BufferAttribute(positions, 3),
-				);
-				geometry.setIndex(triangles.flat());
-				const material = new THREE.MeshBasicNodeMaterial();
-				material.side = THREE.DoubleSide;
-				setColor(material, fill, opacity);
-				const mesh = new THREE.Mesh(geometry, material);
-				mesh.visible = material.opacity > 0;
-				group.add(mesh);
-			}
-			// stroke: world-unit fat polyline
-			if (stroke !== undefined) {
-				const fatLine = makeFatLine();
-				const material = fatLine.material as THREE.Line2NodeMaterial;
-				setColor(material, stroke, opacity);
-				material.linewidth = strokeWidth;
-				fatLine.visible = material.opacity > 0 && strokeWidth > 0;
-				const positions: Array<number> = [];
-				const push = (p: { x: number; y: number; z: number }) => {
-					const w = toWorld(leaf, p);
-					const v = ctx.toThree(w.x, w.y, w.z);
-					positions.push(v.x, v.y, v.z);
-				};
-				for (const p of subpath.points) {
-					push(p);
+				if (!Stroke.planar(parts.paths)) {
+					const fatLine = makeFatLine();
+					const points = [...subpath.points];
+					const first = points[0];
+					if (subpath.closed && first !== undefined) points.push(first);
+					fatLine.geometry.setPositions(points.flatMap((p) => [p.x, p.y, p.z]));
+					fatLine.computeLineDistances();
+					parts.spatial.add(fatLine);
 				}
-				const first = subpath.points[0];
-				if (
-					subpath.closed &&
-					subpath.points.length > 1 &&
-					first !== undefined
-				) {
-					push(first);
-				}
-				fatLine.geometry.setPositions(positions);
-				fatLine.computeLineDistances();
-				group.add(fatLine);
 			}
 		}
+		for (const child of parts.fills.children) {
+			if (
+				child instanceof THREE.Mesh &&
+				child.material instanceof THREE.MeshBasicNodeMaterial
+			) {
+				setColor(child.material, fillColor, opacity);
+				child.visible = child.material.opacity > 0;
+			}
+		}
+		const planar = Stroke.planar(parts.paths);
+		parts.stroke.object.visible = planar && strokeColor !== undefined;
+		parts.spatial.visible = !planar && strokeColor !== undefined;
+		if (strokeColor === undefined) return;
+		if (planar)
+			Stroke.update(
+				parts.stroke,
+				parts.paths,
+				strokeWidth,
+				strokeColor,
+				opacity,
+			);
+		else
+			for (const child of parts.spatial.children) {
+				if (child instanceof FatLine.Line2) {
+					const material = child.material as THREE.Line2NodeMaterial;
+					setColor(material, strokeColor, opacity);
+					material.linewidth = strokeWidth * strokeScale(leaf);
+					child.visible = material.opacity > 0 && strokeWidth > 0;
+				}
+			}
 	},
 };
 
@@ -511,12 +554,17 @@ const text: EntityRenderer<Entity.EntityByTag<"Text">> = {
 	update: (retained, leaf, ctx) => {
 		const textMesh = retained.object.userData.textMesh as Text.TextMesh;
 		const data = leaf.data;
+		const spans = data.spans ?? [];
+		// span BOUNDARIES shape the layout (they split style ranges); span
+		// COLORS are appearance — keyed apart so an animated recolor never
+		// re-shapes the string
 		const key = [
 			data.text,
 			data.fontSize,
 			data.fontFamily.id,
 			data.textAnchor,
 			data.baseline,
+			...spans.map((span) => `${span.from}:${span.to}`),
 		].join("|");
 		const keyChanged = retained.object.userData.textKey !== key;
 		if (keyChanged) {
@@ -528,6 +576,7 @@ const text: EntityRenderer<Entity.EntityByTag<"Text">> = {
 					fontSize: data.fontSize,
 					textAnchor: data.textAnchor,
 					baseline: data.baseline,
+					spans,
 				}).pipe(
 					Effect.flatMap((result) => {
 						textMesh.setLayout(result);
@@ -538,10 +587,15 @@ const text: EntityRenderer<Entity.EntityByTag<"Text">> = {
 		}
 		const { r, g, b, a } = Color.bytes(data.fillColor);
 		const alpha = (a / 255) * data.opacity;
-		const colorKey = `${r}|${g}|${b}|${alpha}`;
+		const spanBytes = spans.map((span) => Color.bytes(span.fillColor));
+		const colorKey = [
+			`${r}|${g}|${b}|${alpha}`,
+			...spanBytes.map((value) => `${value.r}|${value.g}|${value.b}`),
+		].join("|");
 		if (retained.object.userData.textColorKey !== colorKey) {
 			retained.object.userData.textColorKey = colorKey;
 			textMesh.setColor(r, g, b, alpha);
+			textMesh.setSpanColors(spanBytes);
 			// a layout commit is already queued on key change; only a pure
 			// color/opacity change needs its own
 			if (!keyChanged) {

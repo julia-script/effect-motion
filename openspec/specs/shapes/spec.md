@@ -1,7 +1,7 @@
 # shapes Specification
 
 ## Purpose
-TBD - created by syncing change add-shapes-library. Update Purpose after review.
+Define renderer-independent built-in shapes and containers, including their geometry, shared appearance fields, visibility, and ordered instance-tree structure.
 ## Requirements
 ### Requirement: Renderer-agnostic shape definitions
 
@@ -60,11 +60,11 @@ A default-constructed shape SHALL be visible: filled shapes default `fill` to bl
 
 ### Requirement: Group container entity
 
-The library SHALL ship a `Group` container entity carrying the uniform transform and appearance fields (see `entity-transform`) plus `children` — an ordered array of instance ids held as ordinary schema data. A group's `opacity` SHALL apply to its subtree.
+The library SHALL ship a `Group` container entity carrying the uniform transform and appearance fields (see `entity-transform`) plus `children` — an ordered array of instance ids held as ordinary schema data. A group's `opacity` SHALL apply to its subtree. A Group SHALL additionally carry `compositing: "inherit" | "paint"`, defaulting to `"inherit"`. Inherited groups participate in the enclosing context; explicit paint groups isolate their descendants as one 2D surface and apply group opacity to that composite.
 
 A `Group` SHALL NOT carry composition bounds. The `width`, `height`, and `backgroundColor` fields are removed: they duplicated values a `Scene` already owns, written only by `Scene.play` when mounting a nested scene. Composition bounds SHALL reach the renderer from the scene that declares them, and a subtree's status as a mounted composition SHALL be signalled explicitly rather than inferred from a group happening to carry a size. A `Group` SHALL position its children by composing its transform down the subtree, using the same transform representation every other entity carries; it SHALL NOT carry an affine matrix field or accept a transform-operation list.
 
-Groups structure and position their children and paint nothing themselves. Structure SHALL be defined by children: a group's `children` input MAY be given as a polymorphic list (see the instance-children capability) that instantiation normalizes into stored ids, and instantiation SHALL NOT accept a `parent` argument on the child. Every new instance SHALL attach to its ambient parent group, defaulting to the root group (conventional id `"root"`). Destroying an instance SHALL remove its id from any group that references it. Because `children` is plain data, scene updates on a group MAY reparent and reorder children; paint order SHALL follow the children array order.
+Groups structure and position their children without an authored shape of their own; an explicit paint group is represented externally by its subtree's composited surface. Structure SHALL be defined by children: a group's `children` input MAY be given as a polymorphic list (see the instance-children capability) that instantiation normalizes into stored ids, and instantiation SHALL NOT accept a `parent` argument on the child. Every new instance SHALL attach to its ambient parent group, defaulting to the root group (conventional id `"root"`). Destroying an instance SHALL remove its id from any group that references it. Because `children` is plain data, scene updates on a group MAY reparent and reorder children; paint order inside a paint context SHALL follow the children array order; physically distinct depths in a depth context SHALL follow depth-render-order.
 
 The library SHALL additionally ship a `Hud` screen-space container under its own tag, carrying the same uniform transform and appearance fields plus `children`. Its `position.z` SHALL mean depth **within the HUD tier** (screen space), not world depth — `z` consistently means depth within the entity's own coordinate space. A `Hud` SHALL remain a top-level child of the root (or of another `Hud`); nesting one inside world content remains a loud defect.
 
@@ -100,7 +100,7 @@ The library SHALL additionally ship a `Hud` screen-space container under its own
 
 #### Scenario: Reorder controls paint order
 
-- **WHEN** a scene update reverses a group's children array
+- **WHEN** a scene update reverses a group's children array inside a paint context
 - **THEN** the rendered output emits the children in the new order
 
 #### Scenario: Hud is a distinct tag
@@ -117,6 +117,15 @@ The library SHALL additionally ship a `Hud` screen-space container under its own
 
 - **WHEN** a `Hud` sets no `z`
 - **THEN** its depth is 0 and its subtree renders exactly as it did when `Hud` had no depth field at all
+
+#### Scenario: Group chooses paint composition without bounds
+- **WHEN** a Group is instantiated with `compositing: "paint"`
+- **THEN** it establishes a paint context using its existing children array
+- **AND** it needs no public width, height, background or second content tree
+
+#### Scenario: Default group inherits its context
+- **WHEN** a Group omits compositing
+- **THEN** its mode is inherit and it follows its nearest enclosing composition context
 
 ### Requirement: Uniform instance visibility
 
@@ -172,4 +181,3 @@ The `Path` entity SHALL carry `position` (see `entity-transform`) and define its
 
 - **WHEN** a `Path` command point sets a nonzero depth
 - **THEN** that point projects with its own perspective position and scale while other points are unaffected
-
