@@ -1,0 +1,80 @@
+---
+title: Curves, trim paths, and dashes
+description: Author typed curves and animate how much of their stroke is drawn
+---
+
+Use `Path` for curves and arcs, then animate its stroke with `Motion.tweenTo`.
+`Line`, `Rect`, `Circle`, and `Ellipse` share the same trim and dash fields.
+
+<Example name="path-strokes" />
+
+In this scene, the green reveal advances by distance along the curve. The
+dashes stay anchored while the reveal grows; after it finishes,
+`strokeDashoffset` moves the pattern. The amber arc shows a quarter of a
+closed contour moving across its start/end seam.
+
+## Command objects
+
+`commands` is a non-empty array beginning with `M` or `m`. Each object has
+an `_tag` and the fields below. Uppercase coordinates are local to the
+Path's `position`; lowercase coordinates are relative to the current point
+at the start of that command. Moving the Path moves all its geometry.
+
+| Tags | Fields | Operation |
+|---|---|---|
+| `M`, `m` | `x`, `y`, optional `z` | Start a subpath |
+| `L`, `l` | `x`, `y`, optional `z` | Straight segment |
+| `H`, `h` | `x` | Change x, preserving y and z |
+| `V`, `v` | `y` | Change y, preserving x and z |
+| `C`, `c` | `x1`, `y1`, optional `z1`; `x2`, `y2`, optional `z2`; endpoint `x`, `y`, optional `z` | Cubic Bézier |
+| `S`, `s` | `x2`, `y2`, optional `z2`; endpoint `x`, `y`, optional `z` | Cubic with reflected first control point |
+| `Q`, `q` | `x1`, `y1`, optional `z1`; endpoint `x`, `y`, optional `z` | Quadratic Bézier |
+| `T`, `t` | `x`, `y`, optional `z` | Quadratic with reflected control point |
+| `A`, `a` | `rx`, `ry`, `xAxisRotation`, `largeArc`, `sweep`; endpoint `x`, `y`, optional `z` | Elliptical arc |
+| `Z`, `z` | none | Close to the latest move point |
+
+All numeric inputs must be finite. Omitted absolute depth is zero;
+omitted relative depth adds zero. Smooth commands reflect the previous
+compatible curve's control point, including depth. After any other command,
+their implicit control is the current point. Drawing after a close starts
+from the closed subpath's move point.
+
+Arcs use degrees for `xAxisRotation` and booleans for `largeArc` and `sweep`.
+They lie in local XY with linear depth interpolation. In our y-up coordinates,
+`sweep: true` advances counterclockwise. Negative radii use their absolute
+values; radii too small to connect the endpoints expand automatically.
+A zero radius draws a line, and coincident XY endpoints omit the arc.
+
+## Reveal and trim
+
+`trimStart` defaults to `0`, `trimEnd` to `1`, and `trimOffset` to `0`.
+Tween `trimEnd` from `0` to `1` for a drawing reveal. Both ends are clamped
+to `[0, 1]`; `trimEnd <= trimStart` hides the stroke. Fills remain intact.
+Set `fillColor: Color.transparent` for an outline-only Path.
+
+Fractions refer to total local 3D contour length, including closing segments
+and excluding gaps between subpaths. Curves use their deterministic polyline
+approximation. Camera movement does not change those distances.
+
+`trimOffset` shifts the selection in turns and wraps at the ends. For example,
+start `0`, end `0.25`, offset `0.9` selects `[0.9, 1]` plus `[0, 0.15]`.
+A full selection remains full at every offset. Separate subpaths stay separate.
+
+## Dashes
+
+`strokeDasharray` alternates painted and empty lengths in local scene units:
+`[20, 12]` paints 20 units, skips 12, and repeats. Odd-length patterns repeat
+twice before cycling. Empty and all-zero arrays draw a solid stroke.
+Lengths must be finite and nonnegative. A zero painted entry, such as
+`[0, 12]`, produces round dots.
+
+`strokeDashoffset` defaults to `0`. Positive values advance into the pattern;
+negative values move it the other way. The pattern restarts at each original
+subpath and stays anchored there when trimming changes. Scalar trim and
+offset fields use the ordinary `Motion.tween` / `Motion.tweenTo` pair; replace
+the dash array through `Scene.update` to change the pattern.
+
+Caps and joins remain round. Short gaps can appear closed when the round
+caps on neighboring dashes overlap; use gaps larger than `strokeWidth`
+when you want clear separation. Paths still fill each closed subpath
+individually; compound holes and configurable fill rules are not supported.
