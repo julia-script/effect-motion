@@ -1,5 +1,16 @@
 # @effect-motion/cli
 
+## 1.0.0
+
+### Patch Changes
+
+- Updated dependencies [47b4de0]
+- Updated dependencies [1e8b5bf]
+- Updated dependencies [f895634]
+- Updated dependencies [ac08e95]
+  - effect-motion@1.0.0
+  - @effect-motion/export@1.0.0
+
 ## 0.8.0
 
 ### Patch Changes

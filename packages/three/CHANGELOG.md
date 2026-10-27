@@ -1,5 +1,32 @@
 # @effect-motion/three
 
+## 1.0.0
+
+### Patch Changes
+
+- 47b4de0: Scenes now default to paint compositing: later children paint over earlier children,
+  including coplanar fills, borders and text. Set `compositing: "depth"` in Scene.make
+  metadata to preserve physical 3D occlusion. Frames and Scene.play mounts carry the
+  mode explicitly.
+
+  Groups can opt into `compositing: "paint"` to form a flat surface inside a depth
+  scene. Bounds follow the contents, transforms and opacity apply once to the surface,
+  and transparent holes do not occlude the background. Ordinary groups inherit their
+  context. Retained ordering updates when siblings reorder, and removed composition
+  resources are now disposed correctly.
+
+- 47b4de0: Planar strokes now composite opacity once across joins, closure, self-crossings,
+  retracing and all subpaths of one Path. Separate entities still blend separately.
+  A retained multisample occupancy mask preserves transparent holes and reuses
+  coverage through color and opacity fades. Nonplanar 3D strokes retain per-point depth.
+- 47b4de0: Preserve thin-stroke coverage with retained supersampled occupancy masks and
+  mip-filtered reduction. Paint surfaces now use the same four-sample policy as the
+  final scene. Target density follows viewport scale, local depth and projected
+  magnification while authored fractional widths and positions stay unchanged.
+
+  The Player now requests native device pixel ratio. CSS may still scale its finished
+  canvas; the border lab includes native-size width/offset/orientation controls.
+
 ## 0.8.0
 
 ### Minor Changes
